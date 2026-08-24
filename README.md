@@ -1,6 +1,6 @@
 # Appointment Lite for SHOPLINE
 
-Version `0.2.3` — store-time-zone-aware past-slot protection, temporarily unlimited appointment rules, and cross-device appointment management.
+Version `0.3.0` — redesigned merchant workspace, per-store Email Studio, store-time-zone-aware booking safety, and cross-device appointment management.
 
 Appointment Lite turns selected SHOPLINE products into appointment or consultation services. It is designed for wedding fittings, jewelry consultations, furniture consultations, beauty services, classes, and made-to-order products.
 
@@ -9,12 +9,14 @@ Appointment Lite turns selected SHOPLINE products into appointment or consultati
 Implemented:
 
 - SHOPLINE OAuth installation, signed callback verification, token persistence, and refresh structure.
-- Admin overview, rule CRUD, SHOPLINE product selection, booking list, editing, and cancellation.
+- Responsive SaaS-style merchant workspace with guided setup, overview insights, searchable service cards, booking management, and fully designed application dialogs and selection controls.
+- Three-step appointment rule builder, SHOPLINE product selection, rule CRUD, booking search/filtering, editing, and cancellation.
 - Duration, buffer, available date range, weekday schedule, daily windows, text-only location/staff, enabled state, notes prompt, and up to five custom questions.
 - Public rule/availability APIs and booking creation.
 - Atomic duplicate-slot protection using a MongoDB partial unique index.
 - Server-authoritative past-slot protection using the SHOPLINE store's IANA time zone; storefront and management availability never return elapsed slots.
 - Provider-neutral email notifications through Aliyun DirectMail HTTPS OpenAPI or Resend; missing or failing email configuration never rolls back a booking.
+- Per-store Email Studio for brand name, email logo, accent color, reply-to routing, merchant notifications, five editable subject/body templates, template variables, live preview, and branded test delivery.
 - Confirmation email with a private, cross-device Manage Appointment link. The page immediately moves the high-entropy email token into session storage and removes it from the address bar; MongoDB stores only its SHA-256 hash.
 - Customer emails for confirmation, one-time self-service rescheduling, cancellation, and merchant edits; optional merchant new-booking notification.
 - English-first locale directories with Simplified Chinese starter strings.

@@ -9,6 +9,7 @@ import { shoplineGet, syncShopMetadata } from '../services/shopline.js';
 import { cancelBookingByMerchant, updateBookingByMerchant } from '../services/bookings.js';
 import { emailStatus, sendTestEmail } from '../services/email.js';
 import { zonedNow } from '../lib/slots.js';
+import { normalizeEmailSettings, validateEmailSettings } from '../lib/email-settings.js';
 
 export const adminRouter = Router();
 adminRouter.use(requireAdmin, requireCsrf);
@@ -20,13 +21,22 @@ adminRouter.get('/bootstrap', async (req, res) => {
       Object.assign(req.shop, metadata);
     } catch (error) { console.warn('Could not refresh shop metadata:', error.message); }
   }
-  const [ruleCount, activeRuleCount, bookingCount, upcomingCount] = await Promise.all([
+  const storeNow = zonedNow(req.shop.timezone || 'UTC');
+  const upcomingFilter = { shopId: req.shop._id, status: 'confirmed', $or: [{ date: { $gt: storeNow.date } }, { date: storeNow.date, time: { $gt: storeNow.time } }] };
+  const [ruleCount, activeRuleCount, bookingCount, upcomingCount, nextBookings] = await Promise.all([
     AppointmentRule.countDocuments({ shopId: req.shop._id }),
     AppointmentRule.countDocuments({ shopId: req.shop._id, enabled: true }),
     Booking.countDocuments({ shopId: req.shop._id }),
-    Booking.countDocuments({ shopId: req.shop._id, status: 'confirmed', date: { $gte: zonedNow(req.shop.timezone || 'UTC').date } })
+    Booking.countDocuments(upcomingFilter),
+    Booking.find(upcomingFilter)
+      .sort({ date: 1, time: 1 }).limit(4).select('productTitle date time timezone location staff customer.name').lean()
   ]);
-  res.json({ shop: { handle: req.shop.handle, storeId: req.shop.shoplineStoreId || '', locale: req.shop.locale, timezone: req.shop.timezone, plan: req.shop.plan, email: req.shop.email || '' }, email: emailStatus(), limits: { ...limitsFor(req.shop.plan), enforced: config.planLimitsEnabled }, csrfToken: req.csrfToken, stats: { ruleCount, activeRuleCount, bookingCount, upcomingCount } });
+  res.json({
+    shop: { handle: req.shop.handle, storeId: req.shop.shoplineStoreId || '', locale: req.shop.locale, timezone: req.shop.timezone, plan: req.shop.plan, email: req.shop.email || '' },
+    email: emailStatus(), emailSettings: normalizeEmailSettings(req.shop.emailSettings || {}), nextBookings,
+    limits: { ...limitsFor(req.shop.plan), enforced: config.planLimitsEnabled }, csrfToken: req.csrfToken,
+    stats: { ruleCount, activeRuleCount, bookingCount, upcomingCount }
+  });
 });
 
 adminRouter.get('/products', async (req, res, next) => {
@@ -108,10 +118,19 @@ adminRouter.post('/bookings/:id/cancel', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+adminRouter.put('/email/settings', async (req, res) => {
+  const { errors, value } = validateEmailSettings(req.body);
+  if (errors.length) return res.status(422).json({ error: 'VALIDATION_ERROR', message: errors.join(' '), fields: errors });
+  req.shop.emailSettings = value;
+  await req.shop.save();
+  res.json({ settings: normalizeEmailSettings(req.shop.emailSettings) });
+});
+
 adminRouter.post('/email/test', async (req, res) => {
-  const to = req.shop.email || config.email.merchantTo;
+  const settings = normalizeEmailSettings(req.shop.emailSettings || {});
+  const to = settings.merchantNotificationEmail || req.shop.email || config.email.merchantTo;
   if (!to) return res.status(422).json({ error: 'EMAIL_REQUIRED', message: 'Add a store email or MERCHANT_NOTIFICATION_EMAIL before sending a test.' });
-  const result = await sendTestEmail(to);
+  const result = await sendTestEmail(to, settings);
   if (result.skipped) return res.status(422).json({ error: 'EMAIL_NOT_CONFIGURED', message: result.reason, result });
   if (result.failed) return res.status(502).json({ error: 'EMAIL_FAILED', message: result.reason || 'Email provider rejected the test.', result });
   res.json({ to, result });

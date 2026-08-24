@@ -40,7 +40,7 @@ export async function createBookingAtomic({ shop, rule, input, BookingModel = Bo
     if (error?.code === 11000) throw new SlotConflictError();
     throw error;
   }
-  Promise.resolve(notify(booking, shop.email, managementToken)).catch(error => console.error('Email notification failed', error.message));
+  Promise.resolve(notify(booking, shop.email, managementToken, shop.emailSettings || null)).catch(error => console.error('Email notification failed', error.message));
   return { booking, managementToken };
 }
 

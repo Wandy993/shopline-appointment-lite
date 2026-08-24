@@ -43,7 +43,20 @@ MERCHANT_NOTIFICATION_EMAIL=optional-merchant@example.com
 
 Leave `ALIYUN_DIRECTMAIL_TAG_NAME` empty unless the same tag already exists in DirectMail.
 
-After deployment, open **Storefront setup → Email delivery** in the app admin. It shows the selected provider, transport, and sender without exposing secrets. Use **Send test email** before accepting live appointments.
+After deployment, open **Email Studio** in the app admin. It shows the selected provider, transport, and sender without exposing secrets. Configure the store brand and templates, then use **Send test** before accepting live appointments.
+
+## Per-store Email Studio
+
+Provider credentials and verified sender addresses remain environment-level secrets in Railway. Each installed SHOPLINE store can independently save the following non-secret settings in its own `Shop.emailSettings` record:
+
+- Brand name, square HTTPS logo URL, and accent color.
+- Customer reply-to address and merchant new-booking notification address.
+- Subject, heading, and plain-text intro message for confirmation, customer reschedule, merchant edit, cancellation, and merchant alert emails.
+- Safe variables such as `{{customer_name}}`, `{{product_title}}`, `{{date}}`, `{{time}}`, `{{timezone}}`, `{{location}}`, `{{staff}}`, and `{{store_name}}`.
+
+Template text is escaped before it enters HTML email, while the appointment card and private management button remain system controlled. This prevents a merchant template from injecting active HTML or replacing security-critical appointment details.
+
+The logo configured in Email Studio appears inside the email body. Gmail and other inbox sender avatars are not controlled by email HTML. Gmail may use the sending Google account profile image or a domain-level BIMI setup; configure that separately after the sending domain has appropriate SPF, DKIM, and DMARC alignment.
 
 ## Resend fallback
 

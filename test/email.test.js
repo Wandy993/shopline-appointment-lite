@@ -17,6 +17,9 @@ test('Aliyun DirectMail transport uses HTTPS OpenAPI and least-privilege configu
   const example = await readFile(new URL('../.env.example', import.meta.url), 'utf8');
   assert.match(source, /singleSendMailWithOptions/);
   assert.match(source, /ALIBABA|config\.email\.aliyun/);
+  assert.match(source, /replyAddress/);
+  assert.match(source, /settings\.accentColor/);
+  assert.match(source, /merchantNotificationEmail/);
   assert.doesNotMatch(source, /smtp/i);
   assert.match(example, /dm:SingleSendMail/);
   assert.match(example, /ALIBABA_CLOUD_ACCESS_KEY_ID=/);

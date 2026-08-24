@@ -23,6 +23,7 @@ Requires the signed `al_session` HTTP-only cookie. Mutations also require `X-CSR
 - `PUT /api/admin/bookings/:id` — merchant date/time/location/staff edit; invokes the optional customer email notification hook
 - `POST /api/admin/bookings/:id/cancel` — merchant cancellation and optional customer notification
 - `POST /api/admin/email/test` — sends a provider test email to the shop notification address
+- `PUT /api/admin/email/settings` — validates and saves the current store's email brand, routing preferences, and message templates
 
 ## Public storefront API
 
