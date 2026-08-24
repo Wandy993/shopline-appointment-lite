@@ -35,11 +35,13 @@ ALIYUN_DIRECTMAIL_FROM_ALIAS=Appointment Lite
 ALIYUN_DIRECTMAIL_REPLY_TO=true
 ALIYUN_DIRECTMAIL_ENDPOINT=dm.aliyuncs.com
 ALIYUN_DIRECTMAIL_REGION_ID=cn-hangzhou
-ALIYUN_DIRECTMAIL_TAG_NAME=appointment_lite
+ALIYUN_DIRECTMAIL_TAG_NAME=
 MERCHANT_NOTIFICATION_EMAIL=optional-merchant@example.com
 ```
 
 `ALIBABA_CLOUD_SECURITY_TOKEN` is supported for temporary STS credentials. A Railway container cannot automatically inherit an ECS service-linked role, so an ECS RAM role name by itself is not enough. For the current deployment, use the dedicated least-privilege RAM user AccessKey. If temporary credentials are introduced later, add an external STS refresh path and rotate the token before expiry.
+
+Leave `ALIYUN_DIRECTMAIL_TAG_NAME` empty unless the same tag already exists in DirectMail.
 
 After deployment, open **Storefront setup → Email delivery** in the app admin. It shows the selected provider, transport, and sender without exposing secrets. Use **Send test email** before accepting live appointments.
 
