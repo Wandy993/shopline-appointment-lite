@@ -1,6 +1,6 @@
 # Appointment Lite for SHOPLINE
 
-Version `0.1.2` — zero-configuration App Block diagnostics release based on the `appointment-lite-v0.1.0-mvp` foundation.
+Version `0.1.3` — storefront booking dialog visibility fix based on the `appointment-lite-v0.1.0-mvp` foundation.
 
 Appointment Lite turns selected SHOPLINE products into appointment or consultation services. It is designed for wedding fittings, jewelry consultations, furniture consultations, beauty services, classes, and made-to-order products.
 
