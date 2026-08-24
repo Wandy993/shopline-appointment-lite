@@ -25,7 +25,7 @@ export function adminPage() {
             <article><span>Active rules</span><strong id="activeRuleCount">—</strong></article>
             <article><span>All bookings</span><strong id="bookingCount">—</strong></article>
             <article><span>Upcoming</span><strong id="upcomingCount">—</strong></article>
-            <article><span>Current plan</span><strong id="planName">—</strong></article>
+            <article><span>Rule access</span><strong id="planName">—</strong></article>
           </div>
           <article class="card"><h2>Get ready to take appointments</h2><ol class="setup-list"><li>Create a rule and select a SHOPLINE product.</li><li>Deploy the backend and confirm the health check.</li><li>Push the Theme App Extension and add its zero-configuration block to the product template.</li></ol></article>
         </section>

@@ -1,6 +1,6 @@
 # Appointment Lite for SHOPLINE
 
-Version `0.2.1` — Aliyun DirectMail/Resend email delivery and email-client-compatible cross-device appointment management, based on the `appointment-lite-v0.1.0-mvp` foundation.
+Version `0.2.2` — temporarily unlimited appointment rules, plus Aliyun DirectMail/Resend email delivery and email-client-compatible cross-device appointment management.
 
 Appointment Lite turns selected SHOPLINE products into appointment or consultation services. It is designed for wedding fittings, jewelry consultations, furniture consultations, beauty services, classes, and made-to-order products.
 
@@ -17,7 +17,7 @@ Implemented:
 - Confirmation email with a private, cross-device Manage Appointment link. The page immediately moves the high-entropy email token into session storage and removes it from the address bar; MongoDB stores only its SHA-256 hash.
 - Customer emails for confirmation, one-time self-service rescheduling, cancellation, and merchant edits; optional merchant new-booking notification.
 - English-first locale directories with Simplified Chinese starter strings.
-- Free/Pro plan limits without a real billing dependency.
+- Free/Pro plan boundaries remain reserved without a real billing dependency; rule-count enforcement is disabled by default for the MVP.
 - Standalone Theme App Extension **source template** in `theme-extension-source/`.
 
 Intentionally deferred: Google Calendar, SMS, deposits, staff-resource scheduling, resource capacity, recurring appointments, and complex timezone conversion.
@@ -83,6 +83,7 @@ Important settings:
 - `SHOPLINE_SCOPES` defaults to `read_products,read_store_information`.
 - `COOKIE_SAME_SITE=lax` is appropriate for redirect mode. Embedded iframe mode may require `none` with HTTPS and SHOPLINE App Bridge work.
 - `PUBLIC_ALLOWED_ORIGINS` should remain empty for a multi-merchant public app because every merchant has different storefront domains. CORS is not authentication; use dynamic installed-shop origin validation in a later hardening release if required.
+- `PLAN_LIMITS_ENABLED=false` gives every installed store unlimited appointment rules during the MVP. Set it to `true` later to restore the reserved Free/Pro active-rule limits.
 - `EMAIL_PROVIDER=auto` prefers a complete Aliyun DirectMail configuration, then Resend. Use `aliyun`, `resend`, or `none` to force a mode.
 - Aliyun DirectMail uses HTTPS OpenAPI rather than SMTP. Configure `ALIBABA_CLOUD_ACCESS_KEY_ID`, `ALIBABA_CLOUD_ACCESS_KEY_SECRET`, and the verified sender in `ALIYUN_DIRECTMAIL_ACCOUNT_NAME`.
 - `RESEND_API_KEY`, `EMAIL_FROM`, and `MERCHANT_NOTIFICATION_EMAIL` remain available as a fallback. Booking success never depends on email delivery.

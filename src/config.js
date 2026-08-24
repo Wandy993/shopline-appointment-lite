@@ -43,7 +43,8 @@ export const config = Object.freeze({
       tagName: process.env.ALIYUN_DIRECTMAIL_TAG_NAME || ''
     }
   },
-  defaultPlan: process.env.DEFAULT_PLAN || 'free'
+  defaultPlan: process.env.DEFAULT_PLAN || 'free',
+  planLimitsEnabled: process.env.PLAN_LIMITS_ENABLED === 'true'
 });
 
 export function assertProductionConfig() {

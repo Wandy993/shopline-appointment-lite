@@ -25,7 +25,7 @@ adminRouter.get('/bootstrap', async (req, res) => {
     Booking.countDocuments({ shopId: req.shop._id }),
     Booking.countDocuments({ shopId: req.shop._id, status: 'confirmed', date: { $gte: new Date().toISOString().slice(0, 10) } })
   ]);
-  res.json({ shop: { handle: req.shop.handle, storeId: req.shop.shoplineStoreId || '', locale: req.shop.locale, timezone: req.shop.timezone, plan: req.shop.plan, email: req.shop.email || '' }, email: emailStatus(), limits: limitsFor(req.shop.plan), csrfToken: req.csrfToken, stats: { ruleCount, activeRuleCount, bookingCount, upcomingCount } });
+  res.json({ shop: { handle: req.shop.handle, storeId: req.shop.shoplineStoreId || '', locale: req.shop.locale, timezone: req.shop.timezone, plan: req.shop.plan, email: req.shop.email || '' }, email: emailStatus(), limits: { ...limitsFor(req.shop.plan), enforced: config.planLimitsEnabled }, csrfToken: req.csrfToken, stats: { ruleCount, activeRuleCount, bookingCount, upcomingCount } });
 });
 
 adminRouter.get('/products', async (req, res, next) => {
@@ -46,7 +46,7 @@ adminRouter.post('/rules', async (req, res, next) => {
     const { errors, value } = validateRuleInput(req.body);
     if (errors.length) return res.status(422).json({ error: 'VALIDATION_ERROR', message: errors.join(' '), fields: errors });
     const limits = limitsFor(req.shop.plan);
-    if (value.enabled && await AppointmentRule.countDocuments({ shopId: req.shop._id, enabled: true }) >= limits.activeRules) {
+    if (config.planLimitsEnabled && value.enabled && await AppointmentRule.countDocuments({ shopId: req.shop._id, enabled: true }) >= limits.activeRules) {
       return res.status(403).json({ error: 'PLAN_LIMIT', message: `${limits.label} allows ${limits.activeRules} active appointment rule${limits.activeRules === 1 ? '' : 's'}.` });
     }
     const rule = await AppointmentRule.create({ shopId: req.shop._id, ...value });
@@ -63,7 +63,7 @@ adminRouter.put('/rules/:id', async (req, res, next) => {
     if (!rule) return res.status(404).json({ error: 'NOT_FOUND', message: 'Rule not found.' });
     const { errors, value } = validateRuleInput(req.body);
     if (errors.length) return res.status(422).json({ error: 'VALIDATION_ERROR', message: errors.join(' '), fields: errors });
-    if (!rule.enabled && value.enabled) {
+    if (config.planLimitsEnabled && !rule.enabled && value.enabled) {
       const limits = limitsFor(req.shop.plan);
       if (await AppointmentRule.countDocuments({ shopId: req.shop._id, enabled: true }) >= limits.activeRules) return res.status(403).json({ error: 'PLAN_LIMIT', message: `${limits.label} plan active-rule limit reached.` });
     }

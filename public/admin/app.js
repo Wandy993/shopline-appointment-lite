@@ -152,7 +152,7 @@ function confirmAction(title, message, action) { $('#confirmTitle').textContent 
 async function loadBootstrap() {
   const payload = await api('/bootstrap'); state.csrf = payload.csrfToken; state.shop = payload.shop; state.email = payload.email;
   $('#shopBadge').textContent = `${payload.shop.handle}.myshopline.com`;
-  $('#activeRuleCount').textContent = payload.stats.activeRuleCount; $('#bookingCount').textContent = payload.stats.bookingCount; $('#upcomingCount').textContent = payload.stats.upcomingCount; $('#planName').textContent = payload.limits.label;
+  $('#activeRuleCount').textContent = payload.stats.activeRuleCount; $('#bookingCount').textContent = payload.stats.bookingCount; $('#upcomingCount').textContent = payload.stats.upcomingCount; $('#planName').textContent = payload.limits.enforced ? payload.limits.label : 'Unlimited';
   const statusLabel = payload.email.configured ? 'Configured' : 'Not configured';
   $('#emailStatusText').textContent = `${statusLabel} · ${payload.email.provider} · ${payload.email.transport}${payload.email.reason ? ` · ${payload.email.reason}` : ''}`;
   $('#emailFromText').textContent = payload.email.from ? `Sender: ${payload.email.from}` : 'No sender address is configured.';
