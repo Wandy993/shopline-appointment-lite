@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cancelManagedBooking, createBookingAtomic, getLegacyBookingStatus, hashManagementToken, rescheduleManagedBooking, SlotConflictError } from '../src/services/bookings.js';
+import { cancelManagedBooking, createBookingAtomic, getLegacyBookingStatus, hashManagementToken, rescheduleManagedBooking, SlotConflictError, updateBookingByMerchant } from '../src/services/bookings.js';
 
 const shop = { _id: 'shop1', timezone: 'Asia/Shanghai', email: '' };
 const rule = {
@@ -54,13 +54,41 @@ test('legacy receipt status lookup returns only identity and status', async () =
 test('customer reschedule validates the rule and atomically moves the slot', async () => {
   const token = 'b'.repeat(43);
   let update;
-  const existing = { _id: 'b1', shopId: 'shop1', ruleId: 'rule1', status: 'confirmed', slotKey: '2026-08-24T09:00' };
+  const existing = { _id: 'b1', shopId: 'shop1', ruleId: 'rule1', status: 'confirmed', slotKey: '2026-08-24T09:00', customerRescheduleCount: 0 };
   const BookingModel = {
     async findOne() { return existing; },
-    async findOneAndUpdate(filter, value) { update = { filter, value }; return { ...existing, ...value }; }
+    async findOneAndUpdate(filter, value) { update = { filter, value }; return { ...existing, ...value.$set, customerRescheduleCount: 1 }; }
   };
   const RuleModel = { async findOne() { return rule; } };
   await rescheduleManagedBooking({ bookingId: 'b1', token, date: '2026-08-24', time: '10:00', BookingModel, RuleModel });
   assert.equal(update.filter.slotKey, '2026-08-24T09:00');
-  assert.equal(update.value.slotKey, '2026-08-24T10:00');
+  assert.equal(update.value.$set.slotKey, '2026-08-24T10:00');
+  assert.equal(update.value.$inc.customerRescheduleCount, 1);
+});
+
+test('customer cannot reschedule more than once', async () => {
+  const BookingModel = { async findOne() { return { _id: 'b1', status: 'confirmed', customerRescheduleCount: 1 }; } };
+  await assert.rejects(
+    () => rescheduleManagedBooking({ bookingId: 'b1', token: 'c'.repeat(43), date: '2026-08-24', time: '10:00', BookingModel }),
+    error => error.code === 'RESCHEDULE_LIMIT' && error.status === 409
+  );
+});
+
+test('merchant can edit a confirmed booking without consuming customer change allowance', async () => {
+  let update;
+  let notified = false;
+  const existing = { _id: 'b1', shopId: 'shop1', ruleId: 'rule1', status: 'confirmed', slotKey: '2026-08-24T09:00', customerRescheduleCount: 1 };
+  const BookingModel = {
+    async findOne() { return existing; },
+    async findOneAndUpdate(filter, value) { update = { filter, value }; return { ...existing, ...value.$set }; }
+  };
+  const RuleModel = { async findOne() { return rule; } };
+  const result = await updateBookingByMerchant({
+    shopObjectId: 'shop1', bookingId: 'b1', input: { date: '2026-08-24', time: '10:00', location: 'Room B', staff: 'Alex' },
+    BookingModel, RuleModel, notify: async () => { notified = true; return { skipped: true }; }
+  });
+  assert.equal(update.value.$set.slotKey, '2026-08-24T10:00');
+  assert.equal('$inc' in update.value, false);
+  assert.equal(result.booking.customerRescheduleCount, 1);
+  assert.equal(notified, true);
 });

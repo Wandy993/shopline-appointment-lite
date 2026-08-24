@@ -26,7 +26,7 @@ The UI edits one time window per day in v0.1.0, while the model and slot generat
 
 Bookings preserve a snapshot of product title, duration, buffer, timezone, location, and staff so historical records remain readable after rule changes.
 
-Customer data contains name, email, optional phone, note, and answers. Status is `confirmed` or `cancelled`. `managementTokenHash` stores only the SHA-256 hash of a high-entropy token returned once to the booking browser; it authorizes customer status checks, cancellation, and rescheduling without exposing customer data or trusting a booking ID alone.
+Customer data contains name, email, optional phone, note, and answers. Status is `confirmed` or `cancelled`. `managementTokenHash` stores only the SHA-256 hash of a high-entropy token returned once to the booking browser; it authorizes customer status checks, cancellation, and rescheduling without exposing customer data or trusting a booking ID alone. `customerRescheduleCount` enforces the single self-service change allowance, while merchant edits do not consume or reset that allowance. `merchantEditedAt` records the latest store-initiated change.
 
 ### Atomic conflict protection
 

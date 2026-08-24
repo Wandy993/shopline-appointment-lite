@@ -1,6 +1,6 @@
 # Appointment Lite for SHOPLINE
 
-Version `0.1.6` — legacy booking status synchronization based on the `appointment-lite-v0.1.0-mvp` foundation.
+Version `0.1.7` — one-time customer rescheduling and merchant booking editing based on the `appointment-lite-v0.1.0-mvp` foundation.
 
 Appointment Lite turns selected SHOPLINE products into appointment or consultation services. It is designed for wedding fittings, jewelry consultations, furniture consultations, beauty services, classes, and made-to-order products.
 
@@ -9,7 +9,7 @@ Appointment Lite turns selected SHOPLINE products into appointment or consultati
 Implemented:
 
 - SHOPLINE OAuth installation, signed callback verification, token persistence, and refresh structure.
-- Admin overview, rule CRUD, SHOPLINE product selection, booking list, and cancellation.
+- Admin overview, rule CRUD, SHOPLINE product selection, booking list, editing, and cancellation.
 - Duration, buffer, available date range, weekday schedule, daily windows, text-only location/staff, enabled state, notes prompt, and up to five custom questions.
 - Public rule/availability APIs and booking creation.
 - Atomic duplicate-slot protection using a MongoDB partial unique index.
@@ -148,7 +148,7 @@ In the Theme Editor, add **Appointment Lite** to the product template. The block
 
 The App Block starts hidden and only appears after the public rule endpoint confirms that the current product has an enabled rule. Theme-editor re-renders are handled through SHOPLINE events plus a DOM observer. Open the preview console and filter for `[Appointment Lite]` to see store/product identity, cache, request status, visibility decisions, availability, and booking diagnostics without logging customer PII. SHOPLINE documents the OS 3.0 [extension structure](https://developer.shopline.com/docs/online-store-3-0-themes/integrate-apps-with-themes/theme-app-extension/structure?version=v20231201) and [`sl extension push`](https://developer.shopline.com/docs/online-store-3-0-themes/development-tools/cli/app-extension-commands/).
 
-After a successful booking, the storefront stores a minimal receipt (booking ID, private management token, date, time, location, and staff) in that browser's local storage. On later visits to the same product, the block shows the confirmed appointment and a “Manage appointment” action. The customer can securely reschedule or cancel without exposing customer PII or allowing management access by booking ID alone. The backend stores only a SHA-256 hash of the management token, and the storefront refreshes status only when that device has a receipt. A compatibility lookup for pre-v0.1.5 receipts returns only `confirmed` or `cancelled`, requires matching store and product IDs, and never grants management access. The receipt expires after the appointment date. Cross-device lookup still requires future email verification or an authenticated customer account.
+After a successful booking, the storefront stores a minimal receipt (booking ID, private management token, date, time, location, staff, and reschedule count) in that browser's local storage. On later visits to the same product, the block shows the confirmed appointment and a “Manage appointment” action. The customer can securely reschedule once or cancel without exposing customer PII or allowing management access by booking ID alone. The first change screen warns that it is the only online change; later attempts are rejected by the backend and direct the customer to contact the store. Merchants can edit confirmed bookings without consuming the customer allowance, and the edit path invokes an optional Resend notification hook that safely skips when email is not configured. The backend stores only a SHA-256 hash of the management token, and the storefront refreshes status only when that device has a receipt. A compatibility lookup for pre-v0.1.5 receipts returns only `confirmed` or `cancelled`, requires matching store and product IDs, and never grants management access. The receipt expires after the appointment date. Cross-device lookup still requires future email verification or an authenticated customer account.
 
 ## Tests and checks
 

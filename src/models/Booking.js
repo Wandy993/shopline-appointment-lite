@@ -18,6 +18,7 @@ const bookingSchema = new mongoose.Schema({
   timezone: { type: String, default: 'UTC' },
   location: { type: String, default: '' },
   staff: { type: String, default: '' },
+  customerRescheduleCount: { type: Number, default: 0, min: 0 },
   managementTokenHash: { type: String, required: true, select: false },
   customer: {
     name: { type: String, required: true, maxlength: 120 },
@@ -27,7 +28,8 @@ const bookingSchema = new mongoose.Schema({
   note: { type: String, default: '', maxlength: 2000 },
   answers: { type: [answerSchema], default: [] },
   status: { type: String, enum: ['confirmed', 'cancelled'], default: 'confirmed', index: true },
-  cancelledAt: Date
+  cancelledAt: Date,
+  merchantEditedAt: Date
 }, { timestamps: true });
 
 bookingSchema.index(

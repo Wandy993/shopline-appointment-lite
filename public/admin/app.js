@@ -99,10 +99,44 @@ function renderRules() {
 
 async function loadRules() { try { state.rules = (await api('/rules')).rules; renderRules(); } catch (error) { showError(error); } }
 
+function openBooking(booking) {
+  $('#bookingId').value = booking._id;
+  $('#bookingDate').value = booking.date;
+  $('#bookingTime').value = booking.time;
+  $('#bookingLocation').value = booking.location || '';
+  $('#bookingStaff').value = booking.staff || '';
+  $('#bookingDialogSummary').textContent = `${booking.productTitle} · ${booking.customer.name} · ${booking.customer.email}`;
+  $('#bookingFormError').classList.add('hidden');
+  $('#bookingDialog').showModal();
+}
+
+async function saveBooking(event) {
+  event.preventDefault();
+  const id = $('#bookingId').value;
+  const button = $('#saveBooking');
+  button.disabled = true;
+  $('#bookingFormError').classList.add('hidden');
+  try {
+    const payload = await api(`/bookings/${id}`, { method: 'PUT', body: JSON.stringify({
+      date: $('#bookingDate').value,
+      time: $('#bookingTime').value,
+      location: $('#bookingLocation').value,
+      staff: $('#bookingStaff').value
+    }) });
+    $('#bookingDialog').close();
+    toast(payload.notification?.skipped ? 'Booking updated. Customer email will activate when Resend is configured.' : 'Booking updated and customer notification processed.');
+    await Promise.all([loadBookings(), loadBootstrap()]);
+  } catch (error) {
+    $('#bookingFormError').textContent = error.message;
+    $('#bookingFormError').classList.remove('hidden');
+  } finally { button.disabled = false; }
+}
+
 function renderBookings() {
   const root = $('#bookingsList');
   if (!state.bookings.length) { root.innerHTML = '<div class="empty"><strong>No bookings found</strong><p>Confirmed appointments will appear here.</p></div>'; return; }
-  root.innerHTML = state.bookings.map(booking => `<div class="list-row"><div><strong>${escapeHtml(booking.productTitle)}</strong><div class="sub">${escapeHtml(booking.customer.name)} · ${escapeHtml(booking.customer.email)}</div></div><span>${escapeHtml(booking.date)}<div class="sub">${escapeHtml(booking.time)}</div></span><span>${escapeHtml(booking.staff || 'Any staff')}</span><span class="status ${booking.status}">${escapeHtml(booking.status)}</span><div class="row-actions">${booking.status === 'confirmed' ? `<button class="secondary small" data-cancel="${booking._id}">Cancel</button>` : ''}</div></div>`).join('');
+  root.innerHTML = state.bookings.map(booking => `<div class="list-row"><div><strong>${escapeHtml(booking.productTitle)}</strong><div class="sub">${escapeHtml(booking.customer.name)} · ${escapeHtml(booking.customer.email)}</div></div><span>${escapeHtml(booking.date)}<div class="sub">${escapeHtml(booking.time)}</div></span><span>${escapeHtml(booking.staff || 'Any staff')}</span><span class="status ${booking.status}">${escapeHtml(booking.status)}</span><div class="row-actions">${booking.status === 'confirmed' ? `<button class="secondary small" data-edit-booking="${booking._id}">Edit</button><button class="secondary small" data-cancel="${booking._id}">Cancel</button>` : ''}</div></div>`).join('');
+  $$('[data-edit-booking]').forEach(button => button.addEventListener('click', () => openBooking(state.bookings.find(booking => booking._id === button.dataset.editBooking))));
   $$('[data-cancel]').forEach(button => button.addEventListener('click', () => confirmAction('Cancel this booking?', 'The slot will become available again. Email cancellation notices are not included in this MVP.', async () => { await api(`/bookings/${button.dataset.cancel}/cancel`, { method:'POST', body:'{}' }); toast('Booking cancelled.'); await Promise.all([loadBookings(), loadBootstrap()]); })));
 }
 
@@ -121,6 +155,8 @@ function bind() {
   $$('.nav-item').forEach(button => button.addEventListener('click', () => switchView(button.dataset.view)));
   $$('[data-new-rule]').forEach(button => button.addEventListener('click', () => openRule()));
   $$('[data-close-dialog]').forEach(button => button.addEventListener('click', () => $('#ruleDialog').close()));
+  $$('[data-close-booking-dialog]').forEach(button => button.addEventListener('click', () => $('#bookingDialog').close()));
+  $('#bookingForm').addEventListener('submit', saveBooking);
   $('#addQuestion').addEventListener('click', () => addQuestion()); $('#ruleForm').addEventListener('submit', saveRule); $('#bookingFilter').addEventListener('change', loadBookings);
   $('#confirmNo').addEventListener('click', () => { pendingConfirm = null; $('#confirmDialog').close(); });
   $('#confirmYes').addEventListener('click', async () => { const action = pendingConfirm; pendingConfirm = null; $('#confirmDialog').close(); if (action) try { await action(); } catch (error) { showError(error); } });

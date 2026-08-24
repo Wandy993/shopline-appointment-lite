@@ -2,7 +2,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { AppointmentRule } from '../models/AppointmentRule.js';
 import { Booking } from '../models/Booking.js';
 import { slotKey, slotsForDate } from '../lib/slots.js';
-import { sendBookingNotifications } from './email.js';
+import { sendBookingChangedNotification, sendBookingNotifications } from './email.js';
 import { findInstalledShop } from './shops.js';
 
 export class SlotConflictError extends Error { constructor() { super('This time was just booked. Please choose another slot.'); this.code = 'SLOT_CONFLICT'; } }
@@ -82,6 +82,9 @@ export async function cancelManagedBooking({ bookingId, token, BookingModel = Bo
 export async function rescheduleManagedBooking({ bookingId, token, date, time, BookingModel = Booking, RuleModel = AppointmentRule }) {
   const booking = await getManagedBooking({ bookingId, token, BookingModel });
   if (booking.status !== 'confirmed') throw Object.assign(new Error('This appointment has already been cancelled.'), { status: 409, code: 'BOOKING_CANCELLED' });
+  if (Number(booking.customerRescheduleCount || 0) >= 1) {
+    throw Object.assign(new Error('You have already used your online change. Please contact the store for another change.'), { status: 409, code: 'RESCHEDULE_LIMIT' });
+  }
   const rule = await RuleModel.findOne({ _id: booking.ruleId, shopId: booking.shopId, enabled: true });
   if (!rule || !slotsForDate(rule, date).includes(time)) {
     throw Object.assign(new Error('The selected time is not available.'), { code: 'VALIDATION_ERROR' });
@@ -89,14 +92,37 @@ export async function rescheduleManagedBooking({ bookingId, token, date, time, B
   let updated;
   try {
     updated = await BookingModel.findOneAndUpdate(
-      { _id: booking._id, managementTokenHash: hashManagementToken(token), status: 'confirmed', slotKey: booking.slotKey },
-      { date, time, slotKey: slotKey(date, time) },
+      { _id: booking._id, managementTokenHash: hashManagementToken(token), status: 'confirmed', slotKey: booking.slotKey, $or: [{ customerRescheduleCount: 0 }, { customerRescheduleCount: { $exists: false } }] },
+      { $set: { date, time, slotKey: slotKey(date, time) }, $inc: { customerRescheduleCount: 1 } },
       { new: true, runValidators: true }
     );
   } catch (error) {
     if (error?.code === 11000) throw new SlotConflictError();
     throw error;
   }
-  if (!updated) throw Object.assign(new Error('This appointment changed in another session. Refresh and try again.'), { status: 409, code: 'BOOKING_CHANGED' });
+  if (!updated) throw Object.assign(new Error('Your online change is no longer available. Please contact the store.'), { status: 409, code: 'RESCHEDULE_LIMIT' });
   return updated;
+}
+
+export async function updateBookingByMerchant({ shopObjectId, bookingId, input, BookingModel = Booking, RuleModel = AppointmentRule, notify = sendBookingChangedNotification }) {
+  const booking = await BookingModel.findOne({ _id: bookingId, shopId: shopObjectId, status: 'confirmed' });
+  if (!booking) throw Object.assign(new Error('Confirmed booking not found.'), { code: 'NOT_FOUND' });
+  const rule = await RuleModel.findOne({ _id: booking.ruleId, shopId: shopObjectId, enabled: true });
+  if (!rule || !slotsForDate(rule, input.date).includes(input.time)) {
+    throw Object.assign(new Error('The selected date and time are outside this appointment rule.'), { code: 'VALIDATION_ERROR' });
+  }
+  let updated;
+  try {
+    updated = await BookingModel.findOneAndUpdate(
+      { _id: booking._id, shopId: shopObjectId, status: 'confirmed', slotKey: booking.slotKey },
+      { $set: { date: input.date, time: input.time, slotKey: slotKey(input.date, input.time), location: input.location, staff: input.staff, merchantEditedAt: new Date() } },
+      { new: true, runValidators: true }
+    );
+  } catch (error) {
+    if (error?.code === 11000) throw new SlotConflictError();
+    throw error;
+  }
+  if (!updated) throw Object.assign(new Error('This booking changed in another session. Refresh and try again.'), { status: 409, code: 'BOOKING_CHANGED' });
+  const notification = await Promise.resolve(notify(updated)).catch(error => ({ skipped: false, attempted: 1, failed: 1, reason: error.message }));
+  return { booking: updated, notification };
 }

@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = '0.1.6';
+  const VERSION = '0.1.7';
   const API_BASE = 'https://shopline-appointment-lite-production.up.railway.app';
   const CACHE_TTL = 5 * 60 * 1000;
   const SELECTOR = '[data-appointment-lite]:not([data-al-ready])';
@@ -113,6 +113,7 @@
       location: String(booking.location || ''),
       staff: String(booking.staff || ''),
       status: 'confirmed',
+      customerRescheduleCount: Number(booking.customerRescheduleCount || 0),
       managementToken: String(booking.managementToken || existingToken || ''),
       savedAt: Date.now()
     };
@@ -277,9 +278,13 @@
   function openManage(widget, rule, context, receipt) {
     info('Booking management dialog opened.', { ...context, bookingId: receipt.id });
     const dialog = document.createElement('dialog');
-    dialog.innerHTML = `<div class="al-head"><div><h2>Manage appointment</h2><p>${text(rule.productTitle)}</p></div><button class="al-close" type="button" aria-label="Close">×</button></div><div class="al-manage">${appointmentDetails(receipt)}<div class="al-error" hidden role="alert"></div><div class="al-manage-actions"><button type="button" class="al-submit al-reschedule">Change date or time</button><button type="button" class="al-danger al-cancel">Cancel appointment</button></div></div>`;
+    const canReschedule = Number(receipt.customerRescheduleCount || 0) < 1;
+    const changeControl = canReschedule
+      ? '<div class="al-notice"><strong>One online change available</strong><span>You can change this appointment once. After saving, contact the store for further changes.</span></div><button type="button" class="al-submit al-reschedule">Change date or time</button>'
+      : '<div class="al-limit"><strong>Online change already used</strong><span>Please contact the store if you need to change this appointment again.</span></div>';
+    dialog.innerHTML = `<div class="al-head"><div><h2>Manage appointment</h2><p>${text(rule.productTitle)}</p></div><button class="al-close" type="button" aria-label="Close">×</button></div><div class="al-manage">${appointmentDetails(receipt)}<div class="al-error" hidden role="alert"></div><div class="al-manage-actions">${changeControl}<button type="button" class="al-danger al-cancel">Cancel appointment</button></div></div>`;
     mountDialog(dialog);
-    dialog.querySelector('.al-reschedule').addEventListener('click', () => {
+    dialog.querySelector('.al-reschedule')?.addEventListener('click', () => {
       dialog.close();
       openReschedule(widget, rule, context, receipt);
     });
@@ -321,8 +326,12 @@
     const dialog = document.createElement('dialog');
     const today = new Date().toISOString().slice(0, 10);
     const minDate = rule.dateFrom && rule.dateFrom > today ? rule.dateFrom : today;
-    dialog.innerHTML = `<div class="al-head"><div><h2>Change date or time</h2><p>${text(rule.productTitle)}</p></div><button class="al-close" type="button" aria-label="Close">×</button></div><form class="al-form"><div class="al-form-body">${appointmentDetails(receipt)}<div class="al-grid"><div class="al-field"><label for="al-reschedule-date">New date</label><input id="al-reschedule-date" name="date" type="date" min="${minDate}" ${rule.dateUntil ? `max="${rule.dateUntil}"` : ''} required></div><div><span class="al-legend">New time</span><div class="al-times"><span class="al-muted">Choose a date first.</span></div></div></div></div><div class="al-actions"><div class="al-error" hidden role="alert"></div><button class="al-submit" type="submit">Save changes</button></div></form>`;
+    dialog.innerHTML = `<div class="al-head"><div><button type="button" class="al-back">← Back</button><h2>Change date or time</h2><p>${text(rule.productTitle)}</p></div><button class="al-close" type="button" aria-label="Close">×</button></div><form class="al-form"><div class="al-form-body">${appointmentDetails(receipt)}<div class="al-notice"><strong>This is your only online change</strong><span>After you save, contact the store if you need another change.</span></div><div class="al-grid"><div class="al-field"><label for="al-reschedule-date">New date</label><input id="al-reschedule-date" name="date" type="date" min="${minDate}" ${rule.dateUntil ? `max="${rule.dateUntil}"` : ''} required></div><div><span class="al-legend">New time</span><div class="al-times"><span class="al-muted">Choose a date first.</span></div></div></div></div><div class="al-actions"><div class="al-error" hidden role="alert"></div><button class="al-submit" type="submit">Save changes</button></div></form>`;
     mountDialog(dialog);
+    dialog.querySelector('.al-back').addEventListener('click', () => {
+      dialog.close();
+      openManage(widget, rule, context, receipt);
+    });
     const dateInput = dialog.querySelector('[name=date]');
     const times = dialog.querySelector('.al-times');
     let selectedTime = '';
@@ -362,7 +371,7 @@
         dialog.querySelector('.al-submit').addEventListener('click', () => dialog.close());
         info('Booking rescheduled by customer.', { ...context, bookingId: receipt.id, date: payload.booking.date, time: payload.booking.time });
       } catch (error) {
-        errorBox.textContent = error.status === 409 ? 'That time is no longer available. Please choose another time.' : error.message;
+        errorBox.textContent = error.payload?.error === 'RESCHEDULE_LIMIT' ? 'Your online change has already been used. Please contact the store.' : error.status === 409 ? 'That time is no longer available. Please choose another time.' : error.message;
         errorBox.hidden = false;
         submit.disabled = false;
         submit.textContent = 'Save changes';

@@ -77,3 +77,12 @@ export function validateSlotInput(body) {
   if (!TIME_PATTERN.test(time)) errors.push('A valid time is required.');
   return { errors, value: { date, time } };
 }
+
+export function validateAdminBookingInput(body) {
+  const { errors, value } = validateSlotInput(body);
+  return { errors, value: {
+    ...value,
+    location: text(body.location, 200),
+    staff: text(body.staff, 200)
+  } };
+}

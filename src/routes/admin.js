@@ -1,10 +1,11 @@
 import { Router } from 'express';
 import { AppointmentRule } from '../models/AppointmentRule.js';
 import { Booking } from '../models/Booking.js';
-import { validateRuleInput } from '../lib/validation.js';
+import { validateAdminBookingInput, validateRuleInput } from '../lib/validation.js';
 import { requireAdmin, requireCsrf } from '../middleware/auth.js';
 import { limitsFor } from '../services/plans.js';
 import { shoplineGet, syncShopMetadata } from '../services/shopline.js';
+import { updateBookingByMerchant } from '../services/bookings.js';
 
 export const adminRouter = Router();
 adminRouter.use(requireAdmin, requireCsrf);
@@ -86,6 +87,15 @@ adminRouter.get('/bookings', async (req, res) => {
   if (req.query.status && ['confirmed', 'cancelled'].includes(req.query.status)) filter.status = req.query.status;
   const bookings = await Booking.find(filter).sort({ date: -1, time: -1 }).limit(500).lean();
   res.json({ bookings });
+});
+
+adminRouter.put('/bookings/:id', async (req, res, next) => {
+  try {
+    const { errors, value } = validateAdminBookingInput(req.body);
+    if (errors.length) return res.status(422).json({ error: 'VALIDATION_ERROR', message: errors.join(' '), fields: errors });
+    const result = await updateBookingByMerchant({ shopObjectId: req.shop._id, bookingId: req.params.id, input: value });
+    res.json(result);
+  } catch (error) { next(error); }
 });
 
 adminRouter.post('/bookings/:id/cancel', async (req, res) => {

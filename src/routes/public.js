@@ -12,7 +12,8 @@ const bookingLimiter = rateLimit({ windowMs: 60_000, limit: 10, standardHeaders:
 
 function validBookingId(value) { return /^[a-f\d]{24}$/i.test(String(value || '')); }
 function publicBooking(booking) {
-  return { id: booking._id, productTitle: booking.productTitle, date: booking.date, time: booking.time, location: booking.location, staff: booking.staff, status: booking.status };
+  const customerRescheduleCount = Number(booking.customerRescheduleCount || 0);
+  return { id: booking._id, productTitle: booking.productTitle, date: booking.date, time: booking.time, location: booking.location, staff: booking.staff, status: booking.status, customerRescheduleCount, customerCanReschedule: booking.status === 'confirmed' && customerRescheduleCount < 1 };
 }
 
 publicRouter.get('/rule', async (req, res) => {

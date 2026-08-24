@@ -34,7 +34,7 @@ export function adminPage() {
           <div id="rulesList" class="card list-card"><div class="loading">Loading rules…</div></div>
         </section>
         <section id="bookingsView" class="view hidden">
-          <div class="page-heading"><div><h1>Bookings</h1><p>Review and cancel customer appointments.</p></div><select id="bookingFilter" aria-label="Filter bookings"><option value="">All statuses</option><option value="confirmed">Confirmed</option><option value="cancelled">Cancelled</option></select></div>
+          <div class="page-heading"><div><h1>Bookings</h1><p>Review, edit, and cancel customer appointments.</p></div><select id="bookingFilter" aria-label="Filter bookings"><option value="">All statuses</option><option value="confirmed">Confirmed</option><option value="cancelled">Cancelled</option></select></div>
           <div id="bookingsList" class="card list-card"><div class="loading">Loading bookings…</div></div>
         </section>
         <section id="setupView" class="view hidden">
@@ -61,6 +61,20 @@ export function adminPage() {
         <div id="formError" class="form-error hidden" role="alert"></div>
       </div>
       <div class="modal-actions"><button type="button" class="secondary" data-close-dialog>Cancel</button><button id="saveRule" type="submit" class="primary">Save rule</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="bookingDialog" class="modal">
+    <form id="bookingForm">
+      <div class="modal-head"><div><h2>Edit booking</h2><p id="bookingDialogSummary">Update the customer appointment.</p></div><button type="button" class="icon-button" data-close-booking-dialog aria-label="Close">×</button></div>
+      <div class="modal-body">
+        <input type="hidden" id="bookingId">
+        <div class="field-row"><div class="field"><label for="bookingDate">Date</label><input id="bookingDate" type="date" required></div><div class="field"><label for="bookingTime">Time</label><input id="bookingTime" type="time" required></div></div>
+        <div class="field-row"><div class="field"><label for="bookingLocation">Location</label><input id="bookingLocation" maxlength="200"></div><div class="field"><label for="bookingStaff">Staff</label><input id="bookingStaff" maxlength="200"></div></div>
+        <p class="hint">The date and time must match the product's appointment rule. Saving invokes the customer email notification hook; without Resend configuration, the booking still updates normally.</p>
+        <div id="bookingFormError" class="form-error hidden" role="alert"></div>
+      </div>
+      <div class="modal-actions"><button type="button" class="secondary" data-close-booking-dialog>Cancel</button><button id="saveBooking" type="submit" class="primary">Save booking</button></div>
     </form>
   </dialog>
 

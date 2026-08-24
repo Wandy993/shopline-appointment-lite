@@ -25,3 +25,17 @@ export async function sendBookingNotifications(booking, merchantEmail = '') {
   if (failed.length) console.error('Email notification partially failed', failed.map(item => item.reason?.message));
   return { skipped: false, attempted: results.length, failed: failed.length };
 }
+
+export async function sendBookingChangedNotification(booking) {
+  const mailer = resend();
+  if (!mailer) return { skipped: true, reason: 'RESEND_API_KEY is not configured' };
+  const summary = `${booking.productTitle} — ${booking.date} at ${booking.time}`;
+  const html = `<h2>Your appointment was updated</h2><p>${escapeHtml(summary)}</p><p>Location: ${escapeHtml(booking.location || 'To be confirmed')}</p><p>Staff: ${escapeHtml(booking.staff || 'To be confirmed')}</p><p>If you have questions, please contact the store.</p>`;
+  try {
+    await mailer.emails.send({ from: config.email.from, to: booking.customer.email, subject: `Appointment updated: ${booking.productTitle}`, html });
+    return { skipped: false, attempted: 1, failed: 0 };
+  } catch (error) {
+    console.error('Booking change email failed', error.message);
+    return { skipped: false, attempted: 1, failed: 1 };
+  }
+}

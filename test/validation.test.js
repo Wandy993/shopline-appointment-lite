@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { validateBookingInput, validateRuleInput } from '../src/lib/validation.js';
+import { validateAdminBookingInput, validateBookingInput, validateRuleInput } from '../src/lib/validation.js';
 
 test('rule validation accepts a minimal weekday schedule', () => {
   const result = validateRuleInput({
@@ -24,4 +24,10 @@ test('booking validation trims values and validates email', () => {
   assert.deepEqual(valid.errors, []);
   assert.equal(valid.value.customer.email, 'jane@example.com');
   assert.ok(validateBookingInput({ customer: { name: '', email: 'bad' } }).errors.length >= 2);
+});
+
+test('admin booking edit validates slot and trims lightweight resources', () => {
+  const result = validateAdminBookingInput({ date: '2026-08-24', time: '10:00', location: ' Room B ', staff: ' Alex ' });
+  assert.deepEqual(result.errors, []);
+  assert.deepEqual(result.value, { date: '2026-08-24', time: '10:00', location: 'Room B', staff: 'Alex' });
 });
