@@ -1,4 +1,4 @@
-const state = { csrf: '', shop: null, rules: [], bookings: [], products: [] };
+const state = { csrf: '', shop: null, email: null, rules: [], bookings: [], products: [] };
 const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -124,7 +124,7 @@ async function saveBooking(event) {
       staff: $('#bookingStaff').value
     }) });
     $('#bookingDialog').close();
-    toast(payload.notification?.skipped ? 'Booking updated. Customer email will activate when Resend is configured.' : 'Booking updated and customer notification processed.');
+    toast(payload.notification?.skipped ? 'Booking updated. Email delivery is not configured.' : payload.notification?.failed ? 'Booking updated, but the customer email failed.' : 'Booking updated and customer email sent.', payload.notification?.failed ? 'error' : 'success');
     await Promise.all([loadBookings(), loadBootstrap()]);
   } catch (error) {
     $('#bookingFormError').textContent = error.message;
@@ -137,7 +137,11 @@ function renderBookings() {
   if (!state.bookings.length) { root.innerHTML = '<div class="empty"><strong>No bookings found</strong><p>Confirmed appointments will appear here.</p></div>'; return; }
   root.innerHTML = state.bookings.map(booking => `<div class="list-row"><div><strong>${escapeHtml(booking.productTitle)}</strong><div class="sub">${escapeHtml(booking.customer.name)} · ${escapeHtml(booking.customer.email)}</div></div><span>${escapeHtml(booking.date)}<div class="sub">${escapeHtml(booking.time)}</div></span><span>${escapeHtml(booking.staff || 'Any staff')}</span><span class="status ${booking.status}">${escapeHtml(booking.status)}</span><div class="row-actions">${booking.status === 'confirmed' ? `<button class="secondary small" data-edit-booking="${booking._id}">Edit</button><button class="secondary small" data-cancel="${booking._id}">Cancel</button>` : ''}</div></div>`).join('');
   $$('[data-edit-booking]').forEach(button => button.addEventListener('click', () => openBooking(state.bookings.find(booking => booking._id === button.dataset.editBooking))));
-  $$('[data-cancel]').forEach(button => button.addEventListener('click', () => confirmAction('Cancel this booking?', 'The slot will become available again. Email cancellation notices are not included in this MVP.', async () => { await api(`/bookings/${button.dataset.cancel}/cancel`, { method:'POST', body:'{}' }); toast('Booking cancelled.'); await Promise.all([loadBookings(), loadBootstrap()]); })));
+  $$('[data-cancel]').forEach(button => button.addEventListener('click', () => confirmAction('Cancel this booking?', 'The slot will become available again and the customer will be notified when email delivery is configured.', async () => {
+    const payload = await api(`/bookings/${button.dataset.cancel}/cancel`, { method:'POST', body:'{}' });
+    toast(payload.notification?.skipped ? 'Booking cancelled. Email delivery is not configured.' : payload.notification?.failed ? 'Booking cancelled, but the customer email failed.' : 'Booking cancelled and customer email sent.', payload.notification?.failed ? 'error' : 'success');
+    await Promise.all([loadBookings(), loadBootstrap()]);
+  })));
 }
 
 async function loadBookings() { try { const filter = $('#bookingFilter').value; state.bookings = (await api(`/bookings${filter ? `?status=${filter}` : ''}`)).bookings; renderBookings(); } catch (error) { showError(error); } }
@@ -146,9 +150,13 @@ let pendingConfirm = null;
 function confirmAction(title, message, action) { $('#confirmTitle').textContent = title; $('#confirmMessage').textContent = message; pendingConfirm = action; $('#confirmDialog').showModal(); }
 
 async function loadBootstrap() {
-  const payload = await api('/bootstrap'); state.csrf = payload.csrfToken; state.shop = payload.shop;
+  const payload = await api('/bootstrap'); state.csrf = payload.csrfToken; state.shop = payload.shop; state.email = payload.email;
   $('#shopBadge').textContent = `${payload.shop.handle}.myshopline.com`;
   $('#activeRuleCount').textContent = payload.stats.activeRuleCount; $('#bookingCount').textContent = payload.stats.bookingCount; $('#upcomingCount').textContent = payload.stats.upcomingCount; $('#planName').textContent = payload.limits.label;
+  const statusLabel = payload.email.configured ? 'Configured' : 'Not configured';
+  $('#emailStatusText').textContent = `${statusLabel} · ${payload.email.provider} · ${payload.email.transport}${payload.email.reason ? ` · ${payload.email.reason}` : ''}`;
+  $('#emailFromText').textContent = payload.email.from ? `Sender: ${payload.email.from}` : 'No sender address is configured.';
+  $('#sendTestEmail').disabled = !payload.email.configured;
 }
 
 function bind() {
@@ -160,6 +168,12 @@ function bind() {
   $('#addQuestion').addEventListener('click', () => addQuestion()); $('#ruleForm').addEventListener('submit', saveRule); $('#bookingFilter').addEventListener('change', loadBookings);
   $('#confirmNo').addEventListener('click', () => { pendingConfirm = null; $('#confirmDialog').close(); });
   $('#confirmYes').addEventListener('click', async () => { const action = pendingConfirm; pendingConfirm = null; $('#confirmDialog').close(); if (action) try { await action(); } catch (error) { showError(error); } });
+  $('#sendTestEmail').addEventListener('click', async () => {
+    const button = $('#sendTestEmail'); button.disabled = true;
+    try { const payload = await api('/email/test', { method: 'POST', body: '{}' }); toast(`Test email sent to ${payload.to}.`); }
+    catch (error) { showError(error); }
+    finally { button.disabled = !state.email?.configured; }
+  });
 }
 
 bind(); loadBootstrap().catch(showError);

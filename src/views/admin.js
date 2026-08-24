@@ -40,6 +40,7 @@ export function adminPage() {
         <section id="setupView" class="view hidden">
           <div class="page-heading"><div><h1>Storefront setup</h1><p>Complete this after creating the extension through SHOPLINE CLI.</p></div></div>
           <article class="card prose"><h2>Zero-configuration App Block</h2><p>The App Block has no merchant settings. Adding it to a product template turns the integration on; removing it turns the integration off.</p><p>The extension reads SHOPLINE's store ID and product ID automatically. It only becomes visible when that exact product has an enabled appointment rule.</p><p>For diagnostics, open the storefront preview console and filter for <code>[Appointment Lite]</code>. The source files are in <code>theme-extension-source/</code>.</p></article>
+          <article class="card email-card"><div><h2>Email delivery</h2><p id="emailStatusText" class="hint">Loading provider status…</p><p id="emailFromText" class="hint"></p></div><button id="sendTestEmail" class="secondary" type="button">Send test email</button></article>
         </section>
       </main>
     </div>
@@ -71,7 +72,7 @@ export function adminPage() {
         <input type="hidden" id="bookingId">
         <div class="field-row"><div class="field"><label for="bookingDate">Date</label><input id="bookingDate" type="date" required></div><div class="field"><label for="bookingTime">Time</label><input id="bookingTime" type="time" required></div></div>
         <div class="field-row"><div class="field"><label for="bookingLocation">Location</label><input id="bookingLocation" maxlength="200"></div><div class="field"><label for="bookingStaff">Staff</label><input id="bookingStaff" maxlength="200"></div></div>
-        <p class="hint">The date and time must match the product's appointment rule. Saving invokes the customer email notification hook; without Resend configuration, the booking still updates normally.</p>
+        <p class="hint">The date and time must match the product's appointment rule. Saving sends the customer an update when Aliyun DirectMail or Resend is configured; email failure never rolls back the booking.</p>
         <div id="bookingFormError" class="form-error hidden" role="alert"></div>
       </div>
       <div class="modal-actions"><button type="button" class="secondary" data-close-booking-dialog>Cancel</button><button id="saveBooking" type="submit" class="primary">Save booking</button></div>

@@ -2,7 +2,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { AppointmentRule } from '../models/AppointmentRule.js';
 import { Booking } from '../models/Booking.js';
 import { slotKey, slotsForDate } from '../lib/slots.js';
-import { sendBookingChangedNotification, sendBookingNotifications } from './email.js';
+import { sendBookingCancelledNotification, sendBookingChangedNotification, sendBookingNotifications, sendCustomerRescheduledNotification } from './email.js';
 import { findInstalledShop } from './shops.js';
 
 export class SlotConflictError extends Error { constructor() { super('This time was just booked. Please choose another slot.'); this.code = 'SLOT_CONFLICT'; } }
@@ -40,7 +40,7 @@ export async function createBookingAtomic({ shop, rule, input, BookingModel = Bo
     if (error?.code === 11000) throw new SlotConflictError();
     throw error;
   }
-  Promise.resolve(notify(booking, shop.email)).catch(error => console.error('Email notification failed', error.message));
+  Promise.resolve(notify(booking, shop.email, managementToken)).catch(error => console.error('Email notification failed', error.message));
   return { booking, managementToken };
 }
 
@@ -68,7 +68,17 @@ export async function getLegacyBookingStatus({ bookingId, shopObjectId, productI
   return { id: booking._id, status: booking.status };
 }
 
-export async function cancelManagedBooking({ bookingId, token, BookingModel = Booking }) {
+export async function getManagedAvailability({ bookingId, token, date, BookingModel = Booking, RuleModel = AppointmentRule }) {
+  const booking = await getManagedBooking({ bookingId, token, BookingModel });
+  if (booking.status !== 'confirmed') return { date, slots: [] };
+  const rule = await RuleModel.findOne({ _id: booking.ruleId, shopId: booking.shopId, enabled: true });
+  if (!rule) return { date, slots: [] };
+  const allSlots = slotsForDate(rule, date);
+  const booked = await BookingModel.find({ shopId: booking.shopId, ruleId: booking.ruleId, date, status: 'confirmed' }).distinct('time');
+  return { date, slots: allSlots.filter(time => !booked.includes(time)) };
+}
+
+export async function cancelManagedBooking({ bookingId, token, BookingModel = Booking, notify = sendBookingCancelledNotification }) {
   if (!validManagementToken(token)) throw accessError();
   const booking = await BookingModel.findOneAndUpdate(
     { _id: bookingId, managementTokenHash: hashManagementToken(token), status: 'confirmed' },
@@ -76,10 +86,11 @@ export async function cancelManagedBooking({ bookingId, token, BookingModel = Bo
     { new: true }
   );
   if (!booking) throw accessError();
+  Promise.resolve(notify(booking)).catch(error => console.error('Cancellation email notification failed', error.message));
   return booking;
 }
 
-export async function rescheduleManagedBooking({ bookingId, token, date, time, BookingModel = Booking, RuleModel = AppointmentRule }) {
+export async function rescheduleManagedBooking({ bookingId, token, date, time, BookingModel = Booking, RuleModel = AppointmentRule, notify = sendCustomerRescheduledNotification }) {
   const booking = await getManagedBooking({ bookingId, token, BookingModel });
   if (booking.status !== 'confirmed') throw Object.assign(new Error('This appointment has already been cancelled.'), { status: 409, code: 'BOOKING_CANCELLED' });
   if (Number(booking.customerRescheduleCount || 0) >= 1) {
@@ -101,6 +112,7 @@ export async function rescheduleManagedBooking({ bookingId, token, date, time, B
     throw error;
   }
   if (!updated) throw Object.assign(new Error('Your online change is no longer available. Please contact the store.'), { status: 409, code: 'RESCHEDULE_LIMIT' });
+  Promise.resolve(notify(updated, token)).catch(error => console.error('Reschedule email notification failed', error.message));
   return updated;
 }
 
@@ -125,4 +137,15 @@ export async function updateBookingByMerchant({ shopObjectId, bookingId, input, 
   if (!updated) throw Object.assign(new Error('This booking changed in another session. Refresh and try again.'), { status: 409, code: 'BOOKING_CHANGED' });
   const notification = await Promise.resolve(notify(updated)).catch(error => ({ skipped: false, attempted: 1, failed: 1, reason: error.message }));
   return { booking: updated, notification };
+}
+
+export async function cancelBookingByMerchant({ shopObjectId, bookingId, BookingModel = Booking, notify = sendBookingCancelledNotification }) {
+  const booking = await BookingModel.findOneAndUpdate(
+    { _id: bookingId, shopId: shopObjectId, status: 'confirmed' },
+    { $set: { status: 'cancelled', cancelledAt: new Date() } },
+    { new: true }
+  );
+  if (!booking) throw Object.assign(new Error('Confirmed booking not found.'), { code: 'NOT_FOUND' });
+  const notification = await Promise.resolve(notify(booking)).catch(error => ({ skipped: false, attempted: 1, failed: 1, reason: error.message }));
+  return { booking, notification };
 }

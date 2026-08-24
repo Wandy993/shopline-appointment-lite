@@ -21,7 +21,8 @@ Requires the signed `al_session` HTTP-only cookie. Mutations also require `X-CSR
 - `DELETE /api/admin/rules/:id`
 - `GET /api/admin/bookings?status=confirmed|cancelled`
 - `PUT /api/admin/bookings/:id` — merchant date/time/location/staff edit; invokes the optional customer email notification hook
-- `POST /api/admin/bookings/:id/cancel`
+- `POST /api/admin/bookings/:id/cancel` — merchant cancellation and optional customer notification
+- `POST /api/admin/email/test` — sends a provider test email to the shop notification address
 
 ## Public storefront API
 
@@ -29,6 +30,7 @@ Requires the signed `al_session` HTTP-only cookie. Mutations also require `X-CSR
 - `GET /api/public/availability?shopId=STORE_ID&productId=ID&date=YYYY-MM-DD` — no-store
 - `POST /api/public/bookings` — rate-limited; atomically confirms one slot and returns a one-time management token
 - `POST /api/public/bookings/:id/status` — refresh full status using the management token; legacy receipts may request only `confirmed`/`cancelled` with matching store and product IDs
+- `POST /api/public/bookings/:id/availability` — token-authenticated availability for the cross-device management page
 - `POST /api/public/bookings/:id/reschedule` — atomically move a confirmed booking using the management token; limited to one customer-initiated change
 - `POST /api/public/bookings/:id/cancel` — cancel a confirmed booking using the management token
 

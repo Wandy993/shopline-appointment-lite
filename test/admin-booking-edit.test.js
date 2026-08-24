@@ -11,4 +11,8 @@ test('admin booking list exposes an application-native edit dialog', async () =>
   assert.match(asset, /data-edit-booking/);
   assert.match(asset, /method: 'PUT'/);
   assert.match(asset, /notification\?\.skipped/);
+  assert.match(view, /id="emailStatusText"/);
+  assert.match(view, /id="sendTestEmail"/);
+  assert.match(asset, /\/email\/test/);
+  assert.match(asset, /customer email sent/);
 });

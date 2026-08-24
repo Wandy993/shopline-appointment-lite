@@ -3,8 +3,8 @@ import rateLimit from 'express-rate-limit';
 import { AppointmentRule } from '../models/AppointmentRule.js';
 import { Booking } from '../models/Booking.js';
 import { slotsForDate } from '../lib/slots.js';
-import { validateBookingInput, validateSlotInput } from '../lib/validation.js';
-import { cancelManagedBooking, createBookingForStore, getLegacyBookingStatus, getManagedBooking, rescheduleManagedBooking } from '../services/bookings.js';
+import { validateBookingInput, validateDateInput, validateSlotInput } from '../lib/validation.js';
+import { cancelManagedBooking, createBookingForStore, getLegacyBookingStatus, getManagedAvailability, getManagedBooking, rescheduleManagedBooking } from '../services/bookings.js';
 import { findInstalledShop, validShopHandle, validShoplineStoreId } from '../services/shops.js';
 
 export const publicRouter = Router();
@@ -76,6 +76,17 @@ publicRouter.post('/bookings/:id/status', bookingLimiter, async (req, res, next)
     if (!shop) return res.status(404).json({ error: 'NOT_FOUND', message: 'Booking not found.' });
     const booking = await getLegacyBookingStatus({ bookingId: req.params.id, shopObjectId: shop._id, productId });
     res.json({ booking });
+  } catch (error) { next(error); }
+});
+
+publicRouter.post('/bookings/:id/availability', bookingLimiter, async (req, res, next) => {
+  try {
+    if (!validBookingId(req.params.id)) return res.status(404).json({ error: 'NOT_FOUND', message: 'Booking not found or management access has expired.' });
+    const { errors, value } = validateDateInput(req.body);
+    if (errors.length) return res.status(422).json({ error: 'VALIDATION_ERROR', message: errors.join(' '), fields: errors });
+    const availability = await getManagedAvailability({ bookingId: req.params.id, token: req.body.managementToken, date: value.date });
+    res.set('Cache-Control', 'no-store');
+    res.json(availability);
   } catch (error) { next(error); }
 });
 

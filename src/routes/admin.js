@@ -1,11 +1,13 @@
 import { Router } from 'express';
+import { config } from '../config.js';
 import { AppointmentRule } from '../models/AppointmentRule.js';
 import { Booking } from '../models/Booking.js';
 import { validateAdminBookingInput, validateRuleInput } from '../lib/validation.js';
 import { requireAdmin, requireCsrf } from '../middleware/auth.js';
 import { limitsFor } from '../services/plans.js';
 import { shoplineGet, syncShopMetadata } from '../services/shopline.js';
-import { updateBookingByMerchant } from '../services/bookings.js';
+import { cancelBookingByMerchant, updateBookingByMerchant } from '../services/bookings.js';
+import { emailStatus, sendTestEmail } from '../services/email.js';
 
 export const adminRouter = Router();
 adminRouter.use(requireAdmin, requireCsrf);
@@ -23,7 +25,7 @@ adminRouter.get('/bootstrap', async (req, res) => {
     Booking.countDocuments({ shopId: req.shop._id }),
     Booking.countDocuments({ shopId: req.shop._id, status: 'confirmed', date: { $gte: new Date().toISOString().slice(0, 10) } })
   ]);
-  res.json({ shop: { handle: req.shop.handle, storeId: req.shop.shoplineStoreId || '', locale: req.shop.locale, timezone: req.shop.timezone, plan: req.shop.plan }, limits: limitsFor(req.shop.plan), csrfToken: req.csrfToken, stats: { ruleCount, activeRuleCount, bookingCount, upcomingCount } });
+  res.json({ shop: { handle: req.shop.handle, storeId: req.shop.shoplineStoreId || '', locale: req.shop.locale, timezone: req.shop.timezone, plan: req.shop.plan, email: req.shop.email || '' }, email: emailStatus(), limits: limitsFor(req.shop.plan), csrfToken: req.csrfToken, stats: { ruleCount, activeRuleCount, bookingCount, upcomingCount } });
 });
 
 adminRouter.get('/products', async (req, res, next) => {
@@ -98,12 +100,18 @@ adminRouter.put('/bookings/:id', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-adminRouter.post('/bookings/:id/cancel', async (req, res) => {
-  const booking = await Booking.findOneAndUpdate(
-    { _id: req.params.id, shopId: req.shop._id, status: 'confirmed' },
-    { status: 'cancelled', cancelledAt: new Date() },
-    { new: true }
-  );
-  if (!booking) return res.status(404).json({ error: 'NOT_FOUND', message: 'Confirmed booking not found.' });
-  res.json({ booking });
+adminRouter.post('/bookings/:id/cancel', async (req, res, next) => {
+  try {
+    const result = await cancelBookingByMerchant({ shopObjectId: req.shop._id, bookingId: req.params.id });
+    res.json(result);
+  } catch (error) { next(error); }
+});
+
+adminRouter.post('/email/test', async (req, res) => {
+  const to = req.shop.email || config.email.merchantTo;
+  if (!to) return res.status(422).json({ error: 'EMAIL_REQUIRED', message: 'Add a store email or MERCHANT_NOTIFICATION_EMAIL before sending a test.' });
+  const result = await sendTestEmail(to);
+  if (result.skipped) return res.status(422).json({ error: 'EMAIL_NOT_CONFIGURED', message: result.reason, result });
+  if (result.failed) return res.status(502).json({ error: 'EMAIL_FAILED', message: result.reason || 'Email provider rejected the test.', result });
+  res.json({ to, result });
 });

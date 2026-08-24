@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cancelManagedBooking, createBookingAtomic, getLegacyBookingStatus, hashManagementToken, rescheduleManagedBooking, SlotConflictError, updateBookingByMerchant } from '../src/services/bookings.js';
+import { cancelManagedBooking, createBookingAtomic, getLegacyBookingStatus, getManagedAvailability, hashManagementToken, rescheduleManagedBooking, SlotConflictError, updateBookingByMerchant } from '../src/services/bookings.js';
 
 const shop = { _id: 'shop1', timezone: 'Asia/Shanghai', email: '' };
 const rule = {
@@ -34,7 +34,7 @@ test('customer cancellation requires the hashed management token', async () => {
   const token = 'a'.repeat(43);
   let filter;
   const BookingModel = { async findOneAndUpdate(query) { filter = query; return { _id: 'b1', status: 'cancelled' }; } };
-  const booking = await cancelManagedBooking({ bookingId: 'b1', token, BookingModel });
+  const booking = await cancelManagedBooking({ bookingId: 'b1', token, BookingModel, notify: async () => ({ skipped: true }) });
   assert.equal(booking.status, 'cancelled');
   assert.equal(filter.managementTokenHash, hashManagementToken(token));
   assert.notEqual(filter.managementTokenHash, token);
@@ -60,7 +60,7 @@ test('customer reschedule validates the rule and atomically moves the slot', asy
     async findOneAndUpdate(filter, value) { update = { filter, value }; return { ...existing, ...value.$set, customerRescheduleCount: 1 }; }
   };
   const RuleModel = { async findOne() { return rule; } };
-  await rescheduleManagedBooking({ bookingId: 'b1', token, date: '2026-08-24', time: '10:00', BookingModel, RuleModel });
+  await rescheduleManagedBooking({ bookingId: 'b1', token, date: '2026-08-24', time: '10:00', BookingModel, RuleModel, notify: async () => ({ skipped: true }) });
   assert.equal(update.filter.slotKey, '2026-08-24T09:00');
   assert.equal(update.value.$set.slotKey, '2026-08-24T10:00');
   assert.equal(update.value.$inc.customerRescheduleCount, 1);
@@ -72,6 +72,20 @@ test('customer cannot reschedule more than once', async () => {
     () => rescheduleManagedBooking({ bookingId: 'b1', token: 'c'.repeat(43), date: '2026-08-24', time: '10:00', BookingModel }),
     error => error.code === 'RESCHEDULE_LIMIT' && error.status === 409
   );
+});
+
+test('managed availability authenticates the private token and removes booked slots', async () => {
+  const token = 'd'.repeat(43);
+  let bookingQuery;
+  const current = { _id: 'b1', shopId: 'shop1', ruleId: 'rule1', status: 'confirmed' };
+  const BookingModel = {
+    async findOne(query) { bookingQuery = query; return current; },
+    find() { return { async distinct() { return ['09:00']; } }; }
+  };
+  const RuleModel = { async findOne() { return rule; } };
+  const result = await getManagedAvailability({ bookingId: 'b1', token, date: '2026-08-24', BookingModel, RuleModel });
+  assert.equal(bookingQuery.managementTokenHash, hashManagementToken(token));
+  assert.deepEqual(result, { date: '2026-08-24', slots: ['10:00'] });
 });
 
 test('merchant can edit a confirmed booking without consuming customer change allowance', async () => {

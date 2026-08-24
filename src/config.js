@@ -27,9 +27,21 @@ export const config = Object.freeze({
   cookieSameSite: process.env.COOKIE_SAME_SITE || 'lax',
   publicAllowedOrigins: (process.env.PUBLIC_ALLOWED_ORIGINS || '').split(',').map(v => v.trim()).filter(Boolean),
   email: {
+    provider: (process.env.EMAIL_PROVIDER || 'auto').toLowerCase(),
     resendKey: process.env.RESEND_API_KEY || '',
     from: process.env.EMAIL_FROM || 'Appointment Lite <bookings@example.com>',
-    merchantTo: process.env.MERCHANT_NOTIFICATION_EMAIL || ''
+    merchantTo: process.env.MERCHANT_NOTIFICATION_EMAIL || '',
+    aliyun: {
+      accessKeyId: process.env.ALIBABA_CLOUD_ACCESS_KEY_ID || '',
+      accessKeySecret: process.env.ALIBABA_CLOUD_ACCESS_KEY_SECRET || '',
+      securityToken: process.env.ALIBABA_CLOUD_SECURITY_TOKEN || '',
+      accountName: process.env.ALIYUN_DIRECTMAIL_ACCOUNT_NAME || '',
+      fromAlias: process.env.ALIYUN_DIRECTMAIL_FROM_ALIAS || 'Appointment Lite',
+      replyToAddress: process.env.ALIYUN_DIRECTMAIL_REPLY_TO !== 'false',
+      endpoint: process.env.ALIYUN_DIRECTMAIL_ENDPOINT || 'dm.aliyuncs.com',
+      regionId: process.env.ALIYUN_DIRECTMAIL_REGION_ID || 'cn-hangzhou',
+      tagName: process.env.ALIYUN_DIRECTMAIL_TAG_NAME || ''
+    }
   },
   defaultPlan: process.env.DEFAULT_PLAN || 'free'
 });

@@ -1,6 +1,6 @@
 # Appointment Lite for SHOPLINE
 
-Version `0.1.7` — one-time customer rescheduling and merchant booking editing based on the `appointment-lite-v0.1.0-mvp` foundation.
+Version `0.2.0` — Aliyun DirectMail/Resend email delivery and secure cross-device appointment management, based on the `appointment-lite-v0.1.0-mvp` foundation.
 
 Appointment Lite turns selected SHOPLINE products into appointment or consultation services. It is designed for wedding fittings, jewelry consultations, furniture consultations, beauty services, classes, and made-to-order products.
 
@@ -13,7 +13,9 @@ Implemented:
 - Duration, buffer, available date range, weekday schedule, daily windows, text-only location/staff, enabled state, notes prompt, and up to five custom questions.
 - Public rule/availability APIs and booking creation.
 - Atomic duplicate-slot protection using a MongoDB partial unique index.
-- Optional Resend notifications; missing or failing email configuration never rolls back a booking.
+- Provider-neutral email notifications through Aliyun DirectMail HTTPS OpenAPI or Resend; missing or failing email configuration never rolls back a booking.
+- Confirmation email with a private, cross-device Manage Appointment link. The token stays in the URL fragment and is never stored in plaintext by MongoDB.
+- Customer emails for confirmation, one-time self-service rescheduling, cancellation, and merchant edits; optional merchant new-booking notification.
 - English-first locale directories with Simplified Chinese starter strings.
 - Free/Pro plan limits without a real billing dependency.
 - Standalone Theme App Extension **source template** in `theme-extension-source/`.
@@ -30,7 +32,7 @@ Product page App Block
   ├─ rule config: GET once, cached in browser for 5 minutes
   ├─ selected-day availability: small uncached GET
   └─ final booking: one POST ──> atomic MongoDB insert
-                                  └─ optional asynchronous Resend email
+                                  └─ optional Aliyun DirectMail / Resend HTTPS email
 ```
 
 Static UI and slot generation run in the browser. The API only serves small JSON responses. MongoDB uses a maximum application pool of 10 connections. Rule responses opt into five-minute public caching; availability is never cached. The final insert is authoritative, so caching cannot produce a double booking.
@@ -46,6 +48,7 @@ src/
   services/            SHOPLINE, booking, email, plan boundaries
   views/                admin application shell
 public/admin/           SHOPLINE-like admin UI
+public/manage/          Cross-device customer management page
 theme-extension-source/ App Block source; not initialized by SHOPLINE CLI
 test/                   Node test runner suites
 docs/                   data model and API notes
@@ -57,7 +60,7 @@ docs/                   data model and API notes
 - MongoDB 6+
 - A SHOPLINE public or custom app
 - HTTPS URL for production callbacks
-- Optional: Resend account
+- Optional: Aliyun DirectMail with a least-privilege RAM user, or Resend
 - Optional: Railway CLI and SHOPLINE CLI
 
 ## Environment
@@ -80,7 +83,10 @@ Important settings:
 - `SHOPLINE_SCOPES` defaults to `read_products,read_store_information`.
 - `COOKIE_SAME_SITE=lax` is appropriate for redirect mode. Embedded iframe mode may require `none` with HTTPS and SHOPLINE App Bridge work.
 - `PUBLIC_ALLOWED_ORIGINS` should remain empty for a multi-merchant public app because every merchant has different storefront domains. CORS is not authentication; use dynamic installed-shop origin validation in a later hardening release if required.
-- `RESEND_API_KEY`, `EMAIL_FROM`, and `MERCHANT_NOTIFICATION_EMAIL` are optional. Booking success does not depend on them.
+- `EMAIL_PROVIDER=auto` prefers a complete Aliyun DirectMail configuration, then Resend. Use `aliyun`, `resend`, or `none` to force a mode.
+- Aliyun DirectMail uses HTTPS OpenAPI rather than SMTP. Configure `ALIBABA_CLOUD_ACCESS_KEY_ID`, `ALIBABA_CLOUD_ACCESS_KEY_SECRET`, and the verified sender in `ALIYUN_DIRECTMAIL_ACCOUNT_NAME`.
+- `RESEND_API_KEY`, `EMAIL_FROM`, and `MERCHANT_NOTIFICATION_EMAIL` remain available as a fallback. Booking success never depends on email delivery.
+- See [Aliyun DirectMail and Resend setup](docs/EMAIL.md) before adding production credentials to Railway.
 
 Generate secrets on macOS:
 
@@ -148,7 +154,9 @@ In the Theme Editor, add **Appointment Lite** to the product template. The block
 
 The App Block starts hidden and only appears after the public rule endpoint confirms that the current product has an enabled rule. Theme-editor re-renders are handled through SHOPLINE events plus a DOM observer. Open the preview console and filter for `[Appointment Lite]` to see store/product identity, cache, request status, visibility decisions, availability, and booking diagnostics without logging customer PII. SHOPLINE documents the OS 3.0 [extension structure](https://developer.shopline.com/docs/online-store-3-0-themes/integrate-apps-with-themes/theme-app-extension/structure?version=v20231201) and [`sl extension push`](https://developer.shopline.com/docs/online-store-3-0-themes/development-tools/cli/app-extension-commands/).
 
-After a successful booking, the storefront stores a minimal receipt (booking ID, private management token, date, time, location, staff, and reschedule count) in that browser's local storage. On later visits to the same product, the block shows the confirmed appointment and a “Manage appointment” action. The customer can securely reschedule once or cancel without exposing customer PII or allowing management access by booking ID alone. The first change screen warns that it is the only online change; later attempts are rejected by the backend and direct the customer to contact the store. Merchants can edit confirmed bookings without consuming the customer allowance, and the edit path invokes an optional Resend notification hook that safely skips when email is not configured. The backend stores only a SHA-256 hash of the management token, and the storefront refreshes status only when that device has a receipt. A compatibility lookup for pre-v0.1.5 receipts returns only `confirmed` or `cancelled`, requires matching store and product IDs, and never grants management access. The receipt expires after the appointment date. Cross-device lookup still requires future email verification or an authenticated customer account.
+After a successful booking, the storefront stores a minimal receipt (booking ID, private management token, date, time, location, staff, and reschedule count) in that browser's local storage. On later visits to the same product, the block shows the confirmed appointment and a “Manage appointment” action. The confirmation email also contains a cross-device management link. Its high-entropy token is placed after `#`, so browsers do not include it in HTTP requests or ordinary server access logs; the management page moves it to session storage and removes it from the address bar.
+
+The customer can securely reschedule once or cancel without exposing customer PII or allowing management access by booking ID alone. The first change screen warns that it is the only online change; later attempts are rejected by the backend and direct the customer to contact the store. Merchants can edit confirmed bookings without consuming the customer allowance. Confirmation, reschedule, cancellation, and merchant-edit emails safely skip or report failure without reverting the booking. The backend stores only a SHA-256 hash of the management token. A compatibility lookup for pre-v0.1.5 receipts returns only `confirmed` or `cancelled`, requires matching store and product IDs, and never grants management access.
 
 ## Tests and checks
 
@@ -173,6 +181,7 @@ Tests cover query signing/tampering, stateless session signing, weekday/date bou
 
 - [Data model and atomic conflict design](docs/DATA_MODEL.md)
 - [HTTP API summary](docs/API.md)
+- [Aliyun DirectMail and Resend setup](docs/EMAIL.md)
 - [Mac ZIP overlay/install procedure](docs/INSTALL_MAC.md)
 
 ## License

@@ -78,6 +78,11 @@ export function validateSlotInput(body) {
   return { errors, value: { date, time } };
 }
 
+export function validateDateInput(body) {
+  const date = text(body.date, 10);
+  return { errors: DATE_PATTERN.test(date) ? [] : ['A valid date is required.'], value: { date } };
+}
+
 export function validateAdminBookingInput(body) {
   const { errors, value } = validateSlotInput(body);
   return { errors, value: {
