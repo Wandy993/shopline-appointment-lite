@@ -1,10 +1,13 @@
 const $ = selector => document.querySelector(selector);
-const bookingId = new URLSearchParams(location.search).get('booking') || '';
+const query = new URLSearchParams(location.search);
+const bookingId = query.get('booking') || '';
 const tokenKey = `appointment-lite:manage:${bookingId}`;
 const hashToken = new URLSearchParams(location.hash.slice(1)).get('token') || '';
-if (hashToken) {
-  sessionStorage.setItem(tokenKey, hashToken);
-  history.replaceState(null, '', `${location.pathname}${location.search}`);
+const queryToken = query.get('access') || '';
+const incomingToken = hashToken || queryToken;
+if (incomingToken) {
+  sessionStorage.setItem(tokenKey, incomingToken);
+  history.replaceState(null, '', `${location.pathname}?booking=${encodeURIComponent(bookingId)}`);
 }
 const managementToken = sessionStorage.getItem(tokenKey) || '';
 let booking;

@@ -82,7 +82,7 @@ export async function deliverEmail(message) {
 
 export function managementLinkFor(booking, managementToken) {
   if (!managementToken) return '';
-  return `${config.appUrl}/manage?booking=${encodeURIComponent(String(booking._id))}#token=${encodeURIComponent(managementToken)}`;
+  return `${config.appUrl}/manage?booking=${encodeURIComponent(String(booking._id))}&access=${encodeURIComponent(managementToken)}`;
 }
 
 function appointmentCard(booking) {

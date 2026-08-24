@@ -63,7 +63,7 @@ With `EMAIL_PROVIDER=auto`, Appointment Lite chooses a fully configured Aliyun D
 - Customer or merchant cancels: customer cancellation email.
 - Merchant edits: customer update email.
 
-The private link is built as `/manage?booking=BOOKING_ID#token=SECRET`. The fragment is not sent to the server. JavaScript stores it in session storage and removes it from the visible URL. MongoDB stores only its SHA-256 hash.
+The private email link is built as `/manage?booking=BOOKING_ID&access=SECRET`. Query delivery is used because some email clients and copy/open flows discard URL fragments. The management response disables caching and referrers; JavaScript immediately stores the token in session storage and replaces the visible URL with `/manage?booking=BOOKING_ID`. Legacy `#token=SECRET` links remain supported. MongoDB stores only the token's SHA-256 hash.
 
 ## Operations and security
 

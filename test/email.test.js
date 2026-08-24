@@ -3,13 +3,13 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { managementLinkFor } from '../src/services/email.js';
 
-test('cross-device management link keeps the secret in the URL fragment', () => {
+test('cross-device email management link carries a compatible high-entropy access token', () => {
   const token = 'a'.repeat(43);
   const link = managementLinkFor({ _id: '507f1f77bcf86cd799439011' }, token);
   const parsed = new URL(link);
   assert.equal(parsed.searchParams.get('booking'), '507f1f77bcf86cd799439011');
-  assert.equal(parsed.searchParams.has('token'), false);
-  assert.equal(parsed.hash, `#token=${token}`);
+  assert.equal(parsed.searchParams.get('access'), token);
+  assert.equal(parsed.hash, '');
 });
 
 test('Aliyun DirectMail transport uses HTTPS OpenAPI and least-privilege configuration inputs', async () => {
