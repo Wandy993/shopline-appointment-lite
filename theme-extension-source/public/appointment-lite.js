@@ -1,6 +1,6 @@
 (() => {
   const VERSION = '0.2.0';
-  const API_BASE = 'https://shopline-appointment-lite-production.up.railway.app';
+  const API_BASE = 'https://appointment.toolkit.fans';
   const CACHE_TTL = 5 * 60 * 1000;
   const SELECTOR = '[data-appointment-lite]:not([data-al-ready])';
   const PREFIX = '[Appointment Lite]';
