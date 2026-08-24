@@ -8,6 +8,7 @@ import { limitsFor } from '../services/plans.js';
 import { shoplineGet, syncShopMetadata } from '../services/shopline.js';
 import { cancelBookingByMerchant, updateBookingByMerchant } from '../services/bookings.js';
 import { emailStatus, sendTestEmail } from '../services/email.js';
+import { zonedNow } from '../lib/slots.js';
 
 export const adminRouter = Router();
 adminRouter.use(requireAdmin, requireCsrf);
@@ -23,7 +24,7 @@ adminRouter.get('/bootstrap', async (req, res) => {
     AppointmentRule.countDocuments({ shopId: req.shop._id }),
     AppointmentRule.countDocuments({ shopId: req.shop._id, enabled: true }),
     Booking.countDocuments({ shopId: req.shop._id }),
-    Booking.countDocuments({ shopId: req.shop._id, status: 'confirmed', date: { $gte: new Date().toISOString().slice(0, 10) } })
+    Booking.countDocuments({ shopId: req.shop._id, status: 'confirmed', date: { $gte: zonedNow(req.shop.timezone || 'UTC').date } })
   ]);
   res.json({ shop: { handle: req.shop.handle, storeId: req.shop.shoplineStoreId || '', locale: req.shop.locale, timezone: req.shop.timezone, plan: req.shop.plan, email: req.shop.email || '' }, email: emailStatus(), limits: { ...limitsFor(req.shop.plan), enforced: config.planLimitsEnabled }, csrfToken: req.csrfToken, stats: { ruleCount, activeRuleCount, bookingCount, upcomingCount } });
 });

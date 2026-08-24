@@ -43,4 +43,4 @@ The server regenerates valid slots from the stored rule before inserting. A cust
 
 ## Timezone boundary
 
-This MVP stores merchant-local `date` and `time` strings plus the shop's IANA timezone snapshot. It deliberately does not perform complex timezone conversion. A later calendar-integration release should add an unambiguous UTC instant calculated with a timezone-aware library and migration tests for DST transitions.
+This MVP stores merchant-local `date` and `time` strings plus the shop's IANA timezone snapshot. Availability and all booking mutations compare those strings against the server's current minute formatted in that IANA time zone, so elapsed slots cannot be created or selected. The UI labels times as store-local instead of silently converting them to the customer's device time zone. A later calendar-integration release should add an unambiguous UTC instant calculated with a timezone-aware library and migration tests for DST transitions.

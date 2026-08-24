@@ -1,6 +1,6 @@
 # Appointment Lite for SHOPLINE
 
-Version `0.2.2` — temporarily unlimited appointment rules, plus Aliyun DirectMail/Resend email delivery and email-client-compatible cross-device appointment management.
+Version `0.2.3` — store-time-zone-aware past-slot protection, temporarily unlimited appointment rules, and cross-device appointment management.
 
 Appointment Lite turns selected SHOPLINE products into appointment or consultation services. It is designed for wedding fittings, jewelry consultations, furniture consultations, beauty services, classes, and made-to-order products.
 
@@ -13,6 +13,7 @@ Implemented:
 - Duration, buffer, available date range, weekday schedule, daily windows, text-only location/staff, enabled state, notes prompt, and up to five custom questions.
 - Public rule/availability APIs and booking creation.
 - Atomic duplicate-slot protection using a MongoDB partial unique index.
+- Server-authoritative past-slot protection using the SHOPLINE store's IANA time zone; storefront and management availability never return elapsed slots.
 - Provider-neutral email notifications through Aliyun DirectMail HTTPS OpenAPI or Resend; missing or failing email configuration never rolls back a booking.
 - Confirmation email with a private, cross-device Manage Appointment link. The page immediately moves the high-entropy email token into session storage and removes it from the address bar; MongoDB stores only its SHA-256 hash.
 - Customer emails for confirmation, one-time self-service rescheduling, cancellation, and merchant edits; optional merchant new-booking notification.
@@ -36,6 +37,8 @@ Product page App Block
 ```
 
 Static UI and slot generation run in the browser. The API only serves small JSON responses. MongoDB uses a maximum application pool of 10 connections. Rule responses opt into five-minute public caching; availability is never cached. The final insert is authoritative, so caching cannot produce a double booking.
+
+Appointment rule times are store-local times, not silently converted to the customer's device time zone. The storefront, cross-device management page, and emails display the store's IANA time zone explicitly. The backend remains authoritative and rejects any create, customer reschedule, or merchant edit whose selected minute has already passed in that store time zone.
 
 ## Project layout
 
@@ -166,7 +169,7 @@ npm test
 npm run check
 ```
 
-Tests cover query signing/tampering, stateless session signing, weekday/date bounds, duration+buffer slot generation, rule and booking validation, denormalized booking creation, server-side slot validation, and conversion of MongoDB duplicate-key errors into a `409 SLOT_CONFLICT`.
+Tests cover query signing/tampering, stateless session signing, weekday/date bounds, store-time-zone past-slot filtering, duration+buffer slot generation, rule and booking validation, denormalized booking creation, server-side slot validation, and conversion of MongoDB duplicate-key errors into a `409 SLOT_CONFLICT`.
 
 ## Security and production checklist
 

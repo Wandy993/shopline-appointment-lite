@@ -27,11 +27,11 @@ Requires the signed `al_session` HTTP-only cookie. Mutations also require `X-CSR
 ## Public storefront API
 
 - `GET /api/public/rule?shopId=STORE_ID&productId=ID` — five-minute public cache
-- `GET /api/public/availability?shopId=STORE_ID&productId=ID&date=YYYY-MM-DD` — no-store
-- `POST /api/public/bookings` — rate-limited; atomically confirms one slot and returns a one-time management token
+- `GET /api/public/availability?shopId=STORE_ID&productId=ID&date=YYYY-MM-DD` — no-store; excludes elapsed slots using the SHOPLINE store time zone
+- `POST /api/public/bookings` — rate-limited; rejects elapsed store-local slots, atomically confirms one slot, and returns a one-time management token
 - `POST /api/public/bookings/:id/status` — refresh full status using the management token; legacy receipts may request only `confirmed`/`cancelled` with matching store and product IDs
 - `POST /api/public/bookings/:id/availability` — token-authenticated availability for the cross-device management page
-- `POST /api/public/bookings/:id/reschedule` — atomically move a confirmed booking using the management token; limited to one customer-initiated change
+- `POST /api/public/bookings/:id/reschedule` — atomically move a confirmed booking to a future store-local slot using the management token; limited to one customer-initiated change
 - `POST /api/public/bookings/:id/cancel` — cancel a confirmed booking using the management token
 
 Example body:

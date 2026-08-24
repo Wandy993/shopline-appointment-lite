@@ -2,7 +2,7 @@ import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { AppointmentRule } from '../models/AppointmentRule.js';
 import { Booking } from '../models/Booking.js';
-import { slotsForDate } from '../lib/slots.js';
+import { futureSlotsForDate, zonedNow } from '../lib/slots.js';
 import { validateBookingInput, validateDateInput, validateSlotInput } from '../lib/validation.js';
 import { cancelManagedBooking, createBookingForStore, getLegacyBookingStatus, getManagedAvailability, getManagedBooking, rescheduleManagedBooking } from '../services/bookings.js';
 import { findInstalledShop, validShopHandle, validShoplineStoreId } from '../services/shops.js';
@@ -13,7 +13,8 @@ const bookingLimiter = rateLimit({ windowMs: 60_000, limit: 10, standardHeaders:
 function validBookingId(value) { return /^[a-f\d]{24}$/i.test(String(value || '')); }
 function publicBooking(booking) {
   const customerRescheduleCount = Number(booking.customerRescheduleCount || 0);
-  return { id: booking._id, productTitle: booking.productTitle, date: booking.date, time: booking.time, location: booking.location, staff: booking.staff, status: booking.status, customerRescheduleCount, customerCanReschedule: booking.status === 'confirmed' && customerRescheduleCount < 1 };
+  const timezone = booking.timezone || 'UTC';
+  return { id: booking._id, productTitle: booking.productTitle, date: booking.date, time: booking.time, timezone, storeDate: zonedNow(timezone).date, location: booking.location, staff: booking.staff, status: booking.status, customerRescheduleCount, customerCanReschedule: booking.status === 'confirmed' && customerRescheduleCount < 1 };
 }
 
 publicRouter.get('/rule', async (req, res) => {
@@ -26,11 +27,12 @@ publicRouter.get('/rule', async (req, res) => {
   const rule = await AppointmentRule.findOne({ shopId: shop._id, productId, enabled: true }).lean();
   if (!rule) return res.status(404).json({ error: 'NOT_FOUND', message: 'No appointment rule for this product.' });
   res.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
+  const timezone = shop.timezone || 'UTC';
   res.json({ rule: {
     id: rule._id, productId: rule.productId, productTitle: rule.productTitle, duration: rule.duration, buffer: rule.buffer,
     dateFrom: rule.dateFrom, dateUntil: rule.dateUntil, weeklyAvailability: rule.weeklyAvailability,
     location: rule.location, staff: rule.staff, questionLabel: rule.questionLabel, customQuestions: rule.customQuestions
-  }, timezone: shop.timezone || 'UTC' });
+  }, timezone, storeDate: zonedNow(timezone).date });
 });
 
 publicRouter.get('/availability', async (req, res) => {
@@ -42,10 +44,11 @@ publicRouter.get('/availability', async (req, res) => {
   if (!shop) return res.status(404).json({ error: 'NOT_FOUND', message: 'Store not found.' });
   const rule = await AppointmentRule.findOne({ shopId: shop._id, productId, enabled: true }).lean();
   if (!rule) return res.status(404).json({ error: 'NOT_FOUND', message: 'Appointment rule not found.' });
-  const allSlots = slotsForDate(rule, date);
+  const timezone = shop.timezone || 'UTC';
+  const allSlots = futureSlotsForDate(rule, date, timezone);
   const booked = await Booking.find({ shopId: shop._id, ruleId: rule._id, date, status: 'confirmed' }).distinct('time');
   res.set('Cache-Control', 'no-store');
-  res.json({ date, slots: allSlots.filter(time => !booked.includes(time)) });
+  res.json({ date, timezone, storeDate: zonedNow(timezone).date, slots: allSlots.filter(time => !booked.includes(time)) });
 });
 
 publicRouter.post('/bookings', bookingLimiter, async (req, res, next) => {

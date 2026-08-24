@@ -48,3 +48,30 @@ export function slotsForDate(rule, date) {
 export function slotKey(date, time) {
   return `${date}T${time}`;
 }
+
+export function zonedNow(timezone = 'UTC', now = new Date()) {
+  let formatter;
+  try {
+    formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timezone || 'UTC', year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+    });
+  } catch {
+    formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'UTC', year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+    });
+  }
+  const parts = Object.fromEntries(formatter.formatToParts(now).map(part => [part.type, part.value]));
+  return { date: `${parts.year}-${parts.month}-${parts.day}`, time: `${parts.hour}:${parts.minute}` };
+}
+
+export function isFutureSlot(date, time, timezone = 'UTC', now = new Date()) {
+  if (!Number.isInteger(weekdayForDate(date)) || !TIME_PATTERN.test(time)) return false;
+  const current = zonedNow(timezone, now);
+  return slotKey(date, time) > slotKey(current.date, current.time);
+}
+
+export function futureSlotsForDate(rule, date, timezone = 'UTC', now = new Date()) {
+  return slotsForDate(rule, date).filter(time => isFutureSlot(date, time, timezone, now));
+}

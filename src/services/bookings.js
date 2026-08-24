@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { AppointmentRule } from '../models/AppointmentRule.js';
 import { Booking } from '../models/Booking.js';
-import { slotKey, slotsForDate } from '../lib/slots.js';
+import { futureSlotsForDate, slotKey } from '../lib/slots.js';
 import { sendBookingCancelledNotification, sendBookingChangedNotification, sendBookingNotifications, sendCustomerRescheduledNotification } from './email.js';
 import { findInstalledShop } from './shops.js';
 
@@ -19,8 +19,8 @@ function validManagementToken(token) {
   return /^[A-Za-z0-9_-]{43}$/.test(String(token || ''));
 }
 
-export async function createBookingAtomic({ shop, rule, input, BookingModel = Booking, notify = sendBookingNotifications }) {
-  if (!rule.enabled || !slotsForDate(rule, input.date).includes(input.time)) throw Object.assign(new Error('The selected time is not available.'), { code: 'SLOT_UNAVAILABLE' });
+export async function createBookingAtomic({ shop, rule, input, BookingModel = Booking, notify = sendBookingNotifications, now = new Date() }) {
+  if (!rule.enabled || !futureSlotsForDate(rule, input.date, shop.timezone || 'UTC', now).includes(input.time)) throw Object.assign(new Error('The selected time is unavailable or has already passed in the store time zone.'), { code: 'SLOT_UNAVAILABLE' });
   for (const question of rule.customQuestions || []) {
     if (question.required && !input.answers.find(answer => answer.question === question.label && answer.answer)) {
       throw Object.assign(new Error(`Please answer: ${question.label}`), { code: 'VALIDATION_ERROR' });
@@ -68,12 +68,12 @@ export async function getLegacyBookingStatus({ bookingId, shopObjectId, productI
   return { id: booking._id, status: booking.status };
 }
 
-export async function getManagedAvailability({ bookingId, token, date, BookingModel = Booking, RuleModel = AppointmentRule }) {
+export async function getManagedAvailability({ bookingId, token, date, BookingModel = Booking, RuleModel = AppointmentRule, now = new Date() }) {
   const booking = await getManagedBooking({ bookingId, token, BookingModel });
   if (booking.status !== 'confirmed') return { date, slots: [] };
   const rule = await RuleModel.findOne({ _id: booking.ruleId, shopId: booking.shopId, enabled: true });
   if (!rule) return { date, slots: [] };
-  const allSlots = slotsForDate(rule, date);
+  const allSlots = futureSlotsForDate(rule, date, booking.timezone || 'UTC', now);
   const booked = await BookingModel.find({ shopId: booking.shopId, ruleId: booking.ruleId, date, status: 'confirmed' }).distinct('time');
   return { date, slots: allSlots.filter(time => !booked.includes(time)) };
 }
@@ -90,15 +90,15 @@ export async function cancelManagedBooking({ bookingId, token, BookingModel = Bo
   return booking;
 }
 
-export async function rescheduleManagedBooking({ bookingId, token, date, time, BookingModel = Booking, RuleModel = AppointmentRule, notify = sendCustomerRescheduledNotification }) {
+export async function rescheduleManagedBooking({ bookingId, token, date, time, BookingModel = Booking, RuleModel = AppointmentRule, notify = sendCustomerRescheduledNotification, now = new Date() }) {
   const booking = await getManagedBooking({ bookingId, token, BookingModel });
   if (booking.status !== 'confirmed') throw Object.assign(new Error('This appointment has already been cancelled.'), { status: 409, code: 'BOOKING_CANCELLED' });
   if (Number(booking.customerRescheduleCount || 0) >= 1) {
     throw Object.assign(new Error('You have already used your online change. Please contact the store for another change.'), { status: 409, code: 'RESCHEDULE_LIMIT' });
   }
   const rule = await RuleModel.findOne({ _id: booking.ruleId, shopId: booking.shopId, enabled: true });
-  if (!rule || !slotsForDate(rule, date).includes(time)) {
-    throw Object.assign(new Error('The selected time is not available.'), { code: 'VALIDATION_ERROR' });
+  if (!rule || !futureSlotsForDate(rule, date, booking.timezone || 'UTC', now).includes(time)) {
+    throw Object.assign(new Error('The selected time is unavailable or has already passed in the store time zone.'), { code: 'VALIDATION_ERROR' });
   }
   let updated;
   try {
@@ -116,12 +116,12 @@ export async function rescheduleManagedBooking({ bookingId, token, date, time, B
   return updated;
 }
 
-export async function updateBookingByMerchant({ shopObjectId, bookingId, input, BookingModel = Booking, RuleModel = AppointmentRule, notify = sendBookingChangedNotification }) {
+export async function updateBookingByMerchant({ shopObjectId, bookingId, input, BookingModel = Booking, RuleModel = AppointmentRule, notify = sendBookingChangedNotification, now = new Date() }) {
   const booking = await BookingModel.findOne({ _id: bookingId, shopId: shopObjectId, status: 'confirmed' });
   if (!booking) throw Object.assign(new Error('Confirmed booking not found.'), { code: 'NOT_FOUND' });
   const rule = await RuleModel.findOne({ _id: booking.ruleId, shopId: shopObjectId, enabled: true });
-  if (!rule || !slotsForDate(rule, input.date).includes(input.time)) {
-    throw Object.assign(new Error('The selected date and time are outside this appointment rule.'), { code: 'VALIDATION_ERROR' });
+  if (!rule || !futureSlotsForDate(rule, input.date, booking.timezone || 'UTC', now).includes(input.time)) {
+    throw Object.assign(new Error('The selected date and time are outside this appointment rule or have already passed in the store time zone.'), { code: 'VALIDATION_ERROR' });
   }
   let updated;
   try {

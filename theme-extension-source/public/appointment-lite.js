@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = '0.2.1';
+  const VERSION = '0.2.3';
   const API_BASE = 'https://appointment.toolkit.fans';
   const CACHE_TTL = 5 * 60 * 1000;
   const SELECTOR = '[data-appointment-lite]:not([data-al-ready])';
@@ -90,10 +90,10 @@
     return `al-booking:${context.shopId}:${context.productId}`;
   }
 
-  function readBookingReceipt(context) {
+  function readBookingReceipt(context, storeDate = '') {
     try {
       const receipt = JSON.parse(localStorage.getItem(receiptKey(context)));
-      const today = new Date().toISOString().slice(0, 10);
+      const today = storeDate || new Date().toISOString().slice(0, 10);
       if (!receipt || receipt.status !== 'confirmed' || !receipt.date || !receipt.time || receipt.date < today) {
         if (receipt) localStorage.removeItem(receiptKey(context));
         return null;
@@ -112,6 +112,7 @@
       time: String(booking.time || ''),
       location: String(booking.location || ''),
       staff: String(booking.staff || ''),
+      timezone: String(booking.timezone || ''),
       status: 'confirmed',
       customerRescheduleCount: Number(booking.customerRescheduleCount || 0),
       managementToken: String(booking.managementToken || existingToken || ''),
@@ -129,17 +130,18 @@
   function renderBookingState(widget, rule, context, suppliedReceipt) {
     widget.querySelector('.al-booked')?.remove();
     const trigger = widget.querySelector('.al-trigger');
-    const receipt = suppliedReceipt || readBookingReceipt(context);
+    const receipt = suppliedReceipt || readBookingReceipt(context, rule.storeDate);
     if (!receipt) {
       trigger.hidden = false;
       return;
     }
     trigger.hidden = true;
     const details = [receipt.location, receipt.staff].filter(Boolean).map(text).join(' · ');
+    const timezone = receipt.timezone || rule.timezone || 'UTC';
     const status = document.createElement('section');
     status.className = 'al-booked';
     status.setAttribute('aria-label', 'Appointment booked');
-    status.innerHTML = `<div class="al-booked-copy"><span class="al-booked-label">Appointment booked</span><strong>${text(receipt.date)} at ${text(receipt.time)}</strong>${details ? `<span>${details}</span>` : ''}<small>${receipt.managementToken ? 'Manage this appointment from this device' : 'Contact the store to change this appointment'}</small></div>${receipt.managementToken ? '<button type="button" class="al-secondary">Manage appointment</button>' : ''}`;
+    status.innerHTML = `<div class="al-booked-copy"><span class="al-booked-label">Appointment booked</span><strong>${text(receipt.date)} at ${text(receipt.time)}</strong>${details ? `<span>${details}</span>` : ''}<span>Store time zone: ${text(timezone)}</span><small>${receipt.managementToken ? 'Manage this appointment from this device' : 'Contact the store to change this appointment'}</small></div>${receipt.managementToken ? '<button type="button" class="al-secondary">Manage appointment</button>' : ''}`;
     status.querySelector('.al-secondary')?.addEventListener('click', () => openManage(widget, rule, context, receipt));
     trigger.insertAdjacentElement('afterend', status);
     info('Stored booking status rendered.', { ...context, bookingId: receipt.id, date: receipt.date, time: receipt.time });
@@ -207,15 +209,16 @@
 
     try {
       const payload = await cachedRule(context);
+      const rule = { ...payload.rule, timezone: payload.timezone || 'UTC', storeDate: payload.storeDate || '' };
       widget.style.setProperty('--al-accent', '#166534');
       widget.hidden = false;
       widget.dataset.alStatus = 'ready';
       const trigger = widget.querySelector('.al-trigger');
-      trigger.addEventListener('click', () => open(widget, payload.rule, context));
-      const receipt = readBookingReceipt(context);
-      renderBookingState(widget, payload.rule, context, receipt);
-      syncBookingState(widget, payload.rule, context, receipt);
-      info('App Block is visible and ready.', { ...context, ruleId: payload.rule.id, productTitle: payload.rule.productTitle });
+      trigger.addEventListener('click', () => open(widget, rule, context));
+      const receipt = readBookingReceipt(context, rule.storeDate);
+      renderBookingState(widget, rule, context, receipt);
+      syncBookingState(widget, rule, context, receipt);
+      info('App Block is visible and ready.', { ...context, ruleId: rule.id, productTitle: rule.productTitle, timezone: rule.timezone });
     } catch (error) {
       widget.dataset.alStatus = error.status === 404 ? 'no-rule' : 'error';
       if (error.status === 404 && error.payload?.message === 'Store not found.') {
@@ -272,7 +275,7 @@
 
   function appointmentDetails(receipt) {
     const details = [receipt.location, receipt.staff].filter(Boolean).map(text).join(' · ');
-    return `<div class="al-manage-summary"><span>Current appointment</span><strong>${text(receipt.date)} at ${text(receipt.time)}</strong>${details ? `<p>${details}</p>` : ''}</div>`;
+    return `<div class="al-manage-summary"><span>Current appointment</span><strong>${text(receipt.date)} at ${text(receipt.time)}</strong>${details ? `<p>${details}</p>` : ''}${receipt.timezone ? `<p>Store time zone: ${text(receipt.timezone)}</p>` : ''}</div>`;
   }
 
   function openManage(widget, rule, context, receipt) {
@@ -324,9 +327,9 @@
   function openReschedule(widget, rule, context, receipt) {
     info('Booking reschedule dialog opened.', { ...context, bookingId: receipt.id });
     const dialog = document.createElement('dialog');
-    const today = new Date().toISOString().slice(0, 10);
+    const today = rule.storeDate || new Date().toISOString().slice(0, 10);
     const minDate = rule.dateFrom && rule.dateFrom > today ? rule.dateFrom : today;
-    dialog.innerHTML = `<div class="al-head"><div><button type="button" class="al-back">← Back</button><h2>Change date or time</h2><p>${text(rule.productTitle)}</p></div><button class="al-close" type="button" aria-label="Close">×</button></div><form class="al-form"><div class="al-form-body">${appointmentDetails(receipt)}<div class="al-notice"><strong>This is your only online change</strong><span>After you save, contact the store if you need another change.</span></div><div class="al-grid"><div class="al-field"><label for="al-reschedule-date">New date</label><input id="al-reschedule-date" name="date" type="date" min="${minDate}" ${rule.dateUntil ? `max="${rule.dateUntil}"` : ''} required></div><div><span class="al-legend">New time</span><div class="al-times"><span class="al-muted">Choose a date first.</span></div></div></div></div><div class="al-actions"><div class="al-error" hidden role="alert"></div><button class="al-submit" type="submit">Save changes</button></div></form>`;
+    dialog.innerHTML = `<div class="al-head"><div><button type="button" class="al-back">← Back</button><h2>Change date or time</h2><p>${text(rule.productTitle)}</p></div><button class="al-close" type="button" aria-label="Close">×</button></div><form class="al-form"><div class="al-form-body">${appointmentDetails(receipt)}<div class="al-notice"><strong>This is your only online change</strong><span>After you save, contact the store if you need another change.</span></div><div class="al-grid"><div class="al-field"><label for="al-reschedule-date">New date</label><input id="al-reschedule-date" name="date" type="date" min="${minDate}" ${rule.dateUntil ? `max="${rule.dateUntil}"` : ''} required></div><div><span class="al-legend">New time</span><div class="al-times"><span class="al-muted">Choose a date first.</span></div></div></div><p class="al-muted">All times are shown in the store time zone: ${text(rule.timezone || 'UTC')}.</p></div><div class="al-actions"><div class="al-error" hidden role="alert"></div><button class="al-submit" type="submit">Save changes</button></div></form>`;
     mountDialog(dialog);
     dialog.querySelector('.al-back').addEventListener('click', () => {
       dialog.close();
@@ -367,7 +370,7 @@
         }, 'booking reschedule');
         const refreshed = saveBookingReceipt(context, payload.booking, receipt.managementToken);
         renderBookingState(widget, rule, context, refreshed);
-        dialog.querySelector('.al-form').innerHTML = `<div class="al-success"><h3>Appointment updated</h3><p>${text(payload.booking.date)} at ${text(payload.booking.time)}</p><button class="al-submit" type="button">Done</button></div>`;
+        dialog.querySelector('.al-form').innerHTML = `<div class="al-success"><h3>Appointment updated</h3><p>${text(payload.booking.date)} at ${text(payload.booking.time)}</p><p>Store time zone: ${text(payload.booking.timezone || rule.timezone || 'UTC')}</p><button class="al-submit" type="button">Done</button></div>`;
         dialog.querySelector('.al-submit').addEventListener('click', () => dialog.close());
         info('Booking rescheduled by customer.', { ...context, bookingId: receipt.id, date: payload.booking.date, time: payload.booking.time });
       } catch (error) {
@@ -383,9 +386,9 @@
   function open(widget, rule, context) {
     info('Booking dialog opened.', { ...context, ruleId: rule.id });
     const dialog = document.createElement('dialog');
-    const today = new Date().toISOString().slice(0, 10);
+    const today = rule.storeDate || new Date().toISOString().slice(0, 10);
     const minDate = rule.dateFrom && rule.dateFrom > today ? rule.dateFrom : today;
-    dialog.innerHTML = `<div class="al-head"><div><h2>Book an appointment</h2><p>${text(rule.productTitle)}</p></div><button class="al-close" type="button" aria-label="Close">×</button></div><form class="al-form"><div class="al-form-body"><div class="al-meta">${rule.duration} minutes${rule.location ? ` · ${text(rule.location)}` : ''}${rule.staff ? ` · ${text(rule.staff)}` : ''}</div><div class="al-grid"><div class="al-field"><label for="al-date">Date</label><input id="al-date" name="date" type="date" min="${minDate}" ${rule.dateUntil ? `max="${rule.dateUntil}"` : ''} required></div><div><span class="al-legend">Time</span><div class="al-times"><span class="al-muted">Choose a date first.</span></div></div></div><div class="al-grid"><div class="al-field"><label for="al-name">Name</label><input id="al-name" name="name" autocomplete="name" maxlength="120" required></div><div class="al-field"><label for="al-email">Email</label><input id="al-email" name="email" type="email" autocomplete="email" maxlength="254" required></div></div><div class="al-field"><label for="al-phone">Phone (optional)</label><input id="al-phone" name="phone" type="tel" autocomplete="tel" maxlength="40"></div><div class="al-field"><label for="al-note">${text(rule.questionLabel || 'Anything we should know?')}</label><textarea id="al-note" name="note" maxlength="2000"></textarea></div><div class="al-questions"></div></div><div class="al-actions"><div class="al-error" hidden role="alert"></div><button class="al-submit" type="submit">Confirm booking</button></div></form>`;
+    dialog.innerHTML = `<div class="al-head"><div><h2>Book an appointment</h2><p>${text(rule.productTitle)}</p></div><button class="al-close" type="button" aria-label="Close">×</button></div><form class="al-form"><div class="al-form-body"><div class="al-meta">${rule.duration} minutes${rule.location ? ` · ${text(rule.location)}` : ''}${rule.staff ? ` · ${text(rule.staff)}` : ''}</div><p class="al-muted">All times are shown in the store time zone: ${text(rule.timezone || 'UTC')}.</p><div class="al-grid"><div class="al-field"><label for="al-date">Date</label><input id="al-date" name="date" type="date" min="${minDate}" ${rule.dateUntil ? `max="${rule.dateUntil}"` : ''} required></div><div><span class="al-legend">Time</span><div class="al-times"><span class="al-muted">Choose a date first.</span></div></div></div><div class="al-grid"><div class="al-field"><label for="al-name">Name</label><input id="al-name" name="name" autocomplete="name" maxlength="120" required></div><div class="al-field"><label for="al-email">Email</label><input id="al-email" name="email" type="email" autocomplete="email" maxlength="254" required></div></div><div class="al-field"><label for="al-phone">Phone (optional)</label><input id="al-phone" name="phone" type="tel" autocomplete="tel" maxlength="40"></div><div class="al-field"><label for="al-note">${text(rule.questionLabel || 'Anything we should know?')}</label><textarea id="al-note" name="note" maxlength="2000"></textarea></div><div class="al-questions"></div></div><div class="al-actions"><div class="al-error" hidden role="alert"></div><button class="al-submit" type="submit">Confirm booking</button></div></form>`;
     const questions = dialog.querySelector('.al-questions');
     (rule.customQuestions || []).forEach((question, index) => {
       questions.insertAdjacentHTML('beforeend', `<div class="al-field"><label for="al-q-${index}">${text(question.label)}</label><input id="al-q-${index}" data-question="${text(question.label)}" maxlength="1000" ${question.required ? 'required' : ''}></div>`);
@@ -440,7 +443,7 @@
         const payload = await requestJson(apiUrl('/api/public/bookings'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }, 'booking');
         const receipt = saveBookingReceipt(context, payload.booking);
         renderBookingState(widget, rule, context, receipt);
-        dialog.querySelector('.al-form').innerHTML = `<div class="al-success"><h3>Appointment confirmed</h3><p>${text(payload.booking.date)} at ${text(payload.booking.time)}</p>${payload.booking.location ? `<p>${text(payload.booking.location)}</p>` : ''}<button class="al-submit" type="button">Done</button></div>`;
+        dialog.querySelector('.al-form').innerHTML = `<div class="al-success"><h3>Appointment confirmed</h3><p>${text(payload.booking.date)} at ${text(payload.booking.time)}</p><p>Store time zone: ${text(payload.booking.timezone || rule.timezone || 'UTC')}</p>${payload.booking.location ? `<p>${text(payload.booking.location)}</p>` : ''}<button class="al-submit" type="button">Done</button></div>`;
         dialog.querySelector('.al-submit').addEventListener('click', () => dialog.close());
         info('Booking confirmed.', { ...context, bookingId: payload.booking.id, date: payload.booking.date, time: payload.booking.time });
       } catch (error) {

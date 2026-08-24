@@ -15,5 +15,7 @@ test('cross-device manage page accepts email-query and legacy-fragment tokens th
   assert.match(asset, /\/availability/);
   assert.match(asset, /\/reschedule/);
   assert.match(asset, /\/cancel/);
+  assert.match(asset, /booking\.storeDate/);
+  assert.match(asset, /Store time zone/);
   assert.doesNotMatch(asset, /localStorage/);
 });

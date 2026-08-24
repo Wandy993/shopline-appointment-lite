@@ -86,7 +86,7 @@ export function managementLinkFor(booking, managementToken) {
 }
 
 function appointmentCard(booking) {
-  return `<div style="padding:16px;border:1px solid #d1fae5;border-radius:10px;background:#f0fdf4"><strong>${escapeHtml(booking.productTitle)}</strong><p style="margin:8px 0 0">${escapeHtml(booking.date)} at ${escapeHtml(booking.time)}</p><p style="margin:4px 0 0">Location: ${escapeHtml(booking.location || 'To be confirmed')}</p><p style="margin:4px 0 0">Staff: ${escapeHtml(booking.staff || 'To be confirmed')}</p></div>`;
+  return `<div style="padding:16px;border:1px solid #d1fae5;border-radius:10px;background:#f0fdf4"><strong>${escapeHtml(booking.productTitle)}</strong><p style="margin:8px 0 0">${escapeHtml(booking.date)} at ${escapeHtml(booking.time)}</p><p style="margin:4px 0 0">Time zone: ${escapeHtml(booking.timezone || 'UTC')}</p><p style="margin:4px 0 0">Location: ${escapeHtml(booking.location || 'To be confirmed')}</p><p style="margin:4px 0 0">Staff: ${escapeHtml(booking.staff || 'To be confirmed')}</p></div>`;
 }
 
 function emailDocument(title, body) {

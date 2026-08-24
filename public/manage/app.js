@@ -12,7 +12,6 @@ if (incomingToken) {
 const managementToken = sessionStorage.getItem(tokenKey) || '';
 let booking;
 let selectedTime = '';
-$('#newDate').min = new Date().toISOString().slice(0, 10);
 
 async function api(path, body = {}) {
   const response = await fetch(`/api/public/bookings/${encodeURIComponent(bookingId)}${path}`, {
@@ -37,7 +36,7 @@ function render() {
   $('#productTitle').textContent = booking.productTitle;
   $('#statusBadge').textContent = booking.status;
   $('#bookingWhen').textContent = `${booking.date} at ${booking.time}`;
-  $('#bookingDetails').textContent = [booking.location, booking.staff].filter(Boolean).join(' · ');
+  $('#bookingDetails').textContent = [booking.location, booking.staff, `Store time zone: ${booking.timezone || 'UTC'}`].filter(Boolean).join(' · ');
   const active = booking.status === 'confirmed';
   $('#mainActions').classList.toggle('hidden', !active);
   $('#limitNotice').classList.toggle('hidden', !active);
@@ -52,6 +51,7 @@ async function load() {
   if (!/^[a-f\d]{24}$/i.test(bookingId) || !/^[A-Za-z0-9_-]{43}$/.test(managementToken)) return showError('This management link is invalid or incomplete. Open the original link from your appointment email.');
   try {
     booking = (await api('/status')).booking;
+    $('#newDate').min = booking.storeDate || new Date().toISOString().slice(0, 10);
     render();
   } catch (error) { showError(error.status === 404 ? 'This management link is invalid or has expired.' : error.message); }
 }
