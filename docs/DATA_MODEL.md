@@ -4,7 +4,7 @@ All collections live in the logical database selected by `MONGODB_DB_NAME` (defa
 
 ## Shop
 
-One record per SHOPLINE handle. Stores OAuth tokens, token expiry, granted scopes, locale, store timezone, notification email, reserved plan, and install lifecycle timestamps. Access and refresh tokens are excluded from normal Mongoose query results.
+One record per SHOPLINE handle. Stores the SHOPLINE store ID used by the zero-configuration Theme App Extension, primary domain, OAuth tokens, token expiry, granted scopes, locale, store timezone, notification email, reserved plan, and install lifecycle timestamps. Access and refresh tokens are excluded from normal Mongoose query results.
 
 ## AppointmentRule
 

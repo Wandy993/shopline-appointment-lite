@@ -1,6 +1,6 @@
 # Appointment Lite for SHOPLINE
 
-Version `0.1.0` — MVP artifact name: `appointment-lite-v0.1.0-mvp`
+Version `0.1.1` — zero-configuration App Block diagnostics release based on the `appointment-lite-v0.1.0-mvp` foundation.
 
 Appointment Lite turns selected SHOPLINE products into appointment or consultation services. It is designed for wedding fittings, jewelry consultations, furniture consultations, beauty services, classes, and made-to-order products.
 
@@ -79,7 +79,7 @@ Important settings:
 - `MONGODB_DB_NAME` selects an isolated logical database inside the MongoDB service. It defaults to `shopline_appointment_lite`, so Railway can safely provide `MONGODB_URI=${{MongoDB.MONGO_URL}}` without URI string concatenation.
 - `SHOPLINE_SCOPES` defaults to `read_products,read_store_information`.
 - `COOKIE_SAME_SITE=lax` is appropriate for redirect mode. Embedded iframe mode may require `none` with HTTPS and SHOPLINE App Bridge work.
-- `PUBLIC_ALLOWED_ORIGINS` should be set to the exact production storefront origins before launch. Empty is convenient for setup but intentionally permissive.
+- `PUBLIC_ALLOWED_ORIGINS` should remain empty for a multi-merchant public app because every merchant has different storefront domains. CORS is not authentication; use dynamic installed-shop origin validation in a later hardening release if required.
 - `RESEND_API_KEY`, `EMAIL_FROM`, and `MERCHANT_NOTIFICATION_EMAIL` are optional. Booking success does not depend on them.
 
 Generate secrets on macOS:
@@ -144,12 +144,9 @@ cd theme-app-extension
 sl extension push
 ```
 
-In the Theme Editor, add **Appointment Lite** to the product template. Set:
+In the Theme Editor, add **Appointment Lite** to the product template. The block has no settings: adding it is the switch on, and removing it is the switch off. The extension automatically reads `{{ shop.id }}` and `{{ product.id }}`; its production API URL is fixed in the extension asset.
 
-- API base URL: the Railway HTTPS domain, without a trailing path.
-- Shop handle: the prefix of `handle.myshopline.com`, also shown in the app's Storefront setup page.
-
-The App Block starts hidden. It only appears after the public rule endpoint confirms that the current `{{ product.id }}` has an enabled rule. SHOPLINE documents the OS 3.0 [extension structure](https://developer.shopline.com/docs/online-store-3-0-themes/integrate-apps-with-themes/theme-app-extension/structure?version=v20231201) and [`sl extension push`](https://developer.shopline.com/docs/online-store-3-0-themes/development-tools/cli/app-extension-commands/).
+The App Block starts hidden and only appears after the public rule endpoint confirms that the current product has an enabled rule. Theme-editor re-renders are handled through SHOPLINE events plus a DOM observer. Open the preview console and filter for `[Appointment Lite]` to see store/product identity, cache, request status, visibility decisions, availability, and booking diagnostics without logging customer PII. SHOPLINE documents the OS 3.0 [extension structure](https://developer.shopline.com/docs/online-store-3-0-themes/integrate-apps-with-themes/theme-app-extension/structure?version=v20231201) and [`sl extension push`](https://developer.shopline.com/docs/online-store-3-0-themes/development-tools/cli/app-extension-commands/).
 
 ## Tests and checks
 
@@ -163,7 +160,7 @@ Tests cover query signing/tampering, stateless session signing, weekday/date bou
 ## Security and production checklist
 
 - Use a 32+ character `SESSION_SECRET` and HTTPS `APP_URL`.
-- Restrict `PUBLIC_ALLOWED_ORIGINS` to real storefront domains.
+- Keep `PUBLIC_ALLOWED_ORIGINS` empty for multi-merchant distribution; add dynamic installed-shop origin validation if CORS tightening is later required.
 - Keep MongoDB private and enable backups.
 - Add SHOPLINE mandatory GDPR/uninstall webhooks before marketplace review.
 - Add bot protection and a stricter distributed rate limiter before high-volume public launch.

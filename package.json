@@ -1,9 +1,11 @@
 {
   "name": "appointment-lite",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "SHOPLINE Product Appointment & Consultation MVP",
   "type": "module",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",

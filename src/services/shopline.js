@@ -73,3 +73,16 @@ export async function shoplineGet(shopId, endpoint, query = {}) {
   if (!response.ok) throw new Error(`SHOPLINE API failed (${response.status}): ${payload.message || payload.errors || 'unknown error'}`);
   return payload;
 }
+
+export async function syncShopMetadata(shopId) {
+  const payload = await shoplineGet(shopId, 'merchants/shop.json');
+  const data = payload.data || payload.shop || payload;
+  const update = {
+    timezone: data.iana_timezone || 'UTC',
+    email: data.email || data.customer_email || '',
+    primaryDomain: String(data.domain || '').toLowerCase()
+  };
+  if (data.id !== undefined && data.id !== null && String(data.id)) update.shoplineStoreId = String(data.id);
+  await Shop.updateOne({ _id: shopId }, { $set: update });
+  return update;
+}

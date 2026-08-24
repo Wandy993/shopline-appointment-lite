@@ -24,15 +24,15 @@ Requires the signed `al_session` HTTP-only cookie. Mutations also require `X-CSR
 
 ## Public storefront API
 
-- `GET /api/public/rule?shop=HANDLE&productId=ID` — five-minute public cache
-- `GET /api/public/availability?shop=HANDLE&productId=ID&date=YYYY-MM-DD` — no-store
+- `GET /api/public/rule?shopId=STORE_ID&productId=ID` — five-minute public cache
+- `GET /api/public/availability?shopId=STORE_ID&productId=ID&date=YYYY-MM-DD` — no-store
 - `POST /api/public/bookings` — rate-limited; atomically confirms one slot
 
 Example body:
 
 ```json
 {
-  "shop": "demo",
+  "shopId": "1672369729606",
   "productId": "16050375155238626683133099",
   "date": "2026-08-24",
   "time": "10:00",

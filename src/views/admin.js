@@ -27,7 +27,7 @@ export function adminPage() {
             <article><span>Upcoming</span><strong id="upcomingCount">—</strong></article>
             <article><span>Current plan</span><strong id="planName">—</strong></article>
           </div>
-          <article class="card"><h2>Get ready to take appointments</h2><ol class="setup-list"><li>Create a rule and select a SHOPLINE product.</li><li>Deploy the backend and set the public API URL.</li><li>Create the Theme App Extension with SHOPLINE CLI, copy the supplied block source, and add it to the product template.</li></ol></article>
+          <article class="card"><h2>Get ready to take appointments</h2><ol class="setup-list"><li>Create a rule and select a SHOPLINE product.</li><li>Deploy the backend and confirm the health check.</li><li>Push the Theme App Extension and add its zero-configuration block to the product template.</li></ol></article>
         </section>
         <section id="rulesView" class="view hidden">
           <div class="page-heading"><div><h1>Appointment rules</h1><p>Turn selected products into bookable services.</p></div><button class="primary" data-new-rule>New rule</button></div>
@@ -39,7 +39,7 @@ export function adminPage() {
         </section>
         <section id="setupView" class="view hidden">
           <div class="page-heading"><div><h1>Storefront setup</h1><p>Complete this after creating the extension through SHOPLINE CLI.</p></div></div>
-          <article class="card prose"><h2>Extension values</h2><p>Use this store handle in the App Block settings:</p><code id="setupShopHandle">—</code><p>Use your deployed Railway URL as <strong>API base URL</strong>. Keep the App Block disabled until the backend health check passes.</p><p>The source files are in <code>theme-extension-source/</code>. The README contains the copy and push commands.</p></article>
+          <article class="card prose"><h2>Zero-configuration App Block</h2><p>The App Block has no merchant settings. Adding it to a product template turns the integration on; removing it turns the integration off.</p><p>The extension reads SHOPLINE's store ID and product ID automatically. It only becomes visible when that exact product has an enabled appointment rule.</p><p>For diagnostics, open the storefront preview console and filter for <code>[Appointment Lite]</code>. The source files are in <code>theme-extension-source/</code>.</p></article>
         </section>
       </main>
     </div>

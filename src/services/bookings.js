@@ -1,8 +1,8 @@
 import { AppointmentRule } from '../models/AppointmentRule.js';
 import { Booking } from '../models/Booking.js';
-import { Shop } from '../models/Shop.js';
 import { slotKey, slotsForDate } from '../lib/slots.js';
 import { sendBookingNotifications } from './email.js';
+import { findInstalledShop } from './shops.js';
 
 export class SlotConflictError extends Error { constructor() { super('This time was just booked. Please choose another slot.'); this.code = 'SLOT_CONFLICT'; } }
 
@@ -29,8 +29,8 @@ export async function createBookingAtomic({ shop, rule, input, BookingModel = Bo
   return booking;
 }
 
-export async function createBookingForStore({ handle, productId, input }) {
-  const shop = await Shop.findOne({ handle: handle.toLowerCase(), uninstalledAt: null });
+export async function createBookingForStore({ shopId, handle, productId, input }) {
+  const shop = await findInstalledShop({ shopId, shop: handle });
   if (!shop) throw Object.assign(new Error('Store is not available.'), { code: 'NOT_FOUND' });
   const rule = await AppointmentRule.findOne({ shopId: shop._id, productId, enabled: true });
   if (!rule) throw Object.assign(new Error('Appointments are not enabled for this product.'), { code: 'NOT_FOUND' });

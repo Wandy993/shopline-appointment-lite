@@ -4,19 +4,25 @@ import { Booking } from '../models/Booking.js';
 import { validateRuleInput } from '../lib/validation.js';
 import { requireAdmin, requireCsrf } from '../middleware/auth.js';
 import { limitsFor } from '../services/plans.js';
-import { shoplineGet } from '../services/shopline.js';
+import { shoplineGet, syncShopMetadata } from '../services/shopline.js';
 
 export const adminRouter = Router();
 adminRouter.use(requireAdmin, requireCsrf);
 
 adminRouter.get('/bootstrap', async (req, res) => {
+  if (!req.shop.shoplineStoreId) {
+    try {
+      const metadata = await syncShopMetadata(req.shop._id);
+      Object.assign(req.shop, metadata);
+    } catch (error) { console.warn('Could not refresh shop metadata:', error.message); }
+  }
   const [ruleCount, activeRuleCount, bookingCount, upcomingCount] = await Promise.all([
     AppointmentRule.countDocuments({ shopId: req.shop._id }),
     AppointmentRule.countDocuments({ shopId: req.shop._id, enabled: true }),
     Booking.countDocuments({ shopId: req.shop._id }),
     Booking.countDocuments({ shopId: req.shop._id, status: 'confirmed', date: { $gte: new Date().toISOString().slice(0, 10) } })
   ]);
-  res.json({ shop: { handle: req.shop.handle, locale: req.shop.locale, timezone: req.shop.timezone, plan: req.shop.plan }, limits: limitsFor(req.shop.plan), csrfToken: req.csrfToken, stats: { ruleCount, activeRuleCount, bookingCount, upcomingCount } });
+  res.json({ shop: { handle: req.shop.handle, storeId: req.shop.shoplineStoreId || '', locale: req.shop.locale, timezone: req.shop.timezone, plan: req.shop.plan }, limits: limitsFor(req.shop.plan), csrfToken: req.csrfToken, stats: { ruleCount, activeRuleCount, bookingCount, upcomingCount } });
 });
 
 adminRouter.get('/products', async (req, res, next) => {

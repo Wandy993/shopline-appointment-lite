@@ -2,21 +2,20 @@ import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { AppointmentRule } from '../models/AppointmentRule.js';
 import { Booking } from '../models/Booking.js';
-import { Shop } from '../models/Shop.js';
 import { slotsForDate } from '../lib/slots.js';
 import { validateBookingInput } from '../lib/validation.js';
 import { createBookingForStore } from '../services/bookings.js';
+import { findInstalledShop, validShopHandle, validShoplineStoreId } from '../services/shops.js';
 
 export const publicRouter = Router();
 const bookingLimiter = rateLimit({ windowMs: 60_000, limit: 10, standardHeaders: true, legacyHeaders: false, message: { error: 'RATE_LIMITED', message: 'Too many attempts. Please wait a minute.' } });
 
-function validHandle(value) { return /^[a-z0-9][a-z0-9-]{1,62}$/i.test(String(value || '')); }
-
 publicRouter.get('/rule', async (req, res) => {
   const handle = String(req.query.shop || '').toLowerCase();
+  const shopId = String(req.query.shopId || '').trim();
   const productId = String(req.query.productId || '');
-  if (!validHandle(handle) || !productId) return res.status(400).json({ error: 'INVALID_REQUEST', message: 'shop and productId are required.' });
-  const shop = await Shop.findOne({ handle, uninstalledAt: null }).lean();
+  if ((!validShoplineStoreId(shopId) && !validShopHandle(handle)) || !productId) return res.status(400).json({ error: 'INVALID_REQUEST', message: 'shopId (or legacy shop) and productId are required.' });
+  const shop = await findInstalledShop({ shopId, shop: handle });
   if (!shop) return res.status(404).json({ error: 'NOT_FOUND', message: 'Store not found.' });
   const rule = await AppointmentRule.findOne({ shopId: shop._id, productId, enabled: true }).lean();
   if (!rule) return res.status(404).json({ error: 'NOT_FOUND', message: 'No appointment rule for this product.' });
@@ -30,9 +29,10 @@ publicRouter.get('/rule', async (req, res) => {
 
 publicRouter.get('/availability', async (req, res) => {
   const handle = String(req.query.shop || '').toLowerCase();
+  const shopId = String(req.query.shopId || '').trim();
   const productId = String(req.query.productId || '');
   const date = String(req.query.date || '');
-  const shop = validHandle(handle) && await Shop.findOne({ handle, uninstalledAt: null }).lean();
+  const shop = await findInstalledShop({ shopId, shop: handle });
   if (!shop) return res.status(404).json({ error: 'NOT_FOUND', message: 'Store not found.' });
   const rule = await AppointmentRule.findOne({ shopId: shop._id, productId, enabled: true }).lean();
   if (!rule) return res.status(404).json({ error: 'NOT_FOUND', message: 'Appointment rule not found.' });
@@ -45,11 +45,12 @@ publicRouter.get('/availability', async (req, res) => {
 publicRouter.post('/bookings', bookingLimiter, async (req, res, next) => {
   try {
     const handle = String(req.body.shop || '').toLowerCase();
+    const shopId = String(req.body.shopId || '').trim();
     const { errors, value } = validateBookingInput(req.body);
-    if (!validHandle(handle)) errors.push('Invalid shop.');
+    if (!validShoplineStoreId(shopId) && !validShopHandle(handle)) errors.push('Invalid shop identity.');
     if (!value.productId) errors.push('Product is required.');
     if (errors.length) return res.status(422).json({ error: 'VALIDATION_ERROR', message: errors.join(' '), fields: errors });
-    const booking = await createBookingForStore({ handle, productId: value.productId, input: value });
+    const booking = await createBookingForStore({ shopId, handle, productId: value.productId, input: value });
     res.status(201).json({ booking: { id: booking._id, productTitle: booking.productTitle, date: booking.date, time: booking.time, location: booking.location, staff: booking.staff, status: booking.status } });
   } catch (error) { next(error); }
 });

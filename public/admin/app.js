@@ -113,7 +113,7 @@ function confirmAction(title, message, action) { $('#confirmTitle').textContent 
 
 async function loadBootstrap() {
   const payload = await api('/bootstrap'); state.csrf = payload.csrfToken; state.shop = payload.shop;
-  $('#shopBadge').textContent = `${payload.shop.handle}.myshopline.com`; $('#setupShopHandle').textContent = payload.shop.handle;
+  $('#shopBadge').textContent = `${payload.shop.handle}.myshopline.com`;
   $('#activeRuleCount').textContent = payload.stats.activeRuleCount; $('#bookingCount').textContent = payload.stats.bookingCount; $('#upcomingCount').textContent = payload.stats.upcomingCount; $('#planName').textContent = payload.limits.label;
 }
 

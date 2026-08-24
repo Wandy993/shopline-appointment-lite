@@ -1,13 +1,9 @@
 <div class="al-widget"
   data-appointment-lite
-  data-api-base="{{ block.settings.api_base_url }}"
-  data-shop-handle="{{ block.settings.shop_handle }}"
+  data-shop-id="{{ shop.id }}"
   data-product-id="{{ product.id }}"
-  data-button-label="{{ block.settings.button_label }}"
-  data-heading="{{ block.settings.heading }}"
-  data-accent-color="{{ block.settings.accent_color }}"
   hidden>
-  <button type="button" class="al-trigger">{{ block.settings.button_label }}</button>
+  <button type="button" class="al-trigger">Book an appointment</button>
   <div class="al-live" aria-live="polite"></div>
 </div>
 
@@ -19,12 +15,6 @@
   "javascript": ["appointment-lite.js"],
   "stylesheet": ["appointment-lite.css"],
   "limit": 1,
-  "settings": [
-    { "type": "text", "id": "api_base_url", "label": "API base URL", "default": "https://your-app.up.railway.app" },
-    { "type": "text", "id": "shop_handle", "label": "Shop handle", "default": "your-store-handle" },
-    { "type": "text", "id": "button_label", "label": "Button label", "default": "Book an appointment" },
-    { "type": "text", "id": "heading", "label": "Form heading", "default": "Book an appointment" },
-    { "type": "color", "id": "accent_color", "label": "Accent color", "default": "#166534" }
-  ]
+  "settings": []
 }
 {{/schema}}

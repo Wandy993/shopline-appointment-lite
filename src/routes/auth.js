@@ -3,7 +3,7 @@ import { Router } from 'express';
 import { config } from '../config.js';
 import { readSignedPayload, signPayload, verifyShoplineQuery } from '../lib/signature.js';
 import { Shop } from '../models/Shop.js';
-import { authorizationUrl, exchangeAuthorizationCode, shoplineGet } from '../services/shopline.js';
+import { authorizationUrl, exchangeAuthorizationCode, syncShopMetadata } from '../services/shopline.js';
 import { setSessionCookie } from '../middleware/auth.js';
 
 export const authRouter = Router();
@@ -42,11 +42,7 @@ authRouter.get('/callback', async (req, res, next) => {
     setSessionCookie(res, shop);
     // Enriching store details is best-effort; it must never block installation.
     try {
-      const details = await shoplineGet(shop._id, 'merchants/shop.json');
-      const data = details.data || details.shop || details;
-      if (data.iana_timezone || data.email) {
-        await Shop.updateOne({ _id: shop._id }, { timezone: data.iana_timezone || 'UTC', email: data.email || '' });
-      }
+      await syncShopMetadata(shop._id);
     } catch (error) { console.warn('Could not enrich shop metadata:', error.message); }
     res.redirect('/app');
   } catch (error) { next(error); }
