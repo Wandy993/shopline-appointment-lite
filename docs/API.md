@@ -27,7 +27,7 @@ Requires the signed `al_session` HTTP-only cookie. Mutations also require `X-CSR
 - `GET /api/public/rule?shopId=STORE_ID&productId=ID` — five-minute public cache
 - `GET /api/public/availability?shopId=STORE_ID&productId=ID&date=YYYY-MM-DD` — no-store
 - `POST /api/public/bookings` — rate-limited; atomically confirms one slot and returns a one-time management token
-- `POST /api/public/bookings/:id/status` — refresh status using the management token
+- `POST /api/public/bookings/:id/status` — refresh full status using the management token; legacy receipts may request only `confirmed`/`cancelled` with matching store and product IDs
 - `POST /api/public/bookings/:id/reschedule` — atomically move a confirmed booking using the management token
 - `POST /api/public/bookings/:id/cancel` — cancel a confirmed booking using the management token
 

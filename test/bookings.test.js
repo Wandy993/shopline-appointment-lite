@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cancelManagedBooking, createBookingAtomic, hashManagementToken, rescheduleManagedBooking, SlotConflictError } from '../src/services/bookings.js';
+import { cancelManagedBooking, createBookingAtomic, getLegacyBookingStatus, hashManagementToken, rescheduleManagedBooking, SlotConflictError } from '../src/services/bookings.js';
 
 const shop = { _id: 'shop1', timezone: 'Asia/Shanghai', email: '' };
 const rule = {
@@ -38,6 +38,17 @@ test('customer cancellation requires the hashed management token', async () => {
   assert.equal(booking.status, 'cancelled');
   assert.equal(filter.managementTokenHash, hashManagementToken(token));
   assert.notEqual(filter.managementTokenHash, token);
+});
+
+test('legacy receipt status lookup returns only identity and status', async () => {
+  let filter;
+  let projection;
+  const BookingModel = { async findOne(query, fields) { filter = query; projection = fields; return { _id: 'b1', status: 'cancelled', customer: { email: 'private@example.com' } }; } };
+  const result = await getLegacyBookingStatus({ bookingId: 'b1', shopObjectId: 'shop1', productId: 'product1', BookingModel });
+  assert.deepEqual(result, { id: 'b1', status: 'cancelled' });
+  assert.deepEqual(filter, { _id: 'b1', shopId: 'shop1', productId: 'product1' });
+  assert.deepEqual(projection, { _id: 1, status: 1 });
+  assert.equal('customer' in result, false);
 });
 
 test('customer reschedule validates the rule and atomically moves the slot', async () => {

@@ -4,7 +4,7 @@ import { AppointmentRule } from '../models/AppointmentRule.js';
 import { Booking } from '../models/Booking.js';
 import { slotsForDate } from '../lib/slots.js';
 import { validateBookingInput, validateSlotInput } from '../lib/validation.js';
-import { cancelManagedBooking, createBookingForStore, getManagedBooking, rescheduleManagedBooking } from '../services/bookings.js';
+import { cancelManagedBooking, createBookingForStore, getLegacyBookingStatus, getManagedBooking, rescheduleManagedBooking } from '../services/bookings.js';
 import { findInstalledShop, validShopHandle, validShoplineStoreId } from '../services/shops.js';
 
 export const publicRouter = Router();
@@ -63,9 +63,18 @@ publicRouter.post('/bookings', bookingLimiter, async (req, res, next) => {
 publicRouter.post('/bookings/:id/status', bookingLimiter, async (req, res, next) => {
   try {
     if (!validBookingId(req.params.id)) return res.status(404).json({ error: 'NOT_FOUND', message: 'Booking not found or management access has expired.' });
-    const booking = await getManagedBooking({ bookingId: req.params.id, token: req.body.managementToken });
     res.set('Cache-Control', 'no-store');
-    res.json({ booking: publicBooking(booking) });
+    if (req.body.managementToken) {
+      const booking = await getManagedBooking({ bookingId: req.params.id, token: req.body.managementToken });
+      return res.json({ booking: publicBooking(booking) });
+    }
+    const shopId = String(req.body.shopId || '').trim();
+    const productId = String(req.body.productId || '').trim();
+    if (!validShoplineStoreId(shopId) || !productId) return res.status(404).json({ error: 'NOT_FOUND', message: 'Booking not found.' });
+    const shop = await findInstalledShop({ shopId });
+    if (!shop) return res.status(404).json({ error: 'NOT_FOUND', message: 'Booking not found.' });
+    const booking = await getLegacyBookingStatus({ bookingId: req.params.id, shopObjectId: shop._id, productId });
+    res.json({ booking });
   } catch (error) { next(error); }
 });
 

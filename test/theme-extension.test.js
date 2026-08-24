@@ -40,6 +40,7 @@ test('confirmed booking is remembered without storing customer PII', async () =>
   assert.match(asset, /Change date or time/);
   assert.match(asset, /Cancel appointment/);
   assert.match(asset, /saveBookingReceipt\(context, payload\.booking\)/);
+  assert.match(asset, /\{ shopId: context\.shopId, productId: context\.productId \}/);
   assert.doesNotMatch(asset, /receipt\.(?:name|email|phone)|booking\.customer/);
   assert.match(stylesheet, /\.al-booked\{/);
 });

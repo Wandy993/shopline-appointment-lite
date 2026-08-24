@@ -59,6 +59,15 @@ export async function getManagedBooking({ bookingId, token, BookingModel = Booki
   return booking;
 }
 
+export async function getLegacyBookingStatus({ bookingId, shopObjectId, productId, BookingModel = Booking }) {
+  const booking = await BookingModel.findOne(
+    { _id: bookingId, shopId: shopObjectId, productId },
+    { _id: 1, status: 1 }
+  );
+  if (!booking) throw accessError();
+  return { id: booking._id, status: booking.status };
+}
+
 export async function cancelManagedBooking({ bookingId, token, BookingModel = Booking }) {
   if (!validManagementToken(token)) throw accessError();
   const booking = await BookingModel.findOneAndUpdate(

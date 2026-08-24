@@ -1,6 +1,6 @@
 {
   "name": "appointment-lite",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "SHOPLINE Product Appointment & Consultation MVP",
   "type": "module",
   "engines": {

@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = '0.1.5';
+  const VERSION = '0.1.6';
   const API_BASE = 'https://shopline-appointment-lite-production.up.railway.app';
   const CACHE_TTL = 5 * 60 * 1000;
   const SELECTOR = '[data-appointment-lite]:not([data-al-ready])';
@@ -145,18 +145,22 @@
   }
 
   async function syncBookingState(widget, rule, context, receipt) {
-    if (!receipt?.id || !receipt.managementToken) return;
+    if (!receipt?.id) return;
     try {
       const payload = await requestJson(apiUrl(`/api/public/bookings/${receipt.id}/status`), {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ managementToken: receipt.managementToken })
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(receipt.managementToken
+          ? { managementToken: receipt.managementToken }
+          : { shopId: context.shopId, productId: context.productId })
       }, 'booking status');
       if (payload.booking.status !== 'confirmed') {
         localStorage.removeItem(receiptKey(context));
         renderBookingState(widget, rule, context);
         return;
       }
-      const refreshed = saveBookingReceipt(context, payload.booking, receipt.managementToken);
-      renderBookingState(widget, rule, context, refreshed);
+      if (receipt.managementToken) {
+        const refreshed = saveBookingReceipt(context, payload.booking, receipt.managementToken);
+        renderBookingState(widget, rule, context, refreshed);
+      }
     } catch (error) {
       if (error.status === 404) {
         localStorage.removeItem(receiptKey(context));
