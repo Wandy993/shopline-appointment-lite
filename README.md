@@ -67,6 +67,7 @@ Copy `.env.example` to `.env` and fill at least:
 ```dotenv
 APP_URL=http://localhost:3000
 MONGODB_URI=mongodb://127.0.0.1:27017/appointment-lite
+MONGODB_DB_NAME=shopline_appointment_lite
 SHOPLINE_APP_KEY=...
 SHOPLINE_APP_SECRET=...
 SESSION_SECRET=...
@@ -75,6 +76,7 @@ SESSION_SECRET=...
 Important settings:
 
 - `SHOPLINE_API_VERSION` defaults to `v20260301` and is centralized for upgrades.
+- `MONGODB_DB_NAME` selects an isolated logical database inside the MongoDB service. It defaults to `shopline_appointment_lite`, so Railway can safely provide `MONGODB_URI=${{MongoDB.MONGO_URL}}` without URI string concatenation.
 - `SHOPLINE_SCOPES` defaults to `read_products,read_store_information`.
 - `COOKIE_SAME_SITE=lax` is appropriate for redirect mode. Embedded iframe mode may require `none` with HTTPS and SHOPLINE App Bridge work.
 - `PUBLIC_ALLOWED_ORIGINS` should be set to the exact production storefront origins before launch. Empty is convenient for setup but intentionally permissive.

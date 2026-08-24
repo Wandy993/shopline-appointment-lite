@@ -15,6 +15,7 @@ export const config = Object.freeze({
   port: Number(process.env.PORT || 3000),
   appUrl,
   mongoUri: required('MONGODB_URI', 'mongodb://127.0.0.1:27017/appointment-lite'),
+  mongoDbName: process.env.MONGODB_DB_NAME || 'shopline_appointment_lite',
   shopline: {
     appKey: required('SHOPLINE_APP_KEY'),
     appSecret: required('SHOPLINE_APP_SECRET'),
