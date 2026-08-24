@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = '0.1.1';
+  const VERSION = '0.1.2';
   const API_BASE = 'https://shopline-appointment-lite-production.up.railway.app';
   const CACHE_TTL = 5 * 60 * 1000;
   const SELECTOR = '[data-appointment-lite]:not([data-al-ready])';
