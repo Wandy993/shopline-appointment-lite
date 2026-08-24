@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = '0.1.4';
+  const VERSION = '0.1.5';
   const API_BASE = 'https://shopline-appointment-lite-production.up.railway.app';
   const CACHE_TTL = 5 * 60 * 1000;
   const SELECTOR = '[data-appointment-lite]:not([data-al-ready])';
@@ -105,7 +105,7 @@
     }
   }
 
-  function saveBookingReceipt(context, booking) {
+  function saveBookingReceipt(context, booking, existingToken = '') {
     const receipt = {
       id: String(booking.id || ''),
       date: String(booking.date || ''),
@@ -113,6 +113,7 @@
       location: String(booking.location || ''),
       staff: String(booking.staff || ''),
       status: 'confirmed',
+      managementToken: String(booking.managementToken || existingToken || ''),
       savedAt: Date.now()
     };
     try {
@@ -137,10 +138,33 @@
     const status = document.createElement('section');
     status.className = 'al-booked';
     status.setAttribute('aria-label', 'Appointment booked');
-    status.innerHTML = `<div class="al-booked-copy"><span class="al-booked-label">Appointment booked</span><strong>${text(receipt.date)} at ${text(receipt.time)}</strong>${details ? `<span>${details}</span>` : ''}<small>Saved on this device</small></div><button type="button" class="al-secondary">Book another appointment</button>`;
-    status.querySelector('.al-secondary').addEventListener('click', () => open(widget, rule, context));
+    status.innerHTML = `<div class="al-booked-copy"><span class="al-booked-label">Appointment booked</span><strong>${text(receipt.date)} at ${text(receipt.time)}</strong>${details ? `<span>${details}</span>` : ''}<small>${receipt.managementToken ? 'Manage this appointment from this device' : 'Contact the store to change this appointment'}</small></div>${receipt.managementToken ? '<button type="button" class="al-secondary">Manage appointment</button>' : ''}`;
+    status.querySelector('.al-secondary')?.addEventListener('click', () => openManage(widget, rule, context, receipt));
     trigger.insertAdjacentElement('afterend', status);
     info('Stored booking status rendered.', { ...context, bookingId: receipt.id, date: receipt.date, time: receipt.time });
+  }
+
+  async function syncBookingState(widget, rule, context, receipt) {
+    if (!receipt?.id || !receipt.managementToken) return;
+    try {
+      const payload = await requestJson(apiUrl(`/api/public/bookings/${receipt.id}/status`), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ managementToken: receipt.managementToken })
+      }, 'booking status');
+      if (payload.booking.status !== 'confirmed') {
+        localStorage.removeItem(receiptKey(context));
+        renderBookingState(widget, rule, context);
+        return;
+      }
+      const refreshed = saveBookingReceipt(context, payload.booking, receipt.managementToken);
+      renderBookingState(widget, rule, context, refreshed);
+    } catch (error) {
+      if (error.status === 404) {
+        localStorage.removeItem(receiptKey(context));
+        renderBookingState(widget, rule, context);
+      } else {
+        warn('Booking status refresh failed; keeping the local receipt.', { ...context, status: error.status, message: error.message });
+      }
+    }
   }
 
   function showEditorDiagnostic(widget, message) {
@@ -183,7 +207,9 @@
       widget.dataset.alStatus = 'ready';
       const trigger = widget.querySelector('.al-trigger');
       trigger.addEventListener('click', () => open(widget, payload.rule, context));
-      renderBookingState(widget, payload.rule, context);
+      const receipt = readBookingReceipt(context);
+      renderBookingState(widget, payload.rule, context, receipt);
+      syncBookingState(widget, payload.rule, context, receipt);
       info('App Block is visible and ready.', { ...context, ruleId: payload.rule.id, productTitle: payload.rule.productTitle });
     } catch (error) {
       widget.dataset.alStatus = error.status === 404 ? 'no-rule' : 'error';
@@ -229,11 +255,121 @@
   });
   debug.observer.observe(document.documentElement, { childList: true, subtree: true });
 
+  function mountDialog(dialog) {
+    dialog.className = 'al-dialog';
+    dialog.style.setProperty('--al-accent', '#166534');
+    document.body.append(dialog);
+    dialog.showModal();
+    dialog.querySelector('.al-close')?.addEventListener('click', () => dialog.close());
+    dialog.addEventListener('close', () => dialog.remove());
+    dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); });
+  }
+
+  function appointmentDetails(receipt) {
+    const details = [receipt.location, receipt.staff].filter(Boolean).map(text).join(' · ');
+    return `<div class="al-manage-summary"><span>Current appointment</span><strong>${text(receipt.date)} at ${text(receipt.time)}</strong>${details ? `<p>${details}</p>` : ''}</div>`;
+  }
+
+  function openManage(widget, rule, context, receipt) {
+    info('Booking management dialog opened.', { ...context, bookingId: receipt.id });
+    const dialog = document.createElement('dialog');
+    dialog.innerHTML = `<div class="al-head"><div><h2>Manage appointment</h2><p>${text(rule.productTitle)}</p></div><button class="al-close" type="button" aria-label="Close">×</button></div><div class="al-manage">${appointmentDetails(receipt)}<div class="al-error" hidden role="alert"></div><div class="al-manage-actions"><button type="button" class="al-submit al-reschedule">Change date or time</button><button type="button" class="al-danger al-cancel">Cancel appointment</button></div></div>`;
+    mountDialog(dialog);
+    dialog.querySelector('.al-reschedule').addEventListener('click', () => {
+      dialog.close();
+      openReschedule(widget, rule, context, receipt);
+    });
+    dialog.querySelector('.al-cancel').addEventListener('click', () => {
+      const actions = dialog.querySelector('.al-manage-actions');
+      actions.innerHTML = '<div class="al-confirm-copy"><strong>Cancel this appointment?</strong><p>The reserved time will become available to other customers.</p></div><div class="al-confirm-actions"><button type="button" class="al-secondary al-keep">Keep appointment</button><button type="button" class="al-danger al-confirm-cancel">Yes, cancel</button></div>';
+      actions.querySelector('.al-keep').addEventListener('click', () => {
+        dialog.close();
+        openManage(widget, rule, context, receipt);
+      });
+      actions.querySelector('.al-confirm-cancel').addEventListener('click', async event => {
+        const button = event.currentTarget;
+        const errorBox = dialog.querySelector('.al-error');
+        button.disabled = true;
+        button.textContent = 'Cancelling…';
+        errorBox.hidden = true;
+        try {
+          await requestJson(apiUrl(`/api/public/bookings/${receipt.id}/cancel`), {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ managementToken: receipt.managementToken })
+          }, 'booking cancellation');
+          localStorage.removeItem(receiptKey(context));
+          renderBookingState(widget, rule, context);
+          dialog.querySelector('.al-manage').innerHTML = '<div class="al-success"><h3>Appointment cancelled</h3><p>Your reserved time has been released.</p><button class="al-submit" type="button">Done</button></div>';
+          dialog.querySelector('.al-submit').addEventListener('click', () => dialog.close());
+          info('Booking cancelled by customer.', { ...context, bookingId: receipt.id });
+        } catch (error) {
+          errorBox.textContent = error.message;
+          errorBox.hidden = false;
+          button.disabled = false;
+          button.textContent = 'Yes, cancel';
+          failure('Booking cancellation failed.', { ...context, bookingId: receipt.id, status: error.status, message: error.message });
+        }
+      });
+    });
+  }
+
+  function openReschedule(widget, rule, context, receipt) {
+    info('Booking reschedule dialog opened.', { ...context, bookingId: receipt.id });
+    const dialog = document.createElement('dialog');
+    const today = new Date().toISOString().slice(0, 10);
+    const minDate = rule.dateFrom && rule.dateFrom > today ? rule.dateFrom : today;
+    dialog.innerHTML = `<div class="al-head"><div><h2>Change date or time</h2><p>${text(rule.productTitle)}</p></div><button class="al-close" type="button" aria-label="Close">×</button></div><form class="al-form"><div class="al-form-body">${appointmentDetails(receipt)}<div class="al-grid"><div class="al-field"><label for="al-reschedule-date">New date</label><input id="al-reschedule-date" name="date" type="date" min="${minDate}" ${rule.dateUntil ? `max="${rule.dateUntil}"` : ''} required></div><div><span class="al-legend">New time</span><div class="al-times"><span class="al-muted">Choose a date first.</span></div></div></div></div><div class="al-actions"><div class="al-error" hidden role="alert"></div><button class="al-submit" type="submit">Save changes</button></div></form>`;
+    mountDialog(dialog);
+    const dateInput = dialog.querySelector('[name=date]');
+    const times = dialog.querySelector('.al-times');
+    let selectedTime = '';
+    dateInput.addEventListener('change', async () => {
+      selectedTime = '';
+      times.innerHTML = '<span class="al-muted">Loading times…</span>';
+      try {
+        const payload = await requestJson(apiUrl('/api/public/availability', { ...context, date: dateInput.value }), {}, 'reschedule availability');
+        times.innerHTML = payload.slots.length ? payload.slots.map(time => `<button type="button" class="al-time" data-time="${time}" aria-pressed="false">${time}</button>`).join('') : '<span class="al-muted">No times available on this date.</span>';
+        times.querySelectorAll('.al-time').forEach(button => button.addEventListener('click', () => {
+          selectedTime = button.dataset.time;
+          times.querySelectorAll('.al-time').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
+        }));
+      } catch (error) {
+        times.innerHTML = '<span class="al-muted">Could not load times. Please try another date.</span>';
+      }
+    });
+    dialog.querySelector('form').addEventListener('submit', async event => {
+      event.preventDefault();
+      const errorBox = dialog.querySelector('.al-error');
+      if (!selectedTime) {
+        errorBox.textContent = 'Please select a new time.';
+        errorBox.hidden = false;
+        return;
+      }
+      const submit = dialog.querySelector('.al-submit');
+      submit.disabled = true;
+      submit.textContent = 'Saving…';
+      errorBox.hidden = true;
+      try {
+        const payload = await requestJson(apiUrl(`/api/public/bookings/${receipt.id}/reschedule`), {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ managementToken: receipt.managementToken, date: dateInput.value, time: selectedTime })
+        }, 'booking reschedule');
+        const refreshed = saveBookingReceipt(context, payload.booking, receipt.managementToken);
+        renderBookingState(widget, rule, context, refreshed);
+        dialog.querySelector('.al-form').innerHTML = `<div class="al-success"><h3>Appointment updated</h3><p>${text(payload.booking.date)} at ${text(payload.booking.time)}</p><button class="al-submit" type="button">Done</button></div>`;
+        dialog.querySelector('.al-submit').addEventListener('click', () => dialog.close());
+        info('Booking rescheduled by customer.', { ...context, bookingId: receipt.id, date: payload.booking.date, time: payload.booking.time });
+      } catch (error) {
+        errorBox.textContent = error.status === 409 ? 'That time is no longer available. Please choose another time.' : error.message;
+        errorBox.hidden = false;
+        submit.disabled = false;
+        submit.textContent = 'Save changes';
+        failure('Booking reschedule failed.', { ...context, bookingId: receipt.id, status: error.status, message: error.message });
+      }
+    });
+  }
+
   function open(widget, rule, context) {
     info('Booking dialog opened.', { ...context, ruleId: rule.id });
     const dialog = document.createElement('dialog');
-    dialog.className = 'al-dialog';
-    dialog.style.setProperty('--al-accent', '#166534');
     const today = new Date().toISOString().slice(0, 10);
     const minDate = rule.dateFrom && rule.dateFrom > today ? rule.dateFrom : today;
     dialog.innerHTML = `<div class="al-head"><div><h2>Book an appointment</h2><p>${text(rule.productTitle)}</p></div><button class="al-close" type="button" aria-label="Close">×</button></div><form class="al-form"><div class="al-form-body"><div class="al-meta">${rule.duration} minutes${rule.location ? ` · ${text(rule.location)}` : ''}${rule.staff ? ` · ${text(rule.staff)}` : ''}</div><div class="al-grid"><div class="al-field"><label for="al-date">Date</label><input id="al-date" name="date" type="date" min="${minDate}" ${rule.dateUntil ? `max="${rule.dateUntil}"` : ''} required></div><div><span class="al-legend">Time</span><div class="al-times"><span class="al-muted">Choose a date first.</span></div></div></div><div class="al-grid"><div class="al-field"><label for="al-name">Name</label><input id="al-name" name="name" autocomplete="name" maxlength="120" required></div><div class="al-field"><label for="al-email">Email</label><input id="al-email" name="email" type="email" autocomplete="email" maxlength="254" required></div></div><div class="al-field"><label for="al-phone">Phone (optional)</label><input id="al-phone" name="phone" type="tel" autocomplete="tel" maxlength="40"></div><div class="al-field"><label for="al-note">${text(rule.questionLabel || 'Anything we should know?')}</label><textarea id="al-note" name="note" maxlength="2000"></textarea></div><div class="al-questions"></div></div><div class="al-actions"><div class="al-error" hidden role="alert"></div><button class="al-submit" type="submit">Confirm booking</button></div></form>`;
@@ -241,11 +377,7 @@
     (rule.customQuestions || []).forEach((question, index) => {
       questions.insertAdjacentHTML('beforeend', `<div class="al-field"><label for="al-q-${index}">${text(question.label)}</label><input id="al-q-${index}" data-question="${text(question.label)}" maxlength="1000" ${question.required ? 'required' : ''}></div>`);
     });
-    document.body.append(dialog);
-    dialog.showModal();
-    dialog.querySelector('.al-close').addEventListener('click', () => dialog.close());
-    dialog.addEventListener('close', () => dialog.remove());
-    dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); });
+    mountDialog(dialog);
     const dateInput = dialog.querySelector('[name=date]');
     const times = dialog.querySelector('.al-times');
     let selectedTime = '';

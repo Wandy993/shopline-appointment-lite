@@ -1,6 +1,6 @@
 # Appointment Lite for SHOPLINE
 
-Version `0.1.4` — privacy-safe storefront booking receipt based on the `appointment-lite-v0.1.0-mvp` foundation.
+Version `0.1.5` — secure customer cancellation and rescheduling based on the `appointment-lite-v0.1.0-mvp` foundation.
 
 Appointment Lite turns selected SHOPLINE products into appointment or consultation services. It is designed for wedding fittings, jewelry consultations, furniture consultations, beauty services, classes, and made-to-order products.
 
@@ -148,7 +148,7 @@ In the Theme Editor, add **Appointment Lite** to the product template. The block
 
 The App Block starts hidden and only appears after the public rule endpoint confirms that the current product has an enabled rule. Theme-editor re-renders are handled through SHOPLINE events plus a DOM observer. Open the preview console and filter for `[Appointment Lite]` to see store/product identity, cache, request status, visibility decisions, availability, and booking diagnostics without logging customer PII. SHOPLINE documents the OS 3.0 [extension structure](https://developer.shopline.com/docs/online-store-3-0-themes/integrate-apps-with-themes/theme-app-extension/structure?version=v20231201) and [`sl extension push`](https://developer.shopline.com/docs/online-store-3-0-themes/development-tools/cli/app-extension-commands/).
 
-After a successful booking, the storefront stores a minimal receipt (booking ID, date, time, location, and staff) in that browser's local storage. On later visits to the same product, the block shows the confirmed appointment and a secondary “Book another appointment” action. The receipt deliberately excludes customer PII and expires after the appointment date. Cross-device lookup and cancellation synchronization require verified customer identity and are outside the MVP.
+After a successful booking, the storefront stores a minimal receipt (booking ID, private management token, date, time, location, and staff) in that browser's local storage. On later visits to the same product, the block shows the confirmed appointment and a “Manage appointment” action. The customer can securely reschedule or cancel without exposing customer PII or allowing access by booking ID alone. The backend stores only a SHA-256 hash of the management token, and the storefront refreshes status only when that device has a receipt. The receipt expires after the appointment date. Cross-device lookup still requires future email verification or an authenticated customer account.
 
 ## Tests and checks
 

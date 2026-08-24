@@ -68,3 +68,12 @@ export function validateBookingInput(body) {
     }))
   }};
 }
+
+export function validateSlotInput(body) {
+  const errors = [];
+  const date = text(body.date, 10);
+  const time = text(body.time, 5);
+  if (!DATE_PATTERN.test(date)) errors.push('A valid date is required.');
+  if (!TIME_PATTERN.test(time)) errors.push('A valid time is required.');
+  return { errors, value: { date, time } };
+}

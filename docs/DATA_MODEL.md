@@ -26,7 +26,7 @@ The UI edits one time window per day in v0.1.0, while the model and slot generat
 
 Bookings preserve a snapshot of product title, duration, buffer, timezone, location, and staff so historical records remain readable after rule changes.
 
-Customer data contains name, email, optional phone, note, and answers. Status is `confirmed` or `cancelled`.
+Customer data contains name, email, optional phone, note, and answers. Status is `confirmed` or `cancelled`. `managementTokenHash` stores only the SHA-256 hash of a high-entropy token returned once to the booking browser; it authorizes customer status checks, cancellation, and rescheduling without exposing customer data or trusting a booking ID alone.
 
 ### Atomic conflict protection
 
@@ -37,7 +37,7 @@ Each booking has `slotKey = YYYY-MM-DDTHH:mm`. MongoDB owns this partial unique 
 unique where { status: 'confirmed' }
 ```
 
-Two simultaneous inserts for the same slot race at the database. Exactly one succeeds; the other gets duplicate-key error `11000`, which the service converts into HTTP `409 SLOT_CONFLICT`. Cancelling changes status to `cancelled`, removing the document from the partial index and making the slot bookable again without deleting history.
+Two simultaneous inserts or reschedules for the same slot race at the database. Exactly one succeeds; the other gets duplicate-key error `11000`, which the service converts into HTTP `409 SLOT_CONFLICT`. Rescheduling also filters on the booking's previous `slotKey` so two concurrent changes cannot silently overwrite each other. Cancelling changes status to `cancelled`, removing the document from the partial index and making the slot bookable again without deleting history.
 
 The server regenerates valid slots from the stored rule before inserting. A customer cannot create an arbitrary time by bypassing the browser UI.
 

@@ -10,6 +10,18 @@
 .al-booked-copy small{font-size:12px;color:#6b7280}
 .al-secondary{flex:0 0 auto;border:1px solid var(--al-accent,#166534);border-radius:7px;background:#fff;color:var(--al-accent,#166534);font:inherit;font-weight:600;padding:9px 12px;cursor:pointer}
 .al-secondary:hover{background:#dcfce7}
+.al-manage{padding:22px;overflow:auto}
+.al-manage-summary{display:flex;flex-direction:column;gap:4px;border-radius:9px;background:#f0fdf4;padding:14px 16px;color:#14532d;margin-bottom:18px}
+.al-manage-summary span{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.03em}
+.al-manage-summary strong{font-size:17px}
+.al-manage-summary p{margin:0;color:#3f6212}
+.al-manage-actions{display:grid;gap:10px}
+.al-danger{width:100%;border:1px solid #dc2626;border-radius:8px;background:#fff;color:#b91c1c;font:inherit;font-weight:600;padding:12px 16px;cursor:pointer}
+.al-danger:hover{background:#fef2f2}
+.al-danger:disabled{opacity:.55;cursor:wait}
+.al-confirm-copy{text-align:center;margin-bottom:4px}
+.al-confirm-copy p{margin:5px 0 0;color:#6b7280}
+.al-confirm-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .al-dialog{--al-accent:#166534;width:min(620px,calc(100% - 28px));max-height:90vh;border:0;border-radius:14px;padding:0;color:#1f2937;background:#fff;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden}
 .al-dialog[open]{display:flex;flex-direction:column}
 .al-dialog::backdrop{background:rgba(17,24,39,.58)}
@@ -37,4 +49,4 @@
 .al-live{font-size:13px;margin-top:7px;color:#b91c1c}
 .al-submit:disabled{opacity:.55;cursor:wait}
 .al-muted{font-size:13px;color:#6b7280;margin:0 0 14px}
-@media(max-width:540px){.al-grid{grid-template-columns:1fr}.al-booked{align-items:flex-start;flex-direction:column}.al-secondary{width:100%}.al-dialog{max-height:96vh}.al-form-body{padding:18px 18px 0}.al-actions{padding:12px 18px 18px}}
+@media(max-width:540px){.al-grid,.al-confirm-actions{grid-template-columns:1fr}.al-booked{align-items:flex-start;flex-direction:column}.al-secondary{width:100%}.al-dialog{max-height:96vh}.al-form-body{padding:18px 18px 0}.al-actions{padding:12px 18px 18px}.al-manage{padding:18px}}

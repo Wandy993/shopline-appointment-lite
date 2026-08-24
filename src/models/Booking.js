@@ -18,6 +18,7 @@ const bookingSchema = new mongoose.Schema({
   timezone: { type: String, default: 'UTC' },
   location: { type: String, default: '' },
   staff: { type: String, default: '' },
+  managementTokenHash: { type: String, required: true, select: false },
   customer: {
     name: { type: String, required: true, maxlength: 120 },
     email: { type: String, required: true, lowercase: true, maxlength: 254 },

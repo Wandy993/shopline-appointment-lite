@@ -36,7 +36,9 @@ test('confirmed booking is remembered without storing customer PII', async () =>
   const stylesheet = await readFile(new URL('../theme-extension-source/public/appointment-lite.css', import.meta.url), 'utf8');
   assert.match(asset, /`al-booking:\$\{context\.shopId\}:\$\{context\.productId\}`/);
   assert.match(asset, /Appointment booked/);
-  assert.match(asset, /Book another appointment/);
+  assert.match(asset, /Manage appointment/);
+  assert.match(asset, /Change date or time/);
+  assert.match(asset, /Cancel appointment/);
   assert.match(asset, /saveBookingReceipt\(context, payload\.booking\)/);
   assert.doesNotMatch(asset, /receipt\.(?:name|email|phone)|booking\.customer/);
   assert.match(stylesheet, /\.al-booked\{/);

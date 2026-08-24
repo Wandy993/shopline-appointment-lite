@@ -3,12 +3,17 @@ import rateLimit from 'express-rate-limit';
 import { AppointmentRule } from '../models/AppointmentRule.js';
 import { Booking } from '../models/Booking.js';
 import { slotsForDate } from '../lib/slots.js';
-import { validateBookingInput } from '../lib/validation.js';
-import { createBookingForStore } from '../services/bookings.js';
+import { validateBookingInput, validateSlotInput } from '../lib/validation.js';
+import { cancelManagedBooking, createBookingForStore, getManagedBooking, rescheduleManagedBooking } from '../services/bookings.js';
 import { findInstalledShop, validShopHandle, validShoplineStoreId } from '../services/shops.js';
 
 export const publicRouter = Router();
 const bookingLimiter = rateLimit({ windowMs: 60_000, limit: 10, standardHeaders: true, legacyHeaders: false, message: { error: 'RATE_LIMITED', message: 'Too many attempts. Please wait a minute.' } });
+
+function validBookingId(value) { return /^[a-f\d]{24}$/i.test(String(value || '')); }
+function publicBooking(booking) {
+  return { id: booking._id, productTitle: booking.productTitle, date: booking.date, time: booking.time, location: booking.location, staff: booking.staff, status: booking.status };
+}
 
 publicRouter.get('/rule', async (req, res) => {
   const handle = String(req.query.shop || '').toLowerCase();
@@ -50,7 +55,36 @@ publicRouter.post('/bookings', bookingLimiter, async (req, res, next) => {
     if (!validShoplineStoreId(shopId) && !validShopHandle(handle)) errors.push('Invalid shop identity.');
     if (!value.productId) errors.push('Product is required.');
     if (errors.length) return res.status(422).json({ error: 'VALIDATION_ERROR', message: errors.join(' '), fields: errors });
-    const booking = await createBookingForStore({ shopId, handle, productId: value.productId, input: value });
-    res.status(201).json({ booking: { id: booking._id, productTitle: booking.productTitle, date: booking.date, time: booking.time, location: booking.location, staff: booking.staff, status: booking.status } });
+    const { booking, managementToken } = await createBookingForStore({ shopId, handle, productId: value.productId, input: value });
+    res.status(201).json({ booking: { ...publicBooking(booking), managementToken } });
+  } catch (error) { next(error); }
+});
+
+publicRouter.post('/bookings/:id/status', bookingLimiter, async (req, res, next) => {
+  try {
+    if (!validBookingId(req.params.id)) return res.status(404).json({ error: 'NOT_FOUND', message: 'Booking not found or management access has expired.' });
+    const booking = await getManagedBooking({ bookingId: req.params.id, token: req.body.managementToken });
+    res.set('Cache-Control', 'no-store');
+    res.json({ booking: publicBooking(booking) });
+  } catch (error) { next(error); }
+});
+
+publicRouter.post('/bookings/:id/cancel', bookingLimiter, async (req, res, next) => {
+  try {
+    if (!validBookingId(req.params.id)) return res.status(404).json({ error: 'NOT_FOUND', message: 'Booking not found or management access has expired.' });
+    const booking = await cancelManagedBooking({ bookingId: req.params.id, token: req.body.managementToken });
+    res.set('Cache-Control', 'no-store');
+    res.json({ booking: publicBooking(booking) });
+  } catch (error) { next(error); }
+});
+
+publicRouter.post('/bookings/:id/reschedule', bookingLimiter, async (req, res, next) => {
+  try {
+    if (!validBookingId(req.params.id)) return res.status(404).json({ error: 'NOT_FOUND', message: 'Booking not found or management access has expired.' });
+    const { errors, value } = validateSlotInput(req.body);
+    if (errors.length) return res.status(422).json({ error: 'VALIDATION_ERROR', message: errors.join(' '), fields: errors });
+    const booking = await rescheduleManagedBooking({ bookingId: req.params.id, token: req.body.managementToken, date: value.date, time: value.time });
+    res.set('Cache-Control', 'no-store');
+    res.json({ booking: publicBooking(booking) });
   } catch (error) { next(error); }
 });
