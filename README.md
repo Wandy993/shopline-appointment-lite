@@ -1,6 +1,6 @@
 # Appointment Lite for SHOPLINE
 
-Version `0.3.0` — redesigned merchant workspace, per-store Email Studio, store-time-zone-aware booking safety, and cross-device appointment management.
+Version `0.4.0` — bilingual merchant workspace, smooth loading states, searchable product dialog, booking activity history, branded email settings, and one-click storefront setup.
 
 Appointment Lite turns selected SHOPLINE products into appointment or consultation services. It is designed for wedding fittings, jewelry consultations, furniture consultations, beauty services, classes, and made-to-order products.
 
@@ -9,7 +9,7 @@ Appointment Lite turns selected SHOPLINE products into appointment or consultati
 Implemented:
 
 - SHOPLINE OAuth installation, signed callback verification, token persistence, and refresh structure.
-- Responsive SaaS-style merchant workspace with guided setup, overview insights, searchable service cards, booking management, and fully designed application dialogs and selection controls.
+- Responsive English/Simplified Chinese merchant workspace with a saved custom language menu, guided setup, overview insights, loading skeletons, searchable service cards, booking management, and fully designed application dialogs and selection controls. New installs default to English.
 - Three-step appointment rule builder, SHOPLINE product selection, rule CRUD, booking search/filtering, editing, and cancellation.
 - Duration, buffer, available date range, weekday schedule, daily windows, text-only location/staff, enabled state, notes prompt, and up to five custom questions.
 - Public rule/availability APIs and booking creation.
@@ -19,7 +19,9 @@ Implemented:
 - Per-store Email Studio for brand name, email logo, accent color, reply-to routing, merchant notifications, five editable subject/body templates, template variables, live preview, and branded test delivery.
 - Confirmation email with a private, cross-device Manage Appointment link. The page immediately moves the high-entropy email token into session storage and removes it from the address bar; MongoDB stores only its SHA-256 hash.
 - Customer emails for confirmation, one-time self-service rescheduling, cancellation, and merchant edits; optional merchant new-booking notification.
-- English-first locale directories with Simplified Chinese starter strings.
+- Per-booking activity history for creation, customer rescheduling, merchant edits, and customer/merchant cancellations. Existing records receive a safe legacy creation event when displayed.
+- SHOPLINE product-template App Block deep link that opens in a new window when the extension UUID and read-only theme permission are available, with a safe theme-page fallback for older installs.
+- English-first storefront locale directories with Simplified Chinese strings.
 - Free/Pro plan boundaries remain reserved without a real billing dependency; rule-count enforcement is disabled by default for the MVP.
 - Standalone Theme App Extension **source template** in `theme-extension-source/`.
 
@@ -85,7 +87,8 @@ Important settings:
 
 - `SHOPLINE_API_VERSION` defaults to `v20260301` and is centralized for upgrades.
 - `MONGODB_DB_NAME` selects an isolated logical database inside the MongoDB service. It defaults to `shopline_appointment_lite`, so Railway can safely provide `MONGODB_URI=${{MongoDB.MONGO_URL}}` without URI string concatenation.
-- `SHOPLINE_SCOPES` defaults to `read_products,read_store_information`.
+- `SHOPLINE_SCOPES` defaults to `read_products,read_store_information,read_content`; `read_content` is used only to locate the published theme for the App Block deep link.
+- `SHOPLINE_THEME_EXTENSION_UUID` comes from the CLI-created Theme App Extension `.env`; it enables the one-click product-template editor link. `SHOPLINE_THEME_BLOCK_HANDLE` defaults to `appointment-lite`.
 - `COOKIE_SAME_SITE=lax` is appropriate for redirect mode. Embedded iframe mode may require `none` with HTTPS and SHOPLINE App Bridge work.
 - `PUBLIC_ALLOWED_ORIGINS` should remain empty for a multi-merchant public app because every merchant has different storefront domains. CORS is not authentication; use dynamic installed-shop origin validation in a later hardening release if required.
 - `PLAN_LIMITS_ENABLED=false` gives every installed store unlimited appointment rules during the MVP. Set it to `true` later to restore the reserved Free/Pro active-rule limits.
@@ -106,7 +109,7 @@ In SHOPLINE Developer Center:
 
 1. Set the App URL to `https://YOUR_DOMAIN/`.
 2. Set the callback URL to `https://YOUR_DOMAIN/auth/callback`.
-3. Request `read_products` and `read_store_information`.
+3. Request `read_products`, `read_store_information`, and `read_content`. Existing development installs must authorize again after adding `read_content`.
 4. Use Redirect display mode for this MVP.
 5. Copy the app key and secret into Railway variables.
 
@@ -158,6 +161,8 @@ sl extension push
 
 In the Theme Editor, add **Appointment Lite** to the product template. The block has no settings: adding it is the switch on, and removing it is the switch off. The extension automatically reads `{{ shop.id }}` and `{{ product.id }}`; its production API URL is fixed in the extension asset.
 
+After CLI creation, copy the extension's `EXTENSION_UUID` value into `SHOPLINE_THEME_EXTENSION_UUID` in the app service and redeploy. **Storefront setup** can then locate the published theme and open the official product-template App Block deep link in a new window. If an older installation has not granted `read_content`, the button safely opens the theme list until the app is authorized again.
+
 The App Block starts hidden and only appears after the public rule endpoint confirms that the current product has an enabled rule. Theme-editor re-renders are handled through SHOPLINE events plus a DOM observer. The production API origin is `https://appointment.toolkit.fans`. Open the preview console and filter for `[Appointment Lite]` to see store/product identity, cache, request status, visibility decisions, availability, and booking diagnostics without logging customer PII. SHOPLINE documents the OS 3.0 [extension structure](https://developer.shopline.com/docs/online-store-3-0-themes/integrate-apps-with-themes/theme-app-extension/structure?version=v20231201) and [`sl extension push`](https://developer.shopline.com/docs/online-store-3-0-themes/development-tools/cli/app-extension-commands/).
 
 After a successful booking, the storefront stores a minimal receipt (booking ID, private management token, date, time, location, staff, and reschedule count) in that browser's local storage. On later visits to the same product, the block shows the confirmed appointment and a “Manage appointment” action. The confirmation email also contains a cross-device magic link. Email links carry a high-entropy `access` value for compatibility with clients that discard URL fragments. The management response is `no-store` with a `no-referrer` policy; JavaScript immediately moves the token to session storage and replaces the visible URL with the booking ID only. Legacy fragment links remain supported.
@@ -171,7 +176,7 @@ npm test
 npm run check
 ```
 
-Tests cover query signing/tampering, stateless session signing, weekday/date bounds, store-time-zone past-slot filtering, duration+buffer slot generation, rule and booking validation, denormalized booking creation, server-side slot validation, and conversion of MongoDB duplicate-key errors into a `409 SLOT_CONFLICT`.
+Tests cover query signing/tampering, stateless session signing, weekday/date bounds, store-time-zone past-slot filtering, duration+buffer slot generation, rule and booking validation, denormalized booking creation, booking activity events, the App Block deep-link shape, server-side slot validation, and conversion of MongoDB duplicate-key errors into a `409 SLOT_CONFLICT`.
 
 ## Security and production checklist
 

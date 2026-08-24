@@ -21,11 +21,16 @@ test('admin uses designed controls and exposes a per-store Email Studio', async 
   const view = await readFile(new URL('../src/views/admin.js', import.meta.url), 'utf8');
   const asset = await readFile(new URL('../public/admin/app.js', import.meta.url), 'utf8');
   assert.match(view, /Email Studio/);
-  assert.match(view, /id="productPickerMenu"/);
+  assert.match(view, /id="productDialog"/);
   assert.match(view, /data-booking-filter/);
   assert.match(view, /id="confirmDialog"/);
   assert.match(view, /id="emailPreview"/);
   assert.doesNotMatch(view, /<select/i);
   assert.doesNotMatch(asset, /\bconfirm\s*\(|\balert\s*\(/);
   assert.match(asset, /\/email\/settings/);
+  assert.match(view, /id="languageMenu"/);
+  assert.match(view, /id="bookingFlowDialog"/);
+  assert.match(view, /id="openThemeEditor"[^>]+target="_blank"/);
+  assert.doesNotMatch(view, /Railway|Aliyun|HTTPS OpenAPI|About the Gmail/);
+  assert.doesNotMatch(asset, /payload\.email\.provider/);
 });

@@ -4,7 +4,7 @@ All collections live in the logical database selected by `MONGODB_DB_NAME` (defa
 
 ## Shop
 
-One record per SHOPLINE handle. Stores the SHOPLINE store ID used by the zero-configuration Theme App Extension, primary domain, OAuth tokens, token expiry, granted scopes, locale, store timezone, notification email, reserved plan, and install lifecycle timestamps. `emailSettings` stores that merchant's non-secret brand, routing preferences, and five message templates; provider credentials remain in Railway environment variables. Access and refresh tokens are excluded from normal Mongoose query results.
+One record per SHOPLINE handle. Stores the SHOPLINE store ID used by the zero-configuration Theme App Extension, primary domain, OAuth tokens, token expiry, granted scopes, storefront locale, independently selected admin locale (`en` or `zh-CN`, default `en`), store timezone, notification email, reserved plan, and install lifecycle timestamps. `emailSettings` stores that merchant's non-secret brand, routing preferences, and five message templates; provider credentials remain in deployment environment variables. Access and refresh tokens are excluded from normal Mongoose query results.
 
 ## AppointmentRule
 
@@ -27,6 +27,8 @@ The UI edits one time window per day in v0.1.0, while the model and slot generat
 Bookings preserve a snapshot of product title, duration, buffer, timezone, location, and staff so historical records remain readable after rule changes.
 
 Customer data contains name, email, optional phone, note, and answers. Status is `confirmed` or `cancelled`. `managementTokenHash` stores only the SHA-256 hash of a high-entropy token returned once to the booking browser; it authorizes customer status checks, cancellation, and rescheduling without exposing customer data or trusting a booking ID alone. `customerRescheduleCount` enforces the single self-service change allowance, while merchant edits do not consume or reset that allowance. `merchantEditedAt` records the latest store-initiated change.
+
+`events[]` is an append-only booking activity trail. Every event records its type, actor, timestamp, and safe before/after snapshots of date, time, location, staff, and status. Events cover `created`, `customer_rescheduled`, `merchant_updated`, `customer_cancelled`, and `merchant_cancelled`. Existing bookings without events are presented with a synthesized creation event based on `createdAt`; no destructive data migration is required.
 
 ### Atomic conflict protection
 

@@ -19,6 +19,16 @@ function validManagementToken(token) {
   return /^[A-Za-z0-9_-]{43}$/.test(String(token || ''));
 }
 
+function bookingSnapshot(booking, overrides = {}) {
+  return {
+    date: overrides.date ?? booking.date ?? '',
+    time: overrides.time ?? booking.time ?? '',
+    location: overrides.location ?? booking.location ?? '',
+    staff: overrides.staff ?? booking.staff ?? '',
+    status: overrides.status ?? booking.status ?? 'confirmed'
+  };
+}
+
 export async function createBookingAtomic({ shop, rule, input, BookingModel = Booking, notify = sendBookingNotifications, now = new Date() }) {
   if (!rule.enabled || !futureSlotsForDate(rule, input.date, shop.timezone || 'UTC', now).includes(input.time)) throw Object.assign(new Error('The selected time is unavailable or has already passed in the store time zone.'), { code: 'SLOT_UNAVAILABLE' });
   for (const question of rule.customQuestions || []) {
@@ -34,7 +44,11 @@ export async function createBookingAtomic({ shop, rule, input, BookingModel = Bo
       date: input.date, time: input.time, slotKey: slotKey(input.date, input.time), duration: rule.duration,
       buffer: rule.buffer, timezone: shop.timezone || 'UTC', location: rule.location, staff: rule.staff,
       managementTokenHash: hashManagementToken(managementToken),
-      customer: input.customer, note: input.note, answers: input.answers, status: 'confirmed'
+      customer: input.customer, note: input.note, answers: input.answers, status: 'confirmed',
+      events: [{
+        type: 'created', actor: 'customer', at: now,
+        to: { date: input.date, time: input.time, location: rule.location || '', staff: rule.staff || '', status: 'confirmed' }
+      }]
     });
   } catch (error) {
     if (error?.code === 11000) throw new SlotConflictError();
@@ -78,11 +92,16 @@ export async function getManagedAvailability({ bookingId, token, date, BookingMo
   return { date, slots: allSlots.filter(time => !booked.includes(time)) };
 }
 
-export async function cancelManagedBooking({ bookingId, token, BookingModel = Booking, notify = sendBookingCancelledNotification }) {
+export async function cancelManagedBooking({ bookingId, token, BookingModel = Booking, notify = sendBookingCancelledNotification, now = new Date() }) {
   if (!validManagementToken(token)) throw accessError();
+  const current = await getManagedBooking({ bookingId, token, BookingModel });
+  if (current.status !== 'confirmed') throw accessError();
   const booking = await BookingModel.findOneAndUpdate(
-    { _id: bookingId, managementTokenHash: hashManagementToken(token), status: 'confirmed' },
-    { status: 'cancelled', cancelledAt: new Date() },
+    { _id: bookingId, managementTokenHash: hashManagementToken(token), status: 'confirmed', slotKey: current.slotKey },
+    {
+      $set: { status: 'cancelled', cancelledAt: now },
+      $push: { events: { type: 'customer_cancelled', actor: 'customer', at: now, from: bookingSnapshot(current), to: bookingSnapshot(current, { status: 'cancelled' }) } }
+    },
     { new: true }
   );
   if (!booking) throw accessError();
@@ -104,7 +123,11 @@ export async function rescheduleManagedBooking({ bookingId, token, date, time, B
   try {
     updated = await BookingModel.findOneAndUpdate(
       { _id: booking._id, managementTokenHash: hashManagementToken(token), status: 'confirmed', slotKey: booking.slotKey, $or: [{ customerRescheduleCount: 0 }, { customerRescheduleCount: { $exists: false } }] },
-      { $set: { date, time, slotKey: slotKey(date, time) }, $inc: { customerRescheduleCount: 1 } },
+      {
+        $set: { date, time, slotKey: slotKey(date, time) },
+        $inc: { customerRescheduleCount: 1 },
+        $push: { events: { type: 'customer_rescheduled', actor: 'customer', at: now, from: bookingSnapshot(booking), to: bookingSnapshot(booking, { date, time }) } }
+      },
       { new: true, runValidators: true }
     );
   } catch (error) {
@@ -127,7 +150,10 @@ export async function updateBookingByMerchant({ shopObjectId, bookingId, input, 
   try {
     updated = await BookingModel.findOneAndUpdate(
       { _id: booking._id, shopId: shopObjectId, status: 'confirmed', slotKey: booking.slotKey },
-      { $set: { date: input.date, time: input.time, slotKey: slotKey(input.date, input.time), location: input.location, staff: input.staff, merchantEditedAt: new Date() } },
+      {
+        $set: { date: input.date, time: input.time, slotKey: slotKey(input.date, input.time), location: input.location, staff: input.staff, merchantEditedAt: now },
+        $push: { events: { type: 'merchant_updated', actor: 'merchant', at: now, from: bookingSnapshot(booking), to: bookingSnapshot(booking, input) } }
+      },
       { new: true, runValidators: true }
     );
   } catch (error) {
@@ -139,10 +165,15 @@ export async function updateBookingByMerchant({ shopObjectId, bookingId, input, 
   return { booking: updated, notification };
 }
 
-export async function cancelBookingByMerchant({ shopObjectId, bookingId, BookingModel = Booking, notify = sendBookingCancelledNotification }) {
+export async function cancelBookingByMerchant({ shopObjectId, bookingId, BookingModel = Booking, notify = sendBookingCancelledNotification, now = new Date() }) {
+  const current = await BookingModel.findOne({ _id: bookingId, shopId: shopObjectId, status: 'confirmed' });
+  if (!current) throw Object.assign(new Error('Confirmed booking not found.'), { code: 'NOT_FOUND' });
   const booking = await BookingModel.findOneAndUpdate(
-    { _id: bookingId, shopId: shopObjectId, status: 'confirmed' },
-    { $set: { status: 'cancelled', cancelledAt: new Date() } },
+    { _id: bookingId, shopId: shopObjectId, status: 'confirmed', slotKey: current.slotKey },
+    {
+      $set: { status: 'cancelled', cancelledAt: now },
+      $push: { events: { type: 'merchant_cancelled', actor: 'merchant', at: now, from: bookingSnapshot(current), to: bookingSnapshot(current, { status: 'cancelled' }) } }
+    },
     { new: true }
   );
   if (!booking) throw Object.assign(new Error('Confirmed booking not found.'), { code: 'NOT_FOUND' });

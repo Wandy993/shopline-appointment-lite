@@ -19,9 +19,11 @@ export const config = Object.freeze({
   shopline: {
     appKey: required('SHOPLINE_APP_KEY'),
     appSecret: required('SHOPLINE_APP_SECRET'),
-    scopes: process.env.SHOPLINE_SCOPES || 'read_products,read_store_information',
+    scopes: process.env.SHOPLINE_SCOPES || 'read_products,read_store_information,read_content',
     apiVersion: process.env.SHOPLINE_API_VERSION || 'v20260301',
-    callbackUrl: `${appUrl}${process.env.SHOPLINE_CALLBACK_PATH || '/auth/callback'}`
+    callbackUrl: `${appUrl}${process.env.SHOPLINE_CALLBACK_PATH || '/auth/callback'}`,
+    themeExtensionUuid: process.env.SHOPLINE_THEME_EXTENSION_UUID || '',
+    themeBlockHandle: process.env.SHOPLINE_THEME_BLOCK_HANDLE || 'appointment-lite'
   },
   sessionSecret: required('SESSION_SECRET', 'development-only-change-me'),
   cookieSameSite: process.env.COOKIE_SAME_SITE || 'lax',

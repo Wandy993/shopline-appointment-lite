@@ -10,9 +10,26 @@ import { cancelBookingByMerchant, updateBookingByMerchant } from '../services/bo
 import { emailStatus, sendTestEmail } from '../services/email.js';
 import { zonedNow } from '../lib/slots.js';
 import { normalizeEmailSettings, validateEmailSettings } from '../lib/email-settings.js';
+import { buildThemeAppBlockDeepLink } from '../lib/theme-deep-link.js';
 
 export const adminRouter = Router();
 adminRouter.use(requireAdmin, requireCsrf);
+
+function bookingSnapshot(booking) {
+  return { date: booking.date, time: booking.time, location: booking.location || '', staff: booking.staff || '', status: booking.status };
+}
+
+function withBookingHistory(booking) {
+  if (booking.events?.length) return booking;
+  return {
+    ...booking,
+    events: [{ type: 'created', actor: 'customer', at: booking.createdAt, to: bookingSnapshot(booking), legacy: true }]
+  };
+}
+
+function storefrontFallbackUrl(handle) {
+  return `https://${handle}.myshopline.com/admin/online-store/themes`;
+}
 
 adminRouter.get('/bootstrap', async (req, res) => {
   if (!req.shop.shoplineStoreId) {
@@ -31,9 +48,10 @@ adminRouter.get('/bootstrap', async (req, res) => {
     Booking.find(upcomingFilter)
       .sort({ date: 1, time: 1 }).limit(4).select('productTitle date time timezone location staff customer.name').lean()
   ]);
+  const delivery = emailStatus();
   res.json({
-    shop: { handle: req.shop.handle, storeId: req.shop.shoplineStoreId || '', locale: req.shop.locale, timezone: req.shop.timezone, plan: req.shop.plan, email: req.shop.email || '' },
-    email: emailStatus(), emailSettings: normalizeEmailSettings(req.shop.emailSettings || {}), nextBookings,
+    shop: { handle: req.shop.handle, storeId: req.shop.shoplineStoreId || '', locale: req.shop.locale, adminLocale: req.shop.adminLocale || 'en', timezone: req.shop.timezone, plan: req.shop.plan, email: req.shop.email || '' },
+    email: { configured: delivery.configured, from: delivery.from || '' }, emailSettings: normalizeEmailSettings(req.shop.emailSettings || {}), nextBookings,
     limits: { ...limitsFor(req.shop.plan), enforced: config.planLimitsEnabled }, csrfToken: req.csrfToken,
     stats: { ruleCount, activeRuleCount, bookingCount, upcomingCount }
   });
@@ -99,7 +117,30 @@ adminRouter.get('/bookings', async (req, res) => {
   const filter = { shopId: req.shop._id };
   if (req.query.status && ['confirmed', 'cancelled'].includes(req.query.status)) filter.status = req.query.status;
   const bookings = await Booking.find(filter).sort({ date: -1, time: -1 }).limit(500).lean();
-  res.json({ bookings });
+  res.json({ bookings: bookings.map(withBookingHistory) });
+});
+
+adminRouter.put('/preferences', async (req, res) => {
+  const adminLocale = req.body?.adminLocale;
+  if (!['en', 'zh-CN'].includes(adminLocale)) return res.status(422).json({ error: 'VALIDATION_ERROR', message: 'Choose a supported language.' });
+  req.shop.adminLocale = adminLocale;
+  await req.shop.save();
+  res.json({ adminLocale });
+});
+
+adminRouter.get('/storefront/deep-link', async (req, res) => {
+  const fallbackUrl = storefrontFallbackUrl(req.shop.handle);
+  if (!config.shopline.themeExtensionUuid) return res.json({ available: false, url: fallbackUrl });
+  try {
+    const payload = await shoplineGet(req.shop._id, 'themes.json');
+    const themes = payload.themes || payload.data?.themes || payload.data || [];
+    const published = Array.isArray(themes) ? themes.find(theme => theme.role === 'published' || theme.role === 0) : null;
+    if (!published?.id) return res.json({ available: false, url: fallbackUrl });
+    res.json({ available: true, url: buildThemeAppBlockDeepLink({ handle: req.shop.handle, themeId: published.id, extensionUuid: config.shopline.themeExtensionUuid, blockHandle: config.shopline.themeBlockHandle }) });
+  } catch (error) {
+    console.warn('Could not prepare storefront editor link:', error.message);
+    res.json({ available: false, url: fallbackUrl });
+  }
 });
 
 adminRouter.put('/bookings/:id', async (req, res, next) => {
@@ -129,9 +170,9 @@ adminRouter.put('/email/settings', async (req, res) => {
 adminRouter.post('/email/test', async (req, res) => {
   const settings = normalizeEmailSettings(req.shop.emailSettings || {});
   const to = settings.merchantNotificationEmail || req.shop.email || config.email.merchantTo;
-  if (!to) return res.status(422).json({ error: 'EMAIL_REQUIRED', message: 'Add a store email or MERCHANT_NOTIFICATION_EMAIL before sending a test.' });
+  if (!to) return res.status(422).json({ error: 'EMAIL_REQUIRED', message: 'Add a notification email before sending a test.' });
   const result = await sendTestEmail(to, settings);
-  if (result.skipped) return res.status(422).json({ error: 'EMAIL_NOT_CONFIGURED', message: result.reason, result });
-  if (result.failed) return res.status(502).json({ error: 'EMAIL_FAILED', message: result.reason || 'Email provider rejected the test.', result });
-  res.json({ to, result });
+  if (result.skipped) return res.status(422).json({ error: 'EMAIL_NOT_CONFIGURED', message: 'Email notifications are not ready. Complete the sending configuration before trying again.' });
+  if (result.failed) return res.status(502).json({ error: 'EMAIL_FAILED', message: 'The test email could not be sent. Check the sending configuration and try again.' });
+  res.json({ to });
 });

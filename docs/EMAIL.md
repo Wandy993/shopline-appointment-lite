@@ -43,7 +43,7 @@ MERCHANT_NOTIFICATION_EMAIL=optional-merchant@example.com
 
 Leave `ALIYUN_DIRECTMAIL_TAG_NAME` empty unless the same tag already exists in DirectMail.
 
-After deployment, open **Email Studio** in the app admin. It shows the selected provider, transport, and sender without exposing secrets. Configure the store brand and templates, then use **Send test** before accepting live appointments.
+After deployment, open **Email Studio** in the app admin. It shows whether notifications are ready and the sending address without exposing implementation details or secrets. Configure the store brand and templates, then use **Send test** before accepting live appointments.
 
 ## Per-store Email Studio
 

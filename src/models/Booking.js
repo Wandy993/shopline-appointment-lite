@@ -5,6 +5,26 @@ const answerSchema = new mongoose.Schema({
   answer: { type: String, default: '', maxlength: 1000 }
 }, { _id: false });
 
+const bookingSnapshotSchema = new mongoose.Schema({
+  date: { type: String, default: '' },
+  time: { type: String, default: '' },
+  location: { type: String, default: '' },
+  staff: { type: String, default: '' },
+  status: { type: String, enum: ['confirmed', 'cancelled'], default: 'confirmed' }
+}, { _id: false });
+
+const bookingEventSchema = new mongoose.Schema({
+  type: {
+    type: String,
+    enum: ['created', 'customer_rescheduled', 'merchant_updated', 'customer_cancelled', 'merchant_cancelled'],
+    required: true
+  },
+  actor: { type: String, enum: ['customer', 'merchant', 'system'], required: true },
+  at: { type: Date, default: Date.now },
+  from: { type: bookingSnapshotSchema, default: undefined },
+  to: { type: bookingSnapshotSchema, default: undefined }
+}, { _id: true });
+
 const bookingSchema = new mongoose.Schema({
   shopId: { type: mongoose.Schema.Types.ObjectId, ref: 'Shop', required: true, index: true },
   ruleId: { type: mongoose.Schema.Types.ObjectId, ref: 'AppointmentRule', required: true, index: true },
@@ -27,6 +47,7 @@ const bookingSchema = new mongoose.Schema({
   },
   note: { type: String, default: '', maxlength: 2000 },
   answers: { type: [answerSchema], default: [] },
+  events: { type: [bookingEventSchema], default: [] },
   status: { type: String, enum: ['confirmed', 'cancelled'], default: 'confirmed', index: true },
   cancelledAt: Date,
   merchantEditedAt: Date

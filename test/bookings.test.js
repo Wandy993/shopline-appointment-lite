@@ -43,11 +43,27 @@ test('server rejects a generated slot that has already passed in the store time 
 test('customer cancellation requires the hashed management token', async () => {
   const token = 'a'.repeat(43);
   let filter;
-  const BookingModel = { async findOneAndUpdate(query) { filter = query; return { _id: 'b1', status: 'cancelled' }; } };
+  const current = { _id: 'b1', status: 'confirmed', slotKey: '2026-08-24T09:00', date: '2026-08-24', time: '09:00' };
+  const BookingModel = { async findOne() { return current; }, async findOneAndUpdate(query) { filter = query; return { ...current, status: 'cancelled' }; } };
   const booking = await cancelManagedBooking({ bookingId: 'b1', token, BookingModel, notify: async () => ({ skipped: true }) });
   assert.equal(booking.status, 'cancelled');
   assert.equal(filter.managementTokenHash, hashManagementToken(token));
   assert.notEqual(filter.managementTokenHash, token);
+});
+
+test('booking mutations append an audit event without overwriting history', async () => {
+  let update;
+  const token = 'e'.repeat(43);
+  const existing = { _id: 'b1', shopId: 'shop1', ruleId: 'rule1', status: 'confirmed', slotKey: '2026-08-24T09:00', date: '2026-08-24', time: '09:00', timezone: 'Asia/Shanghai', customerRescheduleCount: 0, location: 'Showroom', staff: 'Sarah' };
+  const BookingModel = {
+    async findOne() { return existing; },
+    async findOneAndUpdate(filter, value) { update = value; return { ...existing, ...value.$set }; }
+  };
+  const RuleModel = { async findOne() { return rule; } };
+  await rescheduleManagedBooking({ bookingId: 'b1', token, date: '2026-08-24', time: '10:00', BookingModel, RuleModel, notify: async () => ({ skipped: true }), now: beforeOpening });
+  assert.equal(update.$push.events.type, 'customer_rescheduled');
+  assert.equal(update.$push.events.from.time, '09:00');
+  assert.equal(update.$push.events.to.time, '10:00');
 });
 
 test('legacy receipt status lookup returns only identity and status', async () => {

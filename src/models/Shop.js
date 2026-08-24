@@ -30,6 +30,7 @@ const shopSchema = new mongoose.Schema({
   tokenExpiresAt: Date,
   scopes: [String],
   locale: { type: String, default: 'en' },
+  adminLocale: { type: String, enum: ['en', 'zh-CN'], default: 'en' },
   timezone: { type: String, default: 'UTC' },
   email: { type: String, default: '' },
   emailSettings: { type: emailSettingsSchema, default: () => ({}) },
