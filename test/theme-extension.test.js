@@ -30,3 +30,14 @@ test('booking dialog keeps selected times and submit action visible', async () =
   assert.match(stylesheet, /\.al-form-body\{[^}]*min-height:0[^}]*overflow:auto/);
   assert.match(stylesheet, /\.al-actions\{[^}]*flex:0 0 auto/);
 });
+
+test('confirmed booking is remembered without storing customer PII', async () => {
+  const asset = await readFile(new URL('../theme-extension-source/public/appointment-lite.js', import.meta.url), 'utf8');
+  const stylesheet = await readFile(new URL('../theme-extension-source/public/appointment-lite.css', import.meta.url), 'utf8');
+  assert.match(asset, /`al-booking:\$\{context\.shopId\}:\$\{context\.productId\}`/);
+  assert.match(asset, /Appointment booked/);
+  assert.match(asset, /Book another appointment/);
+  assert.match(asset, /saveBookingReceipt\(context, payload\.booking\)/);
+  assert.doesNotMatch(asset, /receipt\.(?:name|email|phone)|booking\.customer/);
+  assert.match(stylesheet, /\.al-booked\{/);
+});

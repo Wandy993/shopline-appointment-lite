@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = '0.1.3';
+  const VERSION = '0.1.4';
   const API_BASE = 'https://shopline-appointment-lite-production.up.railway.app';
   const CACHE_TTL = 5 * 60 * 1000;
   const SELECTOR = '[data-appointment-lite]:not([data-al-ready])';
@@ -86,6 +86,63 @@
     });
   }
 
+  function receiptKey(context) {
+    return `al-booking:${context.shopId}:${context.productId}`;
+  }
+
+  function readBookingReceipt(context) {
+    try {
+      const receipt = JSON.parse(localStorage.getItem(receiptKey(context)));
+      const today = new Date().toISOString().slice(0, 10);
+      if (!receipt || receipt.status !== 'confirmed' || !receipt.date || !receipt.time || receipt.date < today) {
+        if (receipt) localStorage.removeItem(receiptKey(context));
+        return null;
+      }
+      return receipt;
+    } catch (error) {
+      warn('Booking receipt could not be read; continuing without device status.', { message: error.message });
+      return null;
+    }
+  }
+
+  function saveBookingReceipt(context, booking) {
+    const receipt = {
+      id: String(booking.id || ''),
+      date: String(booking.date || ''),
+      time: String(booking.time || ''),
+      location: String(booking.location || ''),
+      staff: String(booking.staff || ''),
+      status: 'confirmed',
+      savedAt: Date.now()
+    };
+    try {
+      localStorage.setItem(receiptKey(context), JSON.stringify(receipt));
+      info('Booking receipt saved on this device.', { ...context, bookingId: receipt.id, date: receipt.date, time: receipt.time });
+    } catch (error) {
+      warn('Booking receipt could not be saved on this device.', { message: error.message });
+    }
+    return receipt;
+  }
+
+  function renderBookingState(widget, rule, context, suppliedReceipt) {
+    widget.querySelector('.al-booked')?.remove();
+    const trigger = widget.querySelector('.al-trigger');
+    const receipt = suppliedReceipt || readBookingReceipt(context);
+    if (!receipt) {
+      trigger.hidden = false;
+      return;
+    }
+    trigger.hidden = true;
+    const details = [receipt.location, receipt.staff].filter(Boolean).map(text).join(' · ');
+    const status = document.createElement('section');
+    status.className = 'al-booked';
+    status.setAttribute('aria-label', 'Appointment booked');
+    status.innerHTML = `<div class="al-booked-copy"><span class="al-booked-label">Appointment booked</span><strong>${text(receipt.date)} at ${text(receipt.time)}</strong>${details ? `<span>${details}</span>` : ''}<small>Saved on this device</small></div><button type="button" class="al-secondary">Book another appointment</button>`;
+    status.querySelector('.al-secondary').addEventListener('click', () => open(widget, rule, context));
+    trigger.insertAdjacentElement('afterend', status);
+    info('Stored booking status rendered.', { ...context, bookingId: receipt.id, date: receipt.date, time: receipt.time });
+  }
+
   function showEditorDiagnostic(widget, message) {
     if (!window.Shopline?.designMode) return;
     widget.hidden = false;
@@ -125,8 +182,8 @@
       widget.hidden = false;
       widget.dataset.alStatus = 'ready';
       const trigger = widget.querySelector('.al-trigger');
-      trigger.hidden = false;
       trigger.addEventListener('click', () => open(widget, payload.rule, context));
+      renderBookingState(widget, payload.rule, context);
       info('App Block is visible and ready.', { ...context, ruleId: payload.rule.id, productTitle: payload.rule.productTitle });
     } catch (error) {
       widget.dataset.alStatus = error.status === 404 ? 'no-rule' : 'error';
@@ -236,6 +293,8 @@
       info('Submitting booking.', { ...context, date: body.date, time: body.time });
       try {
         const payload = await requestJson(apiUrl('/api/public/bookings'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }, 'booking');
+        const receipt = saveBookingReceipt(context, payload.booking);
+        renderBookingState(widget, rule, context, receipt);
         dialog.querySelector('.al-form').innerHTML = `<div class="al-success"><h3>Appointment confirmed</h3><p>${text(payload.booking.date)} at ${text(payload.booking.time)}</p>${payload.booking.location ? `<p>${text(payload.booking.location)}</p>` : ''}<button class="al-submit" type="button">Done</button></div>`;
         dialog.querySelector('.al-submit').addEventListener('click', () => dialog.close());
         info('Booking confirmed.', { ...context, bookingId: payload.booking.id, date: payload.booking.date, time: payload.booking.time });
