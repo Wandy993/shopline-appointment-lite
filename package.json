@@ -1,0 +1,22 @@
+{
+  "name": "appointment-lite",
+  "version": "0.1.0",
+  "description": "SHOPLINE Product Appointment & Consultation MVP",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "test": "node --test",
+    "check": "node --check src/server.js && node --check public/admin/app.js && node --check theme-extension-source/public/appointment-lite.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^5.1.0",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.1.0",
+    "mongoose": "^8.13.2",
+    "resend": "^4.2.0"
+  }
+}

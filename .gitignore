@@ -1,0 +1,8 @@
+node_modules/
+.env
+.DS_Store
+coverage/
+*.log
+*.zip
+theme-app-extension/.env
+theme-app-extension/.shopline-cli.local.yml

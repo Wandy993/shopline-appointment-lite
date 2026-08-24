@@ -1,0 +1,121 @@
+bash <<'APPOINTMENT_LITE_INSTALL'
+set -u
+
+ZIP_PATH="${ZIP_PATH:-$HOME/Downloads/appointment-lite-v0.1.0-mvp.zip}"
+TARGET_DIR="${TARGET_DIR:-$PWD}"
+DEPLOY_RAILWAY="${DEPLOY_RAILWAY:-0}"
+PUSH_THEME="${PUSH_THEME:-0}"
+FAILED=0
+TEMP_DIR=""
+
+say() { printf '\n[%s] %s\n' "Appointment Lite" "$1"; }
+fail() { printf '\n[ERROR] %s\n' "$1" >&2; FAILED=1; }
+run_step() {
+  local label="$1"
+  shift
+  say "$label"
+  "$@"
+  local code=$?
+  if [ "$code" -ne 0 ]; then
+    fail "$label failed with exit code $code."
+    return "$code"
+  fi
+  return 0
+}
+finish() {
+  local code="${1:-0}"
+  if [ -n "$TEMP_DIR" ]; then
+    printf '\nTemporary extraction retained at:\n%s\n' "$TEMP_DIR"
+  fi
+  if [ "$code" -eq 0 ]; then
+    printf '\nAppointment Lite initialization completed successfully.\n'
+  else
+    printf '\nInitialization stopped. The target and temporary files were preserved for inspection.\n' >&2
+  fi
+  printf '\nPress Return to finish (the parent Terminal window will remain open). '
+  read -r _
+  exit "$code"
+}
+
+if [ ! -f "$ZIP_PATH" ]; then
+  fail "ZIP not found: $ZIP_PATH"
+  printf 'Place appointment-lite-v0.1.0-mvp.zip in Downloads, or run with ZIP_PATH=/absolute/path/to/file.zip.\n'
+  finish 1
+fi
+
+mkdir -p "$TARGET_DIR" || { fail "Cannot create target: $TARGET_DIR"; finish 1; }
+TARGET_DIR="$(cd "$TARGET_DIR" && pwd -P)" || { fail "Cannot resolve target path."; finish 1; }
+if [ "$TARGET_DIR" = "/" ] || [ "$TARGET_DIR" = "$HOME" ]; then
+  fail "Refusing to overlay the filesystem root or home directory. Run this command from a dedicated project folder."
+  finish 1
+fi
+
+run_step "Checking ZIP integrity" unzip -t "$ZIP_PATH" || finish 1
+TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/appointment-lite-v0.1.0.XXXXXX")" || { fail "Could not create a temporary directory."; finish 1; }
+run_step "Extracting ZIP into a temporary directory" unzip -q "$ZIP_PATH" -d "$TEMP_DIR" || finish 1
+
+SOURCE_DIR="$TEMP_DIR/appointment-lite-v0.1.0-mvp"
+if [ ! -f "$SOURCE_DIR/package.json" ] || [ ! -f "$SOURCE_DIR/README.md" ]; then
+  fail "Expected archive root appointment-lite-v0.1.0-mvp was not found."
+  finish 1
+fi
+
+STAMP="$(date +%Y%m%d-%H%M%S)"
+BACKUP_REF="appointment-lite-preinstall-$STAMP"
+if [ -e "$TARGET_DIR/.git" ]; then
+  say "Creating Git backup in the existing repository"
+  if git -C "$TARGET_DIR" rev-parse --verify HEAD >/dev/null 2>&1; then
+    if [ -n "$(git -C "$TARGET_DIR" status --porcelain)" ]; then
+      git -C "$TARGET_DIR" add -A || { fail "Git add failed; no files were overlaid."; finish 1; }
+      git -C "$TARGET_DIR" -c user.name="Appointment Lite Installer" -c user.email="local@appointment-lite.invalid" commit -m "backup before Appointment Lite v0.1.0 overlay" || { fail "Git backup commit failed; no files were overlaid."; finish 1; }
+    fi
+    git -C "$TARGET_DIR" tag "$BACKUP_REF" HEAD || { fail "Git backup tag failed; no files were overlaid."; finish 1; }
+    printf 'Backup tag: %s\n' "$BACKUP_REF"
+  else
+    git -C "$TARGET_DIR" add -A || { fail "Initial Git add failed; no files were overlaid."; finish 1; }
+    git -C "$TARGET_DIR" -c user.name="Appointment Lite Installer" -c user.email="local@appointment-lite.invalid" commit --allow-empty -m "backup before Appointment Lite v0.1.0 overlay" || { fail "Initial Git backup failed; no files were overlaid."; finish 1; }
+  fi
+else
+  say "Initializing a local Git repository for backup"
+  git -C "$TARGET_DIR" init || { fail "Git init failed; no files were overlaid."; finish 1; }
+  git -C "$TARGET_DIR" add -A || { fail "Initial Git add failed; no files were overlaid."; finish 1; }
+  git -C "$TARGET_DIR" -c user.name="Appointment Lite Installer" -c user.email="local@appointment-lite.invalid" commit --allow-empty -m "backup before Appointment Lite v0.1.0 overlay" || { fail "Initial Git backup failed; no files were overlaid."; finish 1; }
+fi
+
+run_step "Overlaying project files with rsync (no target deletions)" rsync -a "$SOURCE_DIR/" "$TARGET_DIR/" || finish 1
+run_step "Installing locked Node.js dependencies" npm install --prefix "$TARGET_DIR" || finish 1
+run_step "Running tests" npm test --prefix "$TARGET_DIR" || finish 1
+run_step "Running JavaScript checks" npm run check --prefix "$TARGET_DIR" || finish 1
+
+say "Git status after overlay"
+git -C "$TARGET_DIR" status --short || { fail "Could not read git status."; finish 1; }
+
+if [ "$DEPLOY_RAILWAY" = "1" ]; then
+  command -v railway >/dev/null 2>&1 || { fail "Railway CLI not found. Install/login, then run: cd \"$TARGET_DIR\" && railway link && railway up"; finish 1; }
+  say "Deploying backend to Railway"
+  (cd "$TARGET_DIR" && railway up) || { fail "Railway deployment failed. Local files and temporary extraction were preserved."; finish 1; }
+else
+  printf '\nRailway deploy was not run. After variables and project linking are ready:\n  cd "%s" && railway link && railway up\n' "$TARGET_DIR"
+  printf 'To opt in during this installer, prefix the command with DEPLOY_RAILWAY=1.\n'
+fi
+
+if [ "$PUSH_THEME" = "1" ]; then
+  command -v sl >/dev/null 2>&1 || { fail "SHOPLINE CLI (sl) not found."; finish 1; }
+  if [ ! -d "$TARGET_DIR/theme-app-extension" ]; then
+    fail "theme-app-extension does not exist. First run: cd \"$TARGET_DIR\" && sl extension create --name theme-app-extension"
+    finish 1
+  fi
+  run_step "Copying App Block source into the CLI-created extension" rsync -a "$TARGET_DIR/theme-extension-source/" "$TARGET_DIR/theme-app-extension/" || finish 1
+  say "Pushing Theme App Extension to SHOPLINE"
+  (cd "$TARGET_DIR/theme-app-extension" && sl extension push) || { fail "SHOPLINE extension push failed. Files were preserved."; finish 1; }
+else
+  printf '\nTheme push was not run. After SHOPLINE CLI login, run:\n'
+  printf '  cd "%s"\n' "$TARGET_DIR"
+  printf '  sl extension create --name theme-app-extension\n'
+  printf '  rsync -a theme-extension-source/ theme-app-extension/\n'
+  printf '  cd theme-app-extension && sl extension push\n'
+  printf 'To opt in after the extension exists, prefix the installer with PUSH_THEME=1.\n'
+fi
+
+finish 0
+APPOINTMENT_LITE_INSTALL
