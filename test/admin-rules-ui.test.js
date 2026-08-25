@@ -49,6 +49,8 @@ test('booking-mode unit suffixes stay horizontal and timing guidance keeps clear
   assert.match(patch, /\.input-suffix>span\{[^}]*flex:0 0 auto;[^}]*white-space:nowrap;[^}]*writing-mode:horizontal-tb/);
   assert.match(patch, /\.mode-settings\{[^}]*display:grid;[^}]*gap:16px;[^}]*padding-bottom:2px/);
   assert.match(patch, /\.timing-helper\{[^}]*margin-top:0;[^}]*position:relative/);
-  assert.match(view, /styles\.css\?v=0\.4\.0\.1/);
-  assert.match(view, /app\.js\?v=0\.4\.0\.1/);
+  const pkg = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
+  const escapedVersion = pkg.version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  assert.match(view, new RegExp(`styles\\.css\\?v=${escapedVersion}`));
+  assert.match(view, new RegExp(`app\\.js\\?v=${escapedVersion}`));
 });

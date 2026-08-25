@@ -5,7 +5,7 @@ export function notFound(req, res) {
 export function errorHandler(error, req, res, next) {
   if (res.headersSent) return next(error);
   console.error(error);
-  const status = error.status || (error.code === 'SLOT_CONFLICT' ? 409 : error.code === 'NOT_FOUND' ? 404 : ['VALIDATION_ERROR', 'SLOT_UNAVAILABLE'].includes(error.code) ? 422 : 500);
+  const status = error.status || (['SLOT_CONFLICT', 'STAFF_CONFLICT'].includes(error.code) ? 409 : error.code === 'NOT_FOUND' ? 404 : ['VALIDATION_ERROR', 'SLOT_UNAVAILABLE'].includes(error.code) ? 422 : 500);
   res.status(status).json({
     error: error.code || 'INTERNAL_ERROR',
     message: status === 500 ? 'Something went wrong. Please try again.' : error.message

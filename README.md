@@ -1,6 +1,6 @@
 # Appointment Lite for SHOPLINE
 
-Version `0.4.0` — introduces booking modes so one service model can support minute/hour appointments, all-day reservations, and multi-session bookings across product-page and direct booking channels.
+Version `0.5.0` — adds first-class staff scheduling: team management, per-staff working hours, service assignments, customer/staff selection modes, conflict-safe booking allocation, merchant reassignment, and staff-aware booking filters across all booking modes.
 
 Appointment Lite now supports two booking entry models:
 
@@ -10,6 +10,23 @@ Appointment Lite now supports two booking entry models:
 Typical scenarios include furniture installation and measurements, showroom visits, wedding fittings, jewelry or design consultations, beauty appointments, technician visits, lessons, workshops, small-group classes, and made-to-order product appointments.
 
 
+
+## v0.5.0 Staff Management Foundation
+
+Appointment Lite now treats staff as a first-class scheduling resource instead of a free-text label. The new **Staff** workspace lets a merchant create active/inactive team members, store contact details, define weekly working hours and one-off availability exceptions, and see which appointment services each staff member is assigned to.
+
+Each appointment service can independently choose a staff assignment policy:
+
+- **No staff required** — preserves the existing lightweight behavior and keeps legacy free-text staff compatible.
+- **Any available staff** — Appointment Lite automatically assigns one eligible staff member who is available for the full appointment.
+- **Customer chooses** — storefront/hosted booking UI asks the customer to choose from eligible staff, then filters availability for that member.
+- **Fixed staff** — a service always uses one configured team member.
+
+Staff scheduling is booking-mode aware. Minute/hour appointments check the full service duration **plus buffer** against the staff schedule. All-day appointments reserve the staff member for the service date. Multiple-session bookings choose one staff member who is available for every selected occurrence, so a course pack does not silently change instructors between sessions. A five-minute staff-reservation bucket ledger prevents overlapping appointments across different services while still allowing the same instructor to serve a group-capacity occurrence of one class/service.
+
+Bookings now preserve a denormalized staff snapshot, expose a Staff filter, and let merchants reassign a confirmed minute/hour booking only after conflict validation. Cancelling, completing, or marking no-show releases staff reservations. Staff members with confirmed bookings cannot be deactivated/deleted, and staff assigned to services must be removed from those services first, preventing a service from silently losing its staffing policy.
+
+Existing stores are migrated safely: existing rules receive `staffAssignment.mode=none`; legacy free-text staff labels remain untouched until the merchant opts that service into managed staff.
 
 ## v0.4.0 Booking Modes Foundation
 

@@ -16,12 +16,16 @@ Requires the signed `al_session` HTTP-only cookie. Mutations also require `X-CSR
 
 - `GET /api/admin/bootstrap`
 - `GET /api/admin/products`
-- `GET /api/admin/rules` — includes `serviceType`, `bookingSource`, `bookingMode`, `serviceTitle`, per-service booking count, and a `bookingUrl` for `direct|both` services
+- `GET /api/admin/rules` — includes `serviceType`, `bookingSource`, `bookingMode`, `serviceTitle`, `staffAssignment`, per-service booking count, and a `bookingUrl` for `direct|both` services
 - `POST /api/admin/rules`
 - `PUT /api/admin/rules/:id`
 - `DELETE /api/admin/rules/:id`
-- `GET /api/admin/bookings?status=confirmed|cancelled|completed|no_show&ruleId=...&from=YYYY-MM-DD&to=YYYY-MM-DD` — max 1000 records; the admin UI also applies client-side text search and CSV export
-- `PUT /api/admin/bookings/:id` — merchant date/time/location/staff edit for minute/hour bookings
+- `GET /api/admin/staff` — team members plus appointment services currently assigned to each member
+- `POST /api/admin/staff` — create a staff member with weekly hours and availability exceptions
+- `PUT /api/admin/staff/:id` — edit contact details, status, and availability; deactivation is blocked while active bookings or service assignments remain
+- `DELETE /api/admin/staff/:id` — delete only after confirmed bookings are resolved and the member is removed from assigned services
+- `GET /api/admin/bookings?status=confirmed|cancelled|completed|no_show&ruleId=...&staffId=...&from=YYYY-MM-DD&to=YYYY-MM-DD` — max 1000 records; the admin UI also applies client-side text search and CSV export
+- `PUT /api/admin/bookings/:id` — merchant date/time/location/staff edit for minute/hour bookings; managed staff reassignment is conflict-checked before the old assignment is released
 - `POST /api/admin/bookings/:id/cancel` — merchant cancellation
 - `POST /api/admin/bookings/:id/status` — merchant lifecycle update to `completed` or `no_show`
 - `PUT /api/admin/preferences` — saves merchant admin language (`en` or `zh-CN`)
@@ -35,13 +39,13 @@ Requires the signed `al_session` HTTP-only cookie. Mutations also require `X-CSR
 ### Product App Block flow
 
 - `GET /api/public/rule?shopId=STORE_ID&productId=PRODUCT_ID`
-- `GET /api/public/availability?shopId=STORE_ID&productId=PRODUCT_ID&date=YYYY-MM-DD`
+- `GET /api/public/availability?shopId=STORE_ID&productId=PRODUCT_ID&date=YYYY-MM-DD&staffId=STAFF_ID` — `staffId` is used for customer-choice staffing; multi-session clients may also send `selected=YYYY-MM-DDTHH:mm,...` so remaining slots stay compatible with one staff member across the bundle
 - `POST /api/public/bookings` with `shopId`, `productId`, customer fields, and the selection required by the rule's `bookingMode`
 
 ### Hosted booking-page flow
 
 - `GET /api/public/service?ruleId=RULE_ID`
-- `GET /api/public/availability?ruleId=RULE_ID&date=YYYY-MM-DD`
+- `GET /api/public/availability?ruleId=RULE_ID&date=YYYY-MM-DD&staffId=STAFF_ID` — same staff-aware availability behavior as the product flow
 - `POST /api/public/bookings` with `ruleId`, customer fields, and the selection required by `bookingMode`
 
 Both flows use the same scheduling engine and the same Theme/hosted behavior. Availability is `no-store`, policy-aware, and capacity-aware.
@@ -56,6 +60,7 @@ Minute/hour (`bookingMode=slot`):
   "date": "2026-09-12",
   "time": "10:00",
   "customer": { "name": "Jane Doe", "email": "jane@example.com", "phone": "+1 555 0100" },
+  "staffId": "66c6f3c1f24f1e9a00445566",
   "note": "Please call before arrival",
   "answers": []
 }
@@ -93,6 +98,18 @@ Multiple sessions (`bookingMode=multi_slot`):
 
 The number of occurrences must exactly match the service's `sessionsRequired`. Capacity is reserved atomically for every selected occurrence before the Booking is committed.
 
+
+### Staff-aware booking behavior
+
+A rule exposes `staffAssignment` and safe public `staffOptions`. Staff selection is independent from `serviceType`, `bookingSource`, and `bookingMode`:
+
+- `none` — no managed staff resource is required.
+- `any` — the server chooses one eligible staff member who can cover every occurrence.
+- `customer_choice` — the customer must submit an allowed `staffId`; availability is filtered for that member.
+- `fixed` — the configured member is chosen automatically.
+
+Staff working hours and exceptions are intersected with service availability. Timed services consume `duration + buffer` from the staff schedule. Multi-session bookings keep one staff member for all selected occurrences. Overlaps across different services are rejected with `409 STAFF_CONFLICT`; a group-capacity occurrence of one service can share its staff reservation across customers.
+
 ### Customer management API
 
 - `POST /api/public/bookings/:id/status` — token-authenticated full status; legacy product receipts retain their restricted compatibility lookup
@@ -100,6 +117,6 @@ The number of occurrences must exactly match the service's `sessionsRequired`. C
 - `POST /api/public/bookings/:id/reschedule` — one customer self-service reschedule for minute/hour bookings
 - `POST /api/public/bookings/:id/cancel` — customer cancellation for all modes
 
-Online rescheduling remains intentionally limited to `slot` bookings in v0.4.0. All-day and multi-session bookings can still be cancelled online and managed by the merchant.
+Online rescheduling remains intentionally limited to `slot` bookings in v0.5.0. All-day and multi-session bookings can still be cancelled online and managed by the merchant.
 
 Scheduling-policy failures return `422 SLOT_UNAVAILABLE`. A selection that loses its final capacity position during a concurrent reservation returns `409 SLOT_CONFLICT`.

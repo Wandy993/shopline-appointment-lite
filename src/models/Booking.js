@@ -10,7 +10,9 @@ const occurrenceSchema = new mongoose.Schema({
   date: { type: String, required: true, match: /^\d{4}-\d{2}-\d{2}$/ },
   time: { type: String, default: '' },
   slotKey: { type: String, required: true },
-  slotPosition: { type: Number, default: 0, min: 0 }
+  slotPosition: { type: Number, default: 0, min: 0 },
+  staffId: { type: mongoose.Schema.Types.ObjectId, ref: 'Staff', default: null },
+  staffName: { type: String, default: '' }
 }, { _id: false });
 
 const bookingSnapshotSchema = new mongoose.Schema({
@@ -18,6 +20,8 @@ const bookingSnapshotSchema = new mongoose.Schema({
   time: { type: String, default: '' },
   location: { type: String, default: '' },
   staff: { type: String, default: '' },
+  staffId: { type: mongoose.Schema.Types.ObjectId, ref: 'Staff', default: null },
+  staffEmail: { type: String, default: '' },
   status: { type: String, enum: ['confirmed', 'cancelled', 'completed', 'no_show'], default: 'confirmed' }
 }, { _id: false });
 
@@ -52,6 +56,8 @@ const bookingSchema = new mongoose.Schema({
   timezone: { type: String, default: 'UTC' },
   location: { type: String, default: '' },
   staff: { type: String, default: '' },
+  staffId: { type: mongoose.Schema.Types.ObjectId, ref: 'Staff', default: null, index: true },
+  staffEmail: { type: String, default: '' },
   customerRescheduleCount: { type: Number, default: 0, min: 0 },
   managementTokenHash: { type: String, required: true, select: false },
   customer: {

@@ -3,7 +3,7 @@ set -u
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd -P)"
 VERSION="$(node -p "require('$ROOT_DIR/package.json').version")"
-NAME="appointment-lite-v${VERSION}-booking-modes-foundation"
+NAME="appointment-lite-v${VERSION}-staff-management-foundation"
 DIST_DIR="$ROOT_DIR/dist"
 STAGE_DIR="${TMPDIR:-/tmp}/${NAME}.$$"
 OUTPUT="$DIST_DIR/${NAME}.zip"
@@ -22,6 +22,7 @@ rsync -a \
   --exclude='node_modules/' \
   --exclude='dist/' \
   --exclude='theme-app-extension/' \
+  --exclude='.shopline-cli.yml' \
   --exclude='*.zip' \
   "$ROOT_DIR/" "$STAGE_DIR/$NAME/"
 

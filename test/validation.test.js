@@ -29,5 +29,5 @@ test('booking validation trims values and validates email', () => {
 test('admin booking edit validates slot and trims lightweight resources', () => {
   const result = validateAdminBookingInput({ date: '2026-08-24', time: '10:00', location: ' Room B ', staff: ' Alex ' });
   assert.deepEqual(result.errors, []);
-  assert.deepEqual(result.value, { date: '2026-08-24', time: '10:00', location: 'Room B', staff: 'Alex' });
+  assert.deepEqual(result.value, { date: '2026-08-24', time: '10:00', location: 'Room B', staff: 'Alex', staffId: '' });
 });

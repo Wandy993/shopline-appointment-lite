@@ -47,9 +47,9 @@ body.al-dialog-open{position:fixed!important;top:var(--al-dialog-scroll-y,0)!imp
 .al-grid>*{min-width:0}
 .al-field{min-width:0;margin-bottom:15px}
 .al-field label,.al-legend{display:block;margin-bottom:6px;font-family:inherit;font-size:13px;font-weight:600;line-height:1.4}
-.al-field input,.al-field textarea{width:100%;min-width:0;max-width:100%;box-sizing:border-box;border:1px solid #d1d5db;border-radius:7px;background:#fff;padding:10px;font:inherit}
+.al-field input,.al-field textarea,.al-field select{width:100%;min-width:0;max-width:100%;box-sizing:border-box;border:1px solid #d1d5db;border-radius:7px;background:#fff;padding:10px;font:inherit}
 .al-field textarea{min-height:76px;resize:vertical}
-.al-field input:focus,.al-field textarea:focus{outline:2px solid color-mix(in srgb,var(--al-accent,#2f6fed) 25%,transparent);border-color:var(--al-accent,#2f6fed)}
+.al-field input:focus,.al-field textarea:focus,.al-field select:focus{outline:2px solid color-mix(in srgb,var(--al-accent,#2f6fed) 25%,transparent);border-color:var(--al-accent,#2f6fed)}
 .al-times{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
 .al-time{border:1px solid #d1d5db;border-radius:7px;background:#fff;color:#1f2937;padding:8px 12px;cursor:pointer}
 .al-time[aria-pressed=true]{border-color:var(--al-accent,#2f6fed);background:var(--al-accent,#2f6fed);color:#fff}
@@ -60,7 +60,7 @@ body.al-dialog-open{position:fixed!important;top:var(--al-dialog-scroll-y,0)!imp
 .al-live{font-size:13px;margin-top:7px;color:#b91c1c}
 .al-submit:disabled{opacity:.55;cursor:wait}
 .al-muted{font-size:13px;color:#6b7280;margin:0 0 14px}
-@media(max-width:540px){.al-grid,.al-confirm-actions{grid-template-columns:minmax(0,1fr)}.al-booked{align-items:flex-start;flex-direction:column}.al-secondary{width:100%}.al-dialog{width:calc(100vw - 20px);max-width:calc(100vw - 20px);max-height:calc(100dvh - 20px);border-radius:12px;font-size:15px}.al-head{gap:12px;padding:17px 16px}.al-head h2{font-size:21px;line-height:1.25}.al-head p{font-size:14px;line-height:1.45}.al-close{width:36px;height:36px;flex:0 0 36px}.al-form-body{padding:16px 16px 0}.al-actions{padding:12px 16px max(16px,env(safe-area-inset-bottom))}.al-manage{padding:16px;overflow-x:hidden}.al-field input,.al-field textarea{font-size:16px}.al-meta{font-size:13px;line-height:1.45}.al-times{max-width:100%;overflow-x:hidden}.al-time{font-size:14px}}
+@media(max-width:540px){.al-grid,.al-confirm-actions{grid-template-columns:minmax(0,1fr)}.al-booked{align-items:flex-start;flex-direction:column}.al-secondary{width:100%}.al-dialog{width:calc(100vw - 20px);max-width:calc(100vw - 20px);max-height:calc(100dvh - 20px);border-radius:12px;font-size:15px}.al-head{gap:12px;padding:17px 16px}.al-head h2{font-size:21px;line-height:1.25}.al-head p{font-size:14px;line-height:1.45}.al-close{width:36px;height:36px;flex:0 0 36px}.al-form-body{padding:16px 16px 0}.al-actions{padding:12px 16px max(16px,env(safe-area-inset-bottom))}.al-manage{padding:16px;overflow-x:hidden}.al-field input,.al-field textarea,.al-field select{font-size:16px}.al-meta{font-size:13px;line-height:1.45}.al-times{max-width:100%;overflow-x:hidden}.al-time{font-size:14px}}
 
 /* v0.2.6 mobile date-field alignment */
 .al-field input[type="date"]{
@@ -84,3 +84,5 @@ body.al-dialog-open{position:fixed!important;top:var(--al-dialog-scroll-y,0)!imp
 
 /* v0.4.0 booking modes */
 .al-mode-title{margin:18px 0 8px}.al-mode-title strong{font-size:14px}.al-selected-sessions{margin-top:14px;padding:13px;border:1px solid #dfe7f2;border-radius:12px;background:#f8fbff}.al-selected-head{display:flex;justify-content:space-between;gap:12px;margin-bottom:8px}.al-selected-head strong{font-size:13px}.al-selected-head span{color:var(--al-accent);font-size:12px;font-weight:750}.al-selected-list{display:flex;flex-wrap:wrap;gap:7px}.al-selected-list button{padding:7px 9px;display:flex;align-items:center;gap:8px;border:1px solid #cfdcf0;border-radius:9px;background:#fff;color:#34445a;font:inherit;font-size:12px}.al-selected-list i{font-style:normal;color:#8492a5}.al-all-day{width:100%;padding:12px 13px;border:1px solid #cfdcf0;border-radius:10px;background:#f3f7ff}.al-all-day strong,.al-all-day span{display:block}.al-all-day strong{color:#285ba8;font-size:13px}.al-all-day span{margin-top:3px;color:#6c7b90;font-size:11px}.al-session-summary{display:flex;flex-direction:column;gap:3px}.al-session-summary span{font-weight:700}
+
+.al-field select{height:44px;appearance:auto}.al-field small{display:block;margin-top:5px;color:#6b7280;font-size:12px;line-height:1.4}

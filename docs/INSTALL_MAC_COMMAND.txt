@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -u
 
-VERSION="0.4.0"
-RELEASE_SLUG="appointment-lite-v0.4.0-booking-modes-foundation"
+VERSION="0.5.0"
+RELEASE_SLUG="appointment-lite-v0.5.0-staff-management-foundation"
 ZIP_NAME="${RELEASE_SLUG}.zip"
 ZIP_PATH="${ZIP_PATH:-$HOME/Downloads/$ZIP_NAME}"
 TARGET_DIR="${TARGET_DIR:-$PWD}"
@@ -31,7 +31,7 @@ CURRENT_BRANCH="$(git -C "$TARGET_DIR" branch --show-current)"
 [ -n "$CURRENT_BRANCH" ] || fail "Detached Git HEAD detected."
 if [ -n "$(git -C "$TARGET_DIR" status --porcelain 2>/dev/null)" ]; then
   git -C "$TARGET_DIR" status
-  fail "Working tree has uncommitted changes. Commit or stash them before applying v0.4.0."
+  fail "Working tree has uncommitted changes. Commit or stash them before applying v0.5.0."
 fi
 if git -C "$TARGET_DIR" remote get-url origin >/dev/null 2>&1; then
   git -C "$TARGET_DIR" fetch origin "$CURRENT_BRANCH" || fail "git fetch failed."
@@ -45,23 +45,24 @@ if git -C "$TARGET_DIR" remote get-url origin >/dev/null 2>&1; then
 fi
 
 say "3/13 Create upgrade backup tag"
-BACKUP_TAG="appointment-lite-pre-v0.4.0-$(date +%Y%m%d-%H%M%S)"
+BACKUP_TAG="appointment-lite-pre-v0.5.0-$(date +%Y%m%d-%H%M%S)"
 git -C "$TARGET_DIR" tag "$BACKUP_TAG" HEAD || fail "Git backup tag failed."
 printf 'Backup tag: %s\n' "$BACKUP_TAG"
 
 say "4/13 Extract release"
-TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/appointment-lite-v040.XXXXXX")" || fail "Could not create temp directory."
+TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/appointment-lite-v050.XXXXXX")" || fail "Could not create temp directory."
 unzip -q "$ZIP_PATH" -d "$TEMP_DIR" || fail "ZIP extraction failed."
 SOURCE_DIR="$TEMP_DIR/$RELEASE_SLUG"
 [ -f "$SOURCE_DIR/package.json" ] && [ -f "$SOURCE_DIR/src/server.js" ] || fail "Release root is invalid."
 
-say "5/13 Overlay v0.4.0 source"
+say "5/13 Overlay v0.5.0 source"
 rsync -a \
   --exclude='.git/' \
   --exclude='.env' \
   --exclude='theme-app-extension/' \
   --exclude='node_modules/' \
   --exclude='dist/' \
+  --exclude='.shopline-cli.yml' \
   "$SOURCE_DIR/" "$TARGET_DIR/" || fail "rsync overlay failed."
 
 say "6/13 Install locked dependencies"
@@ -73,16 +74,16 @@ say "7/13 Run full tests"
 say "8/13 Run JavaScript checks"
 (cd "$TARGET_DIR" && npm run check) || fail "npm run check failed."
 
-say "9/13 Verify v0.4.0 booking modes"
+say "9/13 Verify v0.5.0 Staff Management Foundation"
 ACTUAL_VERSION="$(cd "$TARGET_DIR" && node -p "require('./package.json').version")" || fail "Cannot read package version."
-[ "$ACTUAL_VERSION" = "0.4.0" ] || fail "Expected package version 0.4.0, got $ACTUAL_VERSION."
-grep -q "bookingMode.*all_day.*multi_slot" "$TARGET_DIR/src/models/AppointmentRule.js" || fail "AppointmentRule booking modes are missing."
-grep -q "sessionsRequired" "$TARGET_DIR/src/models/AppointmentRule.js" || fail "Multi-session rule settings are missing."
-grep -q "BookingReservation" "$TARGET_DIR/src/services/bookings.js" || fail "Occurrence capacity reservations are missing."
-grep -q "data-booking-mode=\"all_day\"" "$TARGET_DIR/src/views/admin.js" || fail "All-day admin mode is missing."
-grep -q "data-booking-mode=\"multi_slot\"" "$TARGET_DIR/src/views/admin.js" || fail "Multi-session admin mode is missing."
-grep -q "mode === 'all_day'" "$TARGET_DIR/theme-extension-source/public/appointment-lite.js" || fail "Theme all-day mode is missing."
-grep -q "mode === 'multi_slot'" "$TARGET_DIR/theme-extension-source/public/appointment-lite.js" || fail "Theme multi-session mode is missing."
+[ "$ACTUAL_VERSION" = "0.5.0" ] || fail "Expected package version 0.5.0, got $ACTUAL_VERSION."
+[ -f "$TARGET_DIR/src/models/Staff.js" ] || fail "Staff model is missing."
+[ -f "$TARGET_DIR/src/models/StaffReservation.js" ] || fail "Staff reservation model is missing."
+grep -q "staffAssignment" "$TARGET_DIR/src/models/AppointmentRule.js" || fail "Service staff assignment is missing."
+grep -q "StaffConflictError" "$TARGET_DIR/src/services/staffing.js" || fail "Staff conflict engine is missing."
+grep -q "Customer chooses" "$TARGET_DIR/src/views/admin.js" || fail "Staff assignment UI is missing."
+grep -q "selectedStaffId" "$TARGET_DIR/theme-extension-source/public/appointment-lite.js" || fail "Theme staff selection is missing."
+grep -q "selectedStaffId" "$TARGET_DIR/public/book/app.js" || fail "Hosted booking staff selection is missing."
 
 say "10/13 Sync Theme App Extension source"
 if [ -d "$TARGET_DIR/theme-app-extension" ]; then
@@ -95,11 +96,11 @@ else
   PUSH_THEME=0
 fi
 
-say "11/13 Commit and push v0.4.0"
+say "11/13 Commit and push v0.5.0"
 git -C "$TARGET_DIR" add -A -- . ':!theme-app-extension' 2>/dev/null || git -C "$TARGET_DIR" add -A -- . || fail "git add failed."
 git -C "$TARGET_DIR" reset -- theme-app-extension >/dev/null 2>&1 || true
 if ! git -C "$TARGET_DIR" diff --cached --quiet; then
-  git -C "$TARGET_DIR" commit -m "feat: Appointment Lite v0.4.0 booking modes foundation" || fail "Release commit failed."
+  git -C "$TARGET_DIR" commit -m "feat: Appointment Lite v0.5.0 staff management foundation" || fail "Release commit failed."
 fi
 if git -C "$TARGET_DIR" remote get-url origin >/dev/null 2>&1; then
   git -C "$TARGET_DIR" push origin "$CURRENT_BRANCH" || fail "git push failed."
@@ -128,7 +129,7 @@ else
 fi
 
 printf '\n========================================\n'
-printf '✅ Appointment Lite v0.4.0 Booking Modes Foundation complete\n'
+printf 'Appointment Lite v0.5.0 Staff Management Foundation complete\n'
 printf '========================================\n'
 printf 'Backup tag: %s\n' "$BACKUP_TAG"
 git -C "$TARGET_DIR" status

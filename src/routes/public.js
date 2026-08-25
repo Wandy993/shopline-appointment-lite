@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 import { AppointmentRule } from '../models/AppointmentRule.js';
 import { Booking } from '../models/Booking.js';
 import { BookingReservation } from '../models/BookingReservation.js';
+import { publicStaffOptions, staffAvailabilityForDate } from '../services/staffing.js';
 import { addDays, bookingModeFor, filterSlotsByCapacity, futureSlotsForDate, isAllDayBookableDate, zonedNow } from '../lib/slots.js';
 import { validateBookingInput, validateDateInput, validateSlotInput } from '../lib/validation.js';
 import { cancelManagedBooking, createBookingForStore, getLegacyBookingStatus, getManagedAvailability, getManagedBooking, rescheduleManagedBooking } from '../services/bookings.js';
@@ -21,7 +22,7 @@ function publicBooking(booking) {
   const timezone = booking.timezone || 'UTC';
   const bookingMode = ['slot', 'all_day', 'multi_slot'].includes(booking.bookingMode) ? booking.bookingMode : 'slot';
   const occurrences = Array.isArray(booking.occurrences) && booking.occurrences.length
-    ? booking.occurrences.map(item => ({ date: item.date, time: item.time || '' }))
+    ? booking.occurrences.map(item => ({ date: item.date, time: item.time || '', staffId: item.staffId ? String(item.staffId) : '', staffName: item.staffName || '' }))
     : [{ date: booking.date, time: bookingMode === 'all_day' ? '' : booking.time }];
   return {
     id: booking._id, serviceTitle: booking.productTitle, productTitle: booking.productTitle,
@@ -29,12 +30,12 @@ function publicBooking(booking) {
     sourceType: booking.sourceType || 'product', serviceType: booking.serviceType === 'product' ? 'appointment' : (booking.serviceType || 'appointment'),
     bookingMode, occurrences,
     date: booking.date, time: bookingMode === 'all_day' ? '' : booking.time, timezone, storeDate: zonedNow(timezone).date,
-    location: booking.location, staff: booking.staff, status: booking.status, customerRescheduleCount,
+    location: booking.location, staff: booking.staff, staffId: booking.staffId ? String(booking.staffId) : '', status: booking.status, customerRescheduleCount,
     customerCanReschedule: bookingMode === 'slot' && booking.status === 'confirmed' && customerRescheduleCount < 1
   };
 }
 
-function serializeRule(rule, timezone) {
+function serializeRule(rule, timezone, staffMeta = { mode: 'none', options: [] }) {
   const storeDate = zonedNow(timezone).date;
   const bookingWindowDays = Number(rule.bookingWindowDays || 90);
   return {
@@ -47,6 +48,7 @@ function serializeRule(rule, timezone) {
     bookingWindowDays, bookingWindowUntil: addDays(storeDate, bookingWindowDays),
     dateFrom: rule.dateFrom, dateUntil: rule.dateUntil, weeklyAvailability: rule.weeklyAvailability,
     availabilityExceptions: rule.availabilityExceptions || [], location: rule.location, staff: rule.staff,
+    staffAssignment: { mode: staffMeta.mode, staffIds: staffMeta.options.map(item => item.id) }, staffOptions: staffMeta.options,
     questionLabel: rule.questionLabel, customQuestions: rule.customQuestions
   };
 }
@@ -77,8 +79,9 @@ publicRouter.get('/rule', async (req, res) => {
   const result = await findPublicRule(req);
   if (result.error) return res.status(result.error.status).json(result.error.body);
   const timezone = result.shop.timezone || 'UTC';
-  res.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
-  res.json({ rule: serializeRule(result.rule, timezone), timezone, storeDate: zonedNow(timezone).date });
+  const staffMeta = await publicStaffOptions(result.rule);
+  res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=300');
+  res.json({ rule: serializeRule(result.rule, timezone, staffMeta), timezone, storeDate: zonedNow(timezone).date });
 });
 
 publicRouter.get('/service', async (req, res) => {
@@ -88,9 +91,10 @@ publicRouter.get('/service', async (req, res) => {
   if (!['direct', 'both'].includes(bookingSource)) return res.status(404).json({ error: 'NOT_FOUND', message: 'Direct booking is not enabled for this service.' });
   const timezone = result.shop.timezone || 'UTC';
   const emailSettings = normalizeEmailSettings(result.shop.emailSettings || {});
+  const staffMeta = await publicStaffOptions(result.rule);
   res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=300');
   res.json({
-    rule: serializeRule(result.rule, timezone), timezone, storeDate: zonedNow(timezone).date,
+    rule: serializeRule(result.rule, timezone, staffMeta), timezone, storeDate: zonedNow(timezone).date,
     brand: { name: emailSettings.brandName || result.shop.handle || 'Appointment Lite', logoUrl: emailSettings.logoUrl || '', accentColor: emailSettings.accentColor || '#2F6FED' }
   });
 });
@@ -102,6 +106,11 @@ publicRouter.get('/availability', async (req, res) => {
   const timezone = result.shop.timezone || 'UTC';
   const mode = bookingModeFor(result.rule);
   const capacity = Number(result.rule.capacity || 1);
+  const requestedStaffId = String(req.query.staffId || '').trim();
+  const selectedOccurrences = String(req.query.selected || '').split(',').map(value => value.trim()).filter(Boolean).slice(0, 12).map(value => {
+    const match = value.match(/^(\d{4}-\d{2}-\d{2})T([0-2]\d:[0-5]\d)$/);
+    return match ? { date: match[1], time: match[2], slotKey: `${match[1]}T${match[2]}` } : null;
+  }).filter(Boolean);
   const reservations = await BookingReservation.find({ shopId: result.shop._id, ruleId: result.rule._id, date }).select('bookingId time slotPosition').lean();
   const reservedBookingIds = reservations.map(item => item.bookingId).filter(Boolean);
   const legacyFilter = { shopId: result.shop._id, ruleId: result.rule._id, date, status: 'confirmed' };
@@ -110,17 +119,24 @@ publicRouter.get('/availability', async (req, res) => {
   res.set('Cache-Control', 'no-store');
   if (mode === 'all_day') {
     const count = reservations.length + legacyBookings.length;
+    const baseAvailable = isAllDayBookableDate(result.rule, date, timezone) && count < capacity;
+    const staffing = baseAvailable
+      ? await staffAvailabilityForDate({ shopId: result.shop._id, rule: result.rule, date, requestedStaffId, selectedOccurrences })
+      : { managed: false, requiresStaffSelection: false, availableAllDay: false };
     return res.json({
       date, timezone, storeDate: zonedNow(timezone).date, bookingMode: mode,
-      available: isAllDayBookableDate(result.rule, date, timezone) && count < capacity,
-      remaining: Math.max(0, capacity - count), capacity, slots: []
+      available: baseAvailable && staffing.availableAllDay, remaining: Math.max(0, capacity - count), capacity, slots: [],
+      requiresStaffSelection: staffing.requiresStaffSelection || false
     });
   }
   const allSlots = futureSlotsForDate(result.rule, date, timezone);
   const booked = [...reservations.map(item => ({ time: item.time })), ...legacyBookings];
+  const capacitySlots = filterSlotsByCapacity(allSlots, booked, capacity);
+  const staffing = await staffAvailabilityForDate({ shopId: result.shop._id, rule: result.rule, date, baseSlots: capacitySlots, requestedStaffId, selectedOccurrences });
   res.json({
     date, timezone, storeDate: zonedNow(timezone).date, bookingMode: mode,
-    slots: filterSlotsByCapacity(allSlots, booked, capacity), capacity
+    slots: staffing.managed ? staffing.slots : capacitySlots, capacity,
+    requiresStaffSelection: staffing.requiresStaffSelection || false
   });
 });
 

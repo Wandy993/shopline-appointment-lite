@@ -17,6 +17,12 @@ const exceptionSchema = new mongoose.Schema({
   windows: { type: [windowSchema], default: [] }
 }, { _id: true });
 
+
+const staffAssignmentSchema = new mongoose.Schema({
+  mode: { type: String, enum: ['none', 'any', 'customer_choice', 'fixed'], default: 'none' },
+  staffIds: { type: [mongoose.Schema.Types.ObjectId], ref: 'Staff', default: [] }
+}, { _id: false });
+
 const questionSchema = new mongoose.Schema({
   label: { type: String, required: true, maxlength: 120 },
   required: { type: Boolean, default: false }
@@ -51,7 +57,9 @@ const appointmentRuleSchema = new mongoose.Schema({
   weeklyAvailability: { type: [weeklySchema], default: [] },
   availabilityExceptions: { type: [exceptionSchema], default: [] },
   location: { type: String, default: '', maxlength: 200 },
+  // Legacy free-text staff remains for older services. Managed staff uses staffAssignment.
   staff: { type: String, default: '', maxlength: 200 },
+  staffAssignment: { type: staffAssignmentSchema, default: () => ({ mode: 'none', staffIds: [] }) },
   questionLabel: { type: String, default: 'Anything we should know?', maxlength: 120 },
   customQuestions: { type: [questionSchema], default: [] },
   enabled: { type: Boolean, default: true }

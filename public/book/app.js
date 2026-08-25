@@ -4,6 +4,7 @@ let rule;
 let selectedTime = '';
 let selectedAllDayDate = '';
 let selectedOccurrences = [];
+let selectedStaffId = '';
 let brand = { name: 'Appointment Lite', accentColor: '#2F6FED' };
 
 const typeLabels = { appointment: 'Appointment', product: 'Appointment', in_store: 'In-store appointment', onsite: 'Home / onsite service', consultation: 'Consultation', class: 'Class / course', other: 'Service appointment' };
@@ -82,7 +83,10 @@ function renderService(payload) {
   $('#timezoneText').textContent = mode === 'all_day' ? `Dates use ${payload.timezone}.` : `All times use ${payload.timezone}.`;
   $('#noteLabel').textContent = rule.questionLabel || 'Anything we should know?';
   const modeMeta = mode === 'all_day' ? 'All-day booking' : mode === 'multi_slot' ? `${rule.sessionsRequired || 3} sessions per booking` : `${rule.duration} min`;
-  const meta = [modeMeta, rule.location, rule.staff, rule.capacity > 1 ? `${rule.capacity} ${mode === 'all_day' ? 'bookings per day' : 'spots per time'}` : '', formatNotice(rule.minimumNoticeMinutes)].filter(Boolean);
+  const staffMode = rule.staffAssignment?.mode || 'none';
+  const staffOptions = Array.isArray(rule.staffOptions) ? rule.staffOptions : [];
+  const managedStaffMeta = staffMode === 'fixed' && staffOptions[0] ? staffOptions[0].name : staffMode === 'any' ? 'Assigned automatically' : '';
+  const meta = [modeMeta, rule.location, managedStaffMeta || rule.staff, rule.capacity > 1 ? `${rule.capacity} ${mode === 'all_day' ? 'bookings per day' : 'spots per time'}` : '', formatNotice(rule.minimumNoticeMinutes)].filter(Boolean);
   $('#serviceMeta').innerHTML = meta.map(value => `<span>${escapeHtml(value)}</span>`).join('');
   const today = payload.storeDate || new Date().toISOString().slice(0, 10);
   $('#bookingDate').min = rule.dateFrom && rule.dateFrom > today ? rule.dateFrom : today;
@@ -90,6 +94,12 @@ function renderService(payload) {
   const maxDate = [rule.dateUntil, maxByWindow].filter(Boolean).sort()[0] || '';
   if (maxDate) $('#bookingDate').max = maxDate;
   $('#customQuestions').innerHTML = (rule.customQuestions || []).map(question => `<label class="field"><span>${escapeHtml(question.label)}${question.required ? ' *' : ''}</span><input data-question="${escapeHtml(question.label)}" maxlength="1000" ${question.required ? 'required' : ''}></label>`).join('');
+  const staffField = $('#staffField');
+  const staffSelect = $('#staffSelect');
+  staffField.classList.toggle('hidden', staffMode !== 'customer_choice');
+  staffSelect.required = staffMode === 'customer_choice';
+  staffSelect.innerHTML = `<option value="">Choose staff</option>${staffOptions.map(item => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}</option>`).join('')}`;
+  selectedStaffId = '';
 
   if (mode === 'all_day') {
     $('#scheduleHeading').textContent = 'Choose a day';
@@ -109,7 +119,10 @@ async function loadAvailability(date) {
   const root = $('#timeSlots');
   root.innerHTML = `<span class="muted">${bookingMode() === 'all_day' ? 'Checking date…' : 'Loading times…'}</span>`;
   try {
-    const payload = await api(`/api/public/availability?ruleId=${encodeURIComponent(ruleId)}&date=${encodeURIComponent(date)}`);
+    const staffQuery = selectedStaffId ? `&staffId=${encodeURIComponent(selectedStaffId)}` : '';
+    const selectedQuery = bookingMode() === 'multi_slot' && selectedOccurrences.length ? `&selected=${encodeURIComponent(selectedOccurrences.map(item => `${item.date}T${item.time}`).join(','))}` : '';
+    const payload = await api(`/api/public/availability?ruleId=${encodeURIComponent(ruleId)}&date=${encodeURIComponent(date)}${staffQuery}${selectedQuery}`);
+    if (payload.requiresStaffSelection) { root.innerHTML = '<span class="muted">Choose a staff member first.</span>'; return; }
     if (bookingMode() === 'all_day') {
       selectedAllDayDate = payload.available ? date : '';
       root.innerHTML = payload.available
@@ -118,7 +131,7 @@ async function loadAvailability(date) {
       return;
     }
     root.innerHTML = payload.slots.length ? payload.slots.map(time => `<button type="button" class="time-slot" data-time="${time}" aria-pressed="false">${time}</button>`).join('') : '<span class="muted">No times available on this date.</span>';
-    root.querySelectorAll('.time-slot').forEach(button => button.addEventListener('click', () => {
+    root.querySelectorAll('.time-slot').forEach(button => button.addEventListener('click', async () => {
       if (bookingMode() === 'multi_slot') {
         const item = { date, time: button.dataset.time };
         const key = occurrenceKey(item);
@@ -128,6 +141,7 @@ async function loadAvailability(date) {
         selectedOccurrences.sort((a, b) => occurrenceKey(a).localeCompare(occurrenceKey(b)));
         renderSelectedSessions();
         renderCurrentTimeSelection();
+        await loadAvailability(date);
       } else {
         selectedTime = button.dataset.time;
         root.querySelectorAll('.time-slot').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
@@ -136,6 +150,11 @@ async function loadAvailability(date) {
     renderCurrentTimeSelection();
   } catch (error) { root.innerHTML = `<span class="muted">${escapeHtml(error.message)}</span>`; }
 }
+
+$('#staffSelect').addEventListener('change', async event => {
+  selectedStaffId = event.target.value; selectedTime = ''; selectedAllDayDate = ''; selectedOccurrences = []; renderSelectedSessions();
+  if ($('#bookingDate').value) await loadAvailability($('#bookingDate').value);
+});
 
 $('#bookingDate').addEventListener('change', async event => {
   selectedTime = '';
@@ -158,6 +177,7 @@ $('#bookingForm').addEventListener('submit', async event => {
   try {
     const body = {
       ruleId,
+      staffId: selectedStaffId,
       date: mode === 'multi_slot' ? selectedOccurrences[0]?.date : form.get('date'),
       time: mode === 'slot' ? selectedTime : '',
       occurrences: mode === 'multi_slot' ? selectedOccurrences : [],

@@ -32,7 +32,9 @@ Important fields:
 - `dateFrom`, `dateUntil`
 - `weeklyAvailability[{ weekday, enabled, windows[{ start, end }] }]` — all-day mode uses the enabled weekday but not hourly windows
 - `availabilityExceptions[{ date, closed, windows[] }]` — all-day mode uses open/closed date exceptions
-- `location`, `staff`, `questionLabel`, `customQuestions`, `enabled`
+- `location`, legacy free-text `staff`, `questionLabel`, `customQuestions`, `enabled`
+- `staffAssignment.mode`: `none | any | customer_choice | fixed`
+- `staffAssignment.staffIds[]`: managed `Staff` references eligible to deliver the service
 
 The SHOPLINE product binding uses a partial unique index for non-empty `productId`, so one product maps to one Appointment Lite service while direct-only services can exist without a product.
 
@@ -43,15 +45,41 @@ Bookings preserve a denormalized service snapshot so records remain understandab
 Important fields include:
 
 - `bookingSource`, legacy `sourceType`, `serviceType`, `bookingMode`, optional `productId`
-- `ruleId`, `productTitle` (denormalized service display title), `duration`, `buffer`, `timezone`, `location`, `staff`
+- `ruleId`, `productTitle` (denormalized service display title), `duration`, `buffer`, `timezone`, `location`, `staff`, `staffId`, `staffEmail`
 - compatibility primary fields `date`, `time`, `slotKey`, `slotPosition`
-- `occurrences[]` — canonical selected date/time occurrences for booking-mode-aware records
+- `occurrences[]` — canonical selected date/time occurrences for booking-mode-aware records; managed assignments snapshot `staffId` and `staffName` per occurrence
 - customer name/email/optional phone/note/answers
 - `status`: `confirmed | cancelled | completed | no_show`
 - `managementTokenHash`, customer reschedule count, merchant edit timestamps
 - append-only `events[]`
 
 For `slot`, `occurrences.length = 1`. For `all_day`, the occurrence has a date and empty customer-facing time while the legacy primary `time` remains `00:00`. For `multi_slot`, `occurrences` contains every session selected by the customer.
+
+## Staff
+
+One record per managed team member in a SHOPLINE store.
+
+Important fields:
+
+- `shopId`
+- `name`, optional `email`, optional `phone`
+- `status`: `active | inactive`
+- `weeklyAvailability[{ weekday, enabled, windows[{ start, end }] }]`
+- `availabilityExceptions[{ date, closed, windows[] }]`
+
+Staff availability is independent from service availability. A customer-facing occurrence is bookable only when the service schedule, service capacity, and the chosen/assigned staff schedule all allow it. Staff records are tenant-scoped and can be assigned to multiple services.
+
+## StaffReservation
+
+`StaffReservation` is the v0.5.0 conflict ledger for managed staff. It stores:
+
+```js
+{ shopId, staffId, ruleId, slotKey, date, bookingMode, bucketKeys[], bookingIds[] }
+```
+
+Timed occurrences are normalized into five-minute `bucketKeys`. A unique multikey index on `{ shopId, staffId, bucketKeys }` prevents the same staff member from overlapping across different services. A second unique occurrence index lets one staff member serve multiple customers in the **same** service occurrence when that service has group capacity.
+
+For `multi_slot`, all occurrences are tested against one candidate staff member before the Booking succeeds. Cancellation, completion, no-show, or merchant reassignment releases/updates the corresponding staff reservations.
 
 ## BookingReservation
 
@@ -78,6 +106,16 @@ The legacy Booking-level confirmed-slot index remains for compatibility and the 
 - `multi_slot`: every selected occurrence must independently pass the `slot` rules, selections must be unique, and count must exactly equal `sessionsRequired`.
 
 Direct one-off services can have no recurring weekday schedule when at least one open availability exception exists.
+
+## v0.5.0 migration
+
+On startup, existing appointment rules without `staffAssignment` receive:
+
+```js
+{ mode: 'none', staffIds: [] }
+```
+
+Legacy free-text `staff` labels and historical bookings are preserved. Existing services are therefore not forced into managed staff scheduling after upgrade. Merchants opt individual services into `any`, `customer_choice`, or `fixed` mode from the service editor.
 
 ## v0.4.0 migration
 

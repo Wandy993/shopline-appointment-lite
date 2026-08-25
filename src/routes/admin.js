@@ -2,7 +2,10 @@ import { Router } from 'express';
 import { config } from '../config.js';
 import { AppointmentRule } from '../models/AppointmentRule.js';
 import { Booking } from '../models/Booking.js';
-import { validateAdminBookingInput, validateBookingStatus, validateRuleInput } from '../lib/validation.js';
+import { BookingReservation } from '../models/BookingReservation.js';
+import { Staff } from '../models/Staff.js';
+import { StaffReservation } from '../models/StaffReservation.js';
+import { validateAdminBookingInput, validateBookingStatus, validateRuleInput, validateStaffInput } from '../lib/validation.js';
 import { requireAdmin, requireCsrf } from '../middleware/auth.js';
 import { limitsFor } from '../services/plans.js';
 import { shoplineGet, syncShopMetadata } from '../services/shopline.js';
@@ -72,6 +75,15 @@ function onboardingStatus(shop, { ruleCount = 0, activeRuleCount = 0, bookingCou
   };
 }
 
+
+async function validateManagedStaffSelection(shopId, ruleValue) {
+  const assignment = ruleValue.staffAssignment || { mode: 'none', staffIds: [] };
+  if (assignment.mode === 'none') return null;
+  const staff = await Staff.find({ _id: { $in: assignment.staffIds }, shopId, status: 'active' }).select('_id name').lean();
+  if (staff.length !== assignment.staffIds.length) return 'Choose active staff members from this store.';
+  return null;
+}
+
 adminRouter.get('/bootstrap', async (req, res) => {
   if (!req.shop.shoplineStoreId) {
     try {
@@ -131,6 +143,70 @@ adminRouter.get('/products', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+
+adminRouter.get('/staff', async (req, res) => {
+  const [staff, rules] = await Promise.all([
+    Staff.find({ shopId: req.shop._id }).sort({ status: 1, name: 1 }).lean(),
+    AppointmentRule.find({ shopId: req.shop._id, 'staffAssignment.staffIds': { $exists: true, $ne: [] } }).select('serviceTitle productTitle staffAssignment').lean()
+  ]);
+  const servicesByStaff = new Map();
+  for (const rule of rules) {
+    for (const staffId of rule.staffAssignment?.staffIds || []) {
+      const key = String(staffId);
+      if (!servicesByStaff.has(key)) servicesByStaff.set(key, []);
+      servicesByStaff.get(key).push({ id: String(rule._id), title: rule.serviceTitle || rule.productTitle || 'Service' });
+    }
+  }
+  res.json({ staff: staff.map(item => ({ ...item, assignedServices: servicesByStaff.get(String(item._id)) || [] })) });
+});
+
+adminRouter.post('/staff', async (req, res, next) => {
+  try {
+    const { errors, value } = validateStaffInput(req.body);
+    if (errors.length) return res.status(422).json({ error: 'VALIDATION_ERROR', message: errors.join(' '), fields: errors });
+    const staff = await Staff.create({ shopId: req.shop._id, ...value });
+    res.status(201).json({ staff });
+  } catch (error) { next(error); }
+});
+
+adminRouter.put('/staff/:id', async (req, res, next) => {
+  try {
+    const staff = await Staff.findOne({ _id: req.params.id, shopId: req.shop._id });
+    if (!staff) return res.status(404).json({ error: 'NOT_FOUND', message: 'Staff member not found.' });
+    const { errors, value } = validateStaffInput(req.body);
+    if (errors.length) return res.status(422).json({ error: 'VALIDATION_ERROR', message: errors.join(' '), fields: errors });
+    if (value.status === 'inactive') {
+      const [activeBookings, assignedServices] = await Promise.all([
+        Booking.countDocuments({ shopId: req.shop._id, staffId: staff._id, status: 'confirmed' }),
+        AppointmentRule.countDocuments({ shopId: req.shop._id, 'staffAssignment.staffIds': staff._id })
+      ]);
+      if (activeBookings > 0) return res.status(409).json({ error: 'STAFF_HAS_ACTIVE_BOOKINGS', message: `This staff member still has ${activeBookings} confirmed booking${activeBookings === 1 ? '' : 's'}. Reassign or finish them before making the staff member inactive.` });
+      if (assignedServices > 0) return res.status(409).json({ error: 'STAFF_ASSIGNED_TO_SERVICES', message: `This staff member is still assigned to ${assignedServices} service${assignedServices === 1 ? '' : 's'}. Remove the staff member from those services before making them inactive.` });
+    }
+    Object.assign(staff, value);
+    await staff.save();
+    res.json({ staff });
+  } catch (error) { next(error); }
+});
+
+adminRouter.delete('/staff/:id', async (req, res, next) => {
+  try {
+    const staff = await Staff.findOne({ _id: req.params.id, shopId: req.shop._id }).select('_id name');
+    if (!staff) return res.status(404).json({ error: 'NOT_FOUND', message: 'Staff member not found.' });
+    const [activeBookings, assignedServices] = await Promise.all([
+      Booking.countDocuments({ shopId: req.shop._id, staffId: staff._id, status: 'confirmed' }),
+      AppointmentRule.countDocuments({ shopId: req.shop._id, 'staffAssignment.staffIds': staff._id })
+    ]);
+    if (activeBookings > 0) return res.status(409).json({ error: 'STAFF_HAS_ACTIVE_BOOKINGS', message: `This staff member still has ${activeBookings} confirmed booking${activeBookings === 1 ? '' : 's'}. Reassign or finish them before deleting the staff member.` });
+    if (assignedServices > 0) return res.status(409).json({ error: 'STAFF_ASSIGNED_TO_SERVICES', message: `This staff member is still assigned to ${assignedServices} service${assignedServices === 1 ? '' : 's'}. Remove the staff member from those services before deleting the staff member.` });
+    await Promise.all([
+      StaffReservation.deleteMany({ shopId: req.shop._id, staffId: staff._id }),
+      Staff.deleteOne({ _id: staff._id, shopId: req.shop._id })
+    ]);
+    res.json({ deleted: true });
+  } catch (error) { next(error); }
+});
+
 adminRouter.get('/rules', async (req, res) => {
   const [rules, bookingCounts] = await Promise.all([
     AppointmentRule.find({ shopId: req.shop._id }).sort({ updatedAt: -1 }).lean(),
@@ -161,6 +237,8 @@ adminRouter.post('/rules', async (req, res, next) => {
   try {
     const { errors, value } = validateRuleInput(req.body);
     if (errors.length) return res.status(422).json({ error: 'VALIDATION_ERROR', message: errors.join(' '), fields: errors });
+    const staffError = await validateManagedStaffSelection(req.shop._id, value);
+    if (staffError) return res.status(422).json({ error: 'VALIDATION_ERROR', message: staffError });
     const limits = limitsFor(req.shop.plan);
     if (config.planLimitsEnabled && value.enabled && await AppointmentRule.countDocuments({ shopId: req.shop._id, enabled: true }) >= limits.activeRules) {
       return res.status(403).json({ error: 'PLAN_LIMIT', message: `${limits.label} allows ${limits.activeRules} active appointment rule${limits.activeRules === 1 ? '' : 's'}.` });
@@ -179,6 +257,8 @@ adminRouter.put('/rules/:id', async (req, res, next) => {
     if (!rule) return res.status(404).json({ error: 'NOT_FOUND', message: 'Rule not found.' });
     const { errors, value } = validateRuleInput(req.body);
     if (errors.length) return res.status(422).json({ error: 'VALIDATION_ERROR', message: errors.join(' '), fields: errors });
+    const staffError = await validateManagedStaffSelection(req.shop._id, value);
+    if (staffError) return res.status(422).json({ error: 'VALIDATION_ERROR', message: staffError });
     if (config.planLimitsEnabled && !rule.enabled && value.enabled) {
       const limits = limitsFor(req.shop.plan);
       if (await AppointmentRule.countDocuments({ shopId: req.shop._id, enabled: true }) >= limits.activeRules) return res.status(403).json({ error: 'PLAN_LIMIT', message: `${limits.label} plan active-rule limit reached.` });
@@ -205,7 +285,11 @@ adminRouter.delete('/rules/:id', async (req, res) => {
       message: `This service still has ${confirmedBookingCount} confirmed booking${confirmedBookingCount === 1 ? '' : 's'}. Cancel, complete, or mark them as no-show before deleting the service.`
     });
   }
-  await AppointmentRule.deleteOne({ _id: rule._id, shopId: req.shop._id });
+  await Promise.all([
+    AppointmentRule.deleteOne({ _id: rule._id, shopId: req.shop._id }),
+    BookingReservation.deleteMany({ ruleId: rule._id, shopId: req.shop._id }),
+    StaffReservation.deleteMany({ ruleId: rule._id, shopId: req.shop._id })
+  ]);
   res.json({ deleted: true, preservedBookingCount: bookingCount });
 });
 
@@ -213,6 +297,7 @@ adminRouter.get('/bookings', async (req, res) => {
   const filter = { shopId: req.shop._id };
   if (req.query.status && ['confirmed', 'cancelled', 'completed', 'no_show'].includes(req.query.status)) filter.status = req.query.status;
   if (req.query.ruleId) filter.ruleId = req.query.ruleId;
+  if (req.query.staffId) filter.staffId = req.query.staffId;
   if (req.query.from || req.query.to) {
     filter.date = {};
     if (req.query.from) filter.date.$gte = String(req.query.from).slice(0, 10);

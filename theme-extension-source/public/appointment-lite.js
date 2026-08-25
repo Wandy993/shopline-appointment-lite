@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = '0.4.0';
+  const VERSION = '0.5.0';
   const API_BASE = 'https://appointment.toolkit.fans';
   const CACHE_TTL = 5 * 60 * 1000;
   const SELECTOR = '[data-appointment-lite]:not([data-al-ready])';
@@ -401,7 +401,7 @@
       try {
         const payload = await requestJson(apiUrl('/api/public/availability', { ...context, date: dateInput.value }), {}, 'reschedule availability');
         times.innerHTML = payload.slots.length ? payload.slots.map(time => `<button type="button" class="al-time" data-time="${time}" aria-pressed="false">${time}</button>`).join('') : '<span class="al-muted">No times available on this date.</span>';
-        times.querySelectorAll('.al-time').forEach(button => button.addEventListener('click', () => {
+        times.querySelectorAll('.al-time').forEach(button => button.addEventListener('click', async () => {
           selectedTime = button.dataset.time;
           times.querySelectorAll('.al-time').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
         }));
@@ -449,7 +449,11 @@
     const modeMeta = mode === 'all_day' ? 'All-day booking' : mode === 'multi_slot' ? `${Number(rule.sessionsRequired || 3)} sessions` : `${rule.duration} minutes`;
     const scheduleTitle = mode === 'all_day' ? 'Choose a day' : mode === 'multi_slot' ? `Choose ${Number(rule.sessionsRequired || 3)} sessions` : 'Choose a time';
     const timeLabel = mode === 'all_day' ? 'Availability' : 'Time';
-    dialog.innerHTML = `<div class="al-head"><div><h2>Book an appointment</h2><p>${text(rule.serviceTitle || rule.productTitle)}</p></div><button class="al-close" type="button" aria-label="Close">×</button></div><form class="al-form"><div class="al-form-body"><div class="al-meta">${text(modeMeta)}${rule.location ? ` · ${text(rule.location)}` : ''}${rule.staff ? ` · ${text(rule.staff)}` : ''}</div><p class="al-muted">${mode === 'all_day' ? 'Dates' : 'All times'} are shown in the store time zone: ${text(rule.timezone || 'UTC')}.</p><div class="al-mode-title"><strong>${text(scheduleTitle)}</strong></div><div class="al-grid"><div class="al-field"><label for="al-date">Date</label><input id="al-date" name="date" type="date" min="${minDate}" ${maxDateAttribute(rule)} required></div><div><span class="al-legend">${timeLabel}</span><div class="al-times"><span class="al-muted">Choose a date first.</span></div></div></div><div class="al-selected-sessions" hidden></div><div class="al-grid"><div class="al-field"><label for="al-name">Name</label><input id="al-name" name="name" autocomplete="name" maxlength="120" required></div><div class="al-field"><label for="al-email">Email</label><input id="al-email" name="email" type="email" autocomplete="email" maxlength="254" required></div></div><div class="al-field"><label for="al-phone">Phone (optional)</label><input id="al-phone" name="phone" type="tel" autocomplete="tel" maxlength="40"></div><div class="al-field"><label for="al-note">${text(rule.questionLabel || 'Anything we should know?')}</label><textarea id="al-note" name="note" maxlength="2000"></textarea></div><div class="al-questions"></div></div><div class="al-actions"><div class="al-error" hidden role="alert"></div><button class="al-submit" type="submit">Confirm booking</button></div></form>`;
+    const staffMode = rule.staffAssignment?.mode || 'none';
+    const staffOptions = Array.isArray(rule.staffOptions) ? rule.staffOptions : [];
+    const staffSelector = staffMode === 'customer_choice' ? `<div class="al-field al-staff-choice"><label for="al-staff">Staff</label><select id="al-staff" name="staffId" required><option value="">Choose staff</option>${staffOptions.map(item => `<option value="${text(item.id)}">${text(item.name)}</option>`).join('')}</select><small>Availability updates for the selected staff member.</small></div>` : '';
+    const managedStaffMeta = staffMode === 'fixed' && staffOptions[0] ? staffOptions[0].name : staffMode === 'any' ? 'Staff assigned automatically' : rule.staff;
+    dialog.innerHTML = `<div class="al-head"><div><h2>Book an appointment</h2><p>${text(rule.serviceTitle || rule.productTitle)}</p></div><button class="al-close" type="button" aria-label="Close">×</button></div><form class="al-form"><div class="al-form-body"><div class="al-meta">${text(modeMeta)}${rule.location ? ` · ${text(rule.location)}` : ''}${managedStaffMeta ? ` · ${text(managedStaffMeta)}` : ''}</div><p class="al-muted">${mode === 'all_day' ? 'Dates' : 'All times'} are shown in the store time zone: ${text(rule.timezone || 'UTC')}.</p>${staffSelector}<div class="al-mode-title"><strong>${text(scheduleTitle)}</strong></div><div class="al-grid"><div class="al-field"><label for="al-date">Date</label><input id="al-date" name="date" type="date" min="${minDate}" ${maxDateAttribute(rule)} required></div><div><span class="al-legend">${timeLabel}</span><div class="al-times"><span class="al-muted">Choose a date first.</span></div></div></div><div class="al-selected-sessions" hidden></div><div class="al-grid"><div class="al-field"><label for="al-name">Name</label><input id="al-name" name="name" autocomplete="name" maxlength="120" required></div><div class="al-field"><label for="al-email">Email</label><input id="al-email" name="email" type="email" autocomplete="email" maxlength="254" required></div></div><div class="al-field"><label for="al-phone">Phone (optional)</label><input id="al-phone" name="phone" type="tel" autocomplete="tel" maxlength="40"></div><div class="al-field"><label for="al-note">${text(rule.questionLabel || 'Anything we should know?')}</label><textarea id="al-note" name="note" maxlength="2000"></textarea></div><div class="al-questions"></div></div><div class="al-actions"><div class="al-error" hidden role="alert"></div><button class="al-submit" type="submit">Confirm booking</button></div></form>`;
     const questions = dialog.querySelector('.al-questions');
     (rule.customQuestions || []).forEach((question, index) => {
       questions.insertAdjacentHTML('beforeend', `<div class="al-field"><label for="al-q-${index}">${text(question.label)}</label><input id="al-q-${index}" data-question="${text(question.label)}" maxlength="1000" ${question.required ? 'required' : ''}></div>`);
@@ -458,6 +462,8 @@
     const dateInput = dialog.querySelector('[name=date]');
     const times = dialog.querySelector('.al-times');
     const selectedRoot = dialog.querySelector('.al-selected-sessions');
+    const staffSelect = dialog.querySelector('[name=staffId]');
+    let selectedStaffId = staffSelect?.value || '';
     let selectedTime = '';
     let selectedAllDayDate = '';
     let selectedOccurrences = [];
@@ -482,20 +488,23 @@
     };
     if (mode === 'multi_slot') renderSelected();
 
+    staffSelect?.addEventListener('change', () => { selectedStaffId = staffSelect.value; selectedTime = ''; selectedAllDayDate = ''; selectedOccurrences = []; renderSelected(); if (dateInput.value) dateInput.dispatchEvent(new Event('change')); });
+
     dateInput.addEventListener('change', async () => {
       selectedTime = '';
       if (mode === 'all_day') selectedAllDayDate = '';
       times.innerHTML = `<span class="al-muted">${mode === 'all_day' ? 'Checking date…' : 'Loading times…'}</span>`;
       info('Loading availability.', { ...context, date: dateInput.value, bookingMode: mode });
       try {
-        const payload = await requestJson(apiUrl('/api/public/availability', { ...context, date: dateInput.value }), {}, 'availability');
+        const payload = await requestJson(apiUrl('/api/public/availability', { ...context, date: dateInput.value, ...(selectedStaffId ? { staffId: selectedStaffId } : {}), ...(mode === 'multi_slot' && selectedOccurrences.length ? { selected: selectedOccurrences.map(item => `${item.date}T${item.time}`).join(',') } : {}) }), {}, 'availability');
+        if (payload.requiresStaffSelection) { times.innerHTML = '<span class="al-muted">Choose a staff member first.</span>'; return; }
         if (mode === 'all_day') {
           selectedAllDayDate = payload.available ? dateInput.value : '';
           times.innerHTML = payload.available ? `<div class="al-all-day"><strong>Available all day</strong><span>${payload.remaining > 1 ? `${payload.remaining} bookings remaining` : 'This date can be booked'}</span></div>` : '<span class="al-muted">This date is unavailable.</span>';
           return;
         }
         times.innerHTML = payload.slots.length ? payload.slots.map(time => `<button type="button" class="al-time" data-time="${time}" aria-pressed="false">${time}</button>`).join('') : '<span class="al-muted">No times available on this date.</span>';
-        times.querySelectorAll('.al-time').forEach(button => button.addEventListener('click', () => {
+        times.querySelectorAll('.al-time').forEach(button => button.addEventListener('click', async () => {
           if (mode === 'multi_slot') {
             const item = { date: dateInput.value, time: button.dataset.time };
             const key = occurrenceKey(item);
@@ -505,6 +514,7 @@
             selectedOccurrences.sort((a, b) => occurrenceKey(a).localeCompare(occurrenceKey(b)));
             renderSelected();
             renderTimeStates();
+            dateInput.dispatchEvent(new Event('change'));
           } else {
             selectedTime = button.dataset.time;
             times.querySelectorAll('.al-time').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
@@ -531,6 +541,7 @@
       const body = {
         shopId: context.shopId,
         productId: context.productId,
+        staffId: selectedStaffId,
         date: mode === 'multi_slot' ? selectedOccurrences[0]?.date : form.get('date'),
         time: mode === 'slot' ? selectedTime : '',
         occurrences: mode === 'multi_slot' ? selectedOccurrences : [],
@@ -542,7 +553,7 @@
         const payload = await requestJson(apiUrl('/api/public/bookings'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }, 'booking');
         const receipt = saveBookingReceipt(context, payload.booking);
         renderBookingState(widget, rule, context, receipt);
-        dialog.querySelector('.al-form').innerHTML = `<div class="al-success"><h3>Appointment confirmed</h3><p>${text(bookingWhenText(payload.booking))}</p><p>Store time zone: ${text(payload.booking.timezone || rule.timezone || 'UTC')}</p>${payload.booking.location ? `<p>${text(payload.booking.location)}</p>` : ''}<button class="al-submit" type="button">Done</button></div>`;
+        dialog.querySelector('.al-form').innerHTML = `<div class="al-success"><h3>Appointment confirmed</h3><p>${text(bookingWhenText(payload.booking))}</p><p>Store time zone: ${text(payload.booking.timezone || rule.timezone || 'UTC')}</p>${payload.booking.location ? `<p>${text(payload.booking.location)}</p>` : ''}${payload.booking.staff ? `<p>${text(payload.booking.staff)}</p>` : ''}<button class="al-submit" type="button">Done</button></div>`;
         dialog.querySelector('.al-submit').addEventListener('click', () => dialog.close());
         info('Booking confirmed.', { ...context, bookingId: payload.booking.id, bookingMode: mode });
       } catch (error) {

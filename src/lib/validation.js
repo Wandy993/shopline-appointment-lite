@@ -4,6 +4,8 @@ const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 const BOOKING_SOURCES = new Set(['product', 'direct', 'both']);
 const SERVICE_TYPES = new Set(['appointment', 'product', 'in_store', 'onsite', 'consultation', 'class', 'other']);
 const BOOKING_MODES = new Set(['slot', 'all_day', 'multi_slot']);
+const STAFF_ASSIGNMENT_MODES = new Set(['none', 'any', 'customer_choice', 'fixed']);
+const OBJECT_ID_PATTERN = /^[a-f\d]{24}$/i;
 
 function text(value, max = 255) { return String(value ?? '').trim().slice(0, max); }
 
@@ -42,6 +44,11 @@ export function validateRuleInput(body) {
   const productId = usesProductPage ? text(body.productId, 100) : '';
   const productTitle = usesProductPage ? text(body.productTitle, 255) : '';
   const serviceTitle = text(body.serviceTitle || body.productTitle, 255);
+  const rawStaffAssignment = body.staffAssignment && typeof body.staffAssignment === 'object' ? body.staffAssignment : {};
+  const staffAssignmentMode = STAFF_ASSIGNMENT_MODES.has(rawStaffAssignment.mode) ? rawStaffAssignment.mode : 'none';
+  const staffIds = [...new Set((Array.isArray(rawStaffAssignment.staffIds) ? rawStaffAssignment.staffIds : []).map(value => text(value, 24)).filter(value => OBJECT_ID_PATTERN.test(value)))];
+  if (staffAssignmentMode === 'fixed' && staffIds.length !== 1) errors.push('Fixed staff assignment requires exactly one staff member.');
+  if (['any', 'customer_choice'].includes(staffAssignmentMode) && staffIds.length < 1) errors.push('Choose at least one staff member for this assignment mode.');
 
   if (!serviceTitle) errors.push('Service name is required.');
   if (usesProductPage && !productId) errors.push('Product is required for product-page booking.');
@@ -95,6 +102,7 @@ export function validateRuleInput(body) {
     duration, buffer, capacity, minimumNoticeMinutes, bookingWindowDays,
     dateFrom, dateUntil, weeklyAvailability, availabilityExceptions,
     location: text(body.location, 200), staff: text(body.staff, 200),
+    staffAssignment: { mode: staffAssignmentMode, staffIds },
     questionLabel: text(body.questionLabel || 'Anything we should know?', 120), customQuestions,
     enabled: body.enabled !== false
   }};
@@ -123,7 +131,7 @@ export function validateBookingInput(body) {
   }
   if (!date && !occurrences.length) errors.push('A valid date is required.');
   return { errors: [...new Set(errors)], value: {
-    productId: text(body.productId, 100), ruleId: text(body.ruleId, 24), date, time, occurrences, customer,
+    productId: text(body.productId, 100), ruleId: text(body.ruleId, 24), staffId: text(body.staffId, 24), date, time, occurrences, customer,
     note: text(body.note, 2000),
     answers: (Array.isArray(body.answers) ? body.answers : []).slice(0, 5).map(answer => ({
       question: text(answer.question, 120), answer: text(answer.answer, 1000)
@@ -150,8 +158,44 @@ export function validateAdminBookingInput(body) {
   return { errors, value: {
     ...value,
     location: text(body.location, 200),
-    staff: text(body.staff, 200)
+    staff: text(body.staff, 200),
+    staffId: text(body.staffId, 24)
   } };
+}
+
+
+export function validateStaffInput(body) {
+  const errors = [];
+  const name = text(body.name, 120);
+  const email = text(body.email, 254).toLowerCase();
+  const phone = text(body.phone, 40);
+  const status = body.status === 'inactive' ? 'inactive' : 'active';
+  if (!name) errors.push('Staff name is required.');
+  if (email && !EMAIL_PATTERN.test(email)) errors.push('Enter a valid staff email address.');
+
+  const weeklyAvailability = Array.isArray(body.weeklyAvailability) ? body.weeklyAvailability.map(day => ({
+    weekday: Number(day.weekday), enabled: Boolean(day.enabled), windows: normalizeWindows(day.windows)
+  })) : [];
+  for (const day of weeklyAvailability) {
+    if (!Number.isInteger(day.weekday) || day.weekday < 0 || day.weekday > 6) errors.push('Invalid staff weekday.');
+    if (day.enabled && day.windows.length === 0) errors.push('Every enabled staff weekday needs at least one time window.');
+    validateWindows(day.windows, errors, 'Each staff time window');
+  }
+
+  const seenExceptionDates = new Set();
+  const availabilityExceptions = (Array.isArray(body.availabilityExceptions) ? body.availabilityExceptions : []).slice(0, 120).map(item => ({
+    date: text(item.date, 10), closed: item.closed !== false, windows: normalizeWindows(item.windows)
+  })).filter(item => item.date);
+  for (const exception of availabilityExceptions) {
+    if (!DATE_PATTERN.test(exception.date)) errors.push('Each staff exception needs a valid date.');
+    if (seenExceptionDates.has(exception.date)) errors.push('Each staff exception date can only be added once.');
+    seenExceptionDates.add(exception.date);
+    if (!exception.closed && exception.windows.length === 0) errors.push('An open staff exception needs at least one time window.');
+    validateWindows(exception.windows, errors, 'Each staff exception window');
+  }
+  if (!weeklyAvailability.some(day => day.enabled) && !availabilityExceptions.some(item => !item.closed)) errors.push('Enable at least one staff workday or add an open exception.');
+
+  return { errors: [...new Set(errors)], value: { name, email, phone, status, weeklyAvailability, availabilityExceptions } };
 }
 
 export function validateBookingStatus(value) {

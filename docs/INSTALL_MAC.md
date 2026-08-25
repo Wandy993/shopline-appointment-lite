@@ -1,11 +1,12 @@
-# Appointment Lite v0.4.0 Booking Modes Foundation
+# Appointment Lite v0.5.0 Staff Management Foundation
 
-Download `appointment-lite-v0.4.0-booking-modes-foundation.zip` and the one-click command to `~/Downloads`, then run from the existing project root:
+Download `appointment-lite-v0.5.0-staff-management-foundation.zip` and the external one-click command to `~/Downloads`, then run from the existing project root:
 
 ```bash
-bash "$HOME/Downloads/appointment-lite-v0.4.0-mac-one-click-command.txt"
+cd /Users/SL/Documents/appointment-lite
+bash "$HOME/Downloads/appointment-lite-v0.5.0-mac-one-click-command.txt"
 ```
 
-The command verifies the release, safely syncs Git, creates a backup tag, overlays v0.4.0, runs `npm ci`, the full test suite and JavaScript checks, commits and pushes Git, queues Railway with `railway up --detach`, then immediately syncs and pushes the SHOPLINE Theme App Extension. It does not wait for Railway build/deploy completion before `sl extension push`.
+The command checks Git before overlay, creates a backup tag, overlays v0.5.0 while preserving the locally bound Theme App Extension, runs `npm ci`, the full test suite, and JavaScript checks, syncs the portable Theme Extension source, commits and pushes Git, queues Railway with `railway up --detach`, and immediately runs `sl extension push` without waiting for Railway build completion.
 
-v0.4.0 introduces the booking-mode foundation: minute/hour, all-day, and multiple-session booking modes. Existing services migrate to minute/hour automatically. Multi-day date ranges are intentionally deferred to v0.4.1.
+v0.5.0 adds managed Staff records, weekly staff schedules and exceptions, service-to-staff assignments, automatic/customer/fixed assignment modes, cross-service conflict protection, multi-session same-staff allocation, merchant reassignment, and Staff filtering in Bookings. Existing services stay in `No staff required` mode after upgrade until the merchant opts them into managed staffing.

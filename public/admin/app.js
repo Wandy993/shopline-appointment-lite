@@ -1,11 +1,11 @@
 const state = {
-  csrf: '', shop: null, email: null, emailSettings: null, rules: [], bookings: [], products: [],
+  csrf: '', shop: null, email: null, emailSettings: null, rules: [], bookings: [], products: [], staff: [],
   ruleStep: 0, activeTemplate: 'confirmation', emailEditorReady: false, bookingView: 'list', calendarMonth: '',
   locale: 'en', currentView: 'dashboard', themeLinkLoaded: false, bootstrap: null, onboarding: null, lastTestEmail: '', ruleModeTouched: false, editingRule: false
 };
 const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const viewLabels = {
-  dashboard: ['Workspace', 'Overview'], rules: ['Service catalog', 'Services & rules'], bookings: ['Customer schedule', 'Bookings'],
+  dashboard: ['Workspace', 'Overview'], rules: ['Service catalog', 'Services & rules'], bookings: ['Customer schedule', 'Bookings'], staff: ['Team scheduling', 'Staff'],
   email: ['Customer communication', 'Email Studio'], setup: ['Configuration', 'Storefront setup']
 };
 const templateMeta = {
@@ -86,6 +86,10 @@ const zh = {
   'Published': '已发布', 'Draft': '草稿', 'products synced just now': '个商品 · 刚刚同步', 'Your store name': '你的店铺名称', 'e.g. Main showroom': '例如：主展厅', 'e.g. Sarah': '例如：Sarah',
   'Anything we should know?': '还有什么需要我们了解？'
 };
+
+Object.assign(zh, {
+  'Team scheduling':'员工排班','Staff':'员工','TEAM SCHEDULING':'员工排班','Create bookable team members, set their working hours, and connect them to appointment services.':'创建可预约员工、设置工作时间，并关联到预约服务。','Add staff':'新增员工','Search staff by name or email':'按姓名或邮箱搜索员工','No staff yet':'还没有员工','Add your first team member to start staff-aware scheduling.':'添加第一位员工后即可启用员工排班与冲突检测。','No staff match your search':'没有匹配的员工','Services':'服务','Working hours':'工作时间','Not assigned':'未关联服务','No regular hours':'无固定工作时间','No contact details':'未填写联系方式','Inactive':'已停用','Edit staff':'编辑员工','Delete staff':'删除员工','TEAM MEMBER':'员工','Set the team member details and store-local working schedule.':'设置员工信息及店铺本地时区下的工作时间。','Name':'姓名','Phone':'电话','Weekly working hours':'每周工作时间','Staff availability intersects with the service schedule. A time is bookable only when both are open.':'员工工作时间会与服务可预约时间取交集，只有两者同时开放时客户才能预约。','Schedule exceptions':'特殊排班','Use exceptions for holidays, leave, or one-off working hours.':'用于休假、节假日或临时工作时间。','Save staff':'保存员工','Staff member updated.':'员工已更新。','Staff member created.':'员工已创建。','Staff member deleted.':'员工已删除。','Staff assignment':'员工分配','Choose how this service uses the team schedule. Managed staff availability is checked together with the service schedule.':'选择该服务如何使用员工排班。系统会同时检查服务时间和员工可用时间。','No staff required':'无需员工','Use the service schedule without staff conflict checks.':'仅使用服务排期，不检查员工冲突。','Any available staff':'任意可用员工','Appointment Lite automatically assigns one available team member.':'系统自动分配一位有空的员工。','Customer chooses':'客户选择员工','Customers choose a team member before selecting an available time.':'客户先选择员工，再查看该员工可预约时间。','Fixed staff':'固定员工','This service always uses one selected team member.':'该服务始终由指定员工提供。','Available staff for this service':'该服务可用员工','Select one or more active staff members.':'选择一位或多位启用中的员工。','Select exactly one active staff member.':'请选择且仅选择一位启用中的员工。','No active staff yet. Add staff from the Staff page first.':'暂无启用中的员工，请先在“员工”页面添加。','Select exactly one staff member for fixed assignment.':'固定员工模式必须选择一位员工。','Select at least one staff member for this assignment mode.':'此分配模式至少需要选择一位员工。','All staff':'全部员工','No managed staff':'未启用员工管理','Auto assign available staff':'自动分配可用员工','Select staff':'选择员工','Current staff':'当前员工'
+});
 
 const originalText = new WeakMap();
 const originalAttributes = new WeakMap();
@@ -312,7 +316,8 @@ function switchView(name) {
   $('#pageEyebrow').textContent = t(viewLabels[name]?.[0] || 'Workspace');
   $('#pageTitle').textContent = t(viewLabels[name]?.[1] || 'Appointment Lite');
   if (name === 'rules') loadRules();
-  if (name === 'bookings') loadBookings();
+  if (name === 'bookings') Promise.all([ensureStaff(), loadRules(), loadBookings()]);
+  if (name === 'staff') loadStaff();
   if (name === 'email') renderEmailStudio();
   if (name === 'setup') loadThemeEditorLink();
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -456,6 +461,178 @@ function renderExceptions(values = []) {
   $('#availabilityExceptions').innerHTML = '';
   (values || []).forEach(addException);
   renderExceptionsMode();
+}
+
+
+function renderStaffSchedule(values = []) {
+  $('#staffWeeklySchedule').innerHTML = days.map((day, weekday) => {
+    const current = values.find(value => Number(value.weekday) === weekday);
+    const window = current?.windows?.[0] || { start: '09:00', end: '17:00' };
+    const enabled = Boolean(current?.enabled);
+    return `<div class="schedule-row staff-schedule-row ${enabled ? 'enabled' : ''}" data-weekday="${weekday}"><label><input type="checkbox" ${enabled ? 'checked' : ''}>${t(day)}</label><input type="time" value="${escapeHtml(window.start)}" aria-label="${t(day)} ${t('start')}"><input type="time" value="${escapeHtml(window.end)}" aria-label="${t(day)} ${t('end')}"></div>`;
+  }).join('');
+  $$('#staffWeeklySchedule .staff-schedule-row input[type=checkbox]').forEach(input => input.addEventListener('change', () => input.closest('.staff-schedule-row').classList.toggle('enabled', input.checked)));
+}
+
+function addStaffException(exception = {}) {
+  const rows = $$('#staffAvailabilityExceptions .staff-exception-row');
+  if (rows.length >= 120) return toast(t('Too many availability exceptions.'), 'error');
+  const row = document.createElement('div');
+  row.className = 'exception-row staff-exception-row';
+  const closed = exception.closed !== false;
+  const window = exception.windows?.[0] || { start: '09:00', end: '17:00' };
+  row.innerHTML = `<input class="exception-date" type="date" value="${escapeHtml(exception.date || '')}" aria-label="${t('Date')}"><select class="exception-mode"><option value="closed" ${closed ? 'selected' : ''}>${t('Closed all day')}</option><option value="hours" ${!closed ? 'selected' : ''}>${t('Special hours')}</option></select><input class="exception-start" type="time" value="${escapeHtml(window.start)}" ${closed ? 'disabled' : ''}><input class="exception-end" type="time" value="${escapeHtml(window.end)}" ${closed ? 'disabled' : ''}><button type="button" class="secondary small">${t('Remove')}</button>`;
+  const sync = () => {
+    const isClosed = row.querySelector('.exception-mode').value === 'closed';
+    row.querySelector('.exception-start').disabled = isClosed;
+    row.querySelector('.exception-end').disabled = isClosed;
+    row.classList.toggle('closed', isClosed);
+  };
+  row.querySelector('.exception-mode').addEventListener('change', sync);
+  row.querySelector('button').addEventListener('click', () => row.remove());
+  sync();
+  $('#staffAvailabilityExceptions').append(row);
+}
+
+function renderStaffExceptions(values = []) {
+  $('#staffAvailabilityExceptions').innerHTML = '';
+  (values || []).forEach(addStaffException);
+}
+
+function staffPayload() {
+  return {
+    name: $('#staffName').value,
+    email: $('#staffEmail').value,
+    phone: $('#staffPhone').value,
+    status: $('#staffStatus').value,
+    weeklyAvailability: $$('#staffWeeklySchedule .staff-schedule-row').map(row => ({
+      weekday: Number(row.dataset.weekday),
+      enabled: row.querySelector('input[type=checkbox]').checked,
+      windows: [{ start: row.querySelectorAll('input[type=time]')[0].value, end: row.querySelectorAll('input[type=time]')[1].value }]
+    })),
+    availabilityExceptions: $$('#staffAvailabilityExceptions .staff-exception-row').map(row => ({
+      date: row.querySelector('.exception-date').value,
+      closed: row.querySelector('.exception-mode').value === 'closed',
+      windows: row.querySelector('.exception-mode').value === 'hours' ? [{ start: row.querySelector('.exception-start').value, end: row.querySelector('.exception-end').value }] : []
+    })).filter(item => item.date)
+  };
+}
+
+function staffWorkSummary(staff) {
+  const enabled = (staff.weeklyAvailability || []).filter(day => day.enabled);
+  if (!enabled.length) return t('No regular hours');
+  const names = enabled.map(day => t(days[day.weekday]).slice(0, 3)).join(', ');
+  const firstWindow = enabled[0]?.windows?.[0];
+  return `${names}${firstWindow ? ` · ${firstWindow.start}–${firstWindow.end}` : ''}`;
+}
+
+function renderStaff() {
+  const query = $('#staffSearch')?.value.trim().toLowerCase() || '';
+  const rows = state.staff.filter(item => !query || [item.name, item.email, item.phone].some(value => String(value || '').toLowerCase().includes(query)));
+  if ($('#staffResultCount')) $('#staffResultCount').textContent = state.locale === 'zh-CN' ? `${rows.length} 位员工` : `${rows.length} staff`;
+  const root = $('#staffList');
+  if (!root) return;
+  if (!rows.length) {
+    root.innerHTML = `<div class="panel empty"><strong>${t(state.staff.length ? 'No staff match your search' : 'No staff yet')}</strong><span>${t(state.staff.length ? 'Try a different keyword.' : 'Add your first team member to start staff-aware scheduling.')}</span></div>`;
+    return;
+  }
+  root.innerHTML = rows.map(item => {
+    const services = item.assignedServices || [];
+    return `<article class="panel staff-row"><div class="staff-main"><span class="staff-avatar">${escapeHtml((item.name || 'S').slice(0,1).toUpperCase())}</span><div><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.email || item.phone || t('No contact details'))}</span></div></div><div class="staff-services"><span>${t('Services')}</span><strong>${services.length}</strong><small>${services.slice(0,2).map(service => escapeHtml(service.title)).join(', ') || t('Not assigned')}</small></div><div class="staff-hours"><span>${t('Working hours')}</span><strong>${escapeHtml(staffWorkSummary(item))}</strong></div><span class="status-badge ${item.status === 'active' ? 'enabled' : 'disabled'}">${t(item.status === 'active' ? 'Active' : 'Inactive')}</span><div class="row-actions"><button class="secondary small" data-edit-staff="${item._id}">${t('Edit')}</button><button class="secondary small" data-delete-staff="${item._id}">${t('Delete')}</button></div></article>`;
+  }).join('');
+  $$('[data-edit-staff]').forEach(button => button.addEventListener('click', () => openStaff(state.staff.find(item => item._id === button.dataset.editStaff))));
+  $$('[data-delete-staff]').forEach(button => button.addEventListener('click', () => confirmAction('Delete this staff member?', 'Historical bookings keep the staff snapshot, but active confirmed bookings must be reassigned first.', 'Delete staff', async () => {
+    await api(`/staff/${button.dataset.deleteStaff}`, { method: 'DELETE' });
+    toast(t('Staff member deleted.'));
+    await Promise.all([loadStaff(), loadRules(), loadBookings()]);
+  })));
+}
+
+async function loadStaff({ force = false } = {}) {
+  if (!force && state.staff.length && state.currentView !== 'staff') return state.staff;
+  const root = $('#staffList');
+  if (root && !state.staff.length) root.innerHTML = '<div class="panel loading">Loading staff…</div>';
+  try {
+    state.staff = (await api('/staff')).staff || [];
+    renderStaff();
+    renderRuleStaffOptions();
+    renderBookingStaffFilter();
+    return state.staff;
+  } catch (error) { showError(error); return []; }
+}
+
+async function ensureStaff() {
+  if (!state.staff.length) await loadStaff({ force: true });
+  return state.staff;
+}
+
+function openStaff(staff = null) {
+  $('#staffForm').reset();
+  $('#staffId').value = staff?._id || '';
+  $('#staffDialogTitle').textContent = t(staff ? 'Edit staff' : 'Add staff');
+  $('#staffName').value = staff?.name || '';
+  $('#staffEmail').value = staff?.email || '';
+  $('#staffPhone').value = staff?.phone || '';
+  $('#staffStatus').value = staff?.status || 'active';
+  renderStaffSchedule(staff?.weeklyAvailability || [1,2,3,4,5].map(weekday => ({ weekday, enabled: true, windows: [{ start: '09:00', end: '17:00' }] })));
+  renderStaffExceptions(staff?.availabilityExceptions || []);
+  $('#staffFormError').classList.add('hidden');
+  $('#staffDialog').showModal();
+}
+
+async function saveStaff(event) {
+  event.preventDefault();
+  const id = $('#staffId').value;
+  const button = $('#saveStaff');
+  button.disabled = true;
+  $('#staffFormError').classList.add('hidden');
+  try {
+    await api(id ? `/staff/${id}` : '/staff', { method: id ? 'PUT' : 'POST', body: JSON.stringify(staffPayload()) });
+    $('#staffDialog').close();
+    toast(t(id ? 'Staff member updated.' : 'Staff member created.'));
+    await loadStaff({ force: true });
+  } catch (error) {
+    $('#staffFormError').textContent = t(error.message);
+    $('#staffFormError').classList.remove('hidden');
+  } finally { button.disabled = false; }
+}
+
+function setStaffAssignmentMode(mode = 'none') {
+  const normalized = ['none', 'any', 'customer_choice', 'fixed'].includes(mode) ? mode : 'none';
+  $('#staffAssignmentGrid').dataset.mode = normalized;
+  $$('#staffAssignmentGrid [data-staff-mode]').forEach(button => button.classList.toggle('selected', button.dataset.staffMode === normalized));
+  $('#ruleStaffPicker').classList.toggle('hidden', normalized === 'none');
+  $('#ruleStaffPickerHint').textContent = t(normalized === 'fixed' ? 'Select exactly one active staff member.' : 'Select one or more active staff members.');
+  if (normalized === 'fixed') {
+    const checked = $$('#ruleStaffOptions input[type=checkbox]:checked');
+    checked.slice(1).forEach(input => { input.checked = false; });
+  }
+}
+
+function renderRuleStaffOptions(selectedIds = null) {
+  const root = $('#ruleStaffOptions');
+  if (!root) return;
+  const current = selectedIds || $$('#ruleStaffOptions input[type=checkbox]:checked').map(input => input.value);
+  const selected = new Set(current.map(String));
+  const active = state.staff.filter(item => item.status === 'active');
+  root.innerHTML = active.length ? active.map(item => `<label class="staff-check"><input type="checkbox" value="${item._id}" ${selected.has(String(item._id)) ? 'checked' : ''}><span class="staff-avatar small">${escapeHtml(item.name.slice(0,1).toUpperCase())}</span><span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.email || staffWorkSummary(item))}</small></span></label>`).join('') : `<div class="empty-compact">${t('No active staff yet. Add staff from the Staff page first.')}</div>`;
+  root.querySelectorAll('input[type=checkbox]').forEach(input => input.addEventListener('change', () => {
+    if ($('#staffAssignmentGrid').dataset.mode === 'fixed' && input.checked) root.querySelectorAll('input[type=checkbox]').forEach(other => { if (other !== input) other.checked = false; });
+  }));
+}
+
+function currentStaffAssignment() {
+  const mode = $('#staffAssignmentGrid')?.dataset.mode || 'none';
+  const staffIds = mode === 'none' ? [] : $$('#ruleStaffOptions input[type=checkbox]:checked').map(input => input.value);
+  return { mode, staffIds };
+}
+
+function renderBookingStaffFilter() {
+  const select = $('#bookingStaffFilter');
+  if (!select) return;
+  const current = select.value;
+  select.innerHTML = `<option value="">${t('All staff')}</option>${state.staff.map(item => `<option value="${item._id}">${escapeHtml(item.name)}</option>`).join('')}`;
+  select.value = state.staff.some(item => String(item._id) === current) ? current : '';
 }
 
 function renderProductOptions(query = '') {
@@ -629,6 +806,11 @@ function validateRuleStep(step) {
     const exceptionOpen = $$('.exception-row').some(row => row.querySelector('.exception-mode').value !== 'closed' && row.querySelector('.exception-date').value);
     if (!weeklyOpen && !exceptionOpen) message = 'Enable at least one weekday or add an open exception.';
   }
+  if (step === 3) {
+    const assignment = currentStaffAssignment();
+    if (assignment.mode === 'fixed' && assignment.staffIds.length !== 1) message = 'Select exactly one staff member for fixed assignment.';
+    if (['any', 'customer_choice'].includes(assignment.mode) && assignment.staffIds.length < 1) message = 'Select at least one staff member for this assignment mode.';
+  }
   if (message) {
     $('#formError').textContent = t(message);
     $('#formError').classList.remove('hidden');
@@ -638,6 +820,7 @@ function validateRuleStep(step) {
 }
 
 async function openRule(rule = null) {
+  await ensureStaff();
   $('#ruleForm').reset();
   state.editingRule = Boolean(rule);
   state.ruleModeTouched = Boolean(rule);
@@ -672,6 +855,9 @@ async function openRule(rule = null) {
   $('#dateUntil').value = rule?.dateUntil || '';
   $('#location').value = rule?.location || '';
   $('#staff').value = rule?.staff || '';
+  const assignment = rule?.staffAssignment || { mode: 'none', staffIds: [] };
+  renderRuleStaffOptions((assignment.staffIds || []).map(String));
+  setStaffAssignmentMode(assignment.mode || 'none');
   (rule?.customQuestions || []).forEach(addQuestion);
   setRuleStep(0);
   $('#ruleDialog').showModal();
@@ -704,7 +890,7 @@ function rulePayload() {
       closed: row.querySelector('.exception-mode').value === 'closed',
       windows: !allDay && row.querySelector('.exception-mode').value === 'hours' ? [{ start: row.querySelector('.exception-start').value, end: row.querySelector('.exception-end').value }] : []
     })).filter(item => item.date),
-    location: $('#location').value, staff: $('#staff').value, questionLabel: $('#questionLabel').value, enabled: $('#enabled').checked,
+    location: $('#location').value, staff: $('#staff').value, staffAssignment: currentStaffAssignment(), questionLabel: $('#questionLabel').value, enabled: $('#enabled').checked,
     customQuestions: $$('.question-row').map(row => ({ label: row.querySelector('input[type=text]').value, required: row.querySelector('input[type=checkbox]').checked }))
   };
 }
@@ -752,7 +938,10 @@ async function copyBookingLink(url) {
 
 function renderRules() {
   const query = $('#ruleSearch').value.trim().toLowerCase();
-  const rules = state.rules.filter(rule => !query || [rule.serviceTitle, rule.productTitle, rule.staff, rule.location, serviceTypeLabels[rule.serviceType] || ''].some(value => String(value || '').toLowerCase().includes(query)));
+  const rules = state.rules.filter(rule => {
+    const managedNames = (rule.staffAssignment?.staffIds || []).map(id => state.staff.find(item => String(item._id) === String(id))?.name).filter(Boolean);
+    return !query || [rule.serviceTitle, rule.productTitle, rule.staff, rule.location, serviceTypeLabels[rule.serviceType] || '', ...managedNames].some(value => String(value || '').toLowerCase().includes(query));
+  });
   $('#ruleResultCount').textContent = state.locale === 'zh-CN' ? `${rules.length} 项服务` : `${rules.length} service${rules.length === 1 ? '' : 's'}`;
   const root = $('#rulesList');
   if (!rules.length) {
@@ -813,7 +1002,23 @@ function openBooking(booking) {
   $('#bookingDate').value = booking.date;
   $('#bookingTime').value = booking.time;
   $('#bookingLocation').value = booking.location || '';
-  $('#bookingStaff').value = booking.staff || '';
+  $('#bookingStaffLegacy').value = booking.staff || '';
+  const rule = state.rules.find(item => String(item._id) === String(booking.ruleId));
+  const assignment = rule?.staffAssignment || { mode: 'none', staffIds: [] };
+  const allowedIds = new Set((assignment.staffIds || []).map(String));
+  const allowed = state.staff.filter(item => item.status === 'active' && (assignment.mode === 'none' || allowedIds.has(String(item._id))));
+  const select = $('#bookingStaff');
+  if (assignment.mode === 'none') {
+    select.innerHTML = `<option value="">${t('No managed staff')}</option>`;
+    select.disabled = true;
+  } else {
+    select.innerHTML = `<option value="">${t(assignment.mode === 'any' ? 'Auto assign available staff' : 'Select staff')}</option>${allowed.map(item => `<option value="${item._id}">${escapeHtml(item.name)}</option>`).join('')}`;
+    select.disabled = false;
+    if (booking.staffId && !allowed.some(item => String(item._id) === String(booking.staffId))) {
+      select.insertAdjacentHTML('beforeend', `<option value="${escapeHtml(String(booking.staffId))}">${escapeHtml(booking.staff || t('Current staff'))}</option>`);
+    }
+    select.value = booking.staffId ? String(booking.staffId) : '';
+  }
   $('#bookingDialogSummary').textContent = `${booking.productTitle} · ${booking.customer.name} · ${booking.customer.email}`;
   $('#bookingEditTimezone').textContent = state.locale === 'zh-CN' ? `所有日期和时间均使用 ${booking.timezone || state.shop?.timezone || 'UTC'}。` : `All date and time values use ${booking.timezone || state.shop?.timezone || 'UTC'}.`;
   $('#bookingFormError').classList.add('hidden');
@@ -827,7 +1032,7 @@ async function saveBooking(event) {
   button.disabled = true;
   $('#bookingFormError').classList.add('hidden');
   try {
-    const payload = await api(`/bookings/${id}`, { method: 'PUT', body: JSON.stringify({ date: $('#bookingDate').value, time: $('#bookingTime').value, location: $('#bookingLocation').value, staff: $('#bookingStaff').value }) });
+    const payload = await api(`/bookings/${id}`, { method: 'PUT', body: JSON.stringify({ date: $('#bookingDate').value, time: $('#bookingTime').value, location: $('#bookingLocation').value, staffId: $('#bookingStaff').value, staff: $('#bookingStaffLegacy').value }) });
     $('#bookingDialog').close();
     toast(t(payload.notification?.skipped ? 'Booking updated. Email delivery is not configured.' : payload.notification?.failed ? 'Booking updated, but the customer email failed.' : 'Booking updated and customer email sent.'), payload.notification?.failed ? 'error' : 'success');
     await Promise.all([loadBookings(), loadBootstrap()]);
@@ -872,12 +1077,14 @@ function filteredBookings() {
   const query = $('#bookingSearch').value.trim().toLowerCase();
   const serviceId = $('#bookingServiceFilter').value;
   const status = $('#bookingStatusFilter').value;
+  const staffId = $('#bookingStaffFilter')?.value || '';
   const from = $('#bookingFrom').value;
   const to = $('#bookingTo').value;
   return state.bookings.filter(booking => {
     if (query && ![booking.productTitle, booking.customer?.name, booking.customer?.email, booking.customer?.phone, booking.staff, booking.location].some(value => String(value || '').toLowerCase().includes(query))) return false;
     if (serviceId && String(booking.ruleId) !== serviceId) return false;
     if (status && booking.status !== status) return false;
+    if (staffId && String(booking.staffId || '') !== staffId && !(booking.occurrences || []).some(item => String(item.staffId || '') === staffId)) return false;
     const dates = bookingOccurrenceDates(booking);
     if (from && !dates.some(date => date >= from)) return false;
     if (to && !dates.some(date => date <= to)) return false;
@@ -993,7 +1200,7 @@ function setBookingView(view) {
 function renderBookings() {
   const bookings = filteredBookings();
   $('#bookingResultCount').textContent = state.locale === 'zh-CN' ? `${bookings.length} 条预约` : `${bookings.length} booking${bookings.length === 1 ? '' : 's'}`;
-  const hasFilters = Boolean($('#bookingSearch').value || $('#bookingServiceFilter').value || $('#bookingStatusFilter').value || $('#bookingFrom').value || $('#bookingTo').value);
+  const hasFilters = Boolean($('#bookingSearch').value || $('#bookingServiceFilter').value || $('#bookingStaffFilter')?.value || $('#bookingStatusFilter').value || $('#bookingFrom').value || $('#bookingTo').value);
   $('#clearBookingFilters')?.classList.toggle('hidden', !hasFilters);
   if (state.bookingView === 'calendar') renderCalendar(bookings.filter(booking => bookingOccurrenceDates(booking).some(date => monthKey(date) === state.calendarMonth)));
   else renderBookingList(bookings);
@@ -1315,6 +1522,8 @@ async function loadBootstrap() {
   renderDashboard(payload);
   renderEmailStudio();
   renderOnboarding(payload);
+  await ensureStaff();
+  renderBookingStaffFilter();
   if (payload.onboarding?.shouldShowQuickstart && !$('#quickstartDialog').open) {
     if (!payload.onboarding.quickstartStarted) {
       try {
@@ -1339,6 +1548,7 @@ async function setLocale(locale, { save = true } = {}) {
   renderTemplateTabs();
   if (state.rules.length) renderRules();
   if (state.bookings.length) renderBookings();
+  if (state.staff.length) renderStaff();
   if (state.bootstrap) { renderDashboard(state.bootstrap); renderOnboarding(state.bootstrap); }
   if (state.emailSettings) renderEmailStudio();
   if (save) {
@@ -1408,13 +1618,20 @@ function bind() {
     }
   });
   $('#ruleSearch').addEventListener('input', renderRules);
+  $('#newStaffButton')?.addEventListener('click', () => openStaff());
+  $('#staffSearch')?.addEventListener('input', renderStaff);
+  $('#staffForm')?.addEventListener('submit', saveStaff);
+  $$('[data-close-staff-dialog]').forEach(button => button.addEventListener('click', () => $('#staffDialog').close()));
+  $('#addStaffException')?.addEventListener('click', () => addStaffException());
+  $$('#staffAssignmentGrid [data-staff-mode]').forEach(button => button.addEventListener('click', () => setStaffAssignmentMode(button.dataset.staffMode)));
   $('#bookingSearch').addEventListener('input', renderBookings);
-  ['bookingServiceFilter', 'bookingStatusFilter', 'bookingFrom', 'bookingTo'].forEach(id => $(`#${id}`)?.addEventListener('change', renderBookings));
+  ['bookingServiceFilter', 'bookingStaffFilter', 'bookingStatusFilter', 'bookingFrom', 'bookingTo'].forEach(id => $(`#${id}`)?.addEventListener('change', renderBookings));
   $$('[data-booking-view]').forEach(button => button.addEventListener('click', () => setBookingView(button.dataset.bookingView)));
   $('#clearBookingFilters')?.addEventListener('click', () => {
     $('#bookingSearch').value = '';
     $('#bookingServiceFilter').value = '';
     $('#bookingStatusFilter').value = '';
+    if ($('#bookingStaffFilter')) $('#bookingStaffFilter').value = '';
     $('#bookingFrom').value = '';
     $('#bookingTo').value = '';
     renderBookings();

@@ -3,6 +3,8 @@ import { config } from './config.js';
 import { AppointmentRule } from './models/AppointmentRule.js';
 import { Booking } from './models/Booking.js';
 import { BookingReservation } from './models/BookingReservation.js';
+import { Staff } from './models/Staff.js';
+import { StaffReservation } from './models/StaffReservation.js';
 
 async function dropIndexIfPresent(collection, name) {
   const indexes = await collection.indexes();
@@ -46,6 +48,9 @@ export async function ensureOperationalIndexes() {
   );
   await Booking.updateMany({ serviceType: 'product' }, { $set: { serviceType: 'appointment' } });
 
+  // v0.5.0: staff management is opt-in so legacy free-text specialists keep working.
+  await AppointmentRule.updateMany({ staffAssignment: { $exists: false } }, { $set: { staffAssignment: { mode: 'none', staffIds: [] } } });
+
   // v0.4.0: explicit booking modes and occurrence reservations. Existing bookings remain minute/hour appointments.
   await AppointmentRule.updateMany({ bookingMode: { $exists: false } }, { $set: { bookingMode: 'slot', sessionsRequired: 3 } });
   await Booking.updateMany({ bookingMode: { $exists: false } }, { $set: { bookingMode: 'slot' } });
@@ -82,6 +87,8 @@ export async function ensureOperationalIndexes() {
     { unique: true, partialFilterExpression: { status: 'confirmed' }, name: 'capacity_position_per_slot' }
   );
   await BookingReservation.syncIndexes();
+  await Staff.syncIndexes();
+  await StaffReservation.syncIndexes();
 }
 
 export async function connectDatabase() {
