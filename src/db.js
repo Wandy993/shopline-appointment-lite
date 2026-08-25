@@ -9,14 +9,48 @@ async function dropIndexIfPresent(collection, name) {
 }
 
 export async function ensureOperationalIndexes() {
-  await AppointmentRule.updateMany({ sourceType: { $exists: false } }, { $set: { sourceType: 'product', serviceType: 'product' } });
+  // v0.3.0 compatibility fields.
+  await AppointmentRule.updateMany({ sourceType: { $exists: false } }, { $set: { sourceType: 'product' } });
   await Booking.updateMany({ slotPosition: { $exists: false } }, { $set: { slotPosition: 0 } });
-  await Booking.updateMany({ sourceType: { $exists: false } }, { $set: { sourceType: 'product', serviceType: 'product' } });
+  await Booking.updateMany({ sourceType: { $exists: false } }, { $set: { sourceType: 'product' } });
+
+  // v0.3.1: service type and booking channel are independent.
+  await AppointmentRule.updateMany(
+    { bookingSource: { $exists: false }, sourceType: 'standalone' },
+    { $set: { bookingSource: 'direct' } }
+  );
+  await AppointmentRule.updateMany(
+    { bookingSource: { $exists: false } },
+    { $set: { bookingSource: 'product' } }
+  );
+  await AppointmentRule.updateMany(
+    { $or: [{ serviceTitle: { $exists: false } }, { serviceTitle: '' }] },
+    [{ $set: { serviceTitle: '$productTitle' } }]
+  );
+  // In v0.3.0 productTitle doubled as the standalone service title. After copying it
+  // into serviceTitle, clear product metadata for direct-only services.
+  await AppointmentRule.updateMany(
+    { bookingSource: 'direct', productId: { $in: ['', null] } },
+    { $set: { productTitle: '', productHandle: '' } }
+  );
+  await AppointmentRule.updateMany({ serviceType: 'product' }, { $set: { serviceType: 'appointment' } });
+
+  await Booking.updateMany(
+    { bookingSource: { $exists: false }, sourceType: 'standalone' },
+    { $set: { bookingSource: 'direct' } }
+  );
+  await Booking.updateMany(
+    { bookingSource: { $exists: false } },
+    { $set: { bookingSource: 'product' } }
+  );
+  await Booking.updateMany({ serviceType: 'product' }, { $set: { serviceType: 'appointment' } });
 
   await dropIndexIfPresent(AppointmentRule.collection, 'shopId_1_productId_1');
+  await dropIndexIfPresent(AppointmentRule.collection, 'one_rule_per_product');
+  await dropIndexIfPresent(AppointmentRule.collection, 'one_appointment_service_per_product');
   await AppointmentRule.collection.createIndex(
     { shopId: 1, productId: 1 },
-    { unique: true, partialFilterExpression: { sourceType: 'product' }, name: 'one_rule_per_product' }
+    { unique: true, partialFilterExpression: { productId: { $gt: '' } }, name: 'one_appointment_service_per_product' }
   );
 
   await dropIndexIfPresent(Booking.collection, 'one_confirmed_booking_per_slot');

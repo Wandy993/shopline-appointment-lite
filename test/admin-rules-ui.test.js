@@ -14,14 +14,13 @@ test('service cards constrain long titles and expose service operations', async 
   const stylesheet = await readFile(new URL('../public/admin/styles.css', import.meta.url), 'utf8');
   assert.match(asset, /条预约规则/);
   assert.match(asset, /rule\.duration/);
-  assert.match(asset, /'无缓冲'/);
   assert.match(asset, /Booking link copied/);
   assert.match(view, /Home \/ onsite service/);
   assert.match(view, /Class \/ course/);
   assert.match(view, /id="capacity"/);
   assert.match(view, /id="minimumNoticeMinutes"/);
   assert.match(view, /id="availabilityExceptions"/);
-  assert.match(stylesheet, /\.service-card\s*\{[^}]*min-width:0[^}]*overflow:hidden/);
+  assert.match(stylesheet, /\.service-card\.service-list-row\{[^}]*min-width:0[^}]*overflow:hidden/);
   assert.match(stylesheet, /-webkit-line-clamp:2/);
   assert.match(stylesheet, /\.service-type-grid/);
 });

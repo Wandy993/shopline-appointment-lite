@@ -8,7 +8,7 @@ All responses are JSON except `/`, `/app`, `/book/:ruleId`, and OAuth browser re
 - `GET /auth/install` — signed SHOPLINE installation request
 - `GET /auth/callback` — signed OAuth code callback
 - `GET /app` — authenticated merchant admin shell
-- `GET /book/:ruleId` — public hosted booking page for an enabled standalone service
+- `GET /book/:ruleId` — public hosted booking page for an enabled service with `bookingSource=direct|both`
 
 ## Admin API
 
@@ -16,7 +16,7 @@ Requires the signed `al_session` HTTP-only cookie. Mutations also require `X-CSR
 
 - `GET /api/admin/bootstrap`
 - `GET /api/admin/products`
-- `GET /api/admin/rules` — includes a `bookingUrl` for standalone services
+- `GET /api/admin/rules` — includes `bookingSource`, `serviceTitle`, per-service `bookingCount`, and a `bookingUrl` for `direct|both` services
 - `POST /api/admin/rules`
 - `PUT /api/admin/rules/:id`
 - `DELETE /api/admin/rules/:id`

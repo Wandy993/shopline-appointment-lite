@@ -4,7 +4,7 @@ let rule;
 let selectedTime = '';
 let brand = { name: 'Appointment Lite', accentColor: '#2F6FED' };
 
-const typeLabels = { product: 'Product appointment', in_store: 'In-store appointment', onsite: 'Home / onsite service', consultation: 'Consultation', class: 'Class / course', other: 'Service appointment' };
+const typeLabels = { appointment: 'Appointment', product: 'Appointment', in_store: 'In-store appointment', onsite: 'Home / onsite service', consultation: 'Consultation', class: 'Class / course', other: 'Service appointment' };
 
 async function api(path, options = {}) {
   const response = await fetch(path, options);

@@ -20,7 +20,8 @@ const sample = {
   date: '2026-09-08', time: '14:00', timezone: 'Asia/Shanghai', location: 'Main showroom', staff: 'Alex Morgan'
 };
 const variables = ['customer_name', 'product_title', 'date', 'time', 'timezone', 'location', 'staff', 'store_name'];
-const serviceTypeLabels = { product: 'Product booking', in_store: 'In-store appointment', onsite: 'Home / onsite service', consultation: 'Consultation', class: 'Class / course', other: 'Other service' };
+const serviceTypeLabels = { appointment: 'Appointment', product: 'Appointment', in_store: 'In-store appointment', onsite: 'Home / onsite service', consultation: 'Consultation', class: 'Class / course', other: 'Other service' };
+const bookingSourceLabels = { product: 'Product page', direct: 'Booking page', both: 'Product page + booking link' };
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
 
@@ -194,6 +195,38 @@ Object.assign(zh, {
   'No bookings match the current filters.': '没有符合当前筛选条件的预约。', 'booking': '条预约', 'bookings': '条预约'
 });
 
+Object.assign(zh, {
+  'Appointment': '预约服务', 'Service': '服务', 'Service type': '服务类型', 'Define the appointment service': '定义预约服务',
+  'Choose the service type first, then decide where customers can start the booking flow.': '先选择服务类型，再决定客户从哪里进入预约流程。',
+  'General service appointments and product consultations.': '适合通用服务预约或与商品相关的咨询服务。',
+  'Use a flexible service category for other appointment scenarios.': '用于其他灵活的预约服务场景。',
+  'Linked SHOPLINE product': '关联 SHOPLINE 商品', 'The App Block uses this product binding to find the correct appointment service on the storefront.': 'App Block 会通过该商品绑定在店铺前台找到对应的预约服务。',
+  'INBOX PREVIEW': '收件箱预览', 'Clear': '清除',
+  'Appointment': '预约服务', 'Booking source': '预约入口', 'Booking page': '独立预约页', 'Product page + booking link': '商品页 + 独立预约页',
+  'Linked product': '关联商品', 'Show this service on the linked SHOPLINE product page.': '在关联的 SHOPLINE 商品详情页展示此预约服务。',
+  'Show this service on the linked product page and a shareable booking page.': '同时在关联商品页展示，并提供可分享的独立预约页。',
+  'Use a shareable booking page without requiring a SHOPLINE product.': '使用可分享的独立预约页，无需关联 SHOPLINE 商品。',
+  'Product page only': '仅商品页', 'Booking page only': '仅独立预约页', 'Both': '两种入口',
+  'Display on the linked SHOPLINE product with the App Block.': '通过 App Block 在关联的 SHOPLINE 商品页展示。',
+  'Use a direct booking page that can be shared anywhere.': '生成可在任意渠道分享的独立预约页面。',
+  'Use both the product page and a shareable direct booking page.': '同时使用商品页和可分享的独立预约页面。',
+  'Service name': '服务名称', 'Describe the service customers are booking, independent of the linked product.': '填写客户实际预约的服务名称，与关联商品名称相互独立。',
+  'Select a SHOPLINE product before continuing.': '请先选择一个 SHOPLINE 商品。', 'Service name is required before continuing.': '请先填写服务名称。',
+  'to': '发送至', 'Bookings': '预约记录',
+  'Create appointment services, bind them to SHOPLINE products when needed, and choose product-page, direct, or dual booking channels.': '创建预约服务，并按需关联 SHOPLINE 商品，可选择商品页、独立预约页或同时使用两种入口。',
+  'Connect the App Block for product-page services, or use a direct booking page, then test the booking flow.': '商品页服务需要连接 App Block；也可以使用独立预约页，然后测试完整预约流程。',
+  'Required when a service uses the SHOPLINE product page. Open the product template, add or activate the Appointment Lite App Block, then save the theme. Direct-booking-only services can continue without it.': '当服务使用 SHOPLINE 商品页时必须启用 App Block。打开商品模板，添加或启用 Appointment Lite App Block 并保存主题。仅使用独立预约页的服务可以跳过此步骤。',
+  'Choose the service type and booking source, then configure the schedule.': '选择服务类型和预约入口，然后配置可预约时间。',
+  'The App Block is required for product-page services. Direct-booking-only services can continue directly to Step 2.': '使用商品页的服务必须启用 App Block；仅使用独立预约页的服务可以直接进入第 2 步。',
+  'For services using the product page, open the product template, activate the Appointment Lite App Block, and save the theme. Direct-booking-only services can skip this step.': '对于使用商品页的服务，请打开商品模板、启用 Appointment Lite App Block 并保存主题。仅使用独立预约页的服务可以跳过。'
+});
+
+Object.assign(zh, {
+  'Open the configured product page or direct booking page and submit one test booking. The booking should appear in Bookings.': '打开已配置的商品页或独立预约页，提交一条测试预约，并确认该记录出现在预约记录中。',
+  'Any service can use the product-page App Block, a direct booking page, or both. The booking source is configured independently from the service type.': '任何服务都可以使用商品页 App Block、独立预约页或同时使用两种入口；预约入口与服务类型独立配置。',
+  'Step 1 connects product-page services to the storefront App Block': '第 1 步将商品页服务连接到店铺 App Block'
+});
+
 function t(value, variables = {}) {
   let result = state.locale === 'zh-CN' ? (zh[value] || value) : value;
   for (const [key, replacement] of Object.entries(variables)) result = result.replaceAll(`{${key}}`, replacement);
@@ -358,15 +391,24 @@ async function ensureProducts() {
   }
 }
 
-function setServiceType(type = 'product') {
-  const normalized = serviceTypeLabels[type] ? type : 'other';
-  const sourceType = normalized === 'product' ? 'product' : 'standalone';
+function setServiceType(type = 'appointment') {
+  const normalized = serviceTypeLabels[type] ? (type === 'product' ? 'appointment' : type) : 'other';
   $('#serviceType').value = normalized;
-  $('#sourceType').value = sourceType;
   $$('#serviceTypeGrid [data-service-type]').forEach(button => button.classList.toggle('selected', button.dataset.serviceType === normalized));
-  $('#productSourceFields').classList.toggle('hidden', sourceType !== 'product');
-  $('#standaloneSourceFields').classList.toggle('hidden', sourceType === 'product');
-  $('#serviceActiveHint').textContent = t(sourceType === 'product' ? 'Show the booking experience on matching product pages.' : 'Show the booking experience when customers open this service.');
+}
+
+function setBookingSource(source = 'product') {
+  const normalized = ['product', 'direct', 'both'].includes(source) ? source : 'product';
+  $('#bookingSource').value = normalized;
+  $('#sourceType').value = normalized === 'direct' ? 'standalone' : 'product';
+  $$('#bookingSourceGrid [data-booking-source]').forEach(button => button.classList.toggle('selected', button.dataset.bookingSource === normalized));
+  const needsProduct = normalized === 'product' || normalized === 'both';
+  $('#productSourceFields').classList.toggle('hidden', !needsProduct);
+  $('#serviceActiveHint').textContent = t(
+    normalized === 'product' ? 'Show this service on the linked SHOPLINE product page.' :
+    normalized === 'both' ? 'Show this service on the linked product page and a shareable booking page.' :
+    'Use a shareable booking page without requiring a SHOPLINE product.'
+  );
 }
 
 function setRuleStep(step) {
@@ -383,9 +425,9 @@ function setRuleStep(step) {
 
 function validateRuleStep(step) {
   let message = '';
-  const sourceType = $('#sourceType').value;
-  if (step === 0 && sourceType === 'product' && !$('#productSelect').value) message = 'Select a SHOPLINE product before continuing.';
-  if (step === 0 && sourceType === 'standalone' && !$('#serviceTitle').value.trim()) message = 'Service name is required before continuing.';
+  const bookingSource = $('#bookingSource').value;
+  if (step === 0 && !$('#serviceTitle').value.trim()) message = 'Service name is required before continuing.';
+  if (step === 0 && ['product', 'both'].includes(bookingSource) && !$('#productSelect').value) message = 'Select a SHOPLINE product before continuing.';
   if (step === 0 && (!$('#duration').checkValidity() || !$('#buffer').checkValidity() || !$('#capacity').checkValidity())) message = 'Enter valid duration, buffer, and capacity.';
   if (step === 1 && (!$('#bookingWindowDays').checkValidity() || !$('#minimumNoticeMinutes').checkValidity())) message = 'Enter a valid booking window and minimum notice.';
   if (step === 1) {
@@ -407,7 +449,7 @@ async function openRule(rule = null) {
   $('#ruleDialogTitle').textContent = t(rule ? 'Edit service rule' : 'New appointment service');
   $('#questions').innerHTML = '';
   $('#productSearch').value = '';
-  $('#serviceTitle').value = '';
+  $('#serviceTitle').value = rule?.serviceTitle || rule?.productTitle || '';
   $('#capacity').value = rule?.capacity || 1;
   $('#minimumNoticeMinutes').value = String(rule?.minimumNoticeMinutes ?? 0);
   $('#bookingWindowDays').value = rule?.bookingWindowDays || 90;
@@ -416,14 +458,15 @@ async function openRule(rule = null) {
   $('#enabled').checked = rule?.enabled !== false;
   renderSchedule(rule?.weeklyAvailability || [1, 2, 3, 4, 5].map(weekday => ({ weekday, enabled: true, windows: [{ start: '09:00', end: '17:00' }] })));
   renderExceptions(rule?.availabilityExceptions || []);
-  setServiceType(rule?.serviceType || (rule?.sourceType === 'standalone' ? 'other' : 'product'));
-  if (($('#sourceType').value === 'product')) {
+  setServiceType(rule?.serviceType || 'appointment');
+  const bookingSource = rule?.bookingSource || (rule?.sourceType === 'standalone' ? 'direct' : 'product');
+  setBookingSource(bookingSource);
+  if (['product', 'both'].includes(bookingSource)) {
     await ensureProducts();
-    if (rule?.productId && !state.products.some(product => product.id === rule.productId)) state.products.push({ id: rule.productId, title: rule.productTitle, handle: rule.productHandle || '' });
+    if (rule?.productId && !state.products.some(product => product.id === rule.productId)) state.products.push({ id: rule.productId, title: rule.productTitle || rule.serviceTitle, handle: rule.productHandle || '' });
     selectProduct(rule?.productId || '');
   } else {
     selectProduct('');
-    $('#serviceTitle').value = rule?.productTitle || '';
   }
   if (rule) {
     $('#duration').value = rule.duration;
@@ -446,14 +489,17 @@ async function openRule(rule = null) {
 }
 
 function rulePayload() {
-  const sourceType = $('#sourceType').value;
+  const bookingSource = $('#bookingSource').value;
+  const usesProduct = ['product', 'both'].includes(bookingSource);
   const product = state.products.find(item => item.id === $('#productSelect').value);
   return {
-    sourceType, serviceType: $('#serviceType').value,
-    productId: sourceType === 'product' ? (product?.id || '') : '',
-    productTitle: sourceType === 'product' ? (product?.title || '') : $('#serviceTitle').value,
-    serviceTitle: sourceType === 'product' ? (product?.title || '') : $('#serviceTitle').value,
-    productHandle: sourceType === 'product' ? (product?.handle || '') : '',
+    bookingSource,
+    sourceType: bookingSource === 'direct' ? 'standalone' : 'product',
+    serviceType: $('#serviceType').value,
+    serviceTitle: $('#serviceTitle').value,
+    productId: usesProduct ? (product?.id || '') : '',
+    productTitle: usesProduct ? (product?.title || '') : '',
+    productHandle: usesProduct ? (product?.handle || '') : '',
     serviceDescription: $('#serviceDescription').value,
     duration: Number($('#duration').value), buffer: Number($('#buffer').value), capacity: Number($('#capacity').value),
     minimumNoticeMinutes: Number($('#minimumNoticeMinutes').value), bookingWindowDays: Number($('#bookingWindowDays').value),
@@ -512,7 +558,7 @@ async function copyBookingLink(url) {
 
 function renderRules() {
   const query = $('#ruleSearch').value.trim().toLowerCase();
-  const rules = state.rules.filter(rule => !query || [rule.productTitle, rule.staff, rule.location, serviceTypeLabels[rule.serviceType] || ''].some(value => String(value || '').toLowerCase().includes(query)));
+  const rules = state.rules.filter(rule => !query || [rule.serviceTitle, rule.productTitle, rule.staff, rule.location, serviceTypeLabels[rule.serviceType] || ''].some(value => String(value || '').toLowerCase().includes(query)));
   $('#ruleResultCount').textContent = state.locale === 'zh-CN' ? `${rules.length} 项服务` : `${rules.length} service${rules.length === 1 ? '' : 's'}`;
   const root = $('#rulesList');
   if (!rules.length) {
@@ -520,13 +566,21 @@ function renderRules() {
     return;
   }
   root.innerHTML = rules.map(rule => {
-    const bufferLabel = state.locale === 'zh-CN' ? (rule.buffer ? `缓冲 ${rule.buffer} 分钟` : '无缓冲') : (rule.buffer ? `${rule.buffer} min buffer` : 'No buffer');
-    const timingLabel = state.locale === 'zh-CN' ? `${rule.duration} 分钟 · ${bufferLabel}` : `${rule.duration} min · ${bufferLabel}`;
-    const typeLabel = t(serviceTypeLabels[rule.serviceType] || (rule.sourceType === 'standalone' ? 'Other service' : 'Product booking'));
-    const sourceLabel = t(rule.sourceType === 'standalone' ? 'Standalone link' : 'Product page');
-    const capacityLabel = state.locale === 'zh-CN' ? `每时段 ${rule.capacity || 1} 个名额` : `${rule.capacity || 1} ${t('per slot')}`;
-    const linkActions = rule.sourceType === 'standalone' && rule.bookingUrl ? `<button class="secondary small" data-copy-link="${escapeHtml(rule.bookingUrl)}">${t('Copy link')}</button><a class="button-link secondary-link small" href="${escapeHtml(rule.bookingUrl)}" target="_blank" rel="noopener noreferrer">${t('Open booking page')}</a>` : '';
-    return `<article class="panel service-card"><div class="service-head"><div class="service-identity"><div class="service-avatar">${escapeHtml(rule.productTitle.slice(0, 1).toUpperCase())}</div><div><div class="service-title-row"><strong title="${escapeHtml(rule.productTitle)}">${escapeHtml(rule.productTitle)}</strong><span class="service-type-badge">${escapeHtml(typeLabel)}</span></div><span>${timingLabel}</span></div></div><span class="status-badge ${rule.enabled ? 'enabled' : 'disabled'}">${t(rule.enabled ? 'Active' : 'Paused')}</span></div><div class="service-meta service-meta-wide"><div><span>${sourceLabel}</span><strong>${rule.sourceType === 'standalone' ? t('Booking link') : t('SHOPLINE product')}</strong></div><div><span>${t('Capacity')}</span><strong>${capacityLabel}</strong></div><div><span>${t('Minimum notice')}</span><strong>${escapeHtml(formatNotice(rule))}</strong></div><div><span>${t('Specialist')}</span><strong>${escapeHtml(rule.staff || t('Any staff'))}</strong></div><div><span>${t('Location')}</span><strong>${escapeHtml(rule.location || t('Not set'))}</strong></div></div><div class="service-actions"><div class="service-link-actions">${linkActions}</div><div class="service-edit-actions"><button class="secondary small" data-edit="${rule._id}">${t('Edit service')}</button><button class="secondary small" data-delete="${rule._id}">${t('Delete')}</button></div></div></article>`;
+    const serviceTitle = rule.serviceTitle || rule.productTitle;
+    const typeLabel = t(serviceTypeLabels[rule.serviceType] || 'Appointment');
+    const bookingSource = rule.bookingSource || (rule.sourceType === 'standalone' ? 'direct' : 'product');
+    const sourceLabel = t(bookingSourceLabels[bookingSource] || 'Product page');
+    const productLine = rule.productId && rule.productTitle ? `<span class="service-product-line">${t('Linked product')}: ${escapeHtml(rule.productTitle)}</span>` : '';
+    const linkActions = ['direct', 'both'].includes(bookingSource) && rule.bookingUrl ? `<button class="secondary small" data-copy-link="${escapeHtml(rule.bookingUrl)}">${t('Copy link')}</button><a class="button-link secondary-link small" href="${escapeHtml(rule.bookingUrl)}" target="_blank" rel="noopener noreferrer">${t('Open booking page')}</a>` : '';
+    const timing = state.locale === 'zh-CN' ? `${rule.duration} 分钟${rule.buffer ? ` · 缓冲 ${rule.buffer} 分钟` : ''}` : `${rule.duration} min${rule.buffer ? ` · ${rule.buffer} min buffer` : ''}`;
+    const bookingCount = Number(rule.bookingCount || 0);
+    return `<article class="panel service-card service-list-row">
+      <div class="service-main"><div class="service-avatar">${escapeHtml(serviceTitle.slice(0, 1).toUpperCase())}</div><div class="service-copy"><div class="service-title-row"><strong title="${escapeHtml(serviceTitle)}">${escapeHtml(serviceTitle)}</strong><span class="service-type-badge">${escapeHtml(typeLabel)}</span></div><span>${timing}</span>${productLine}</div></div>
+      <div class="service-channel"><span>${t('Booking source')}</span><strong>${escapeHtml(sourceLabel)}</strong></div>
+      <div class="service-count"><span>${t('Bookings')}</span><strong>${bookingCount}</strong></div>
+      <div class="service-status"><span class="status-badge ${rule.enabled ? 'enabled' : 'disabled'}">${t(rule.enabled ? 'Active' : 'Paused')}</span></div>
+      <div class="service-actions"><div class="service-link-actions">${linkActions}</div><div class="service-edit-actions"><button class="secondary small" data-edit="${rule._id}">${t('Edit service')}</button><button class="secondary small" data-delete="${rule._id}">${t('Delete')}</button></div></div>
+    </article>`;
   }).join('');
   $$('[data-edit]').forEach(button => button.addEventListener('click', () => openRule(state.rules.find(rule => rule._id === button.dataset.edit))));
   $$('[data-copy-link]').forEach(button => button.addEventListener('click', () => copyBookingLink(button.dataset.copyLink)));
@@ -688,6 +742,8 @@ function setBookingView(view) {
 function renderBookings() {
   const bookings = filteredBookings();
   $('#bookingResultCount').textContent = state.locale === 'zh-CN' ? `${bookings.length} 条预约` : `${bookings.length} booking${bookings.length === 1 ? '' : 's'}`;
+  const hasFilters = Boolean($('#bookingSearch').value || $('#bookingServiceFilter').value || $('#bookingStatusFilter').value || $('#bookingFrom').value || $('#bookingTo').value);
+  $('#clearBookingFilters')?.classList.toggle('hidden', !hasFilters);
   if (state.bookingView === 'calendar') renderCalendar(bookings.filter(booking => monthKey(booking.date) === state.calendarMonth));
   else renderBookingList(bookings);
 }
@@ -818,8 +874,15 @@ function renderEmailPreview() {
   const template = state.emailSettings.templates[state.activeTemplate];
   const brandName = state.emailSettings.brandName;
   const accent = state.emailSettings.accentColor;
+  const subject = escapeHtml(interpolate(template.subject || 'Appointment update'));
   const logo = state.emailSettings.logoUrl ? `<img src="${escapeHtml(state.emailSettings.logoUrl)}" alt="">` : escapeHtml(brandName.slice(0, 1).toUpperCase() || 'A');
-  $('#emailPreview').innerHTML = `<div class="preview-brand"><div class="preview-logo" style="background:${accent}">${logo}</div><strong>${escapeHtml(brandName)}</strong></div><div class="preview-email-card"><h2>${escapeHtml(interpolate(template.heading))}</h2><p>${escapeHtml(interpolate(template.body))}</p><div class="preview-appointment" style="border-color:${accent}33;background:${accent}0D"><strong>${escapeHtml(sample.product_title)}</strong><span class="when" style="color:${accent}">${sample.date} ${t('at')} ${sample.time}</span><span>${t('Time zone')}: ${sample.timezone}</span><span>${t('Location')}: ${sample.location}</span><span>${t('Staff')}: ${sample.staff}</span></div>${templateMeta[state.activeTemplate].manage ? `<div class="preview-email-button" style="background:${accent}">${t('Manage appointment')}</div>` : ''}<div class="preview-footer">${t('Sent by')} ${escapeHtml(brandName)}</div></div>`;
+  const manage = templateMeta[state.activeTemplate].manage ? `<div class="preview-email-button" style="background:${accent}">${t('Manage appointment')}</div>` : '';
+  $('#emailPreview').innerHTML = `<div class="preview-mail-shell">
+    <div class="preview-mail-header"><div class="preview-mail-from"><div class="preview-logo small" style="background:${accent}">${logo}</div><div><strong>${escapeHtml(brandName)}</strong><span>${t('to')} ${escapeHtml(sample.customer_email)}</span></div></div><strong class="preview-mail-subject">${subject}</strong></div>
+    <div class="preview-email-card"><div class="preview-brand"><div class="preview-logo" style="background:${accent}">${logo}</div><strong>${escapeHtml(brandName)}</strong></div><h2>${escapeHtml(interpolate(template.heading))}</h2><p>${escapeHtml(interpolate(template.body))}</p>
+      <div class="preview-detail-card"><div><span>${t('Service')}</span><strong>${escapeHtml(sample.product_title)}</strong></div><div><span>${t('Date & time')}</span><strong>${escapeHtml(sample.date)} · ${escapeHtml(sample.time)}</strong><small>${escapeHtml(sample.timezone)}</small></div><div><span>${t('Location')}</span><strong>${escapeHtml(sample.location)}</strong></div><div><span>${t('Staff')}</span><strong>${escapeHtml(sample.staff)}</strong></div></div>
+      ${manage}<div class="preview-footer">${t('Sent by')} ${escapeHtml(brandName)}</div></div>
+  </div>`;
 }
 
 function renderEmailStudio() {
@@ -1109,6 +1172,7 @@ function bind() {
   $('#exportBookings')?.addEventListener('click', exportBookingsCsv);
   $('#addException')?.addEventListener('click', () => addException());
   $$('#serviceTypeGrid [data-service-type]').forEach(button => button.addEventListener('click', () => setServiceType(button.dataset.serviceType)));
+  $$('#bookingSourceGrid [data-booking-source]').forEach(button => button.addEventListener('click', () => setBookingSource(button.dataset.bookingSource)));
   $('#confirmNo').addEventListener('click', () => { pendingConfirm = null; $('#confirmDialog').close(); });
   $('#confirmYes').addEventListener('click', async () => {
     const action = pendingConfirm;

@@ -77,8 +77,9 @@ export async function createBookingAtomic({ shop, rule, input, BookingModel = Bo
   }
   const managementToken = randomBytes(32).toString('base64url');
   const document = {
-    shopId: shop._id, ruleId: rule._id, sourceType: rule.sourceType || 'product', serviceType: rule.serviceType || 'product',
-    productId: rule.productId || '', productTitle: rule.productTitle,
+    shopId: shop._id, ruleId: rule._id, bookingSource: rule.bookingSource || (rule.sourceType === 'standalone' ? 'direct' : 'product'),
+    sourceType: rule.sourceType || 'product', serviceType: rule.serviceType === 'product' ? 'appointment' : (rule.serviceType || 'appointment'),
+    productId: rule.productId || '', productTitle: rule.serviceTitle || rule.productTitle,
     date: input.date, time: input.time, slotKey: slotKey(input.date, input.time), duration: rule.duration,
     buffer: rule.buffer, timezone: shop.timezone || 'UTC', location: rule.location, staff: rule.staff,
     managementTokenHash: hashManagementToken(managementToken),
@@ -102,7 +103,7 @@ export async function createBookingForStore({ shopId, handle, productId, ruleId,
     shop = await findInstalledShop({ objectId: rule.shopId });
   } else {
     shop = await findInstalledShop({ shopId, shop: handle });
-    if (shop) rule = await AppointmentRule.findOne({ shopId: shop._id, sourceType: 'product', productId, enabled: true });
+    if (shop) rule = await AppointmentRule.findOne({ shopId: shop._id, productId, enabled: true, $or: [{ bookingSource: { $in: ['product', 'both'] } }, { bookingSource: { $exists: false }, sourceType: 'product' }] });
   }
   if (!shop) throw Object.assign(new Error('Store is not available.'), { code: 'NOT_FOUND' });
   if (!rule) throw Object.assign(new Error('Appointments are not enabled for this service.'), { code: 'NOT_FOUND' });

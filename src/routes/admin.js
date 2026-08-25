@@ -39,11 +39,12 @@ function storefrontHost(shop) {
 
 function onboardingStatus(shop, { ruleCount = 0, activeRuleCount = 0, bookingCount = 0, firstActiveRule = null } = {}) {
   const onboarding = shop.onboarding || {};
-  const previewUrl = firstActiveRule?.sourceType === 'standalone'
-    ? `${config.appUrl}/book/${firstActiveRule._id}`
-    : firstActiveRule?.productHandle ? `https://${storefrontHost(shop)}/products/${encodeURIComponent(firstActiveRule.productHandle)}` : '';
+  const firstBookingSource = firstActiveRule?.bookingSource || (firstActiveRule?.sourceType === 'standalone' ? 'direct' : 'product');
+  const previewUrl = ['product', 'both'].includes(firstBookingSource) && firstActiveRule?.productHandle
+    ? `https://${storefrontHost(shop)}/products/${encodeURIComponent(firstActiveRule.productHandle)}`
+    : ['direct', 'both'].includes(firstBookingSource) ? `${config.appUrl}/book/${firstActiveRule?._id}` : '';
   const quickstartStarted = Boolean(onboarding.quickstartStartedAt);
-  const appBlockConfirmed = Boolean(onboarding.appBlockConfirmedAt) || firstActiveRule?.sourceType === 'standalone';
+  const appBlockConfirmed = Boolean(onboarding.appBlockConfirmedAt) || firstBookingSource === 'direct';
   const serviceCreated = activeRuleCount > 0;
   const testBookingCompleted = bookingCount > 0;
   const eligible = quickstartStarted || (ruleCount === 0 && bookingCount === 0);
@@ -75,7 +76,7 @@ adminRouter.get('/bootstrap', async (req, res) => {
     Booking.countDocuments(upcomingFilter),
     Booking.find(upcomingFilter)
       .sort({ date: 1, time: 1 }).limit(4).select('productTitle date time timezone location staff customer.name').lean(),
-    AppointmentRule.findOne({ shopId: req.shop._id, enabled: true }).sort({ updatedAt: -1 }).select('productTitle productHandle sourceType').lean()
+    AppointmentRule.findOne({ shopId: req.shop._id, enabled: true }).sort({ updatedAt: -1 }).select('serviceTitle productTitle productHandle bookingSource sourceType').lean()
   ]);
   const delivery = emailStatus();
   res.json({
@@ -96,8 +97,24 @@ adminRouter.get('/products', async (req, res, next) => {
 });
 
 adminRouter.get('/rules', async (req, res) => {
-  const rules = await AppointmentRule.find({ shopId: req.shop._id }).sort({ updatedAt: -1 }).lean();
-  res.json({ rules: rules.map(rule => ({ ...rule, bookingUrl: rule.sourceType === 'standalone' ? `${config.appUrl}/book/${rule._id}` : '' })) });
+  const [rules, bookingCounts] = await Promise.all([
+    AppointmentRule.find({ shopId: req.shop._id }).sort({ updatedAt: -1 }).lean(),
+    Booking.aggregate([
+      { $match: { shopId: req.shop._id } },
+      { $group: { _id: '$ruleId', count: { $sum: 1 } } }
+    ])
+  ]);
+  const counts = new Map(bookingCounts.map(item => [String(item._id), Number(item.count || 0)]));
+  res.json({ rules: rules.map(rule => {
+    const bookingSource = rule.bookingSource || (rule.sourceType === 'standalone' ? 'direct' : 'product');
+    return {
+      ...rule,
+      bookingSource,
+      serviceTitle: rule.serviceTitle || rule.productTitle,
+      bookingCount: counts.get(String(rule._id)) || 0,
+      bookingUrl: ['direct', 'both'].includes(bookingSource) ? `${config.appUrl}/book/${rule._id}` : ''
+    };
+  }) });
 });
 
 adminRouter.post('/rules', async (req, res, next) => {
@@ -111,7 +128,7 @@ adminRouter.post('/rules', async (req, res, next) => {
     const rule = await AppointmentRule.create({ shopId: req.shop._id, ...value });
     res.status(201).json({ rule });
   } catch (error) {
-    if (error?.code === 11000) return res.status(409).json({ error: 'DUPLICATE_PRODUCT', message: 'This product already has an appointment rule.' });
+    if (error?.code === 11000) return res.status(409).json({ error: 'DUPLICATE_PRODUCT', message: 'This product is already linked to another appointment service.' });
     next(error);
   }
 });
@@ -130,7 +147,7 @@ adminRouter.put('/rules/:id', async (req, res, next) => {
     await rule.save();
     res.json({ rule });
   } catch (error) {
-    if (error?.code === 11000) return res.status(409).json({ error: 'DUPLICATE_PRODUCT', message: 'This product already has an appointment rule.' });
+    if (error?.code === 11000) return res.status(409).json({ error: 'DUPLICATE_PRODUCT', message: 'This product is already linked to another appointment service.' });
     next(error);
   }
 });

@@ -20,7 +20,8 @@ function publicBooking(booking) {
   const timezone = booking.timezone || 'UTC';
   return {
     id: booking._id, serviceTitle: booking.productTitle, productTitle: booking.productTitle,
-    sourceType: booking.sourceType || 'product', serviceType: booking.serviceType || 'product',
+    bookingSource: booking.bookingSource || (booking.sourceType === 'standalone' ? 'direct' : 'product'),
+    sourceType: booking.sourceType || 'product', serviceType: booking.serviceType === 'product' ? 'appointment' : (booking.serviceType || 'appointment'),
     date: booking.date, time: booking.time, timezone, storeDate: zonedNow(timezone).date,
     location: booking.location, staff: booking.staff, status: booking.status, customerRescheduleCount,
     customerCanReschedule: booking.status === 'confirmed' && customerRescheduleCount < 1
@@ -31,8 +32,9 @@ function serializeRule(rule, timezone) {
   const storeDate = zonedNow(timezone).date;
   const bookingWindowDays = Number(rule.bookingWindowDays || 90);
   return {
-    id: rule._id, sourceType: rule.sourceType || 'product', serviceType: rule.serviceType || 'product',
-    productId: rule.productId || '', productTitle: rule.productTitle, serviceTitle: rule.productTitle,
+    id: rule._id, bookingSource: rule.bookingSource || (rule.sourceType === 'standalone' ? 'direct' : 'product'),
+    sourceType: rule.sourceType || 'product', serviceType: rule.serviceType === 'product' ? 'appointment' : (rule.serviceType || 'appointment'),
+    productId: rule.productId || '', productTitle: rule.productTitle || '', serviceTitle: rule.serviceTitle || rule.productTitle,
     serviceDescription: rule.serviceDescription || '', duration: rule.duration, buffer: rule.buffer,
     capacity: Number(rule.capacity || 1), minimumNoticeMinutes: Number(rule.minimumNoticeMinutes || 0),
     bookingWindowDays, bookingWindowUntil: addDays(storeDate, bookingWindowDays),
@@ -59,7 +61,7 @@ async function findPublicRule(req) {
   if ((!validShoplineStoreId(shopId) && !validShopHandle(handle)) || !productId) return { error: { status: 400, body: { error: 'INVALID_REQUEST', message: 'shopId (or legacy shop) and productId are required.' } } };
   const shop = await findInstalledShop({ shopId, shop: handle });
   if (!shop) return { error: { status: 404, body: { error: 'NOT_FOUND', message: 'Store not found.' } } };
-  const rule = await AppointmentRule.findOne({ shopId: shop._id, sourceType: 'product', productId, enabled: true }).lean();
+  const rule = await AppointmentRule.findOne({ shopId: shop._id, productId, enabled: true, $or: [{ bookingSource: { $in: ['product', 'both'] } }, { bookingSource: { $exists: false }, sourceType: 'product' }] }).lean();
   if (!rule) return { error: { status: 404, body: { error: 'NOT_FOUND', message: 'No appointment rule for this product.' } } };
   return { rule, shop };
 }
@@ -75,7 +77,8 @@ publicRouter.get('/rule', async (req, res) => {
 publicRouter.get('/service', async (req, res) => {
   const result = await findPublicRule(req);
   if (result.error) return res.status(result.error.status).json(result.error.body);
-  if ((result.rule.sourceType || 'product') !== 'standalone') return res.status(404).json({ error: 'NOT_FOUND', message: 'Standalone service not found.' });
+  const bookingSource = result.rule.bookingSource || (result.rule.sourceType === 'standalone' ? 'direct' : 'product');
+  if (!['direct', 'both'].includes(bookingSource)) return res.status(404).json({ error: 'NOT_FOUND', message: 'Direct booking is not enabled for this service.' });
   const timezone = result.shop.timezone || 'UTC';
   const emailSettings = normalizeEmailSettings(result.shop.emailSettings || {});
   res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=300');

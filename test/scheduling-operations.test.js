@@ -8,7 +8,7 @@ import { validateBookingStatus, validateRuleInput } from '../src/lib/validation.
 import { createBookingAtomic, setBookingStatusByMerchant, SlotConflictError } from '../src/services/bookings.js';
 
 const baseRule = {
-  _id: 'rule1', enabled: true, sourceType: 'standalone', serviceType: 'class', productId: '', productTitle: 'Weekend pottery class',
+  _id: 'rule1', enabled: true, bookingSource: 'direct', sourceType: 'standalone', serviceType: 'class', productId: '', productTitle: '', serviceTitle: 'Weekend pottery class',
   duration: 60, buffer: 0, capacity: 2, minimumNoticeMinutes: 0, bookingWindowDays: 90,
   location: 'Studio A', staff: 'Maya', customQuestions: [],
   weeklyAvailability: [{ weekday: 1, enabled: true, windows: [{ start: '09:00', end: '12:00' }] }]
@@ -62,6 +62,7 @@ test('capacity-safe booking allocation retries the next slot position', async ()
   const result = await createBookingAtomic({ shop, rule: baseRule, input, BookingModel, notify: async () => ({ skipped: true }), now: beforeOpening });
   assert.deepEqual(attempts, [0, 1]);
   assert.equal(result.booking.slotPosition, 1);
+  assert.equal(result.booking.bookingSource, 'direct');
   assert.equal(result.booking.sourceType, 'standalone');
   assert.equal(result.booking.serviceType, 'class');
 });
@@ -76,19 +77,20 @@ test('capacity-safe booking allocation rejects only after every position is occu
 
 test('standalone services can use one-off availability without a weekly schedule', () => {
   const result = validateRuleInput({
-    sourceType: 'standalone', serviceType: 'class', serviceTitle: 'One-day workshop', duration: 90, buffer: 15, capacity: 8,
+    bookingSource: 'direct', sourceType: 'standalone', serviceType: 'class', serviceTitle: 'One-day workshop', duration: 90, buffer: 15, capacity: 8,
     bookingWindowDays: 30, minimumNoticeMinutes: 60, weeklyAvailability: [],
     availabilityExceptions: [{ date: '2026-09-12', closed: false, windows: [{ start: '10:00', end: '14:00' }] }]
   });
   assert.deepEqual(result.errors, []);
   assert.equal(result.value.productId, '');
-  assert.equal(result.value.productTitle, 'One-day workshop');
+  assert.equal(result.value.serviceTitle, 'One-day workshop');
+  assert.equal(result.value.productTitle, '');
   assert.equal(result.value.capacity, 8);
 });
 
 test('rule validation rejects invalid capacity and scheduling policy', () => {
   const result = validateRuleInput({
-    sourceType: 'standalone', serviceType: 'onsite', serviceTitle: 'Installation', duration: 60, buffer: 0, capacity: 0,
+    bookingSource: 'direct', sourceType: 'standalone', serviceType: 'onsite', serviceTitle: 'Installation', duration: 60, buffer: 0, capacity: 0,
     bookingWindowDays: 500, minimumNoticeMinutes: 20000,
     weeklyAvailability: [{ weekday: 1, enabled: true, windows: [{ start: '09:00', end: '17:00' }] }]
   });
@@ -114,7 +116,7 @@ test('merchant completion and no-show are validated and recorded in booking hist
 test('schemas expose partial product uniqueness and capacity-position uniqueness', () => {
   const ruleIndexes = AppointmentRule.schema.indexes();
   const bookingIndexes = Booking.schema.indexes();
-  assert.ok(ruleIndexes.some(([keys, options]) => keys.shopId === 1 && keys.productId === 1 && options.name === 'one_rule_per_product' && options.partialFilterExpression?.sourceType === 'product'));
+  assert.ok(ruleIndexes.some(([keys, options]) => keys.shopId === 1 && keys.productId === 1 && options.name === 'one_appointment_service_per_product' && options.partialFilterExpression?.productId?.$gt === ''));
   assert.ok(bookingIndexes.some(([keys, options]) => keys.slotPosition === 1 && options.name === 'capacity_position_per_slot' && options.partialFilterExpression?.status === 'confirmed'));
 });
 
@@ -137,7 +139,7 @@ test('theme App Block honors the booking-window max date and stays Arctic Blue',
   const asset = await readFile(new URL('../theme-extension-source/public/appointment-lite.js', import.meta.url), 'utf8');
   const stylesheet = await readFile(new URL('../theme-extension-source/public/appointment-lite.css', import.meta.url), 'utf8');
   assert.match(asset, /bookingWindowUntil/);
-  assert.match(asset, /const VERSION = '0\.3\.0'/);
+  assert.match(asset, /const VERSION = '0\.3\.1'/);
   assert.match(asset, /#2F6FED/);
   assert.match(stylesheet, /--al-accent:#2f6fed/);
 });

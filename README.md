@@ -1,6 +1,6 @@
 # Appointment Lite for SHOPLINE
 
-Version `0.3.0` — expands Appointment Lite from product-only booking into a lightweight service scheduling system with standalone booking links, daily scheduling operations, capacity, booking policies, and date-specific availability exceptions while keeping the Arctic Blue admin design system.
+Version `0.3.1` — refines Appointment Lite into a SHOPLINE-native service appointment model where service type is independent from product/direct booking channels, with a cleaner service list, booking filters, and Email Studio preview.
 
 Appointment Lite now supports two booking entry models:
 
@@ -8,6 +8,27 @@ Appointment Lite now supports two booking entry models:
 - **Standalone services** — create in-store visits, home/onsite services, consultations, classes/courses, or other services without creating a SHOPLINE product. Each active standalone service receives a shareable hosted booking URL.
 
 Typical scenarios include furniture installation and measurements, showroom visits, wedding fittings, jewelry or design consultations, beauty appointments, technician visits, lessons, workshops, small-group classes, and made-to-order product appointments.
+
+## v0.3.1 Service Model Refinement + UI Cleanup
+
+v0.3.1 separates **what the merchant offers** from **where the customer starts booking**.
+
+A service can now be an appointment, in-store visit, home/onsite service, consultation, class/course, or other service. Independently, its booking source can be:
+
+- **Product page** — requires a linked SHOPLINE product and is discovered by the Theme App Block.
+- **Booking page** — uses a direct hosted booking URL and does not require a product.
+- **Both** — binds a SHOPLINE product and also exposes the shareable hosted booking URL.
+
+This means a consultation, installation, measurement visit, or course can be represented by a SHOPLINE service product and still use the storefront App Block. The appointment service name is also independent from the linked product title, so a product named `Sofa A` can expose a service named `Free home measurement`.
+
+The merchant UI is refined at the same time:
+
+- service rows now emphasize service name, type, booking source, booking count, status, and actions instead of uneven metadata tiles;
+- Bookings uses one consistent filter surface for search, service, status, date range, reset, and List/Calendar view;
+- Email Studio uses an inbox-style live preview with a realistic subject/from header and structured appointment detail rows;
+- actual customer emails use the same clearer structured appointment details.
+
+Existing v0.3.0 rules are migrated automatically: product rules become `bookingSource=product`, standalone rules become `bookingSource=direct`, existing titles become `serviceTitle`, and legacy `serviceType=product` becomes `appointment`.
 
 ## v0.3.0 Scheduling Operations
 

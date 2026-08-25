@@ -1,8 +1,8 @@
-bash <<'APPOINTMENT_LITE_V030'
+bash <<'APPOINTMENT_LITE_V031'
 set -u
 
-VERSION="0.3.0"
-RELEASE_SLUG="appointment-lite-v0.3.0-scheduling-operations-service-appointments"
+VERSION="0.3.1"
+RELEASE_SLUG="appointment-lite-v0.3.1-service-model-refinement-ui-cleanup"
 ZIP_NAME="${RELEASE_SLUG}.zip"
 ZIP_PATH="${ZIP_PATH:-$HOME/Downloads/$ZIP_NAME}"
 TARGET_DIR="${TARGET_DIR:-$PWD}"
@@ -38,7 +38,7 @@ fi
 CURRENT_BRANCH="$(git -C "$TARGET_DIR" branch --show-current)"
 if [ -z "$CURRENT_BRANCH" ]; then fail "Detached Git HEAD detected."; exit 1; fi
 if [ -n "$(git -C "$TARGET_DIR" status --porcelain 2>/dev/null)" ]; then
-  fail "Working tree has uncommitted tracked/untracked changes. Commit or stash them before applying v0.3.0."
+  fail "Working tree has uncommitted tracked/untracked changes. Commit or stash them before applying v0.3.1."
   exit 1
 fi
 if git -C "$TARGET_DIR" remote get-url origin >/dev/null 2>&1; then
@@ -54,7 +54,7 @@ if git -C "$TARGET_DIR" remote get-url origin >/dev/null 2>&1; then
 fi
 
 say "3/12 Create Git backup tag"
-BACKUP_TAG="appointment-lite-pre-v0.3.0-$(date +%Y%m%d-%H%M%S)"
+BACKUP_TAG="appointment-lite-pre-v0.3.1-$(date +%Y%m%d-%H%M%S)"
 git -C "$TARGET_DIR" tag "$BACKUP_TAG" HEAD || { fail "Git backup tag failed."; exit 1; }
 printf 'Backup tag: %s\n' "$BACKUP_TAG"
 
@@ -96,11 +96,11 @@ else
   PUSH_THEME=0
 fi
 
-say "10/12 Commit and push v0.3.0"
+say "10/12 Commit and push v0.3.1"
 git -C "$TARGET_DIR" add -A -- . ':!theme-app-extension' 2>/dev/null || git -C "$TARGET_DIR" add -A -- . || { fail "git add failed."; exit 1; }
 git -C "$TARGET_DIR" reset -- theme-app-extension >/dev/null 2>&1 || true
 if ! git -C "$TARGET_DIR" diff --cached --quiet; then
-  git -C "$TARGET_DIR" commit -m "feat: Appointment Lite v0.3.0 scheduling operations" || { fail "Release commit failed."; exit 1; }
+  git -C "$TARGET_DIR" commit -m "feat: Appointment Lite v0.3.1 service model refinement and UI cleanup" || { fail "Release commit failed."; exit 1; }
 fi
 if git -C "$TARGET_DIR" remote get-url origin >/dev/null 2>&1; then
   git -C "$TARGET_DIR" push origin "$CURRENT_BRANCH" || { fail "git push failed."; exit 1; }
@@ -127,8 +127,8 @@ else
 fi
 
 printf '\n========================================\n'
-printf '✅ Appointment Lite v0.3.0 complete\n'
+printf '✅ Appointment Lite v0.3.1 complete\n'
 printf '========================================\n'
 printf 'Backup tag: %s\n' "$BACKUP_TAG"
 git -C "$TARGET_DIR" status
-APPOINTMENT_LITE_V030
+APPOINTMENT_LITE_V031

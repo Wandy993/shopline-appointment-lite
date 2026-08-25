@@ -8,25 +8,29 @@ One record per installed SHOPLINE store. In addition to OAuth/store metadata, it
 
 ## AppointmentRule
 
-A rule is now a **service**, not necessarily a SHOPLINE product.
+A rule represents an **appointment service**. v0.3.1 separates the service category from the storefront/booking channel.
 
 Important fields:
 
-- `sourceType`: `product | standalone`
-- `serviceType`: `product | in_store | onsite | consultation | class | other`
-- `productId`, `productHandle`: populated only for product services
-- `productTitle`: compatibility field used as the generic service display title for both source types
+- `bookingSource`: `product | direct | both`
+  - `product`: booking starts from the linked SHOPLINE product page/App Block
+  - `direct`: booking starts from the hosted `/book/:ruleId` page
+  - `both`: both entry points are enabled
+- `sourceType`: legacy compatibility field (`product | standalone`); new code uses `bookingSource`
+- `serviceType`: `appointment | in_store | onsite | consultation | class | other` (`product` remains accepted for legacy records and is migrated to `appointment`)
+- `serviceTitle`: customer-facing appointment service name
+- `productId`, `productTitle`, `productHandle`: optional SHOPLINE product binding, required for `bookingSource=product|both`
 - `serviceDescription`
 - `duration`, `buffer`
 - `capacity`: 1–100 bookings per generated slot
-- `minimumNoticeMinutes`: blocks appointments too close to the current store-local time
-- `bookingWindowDays`: limits how far ahead a customer can book
+- `minimumNoticeMinutes`
+- `bookingWindowDays`
 - `dateFrom`, `dateUntil`
 - `weeklyAvailability[{ weekday, enabled, windows[{ start, end }] }]`
-- `availabilityExceptions[{ date, closed, windows[] }]`: a closed exception overrides weekly hours; an open exception can provide special hours even when that weekday is normally closed
+- `availabilityExceptions[{ date, closed, windows[] }]`
 - `location`, `staff`, `questionLabel`, `customQuestions`, `enabled`
 
-Product uniqueness uses a partial index only when `sourceType='product'`, so each SHOPLINE product has one appointment rule while standalone services can exist without a product ID.
+The SHOPLINE product binding uses a partial unique index for non-empty `productId`, so one product maps to one Appointment Lite service while direct-only services can exist without a product.
 
 ## Booking
 
@@ -34,14 +38,14 @@ Bookings preserve a denormalized service snapshot so records remain understandab
 
 Important fields include:
 
-- `sourceType`, `serviceType`, optional `productId`
-- `ruleId`, `productTitle`, `duration`, `buffer`, `timezone`, `location`, `staff`
+- `bookingSource`, legacy `sourceType`, `serviceType`, optional `productId`
+- `ruleId`, `productTitle` (denormalized service display title), `duration`, `buffer`, `timezone`, `location`, `staff`
 - `date`, `time`, `slotKey`
 - `slotPosition`: reserved position inside a capacity-enabled slot
 - customer name/email/optional phone/note/answers
 - `status`: `confirmed | cancelled | completed | no_show`
 - `managementTokenHash`, customer reschedule count, merchant edit timestamps
-- append-only `events[]` including `created`, reschedule/edit/cancel events, `merchant_completed`, and `merchant_no_show`
+- append-only `events[]`
 
 ### Capacity-safe atomic booking
 
@@ -52,21 +56,24 @@ The confirmed-booking partial unique index is:
 unique where { status: 'confirmed' }
 ```
 
-For capacity `N`, the service attempts positions `0..N-1`. MongoDB arbitrates each position. This avoids the race in a count-then-insert design: concurrent customers can fill different positions but cannot exceed capacity. Cancelling or moving a confirmed booking releases its position.
+For capacity `N`, the service attempts positions `0..N-1`. MongoDB arbitrates each position. Concurrent customers can fill different positions but cannot exceed capacity. Cancelling or moving a confirmed booking releases its position.
 
 ## Scheduling policy
 
-A selected date/time must be generated from the stored rule and pass all of these checks server-side:
+A selected date/time must be generated from the stored rule and pass date bounds, recurring or exception hours, store-local elapsed-slot protection, minimum notice, booking window, and remaining capacity.
 
-1. date bounds;
-2. weekly hours or a date-specific exception;
-3. store-time-zone elapsed-slot protection;
-4. minimum notice;
-5. booking window;
-6. remaining slot capacity.
+Direct one-off services can have no recurring weekday schedule when at least one open availability exception exists.
 
-Standalone one-off services are allowed to have no recurring weekday schedule when at least one open availability exception exists.
+## v0.3.1 migration
+
+On startup:
+
+- old `sourceType=product` rules receive `bookingSource=product`;
+- old `sourceType=standalone` rules receive `bookingSource=direct`;
+- missing `serviceTitle` is copied from the legacy `productTitle` field;
+- legacy `serviceType=product` becomes `appointment`;
+- the old product uniqueness index is replaced by `one_appointment_service_per_product` for non-empty `productId` values.
 
 ## Merchant onboarding state
 
-`Shop.onboarding` stores only setup progress timestamps. Product appointments use the Theme App Block; standalone services do not need theme editing. Quickstart still presents App Block setup first, but service creation is not locked behind it, allowing standalone-only merchants to continue directly. Once the first active service is standalone, onboarding treats the storefront-entry requirement as satisfied.
+`Shop.onboarding` stores only setup progress timestamps. The App Block is required when a service uses the product-page booking source. Direct-only services can continue without theme editing. Services configured with `both` retain the App Block setup requirement because their product-page channel is active.

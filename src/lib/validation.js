@@ -1,8 +1,8 @@
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
-const SOURCE_TYPES = new Set(['product', 'standalone']);
-const SERVICE_TYPES = new Set(['product', 'in_store', 'onsite', 'consultation', 'class', 'other']);
+const BOOKING_SOURCES = new Set(['product', 'direct', 'both']);
+const SERVICE_TYPES = new Set(['appointment', 'product', 'in_store', 'onsite', 'consultation', 'class', 'other']);
 
 function text(value, max = 255) { return String(value ?? '').trim().slice(0, max); }
 
@@ -16,20 +16,30 @@ function validateWindows(windows, errors, messagePrefix = 'Each time window') {
   }
 }
 
+function legacyBookingSource(body) {
+  if (body.sourceType === 'standalone') return 'direct';
+  return 'product';
+}
+
 export function validateRuleInput(body) {
   const errors = [];
-  const sourceType = SOURCE_TYPES.has(body.sourceType) ? body.sourceType : (body.serviceType && body.serviceType !== 'product' ? 'standalone' : 'product');
-  const serviceType = SERVICE_TYPES.has(body.serviceType) ? body.serviceType : (sourceType === 'product' ? 'product' : 'other');
+  const bookingSource = BOOKING_SOURCES.has(body.bookingSource) ? body.bookingSource : legacyBookingSource(body);
+  const rawServiceType = SERVICE_TYPES.has(body.serviceType) ? body.serviceType : 'appointment';
+  const serviceType = rawServiceType === 'product' ? 'appointment' : rawServiceType;
+  const sourceType = bookingSource === 'direct' ? 'standalone' : 'product';
   const duration = Number(body.duration);
   const buffer = Number(body.buffer ?? 0);
   const capacity = Number(body.capacity ?? 1);
   const minimumNoticeMinutes = Number(body.minimumNoticeMinutes ?? 0);
   const bookingWindowDays = Number(body.bookingWindowDays ?? 90);
-  const productId = sourceType === 'product' ? text(body.productId, 100) : '';
-  const productTitle = text(body.serviceTitle || body.productTitle, 255);
+  const usesProductPage = bookingSource === 'product' || bookingSource === 'both';
+  const productId = usesProductPage ? text(body.productId, 100) : '';
+  const productTitle = usesProductPage ? text(body.productTitle, 255) : '';
+  const serviceTitle = text(body.serviceTitle || body.productTitle, 255);
 
-  if (sourceType === 'product' && !productId) errors.push('Product is required.');
-  if (!productTitle) errors.push(sourceType === 'product' ? 'Product title is required.' : 'Service name is required.');
+  if (!serviceTitle) errors.push('Service name is required.');
+  if (usesProductPage && !productId) errors.push('Product is required for product-page booking.');
+  if (usesProductPage && !productTitle) errors.push('Product title is required for product-page booking.');
   if (!Number.isInteger(duration) || duration < 5 || duration > 480) errors.push('Duration must be 5–480 minutes.');
   if (!Number.isInteger(buffer) || buffer < 0 || buffer > 240) errors.push('Buffer must be 0–240 minutes.');
   if (!Number.isInteger(capacity) || capacity < 1 || capacity > 100) errors.push('Capacity must be 1–100 bookings per time slot.');
@@ -71,8 +81,9 @@ export function validateRuleInput(body) {
   })).filter(question => question.label);
 
   return { errors: [...new Set(errors)], value: {
-    sourceType, serviceType, productId, productTitle,
-    productHandle: sourceType === 'product' ? text(body.productHandle, 255) : '',
+    bookingSource, sourceType, serviceType, serviceTitle,
+    productId, productTitle,
+    productHandle: usesProductPage ? text(body.productHandle, 255) : '',
     serviceDescription: text(body.serviceDescription, 500),
     duration, buffer, capacity, minimumNoticeMinutes, bookingWindowDays,
     dateFrom, dateUntil, weeklyAvailability, availabilityExceptions,

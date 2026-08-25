@@ -108,20 +108,20 @@ export function managementLinkFor(booking, managementToken) {
 }
 
 function appointmentCard(booking, settings) {
-  const accent = settings.accentColor;
-  return `<div style="padding:18px;border:1px solid ${accent}33;border-radius:14px;background:${accent}0D"><strong style="font-size:16px">${escapeHtml(booking.productTitle)}</strong><p style="margin:10px 0 0;font-size:17px;font-weight:700;color:${accent}">${escapeHtml(booking.date)} at ${escapeHtml(booking.time)}</p><p style="margin:6px 0 0;color:#667085">Time zone: ${escapeHtml(booking.timezone || 'UTC')}</p><p style="margin:4px 0 0;color:#475467">Location: ${escapeHtml(booking.location || 'To be confirmed')}</p><p style="margin:4px 0 0;color:#475467">Staff: ${escapeHtml(booking.staff || 'To be confirmed')}</p></div>`;
+  const row = (label, value, extra = '') => `<tr><td style="padding:10px 12px;color:#8A98AA;font-size:12px;font-weight:600;vertical-align:top;border-bottom:1px solid #EEF2F6;width:110px">${escapeHtml(label)}</td><td style="padding:10px 12px;color:#344861;font-size:13px;font-weight:600;line-height:1.45;border-bottom:1px solid #EEF2F6">${escapeHtml(value)}${extra}</td></tr>`;
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:separate;border-spacing:0;border:1px solid #E3E9F1;border-radius:12px;overflow:hidden;background:#FBFCFE">${row('Service', booking.productTitle)}${row('Date & time', `${booking.date} · ${booking.time}`, `<div style="margin-top:3px;color:#98A5B5;font-size:11px;font-weight:400">${escapeHtml(booking.timezone || 'UTC')}</div>`)}${row('Location', booking.location || 'To be confirmed')}${row('Staff', booking.staff || 'To be confirmed')}</table>`;
 }
 
 function emailDocument(title, body, settings) {
   const initial = escapeHtml(settings.brandName.slice(0, 1).toUpperCase() || 'A');
   const logo = settings.logoUrl
-    ? `<img src="${escapeHtml(settings.logoUrl)}" width="42" height="42" alt="" style="display:block;width:42px;height:42px;border-radius:12px;object-fit:cover">`
-    : `<div style="width:42px;height:42px;border-radius:12px;background:${settings.accentColor};color:#fff;font-size:20px;font-weight:800;line-height:42px;text-align:center">${initial}</div>`;
-  return `<!doctype html><html><body style="margin:0;background:#F4F6FB;color:#172033;font-family:Arial,sans-serif"><div style="max-width:640px;margin:0 auto;padding:34px 18px"><div style="display:flex;align-items:center;gap:12px;margin:0 0 18px">${logo}<strong style="font-size:17px">${escapeHtml(settings.brandName)}</strong></div><div style="background:#fff;border:1px solid #E5E9F2;border-radius:18px;padding:30px;box-shadow:0 10px 30px rgba(31,42,68,.06)"><h1 style="font-size:25px;line-height:1.25;margin:0 0 16px">${escapeHtml(title)}</h1>${body}<p style="margin:28px 0 0;padding-top:18px;border-top:1px solid #EEF1F6;color:#8A94A6;font-size:12px">Sent by ${escapeHtml(settings.brandName)}</p></div></div></body></html>`;
+    ? `<img src="${escapeHtml(settings.logoUrl)}" width="40" height="40" alt="" style="display:block;width:40px;height:40px;border-radius:10px;object-fit:cover">`
+    : `<div style="width:40px;height:40px;border-radius:10px;background:${settings.accentColor};color:#fff;font-size:18px;font-weight:800;line-height:40px;text-align:center">${initial}</div>`;
+  return `<!doctype html><html><body style="margin:0;background:#F3F6FA;color:#172033;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif"><div style="max-width:620px;margin:0 auto;padding:34px 16px"><div style="background:#fff;border:1px solid #E2E8F0;border-radius:16px;overflow:hidden"><div style="padding:22px 26px 18px;display:flex;align-items:center;gap:11px;border-bottom:1px solid #EEF2F6">${logo}<strong style="font-size:15px;color:#344861">${escapeHtml(settings.brandName)}</strong></div><div style="padding:28px 26px 26px"><h1 style="font-size:24px;line-height:1.3;margin:0 0 14px;color:#263A56">${escapeHtml(title)}</h1>${body}<p style="margin:28px 0 0;padding-top:16px;border-top:1px solid #EEF2F6;color:#98A5B5;font-size:11px">Sent by ${escapeHtml(settings.brandName)}</p></div></div></div></body></html>`;
 }
 
 function manageButton(url, settings) {
-  return url ? `<p style="margin:24px 0 0"><a href="${escapeHtml(url)}" style="display:inline-block;padding:13px 20px;border-radius:10px;background:${settings.accentColor};color:#fff;text-decoration:none;font-weight:bold">Manage appointment</a></p><p style="font-size:12px;color:#8A94A6">This private link grants access to your appointment. Do not forward it.</p>` : '';
+  return url ? `<p style="margin:24px 0 0"><a href="${escapeHtml(url)}" style="display:inline-block;padding:12px 18px;border-radius:9px;background:${settings.accentColor};color:#fff;text-decoration:none;font-weight:bold">Manage appointment</a></p><p style="font-size:12px;color:#8A94A6">This private link grants access to your appointment. Do not forward it.</p>` : '';
 }
 
 function templateFor(settings, key, booking) {

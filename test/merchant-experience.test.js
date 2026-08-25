@@ -13,7 +13,7 @@ test('Email Studio test send asks the merchant for a recipient address', async (
   assert.doesNotMatch(route, /settings\.merchantNotificationEmail \|\| req\.shop\.email \|\| config\.email\.merchantTo/);
 });
 
-test('first-install quickstart presents App Block first without blocking standalone service creation', async () => {
+test('first-install quickstart presents App Block first without blocking direct-booking service creation', async () => {
   const view = await readFile(new URL('../src/views/admin.js', import.meta.url), 'utf8');
   const asset = await readFile(new URL('../public/admin/app.js', import.meta.url), 'utf8');
   const model = await readFile(new URL('../src/models/Shop.js', import.meta.url), 'utf8');
@@ -32,5 +32,5 @@ test('first-install quickstart presents App Block first without blocking standal
   assert.match(asset, /start-quickstart/);
   assert.match(asset, /confirm-app-block/);
   assert.match(asset, /locked: index === 2 && !serviceDone/);
-  assert.match(view, /Standalone services can continue directly to Step 2/);
+  assert.match(view, /Direct-booking-only services can continue directly to Step 2/);
 });

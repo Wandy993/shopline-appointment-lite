@@ -28,8 +28,9 @@ const bookingEventSchema = new mongoose.Schema({
 const bookingSchema = new mongoose.Schema({
   shopId: { type: mongoose.Schema.Types.ObjectId, ref: 'Shop', required: true, index: true },
   ruleId: { type: mongoose.Schema.Types.ObjectId, ref: 'AppointmentRule', required: true, index: true },
+  bookingSource: { type: String, enum: ['product', 'direct', 'both'], default: 'product' },
   sourceType: { type: String, enum: ['product', 'standalone'], default: 'product' },
-  serviceType: { type: String, enum: ['product', 'in_store', 'onsite', 'consultation', 'class', 'other'], default: 'product' },
+  serviceType: { type: String, enum: ['appointment', 'product', 'in_store', 'onsite', 'consultation', 'class', 'other'], default: 'appointment' },
   productId: { type: String, default: '' },
   productTitle: { type: String, required: true },
   date: { type: String, required: true, match: /^\d{4}-\d{2}-\d{2}$/ },
