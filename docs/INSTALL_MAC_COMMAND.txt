@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -u
 
-VERSION="0.3.2"
-RELEASE_SLUG="appointment-lite-v0.3.2-product-catalog-sync"
+VERSION="0.3.3"
+RELEASE_SLUG="appointment-lite-v0.3.3-product-sync-safe-delete"
 ZIP_NAME="${RELEASE_SLUG}.zip"
 ZIP_PATH="${ZIP_PATH:-$HOME/Downloads/$ZIP_NAME}"
 TARGET_DIR="${TARGET_DIR:-$PWD}"
@@ -31,7 +31,7 @@ CURRENT_BRANCH="$(git -C "$TARGET_DIR" branch --show-current)"
 [ -n "$CURRENT_BRANCH" ] || fail "Detached Git HEAD detected."
 if [ -n "$(git -C "$TARGET_DIR" status --porcelain 2>/dev/null)" ]; then
   git -C "$TARGET_DIR" status
-  fail "Working tree has uncommitted changes. Commit or stash them before applying v0.3.2."
+  fail "Working tree has uncommitted changes. Commit or stash them before applying v0.3.3."
 fi
 if git -C "$TARGET_DIR" remote get-url origin >/dev/null 2>&1; then
   git -C "$TARGET_DIR" fetch origin "$CURRENT_BRANCH" || fail "git fetch failed."
@@ -45,17 +45,17 @@ if git -C "$TARGET_DIR" remote get-url origin >/dev/null 2>&1; then
 fi
 
 say "3/13 Create upgrade backup tag"
-BACKUP_TAG="appointment-lite-pre-v0.3.2-$(date +%Y%m%d-%H%M%S)"
+BACKUP_TAG="appointment-lite-pre-v0.3.3-$(date +%Y%m%d-%H%M%S)"
 git -C "$TARGET_DIR" tag "$BACKUP_TAG" HEAD || fail "Git backup tag failed."
 printf 'Backup tag: %s\n' "$BACKUP_TAG"
 
 say "4/13 Extract release"
-TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/appointment-lite-v032.XXXXXX")" || fail "Could not create temp directory."
+TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/appointment-lite-v033.XXXXXX")" || fail "Could not create temp directory."
 unzip -q "$ZIP_PATH" -d "$TEMP_DIR" || fail "ZIP extraction failed."
 SOURCE_DIR="$TEMP_DIR/$RELEASE_SLUG"
 [ -f "$SOURCE_DIR/package.json" ] && [ -f "$SOURCE_DIR/src/server.js" ] || fail "Release root is invalid."
 
-say "5/13 Overlay v0.3.2 source"
+say "5/13 Overlay v0.3.3 source"
 rsync -a \
   --exclude='.git/' \
   --exclude='.env' \
@@ -73,12 +73,12 @@ say "7/13 Run full tests"
 say "8/13 Run JavaScript checks"
 (cd "$TARGET_DIR" && npm run check) || fail "npm run check failed."
 
-say "9/13 Verify release version"
+say "9/13 Verify release version and fixes"
 ACTUAL_VERSION="$(cd "$TARGET_DIR" && node -p "require('./package.json').version")" || fail "Cannot read package version."
-[ "$ACTUAL_VERSION" = "0.3.2" ] || fail "Expected package version 0.3.2, got $ACTUAL_VERSION."
-
-grep -q 'id="productSyncButton"' "$TARGET_DIR/src/views/admin.js" || fail "Product sync UI is missing."
-grep -q "order_by: 'created_at_desc'" "$TARGET_DIR/src/routes/admin.js" || fail "Newest-first SHOPLINE product sync is missing."
+[ "$ACTUAL_VERSION" = "0.3.3" ] || fail "Expected package version 0.3.3, got $ACTUAL_VERSION."
+grep -q 'shoplineGraphql' "$TARGET_DIR/src/services/product-catalog.js" || fail "Admin GraphQL product fallback is missing."
+grep -q 'RULE_HAS_ACTIVE_BOOKINGS' "$TARGET_DIR/src/routes/admin.js" || fail "Safe service deletion guard is missing."
+grep -q 'preservedBookingCount' "$TARGET_DIR/src/routes/admin.js" || fail "Historical booking preservation is missing."
 
 say "10/13 Sync Theme App Extension source"
 if [ -d "$TARGET_DIR/theme-app-extension" ]; then
@@ -91,11 +91,11 @@ else
   PUSH_THEME=0
 fi
 
-say "11/13 Commit and push v0.3.2"
+say "11/13 Commit and push v0.3.3"
 git -C "$TARGET_DIR" add -A -- . ':!theme-app-extension' 2>/dev/null || git -C "$TARGET_DIR" add -A -- . || fail "git add failed."
 git -C "$TARGET_DIR" reset -- theme-app-extension >/dev/null 2>&1 || true
 if ! git -C "$TARGET_DIR" diff --cached --quiet; then
-  git -C "$TARGET_DIR" commit -m "feat: Appointment Lite v0.3.2 product catalog sync" || fail "Release commit failed."
+  git -C "$TARGET_DIR" commit -m "fix: Appointment Lite v0.3.3 product sync and safe delete" || fail "Release commit failed."
 fi
 if git -C "$TARGET_DIR" remote get-url origin >/dev/null 2>&1; then
   git -C "$TARGET_DIR" push origin "$CURRENT_BRANCH" || fail "git push failed."
@@ -120,7 +120,7 @@ else
 fi
 
 printf '\n========================================\n'
-printf '✅ Appointment Lite v0.3.2 Product Catalog Sync complete\n'
+printf '✅ Appointment Lite v0.3.3 Product Sync + Safe Delete complete\n'
 printf '========================================\n'
 printf 'Backup tag: %s\n' "$BACKUP_TAG"
 git -C "$TARGET_DIR" status

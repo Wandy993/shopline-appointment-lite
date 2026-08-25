@@ -5,8 +5,8 @@ import { Booking } from '../models/Booking.js';
 import { validateAdminBookingInput, validateBookingStatus, validateRuleInput } from '../lib/validation.js';
 import { requireAdmin, requireCsrf } from '../middleware/auth.js';
 import { limitsFor } from '../services/plans.js';
-import { shoplineGet, shoplineGetPage, syncShopMetadata } from '../services/shopline.js';
-import { nextPageInfoFromLink } from '../lib/shopline-pagination.js';
+import { shoplineGet, syncShopMetadata } from '../services/shopline.js';
+import { syncProductCatalog } from '../services/product-catalog.js';
 import { cancelBookingByMerchant, setBookingStatusByMerchant, updateBookingByMerchant } from '../services/bookings.js';
 import { emailStatus, sendTestEmail } from '../services/email.js';
 import { zonedNow } from '../lib/slots.js';
@@ -91,33 +91,17 @@ adminRouter.get('/bootstrap', async (req, res) => {
 
 adminRouter.get('/products', async (req, res, next) => {
   try {
-    const products = [];
-    let pageInfo = '';
-    let pages = 0;
-    do {
-      const { payload, link } = await shoplineGetPage(req.shop._id, 'products/products.json', {
-        limit: 50,
-        fields: 'id,title,handle,path,status',
-        ...(pageInfo ? { page_info: pageInfo } : { order_by: 'created_at_desc' })
+    const { products, diagnostics } = await syncProductCatalog(req.shop._id);
+    if (diagnostics.reconciled) {
+      console.warn('SHOPLINE product sources returned different selectable counts; merged both sources.', {
+        shop: req.shop.handle,
+        restCount: diagnostics.restCount,
+        graphqlCount: diagnostics.graphqlCount,
+        mergedCount: diagnostics.mergedCount
       });
-      const pageProducts = payload.products || payload.data?.products || payload.data || [];
-      if (Array.isArray(pageProducts)) products.push(...pageProducts);
-      pageInfo = nextPageInfoFromLink(link);
-      pages += 1;
-    } while (pageInfo && pages < 20);
-
-    const normalized = products
-      .filter(product => product && String(product.status || '').toLowerCase() !== 'archived')
-      .map(product => ({
-        id: String(product.id),
-        title: product.title || 'Untitled product',
-        handle: product.handle || '',
-        path: product.path || '',
-        status: String(product.status || 'active').toLowerCase()
-      }));
-
+    }
     res.set('Cache-Control', 'no-store');
-    res.json({ products: normalized, syncedAt: new Date().toISOString() });
+    res.json({ products, diagnostics, syncedAt: new Date().toISOString() });
   } catch (error) { next(error); }
 });
 
@@ -126,17 +110,22 @@ adminRouter.get('/rules', async (req, res) => {
     AppointmentRule.find({ shopId: req.shop._id }).sort({ updatedAt: -1 }).lean(),
     Booking.aggregate([
       { $match: { shopId: req.shop._id } },
-      { $group: { _id: '$ruleId', count: { $sum: 1 } } }
+      { $group: {
+        _id: '$ruleId',
+        count: { $sum: 1 },
+        confirmedCount: { $sum: { $cond: [{ $eq: ['$status', 'confirmed'] }, 1, 0] } }
+      } }
     ])
   ]);
-  const counts = new Map(bookingCounts.map(item => [String(item._id), Number(item.count || 0)]));
+  const counts = new Map(bookingCounts.map(item => [String(item._id), { count: Number(item.count || 0), confirmedCount: Number(item.confirmedCount || 0) }]));
   res.json({ rules: rules.map(rule => {
     const bookingSource = rule.bookingSource || (rule.sourceType === 'standalone' ? 'direct' : 'product');
     return {
       ...rule,
       bookingSource,
       serviceTitle: rule.serviceTitle || rule.productTitle,
-      bookingCount: counts.get(String(rule._id)) || 0,
+      bookingCount: counts.get(String(rule._id))?.count || 0,
+      confirmedBookingCount: counts.get(String(rule._id))?.confirmedCount || 0,
       bookingUrl: ['direct', 'both'].includes(bookingSource) ? `${config.appUrl}/book/${rule._id}` : ''
     };
   }) });
@@ -178,11 +167,20 @@ adminRouter.put('/rules/:id', async (req, res, next) => {
 });
 
 adminRouter.delete('/rules/:id', async (req, res) => {
-  const hasBookings = await Booking.exists({ ruleId: req.params.id, shopId: req.shop._id });
-  if (hasBookings) return res.status(409).json({ error: 'RULE_HAS_BOOKINGS', message: 'This rule has booking history. Disable it instead of deleting it.' });
-  const result = await AppointmentRule.deleteOne({ _id: req.params.id, shopId: req.shop._id });
-  if (!result.deletedCount) return res.status(404).json({ error: 'NOT_FOUND', message: 'Rule not found.' });
-  res.status(204).end();
+  const rule = await AppointmentRule.findOne({ _id: req.params.id, shopId: req.shop._id }).select('_id');
+  if (!rule) return res.status(404).json({ error: 'NOT_FOUND', message: 'Rule not found.' });
+  const [bookingCount, confirmedBookingCount] = await Promise.all([
+    Booking.countDocuments({ ruleId: rule._id, shopId: req.shop._id }),
+    Booking.countDocuments({ ruleId: rule._id, shopId: req.shop._id, status: 'confirmed' })
+  ]);
+  if (confirmedBookingCount > 0) {
+    return res.status(409).json({
+      error: 'RULE_HAS_ACTIVE_BOOKINGS',
+      message: `This service still has ${confirmedBookingCount} confirmed booking${confirmedBookingCount === 1 ? '' : 's'}. Cancel, complete, or mark them as no-show before deleting the service.`
+    });
+  }
+  await AppointmentRule.deleteOne({ _id: rule._id, shopId: req.shop._id });
+  res.json({ deleted: true, preservedBookingCount: bookingCount });
 });
 
 adminRouter.get('/bookings', async (req, res) => {

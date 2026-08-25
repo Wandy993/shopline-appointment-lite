@@ -3,7 +3,7 @@ set -u
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd -P)"
 VERSION="$(node -p "require('$ROOT_DIR/package.json').version")"
-NAME="appointment-lite-v${VERSION}-product-catalog-sync"
+NAME="appointment-lite-v${VERSION}-product-sync-safe-delete"
 DIST_DIR="$ROOT_DIR/dist"
 STAGE_DIR="${TMPDIR:-/tmp}/${NAME}.$$"
 OUTPUT="$DIST_DIR/${NAME}.zip"

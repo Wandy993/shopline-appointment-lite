@@ -74,8 +74,10 @@ test('public and admin routes expose product, direct, and dual booking channels'
   assert.match(db, /serviceTitle: '\$productTitle'/);
 });
 
-test('theme App Block renders the service title instead of forcing the product title', async () => {
+test('theme App Block renders the service title and matches the release version', async () => {
   const asset = await readFile(new URL('../theme-extension-source/public/appointment-lite.js', import.meta.url), 'utf8');
+  const pkg = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
+  const escapedVersion = pkg.version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   assert.match(asset, /rule\.serviceTitle \|\| rule\.productTitle/);
-  assert.match(asset, /const VERSION = '0\.3\.2'/);
+  assert.match(asset, new RegExp(`const VERSION = '${escapedVersion}'`));
 });

@@ -82,6 +82,7 @@ const zh = {
   'Products refresh automatically when this dialog is opened for the first time.': '首次打开此窗口时会自动加载商品；在 SHOPLINE 新建或修改商品后，可点击同步获取最新商品。',
   'Loading products from SHOPLINE…': '正在从 SHOPLINE 加载商品…', 'Syncing latest products from SHOPLINE…': '正在同步 SHOPLINE 最新商品…',
   'SHOPLINE products synced.': 'SHOPLINE 商品已同步。', 'Could not sync SHOPLINE products. Try again.': 'SHOPLINE 商品同步失败，请重试。',
+  'Catalog sources reconciled': '已合并 SHOPLINE 商品数据源', 'Historical bookings will be kept': '历史预约记录会继续保留',
   'Published': '已发布', 'Draft': '草稿', 'products synced just now': '个商品 · 刚刚同步', 'Your store name': '你的店铺名称', 'e.g. Main showroom': '例如：主展厅', 'e.g. Sarah': '例如：Sarah',
   'Anything we should know?': '还有什么需要我们了解？'
 };
@@ -123,7 +124,10 @@ Object.assign(zh, {
   'Booking updated and customer email sent.': '预约已更新，并已向客户发送邮件。', 'Booking cancelled. Email delivery is not configured.': '预约已取消，邮件通知尚未配置。',
   'Booking cancelled, but the customer email failed.': '预约已取消，但客户邮件发送失败。', 'Booking cancelled and customer email sent.': '预约已取消，并已向客户发送邮件。',
   'Time zone': '时区', 'Manage appointment': '管理预约', 'Sent by': '发送方',
-  'Delete this service rule?': '删除这条服务规则？', 'Rules with booking history cannot be deleted. If customers have booked it before, pause the service instead.': '有预约历史的规则不能删除；如果客户曾预约过，请改为暂停服务。',
+  'Delete this service?': '删除这个预约服务？', 'Delete service': '删除服务',
+  'This removes the service configuration. Historical bookings will stay in Booking records for reporting and audit.': '这会删除预约服务配置，但历史预约记录会继续保留在预约记录中，用于查询和审计。',
+  'This service still has confirmed bookings. Cancel, complete, or mark them as no-show before deleting it.': '这个服务仍有已确认预约。请先取消、完成或标记为未到店，再删除服务。',
+  'Service deleted. Historical bookings were kept.': '预约服务已删除，历史预约记录已保留。',
   'Delete rule': '删除规则', 'Cancel this appointment?': '取消这条预约？', 'The time will be released immediately. The customer will be emailed when delivery is configured.': '该时间会立即释放；邮件通知启用后将告知客户。',
   'Cancel booking': '取消预约'
 });
@@ -405,9 +409,11 @@ async function ensureProducts(force = false) {
     state.products = payload.products || [];
     renderProductOptions($('#productSearch')?.value || '');
     if ($('#productSyncMeta')) {
-      $('#productSyncMeta').textContent = state.locale === 'zh-CN'
+      const reconciled = Boolean(payload.diagnostics?.reconciled);
+      const base = state.locale === 'zh-CN'
         ? `${state.products.length} ${t('products synced just now')}`
         : `${state.products.length} product${state.products.length === 1 ? '' : 's'} synced just now`;
+      $('#productSyncMeta').textContent = reconciled ? `${base} · ${t('Catalog sources reconciled')}` : base;
     }
     if (force) toast(t('SHOPLINE products synced.'));
   } catch (error) {
@@ -618,11 +624,24 @@ function renderRules() {
   }).join('');
   $$('[data-edit]').forEach(button => button.addEventListener('click', () => openRule(state.rules.find(rule => rule._id === button.dataset.edit))));
   $$('[data-copy-link]').forEach(button => button.addEventListener('click', () => copyBookingLink(button.dataset.copyLink)));
-  $$('[data-delete]').forEach(button => button.addEventListener('click', () => confirmAction('Delete this service rule?', 'Rules with booking history cannot be deleted. If customers have booked it before, pause the service instead.', 'Delete rule', async () => {
-    await api(`/rules/${button.dataset.delete}`, { method: 'DELETE' });
-    toast(t('Service rule deleted.'));
-    await Promise.all([loadRules(), loadBootstrap()]);
-  })));
+  $$('[data-delete]').forEach(button => button.addEventListener('click', () => {
+    const rule = state.rules.find(item => item._id === button.dataset.delete);
+    if (Number(rule?.confirmedBookingCount || 0) > 0) {
+      toast(t('This service still has confirmed bookings. Cancel, complete, or mark them as no-show before deleting it.'), 'error');
+      return;
+    }
+    const hasHistory = Number(rule?.bookingCount || 0) > 0;
+    confirmAction(
+      'Delete this service?',
+      hasHistory ? 'This removes the service configuration. Historical bookings will stay in Booking records for reporting and audit.' : 'Delete this service?',
+      'Delete service',
+      async () => {
+        const result = await api(`/rules/${button.dataset.delete}`, { method: 'DELETE' });
+        toast(t(Number(result?.preservedBookingCount || 0) > 0 ? 'Service deleted. Historical bookings were kept.' : 'Service rule deleted.'));
+        await Promise.all([loadRules(), loadBootstrap()]);
+      }
+    );
+  }));
 }
 
 async function loadRules() {

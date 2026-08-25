@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = '0.3.2';
+  const VERSION = '0.3.3';
   const API_BASE = 'https://appointment.toolkit.fans';
   const CACHE_TTL = 5 * 60 * 1000;
   const SELECTOR = '[data-appointment-lite]:not([data-al-ready])';

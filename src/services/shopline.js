@@ -89,6 +89,22 @@ export async function shoplineGet(shopId, endpoint, query = {}) {
   return (await shoplineGetPage(shopId, endpoint, query)).payload;
 }
 
+export async function shoplineGraphql(shopId, query, variables = {}) {
+  const { handle, accessToken } = await accessTokenForShop(shopId);
+  const response = await fetch(`https://${handle}.myshopline.com/admin/graph/${config.shopline.apiVersion}/graphql.json`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query, variables }),
+    signal: AbortSignal.timeout(15000)
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload.errors?.length) {
+    const message = payload.errors?.map(error => error.message).filter(Boolean).join('; ') || payload.message || 'unknown error';
+    throw new Error(`SHOPLINE GraphQL failed (${response.status}): ${message}`);
+  }
+  return payload.data || {};
+}
+
 export async function syncShopMetadata(shopId) {
   const payload = await shoplineGet(shopId, 'merchants/shop.json');
   const data = payload.data || payload.shop || payload;

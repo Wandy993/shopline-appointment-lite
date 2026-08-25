@@ -1,6 +1,6 @@
 # Appointment Lite for SHOPLINE
 
-Version `0.3.2` — adds an explicit SHOPLINE product catalog sync workflow so newly created or draft products can be refreshed inside the product picker without leaving Appointment Lite.
+Version `0.3.3` — reconciles SHOPLINE REST and Admin GraphQL product catalogs and allows obsolete appointment services to be removed without deleting historical Booking records.
 
 Appointment Lite now supports two booking entry models:
 
@@ -9,6 +9,16 @@ Appointment Lite now supports two booking entry models:
 
 Typical scenarios include furniture installation and measurements, showroom visits, wedding fittings, jewelry or design consultations, beauty appointments, technician visits, lessons, workshops, small-group classes, and made-to-order product appointments.
 
+
+## v0.3.3 Product Sync Reliability + Safe Service Deletion
+
+- Product sync now reads both the SHOPLINE Admin REST product list and the Admin GraphQL `products` connection using the same `read_products` authorization, then reconciles products by SHOPLINE product ID.
+- This dual-source sync is specifically intended to cover product/service records that are visible in SHOPLINE Admin but are temporarily omitted by one product-list API surface.
+- Archived products remain hidden from the picker; active and draft products remain selectable.
+- The sync response records REST/GraphQL source counts and logs a reconciliation warning when the sources disagree, making product-catalog gaps diagnosable instead of silently showing a partial list.
+- Service deletion now removes the appointment-service configuration while preserving cancelled/completed/no-show historical Booking records for reporting and audit.
+- A service with confirmed bookings is protected from deletion until those bookings are cancelled, completed, or marked no-show.
+- Theme-version tests now validate against `package.json` instead of hard-coding the previous release number, preventing version-only test failures on future releases.
 
 ## v0.3.2 Product Catalog Sync
 
