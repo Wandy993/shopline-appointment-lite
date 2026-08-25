@@ -5,6 +5,14 @@ const answerSchema = new mongoose.Schema({
   answer: { type: String, default: '', maxlength: 1000 }
 }, { _id: false });
 
+
+const occurrenceSchema = new mongoose.Schema({
+  date: { type: String, required: true, match: /^\d{4}-\d{2}-\d{2}$/ },
+  time: { type: String, default: '' },
+  slotKey: { type: String, required: true },
+  slotPosition: { type: Number, default: 0, min: 0 }
+}, { _id: false });
+
 const bookingSnapshotSchema = new mongoose.Schema({
   date: { type: String, default: '' },
   time: { type: String, default: '' },
@@ -31,12 +39,14 @@ const bookingSchema = new mongoose.Schema({
   bookingSource: { type: String, enum: ['product', 'direct', 'both'], default: 'product' },
   sourceType: { type: String, enum: ['product', 'standalone'], default: 'product' },
   serviceType: { type: String, enum: ['appointment', 'product', 'in_store', 'onsite', 'consultation', 'class', 'other'], default: 'appointment' },
+  bookingMode: { type: String, enum: ['slot', 'all_day', 'multi_slot'], default: 'slot', index: true },
   productId: { type: String, default: '' },
   productTitle: { type: String, required: true },
   date: { type: String, required: true, match: /^\d{4}-\d{2}-\d{2}$/ },
   time: { type: String, required: true, match: /^([01]\d|2[0-3]):[0-5]\d$/ },
   slotKey: { type: String, required: true },
   slotPosition: { type: Number, default: 0, min: 0 },
+  occurrences: { type: [occurrenceSchema], default: [] },
   duration: { type: Number, required: true },
   buffer: { type: Number, default: 0 },
   timezone: { type: String, default: 'UTC' },

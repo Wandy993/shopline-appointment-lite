@@ -29,13 +29,22 @@ function showError(message) {
   $('#errorView').classList.remove('hidden');
 }
 
+
+function bookingWhen(value) {
+  const mode = value?.bookingMode || 'slot';
+  const occurrences = Array.isArray(value?.occurrences) ? value.occurrences : [];
+  if (mode === 'all_day') return `${value.date} · All day`;
+  if (mode === 'multi_slot') return occurrences.map(item => `${item.date} · ${item.time}`).join(' | ');
+  return `${value.date} at ${value.time}`;
+}
+
 function render() {
   $('#loading').classList.add('hidden');
   $('#errorView').classList.add('hidden');
   $('#bookingView').classList.remove('hidden');
   $('#productTitle').textContent = booking.productTitle;
   $('#statusBadge').textContent = booking.status;
-  $('#bookingWhen').textContent = `${booking.date} at ${booking.time}`;
+  $('#bookingWhen').textContent = bookingWhen(booking);
   $('#bookingDetails').textContent = [booking.location, booking.staff, `Store time zone: ${booking.timezone || 'UTC'}`].filter(Boolean).join(' · ');
   const active = booking.status === 'confirmed';
   $('#mainActions').classList.toggle('hidden', !active);
@@ -43,7 +52,9 @@ function render() {
   $('#changeButton').classList.toggle('hidden', !booking.customerCanReschedule);
   $('#limitNotice').innerHTML = booking.customerCanReschedule
     ? '<strong>One online change available</strong><span>You can change this appointment once. After that, contact the store.</span>'
-    : active ? '<strong>Online change already used</strong><span>Please contact the store if you need another change.</span>' : '';
+    : active && (booking.bookingMode || 'slot') !== 'slot'
+      ? '<strong>Contact the store to change this booking</strong><span>Online rescheduling is currently available for minute/hour appointments only.</span>'
+      : active ? '<strong>Online change already used</strong><span>Please contact the store if you need another change.</span>' : '';
   if (!active) $('#statusBadge').style.cssText = 'background:#f3f4f6;color:#6b7280';
 }
 

@@ -81,3 +81,6 @@ body.al-dialog-open{position:fixed!important;top:var(--al-dialog-scroll-y,0)!imp
 @media(max-width:540px){
   .al-field input[type="date"]{height:46px;min-height:46px;padding:10px 12px;font-size:16px}
 }
+
+/* v0.4.0 booking modes */
+.al-mode-title{margin:18px 0 8px}.al-mode-title strong{font-size:14px}.al-selected-sessions{margin-top:14px;padding:13px;border:1px solid #dfe7f2;border-radius:12px;background:#f8fbff}.al-selected-head{display:flex;justify-content:space-between;gap:12px;margin-bottom:8px}.al-selected-head strong{font-size:13px}.al-selected-head span{color:var(--al-accent);font-size:12px;font-weight:750}.al-selected-list{display:flex;flex-wrap:wrap;gap:7px}.al-selected-list button{padding:7px 9px;display:flex;align-items:center;gap:8px;border:1px solid #cfdcf0;border-radius:9px;background:#fff;color:#34445a;font:inherit;font-size:12px}.al-selected-list i{font-style:normal;color:#8492a5}.al-all-day{width:100%;padding:12px 13px;border:1px solid #cfdcf0;border-radius:10px;background:#f3f7ff}.al-all-day strong,.al-all-day span{display:block}.al-all-day strong{color:#285ba8;font-size:13px}.al-all-day span{margin-top:3px;color:#6c7b90;font-size:11px}.al-session-summary{display:flex;flex-direction:column;gap:3px}.al-session-summary span{font-weight:700}

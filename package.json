@@ -1,7 +1,7 @@
 {
   "name": "appointment-lite",
-  "version": "0.3.4",
-  "description": "SHOPLINE appointment services with product/direct booking channels, scheduling operations, improved service editor UX, and clearer booking actions",
+  "version": "0.4.0",
+  "description": "SHOPLINE service appointments with minute/hour, all-day, and multi-session booking modes, product/direct booking channels, and scheduling operations",
   "type": "module",
   "engines": {
     "node": ">=20"

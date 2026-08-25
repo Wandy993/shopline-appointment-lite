@@ -1,6 +1,10 @@
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
+export function bookingModeFor(rule = {}) {
+  return ['slot', 'all_day', 'multi_slot'].includes(rule.bookingMode) ? rule.bookingMode : 'slot';
+}
+
 export function minutesFromTime(time) {
   if (!TIME_PATTERN.test(time)) return NaN;
   const [hours, minutes] = time.split(':').map(Number);
@@ -38,6 +42,16 @@ function exceptionForDate(rule, date) {
   return (rule.availabilityExceptions || []).find(item => item.date === date) || null;
 }
 
+function baseDateAllowed(rule, date) {
+  const weekday = weekdayForDate(date);
+  if (!Number.isInteger(weekday)) return false;
+  if (rule.dateFrom && date < rule.dateFrom) return false;
+  if (rule.dateUntil && date > rule.dateUntil) return false;
+  const exception = exceptionForDate(rule, date);
+  if (exception) return !exception.closed;
+  return Boolean(rule.weeklyAvailability?.find(day => day.weekday === weekday && day.enabled));
+}
+
 export function windowsForDate(rule, date) {
   const weekday = weekdayForDate(date);
   if (!Number.isInteger(weekday)) return [];
@@ -52,10 +66,12 @@ export function windowsForDate(rule, date) {
 }
 
 export function isDateAllowed(rule, date) {
+  if (bookingModeFor(rule) === 'all_day') return baseDateAllowed(rule, date);
   return windowsForDate(rule, date).length > 0;
 }
 
 export function slotsForDate(rule, date) {
+  if (bookingModeFor(rule) === 'all_day') return [];
   const windows = windowsForDate(rule, date);
   if (!windows.length) return [];
   const duration = Number(rule.duration);
@@ -74,6 +90,14 @@ export function slotsForDate(rule, date) {
 
 export function slotKey(date, time) {
   return `${date}T${time}`;
+}
+
+export function allDaySlotKey(date) {
+  return `${date}#ALL_DAY`;
+}
+
+export function occurrenceSlotKey(mode, date, time = '') {
+  return mode === 'all_day' ? allDaySlotKey(date) : slotKey(date, time);
 }
 
 export function zonedNow(timezone = 'UTC', now = new Date()) {
@@ -108,6 +132,16 @@ export function isWithinSchedulingPolicy(rule, date, time, timezone = 'UTC', now
   const slotMinute = dateTimeMinuteValue(date, time);
   const nowMinute = dateTimeMinuteValue(current.date, current.time);
   return Number.isFinite(slotMinute) && Number.isFinite(nowMinute) && slotMinute - nowMinute >= minimumNoticeMinutes;
+}
+
+export function isAllDayBookableDate(rule, date, timezone = 'UTC', now = new Date()) {
+  if (!baseDateAllowed(rule, date)) return false;
+  const current = zonedNow(timezone, now);
+  if (date < current.date) return false;
+  const bookingWindowDays = Math.max(1, Number(rule.bookingWindowDays || 90));
+  if (date > addDays(current.date, bookingWindowDays)) return false;
+  const noticeDays = Math.ceil(Math.max(0, Number(rule.minimumNoticeMinutes || 0)) / 1440);
+  return date >= addDays(current.date, noticeDays);
 }
 
 export function futureSlotsForDate(rule, date, timezone = 'UTC', now = new Date()) {

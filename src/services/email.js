@@ -109,8 +109,16 @@ export function managementLinkFor(booking, managementToken) {
 
 function appointmentCard(booking, settings) {
   const row = (label, value, extra = '') => `<tr><td style="padding:10px 12px;color:#8A98AA;font-size:12px;font-weight:600;vertical-align:top;border-bottom:1px solid #EEF2F6;width:110px">${escapeHtml(label)}</td><td style="padding:10px 12px;color:#344861;font-size:13px;font-weight:600;line-height:1.45;border-bottom:1px solid #EEF2F6">${escapeHtml(value)}${extra}</td></tr>`;
-  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:separate;border-spacing:0;border:1px solid #E3E9F1;border-radius:12px;overflow:hidden;background:#FBFCFE">${row('Service', booking.productTitle)}${row('Date & time', `${booking.date} · ${booking.time}`, `<div style="margin-top:3px;color:#98A5B5;font-size:11px;font-weight:400">${escapeHtml(booking.timezone || 'UTC')}</div>`)}${row('Location', booking.location || 'To be confirmed')}${row('Staff', booking.staff || 'To be confirmed')}</table>`;
+  const mode = booking.bookingMode || 'slot';
+  const occurrences = Array.isArray(booking.occurrences) && booking.occurrences.length ? booking.occurrences : [{ date: booking.date, time: booking.time }];
+  const when = mode === 'all_day'
+    ? row('Date', `${booking.date} · All day`, `<div style="margin-top:3px;color:#98A5B5;font-size:11px;font-weight:400">${escapeHtml(booking.timezone || 'UTC')}</div>`)
+    : mode === 'multi_slot'
+      ? row('Sessions', occurrences.map(item => `${item.date} · ${item.time}`).join(' | '), `<div style="margin-top:3px;color:#98A5B5;font-size:11px;font-weight:400">${escapeHtml(booking.timezone || 'UTC')}</div>`)
+      : row('Date & time', `${booking.date} · ${booking.time}`, `<div style="margin-top:3px;color:#98A5B5;font-size:11px;font-weight:400">${escapeHtml(booking.timezone || 'UTC')}</div>`);
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:separate;border-spacing:0;border:1px solid #E3E9F1;border-radius:12px;overflow:hidden;background:#FBFCFE">${row('Service', booking.productTitle)}${when}${row('Location', booking.location || 'To be confirmed')}${row('Staff', booking.staff || 'To be confirmed')}</table>`;
 }
+
 
 function emailDocument(title, body, settings) {
   const initial = escapeHtml(settings.brandName.slice(0, 1).toUpperCase() || 'A');

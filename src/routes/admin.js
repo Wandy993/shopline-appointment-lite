@@ -38,6 +38,17 @@ function storefrontHost(shop) {
   return primary || `${shop.handle}.myshopline.com`;
 }
 
+function nextOccurrenceForDashboard(booking, storeNow) {
+  const mode = booking.bookingMode || 'slot';
+  if (mode === 'all_day') return booking.date >= storeNow.date ? { date: booking.date, time: '' } : null;
+  const occurrences = mode === 'multi_slot' && Array.isArray(booking.occurrences) && booking.occurrences.length
+    ? booking.occurrences
+    : [{ date: booking.date, time: booking.time }];
+  return occurrences
+    .filter(item => item?.date > storeNow.date || (item?.date === storeNow.date && String(item.time || '') > storeNow.time))
+    .sort((a, b) => `${a.date}T${a.time || ''}`.localeCompare(`${b.date}T${b.time || ''}`))[0] || null;
+}
+
 function onboardingStatus(shop, { ruleCount = 0, activeRuleCount = 0, bookingCount = 0, firstActiveRule = null } = {}) {
   const onboarding = shop.onboarding || {};
   const firstBookingSource = firstActiveRule?.bookingSource || (firstActiveRule?.sourceType === 'standalone' ? 'direct' : 'product');
@@ -69,16 +80,31 @@ adminRouter.get('/bootstrap', async (req, res) => {
     } catch (error) { console.warn('Could not refresh shop metadata:', error.message); }
   }
   const storeNow = zonedNow(req.shop.timezone || 'UTC');
-  const upcomingFilter = { shopId: req.shop._id, status: 'confirmed', $or: [{ date: { $gt: storeNow.date } }, { date: storeNow.date, time: { $gt: storeNow.time } }] };
-  const [ruleCount, activeRuleCount, bookingCount, upcomingCount, nextBookings, firstActiveRule] = await Promise.all([
+  const upcomingFilter = {
+    shopId: req.shop._id,
+    status: 'confirmed',
+    $or: [
+      { bookingMode: 'all_day', date: { $gte: storeNow.date } },
+      { bookingMode: 'multi_slot', occurrences: { $elemMatch: { $or: [{ date: { $gt: storeNow.date } }, { date: storeNow.date, time: { $gt: storeNow.time } }] } } },
+      { bookingMode: 'slot', $or: [{ date: { $gt: storeNow.date } }, { date: storeNow.date, time: { $gt: storeNow.time } }] },
+      { bookingMode: { $exists: false }, $or: [{ date: { $gt: storeNow.date } }, { date: storeNow.date, time: { $gt: storeNow.time } }] }
+    ]
+  };
+  const [ruleCount, activeRuleCount, bookingCount, upcomingCount, upcomingCandidates, firstActiveRule] = await Promise.all([
     AppointmentRule.countDocuments({ shopId: req.shop._id }),
     AppointmentRule.countDocuments({ shopId: req.shop._id, enabled: true }),
     Booking.countDocuments({ shopId: req.shop._id }),
     Booking.countDocuments(upcomingFilter),
     Booking.find(upcomingFilter)
-      .sort({ date: 1, time: 1 }).limit(4).select('productTitle date time timezone location staff customer.name').lean(),
+      .sort({ date: 1, time: 1 }).limit(100).select('productTitle date time bookingMode occurrences timezone location staff customer.name').lean(),
     AppointmentRule.findOne({ shopId: req.shop._id, enabled: true }).sort({ updatedAt: -1 }).select('serviceTitle productTitle productHandle bookingSource sourceType').lean()
   ]);
+  const nextBookings = upcomingCandidates
+    .map(booking => ({ booking, occurrence: nextOccurrenceForDashboard(booking, storeNow) }))
+    .filter(item => item.occurrence)
+    .sort((a, b) => `${a.occurrence.date}T${a.occurrence.time || ''}`.localeCompare(`${b.occurrence.date}T${b.occurrence.time || ''}`))
+    .slice(0, 4)
+    .map(({ booking, occurrence }) => ({ ...booking, date: occurrence.date, time: occurrence.time }));
   const delivery = emailStatus();
   res.json({
     shop: { handle: req.shop.handle, storeId: req.shop.shoplineStoreId || '', locale: req.shop.locale, adminLocale: req.shop.adminLocale || 'en', timezone: req.shop.timezone, plan: req.shop.plan, email: req.shop.email || '' },

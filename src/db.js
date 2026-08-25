@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import { config } from './config.js';
 import { AppointmentRule } from './models/AppointmentRule.js';
 import { Booking } from './models/Booking.js';
+import { BookingReservation } from './models/BookingReservation.js';
 
 async function dropIndexIfPresent(collection, name) {
   const indexes = await collection.indexes();
@@ -45,6 +46,27 @@ export async function ensureOperationalIndexes() {
   );
   await Booking.updateMany({ serviceType: 'product' }, { $set: { serviceType: 'appointment' } });
 
+  // v0.4.0: explicit booking modes and occurrence reservations. Existing bookings remain minute/hour appointments.
+  await AppointmentRule.updateMany({ bookingMode: { $exists: false } }, { $set: { bookingMode: 'slot', sessionsRequired: 3 } });
+  await Booking.updateMany({ bookingMode: { $exists: false } }, { $set: { bookingMode: 'slot' } });
+  const legacyConfirmed = await Booking.find({ status: 'confirmed' }).select('_id shopId ruleId bookingMode date time slotKey slotPosition occurrences').lean();
+  for (const booking of legacyConfirmed) {
+    const occurrences = Array.isArray(booking.occurrences) && booking.occurrences.length
+      ? booking.occurrences
+      : [{ date: booking.date, time: booking.time, slotKey: booking.slotKey || `${booking.date}T${booking.time}`, slotPosition: Number(booking.slotPosition || 0) }];
+    for (const occurrence of occurrences) {
+      if (!occurrence?.date || !occurrence?.slotKey) continue;
+      await BookingReservation.updateOne(
+        { shopId: booking.shopId, ruleId: booking.ruleId, slotKey: occurrence.slotKey, slotPosition: Number(occurrence.slotPosition || 0) },
+        { $setOnInsert: { bookingId: booking._id, bookingMode: booking.bookingMode || 'slot', date: occurrence.date, time: occurrence.time || '' } },
+        { upsert: true }
+      ).catch(error => { if (error?.code !== 11000) throw error; });
+    }
+    if (!Array.isArray(booking.occurrences) || !booking.occurrences.length) {
+      await Booking.updateOne({ _id: booking._id }, { $set: { occurrences } });
+    }
+  }
+
   await dropIndexIfPresent(AppointmentRule.collection, 'shopId_1_productId_1');
   await dropIndexIfPresent(AppointmentRule.collection, 'one_rule_per_product');
   await dropIndexIfPresent(AppointmentRule.collection, 'one_appointment_service_per_product');
@@ -59,6 +81,7 @@ export async function ensureOperationalIndexes() {
     { shopId: 1, ruleId: 1, slotKey: 1, slotPosition: 1 },
     { unique: true, partialFilterExpression: { status: 'confirmed' }, name: 'capacity_position_per_slot' }
   );
+  await BookingReservation.syncIndexes();
 }
 
 export async function connectDatabase() {

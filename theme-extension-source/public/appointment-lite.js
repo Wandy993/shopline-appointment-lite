@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = '0.3.4';
+  const VERSION = '0.4.0';
   const API_BASE = 'https://appointment.toolkit.fans';
   const CACHE_TTL = 5 * 60 * 1000;
   const SELECTOR = '[data-appointment-lite]:not([data-al-ready])';
@@ -94,7 +94,9 @@
     try {
       const receipt = JSON.parse(localStorage.getItem(receiptKey(context)));
       const today = storeDate || new Date().toISOString().slice(0, 10);
-      if (!receipt || receipt.status !== 'confirmed' || !receipt.date || !receipt.time || receipt.date < today) {
+      const occurrenceDates = Array.isArray(receipt?.occurrences) ? receipt.occurrences.map(item => String(item?.date || '')).filter(Boolean).sort() : [];
+      const finalDate = receipt?.bookingMode === 'multi_slot' && occurrenceDates.length ? occurrenceDates[occurrenceDates.length - 1] : receipt?.date;
+      if (!receipt || receipt.status !== 'confirmed' || !receipt.date || (receipt.bookingMode !== 'all_day' && receipt.bookingMode !== 'multi_slot' && !receipt.time) || !finalDate || finalDate < today) {
         if (receipt) localStorage.removeItem(receiptKey(context));
         return null;
       }
@@ -110,6 +112,8 @@
       id: String(booking.id || ''),
       date: String(booking.date || ''),
       time: String(booking.time || ''),
+      bookingMode: String(booking.bookingMode || 'slot'),
+      occurrences: Array.isArray(booking.occurrences) ? booking.occurrences.map(item => ({ date: String(item.date || ''), time: String(item.time || '') })) : [],
       location: String(booking.location || ''),
       staff: String(booking.staff || ''),
       timezone: String(booking.timezone || ''),
@@ -127,6 +131,22 @@
     return receipt;
   }
 
+
+  function bookingWhenText(booking) {
+    const mode = booking.bookingMode || 'slot';
+    const occurrences = Array.isArray(booking.occurrences) ? booking.occurrences : [];
+    if (mode === 'all_day') return `${booking.date} · All day`;
+    if (mode === 'multi_slot') return occurrences.map(item => `${item.date} ${item.time}`).join(' · ');
+    return `${booking.date} at ${booking.time}`;
+  }
+
+  function bookingWhenHtml(booking) {
+    const mode = booking.bookingMode || 'slot';
+    const occurrences = Array.isArray(booking.occurrences) ? booking.occurrences : [];
+    if (mode === 'multi_slot' && occurrences.length) return `<div class="al-session-summary">${occurrences.map(item => `<span>${text(item.date)} · ${text(item.time)}</span>`).join('')}</div>`;
+    return `<strong>${text(bookingWhenText(booking))}</strong>`;
+  }
+
   function renderBookingState(widget, rule, context, suppliedReceipt) {
     widget.querySelector('.al-booked')?.remove();
     const trigger = widget.querySelector('.al-trigger');
@@ -141,7 +161,7 @@
     const status = document.createElement('section');
     status.className = 'al-booked';
     status.setAttribute('aria-label', 'Appointment booked');
-    status.innerHTML = `<div class="al-booked-copy"><span class="al-booked-label">Appointment booked</span><strong>${text(receipt.date)} at ${text(receipt.time)}</strong>${details ? `<span>${details}</span>` : ''}<span>Store time zone: ${text(timezone)}</span><small>${receipt.managementToken ? 'Manage this appointment from this device' : 'Contact the store to change this appointment'}</small></div>${receipt.managementToken ? '<button type="button" class="al-secondary">Manage appointment</button>' : ''}`;
+    status.innerHTML = `<div class="al-booked-copy"><span class="al-booked-label">Appointment booked</span>${bookingWhenHtml(receipt)}${details ? `<span>${details}</span>` : ''}<span>Store time zone: ${text(timezone)}</span><small>${receipt.managementToken ? 'Manage this appointment from this device' : 'Contact the store to change this appointment'}</small></div>${receipt.managementToken ? '<button type="button" class="al-secondary">Manage appointment</button>' : ''}`;
     status.querySelector('.al-secondary')?.addEventListener('click', () => openManage(widget, rule, context, receipt));
     trigger.insertAdjacentElement('afterend', status);
     info('Stored booking status rendered.', { ...context, bookingId: receipt.id, date: receipt.date, time: receipt.time });
@@ -301,16 +321,18 @@
 
   function appointmentDetails(receipt) {
     const details = [receipt.location, receipt.staff].filter(Boolean).map(text).join(' · ');
-    return `<div class="al-manage-summary"><span>Current appointment</span><strong>${text(receipt.date)} at ${text(receipt.time)}</strong>${details ? `<p>${details}</p>` : ''}${receipt.timezone ? `<p>Store time zone: ${text(receipt.timezone)}</p>` : ''}</div>`;
+    return `<div class="al-manage-summary"><span>Current appointment</span>${bookingWhenHtml(receipt)}${details ? `<p>${details}</p>` : ''}${receipt.timezone ? `<p>Store time zone: ${text(receipt.timezone)}</p>` : ''}</div>`;
   }
 
   function openManage(widget, rule, context, receipt) {
     info('Booking management dialog opened.', { ...context, bookingId: receipt.id });
     const dialog = document.createElement('dialog');
-    const canReschedule = Number(receipt.customerRescheduleCount || 0) < 1;
-    const changeControl = canReschedule
-      ? '<div class="al-notice"><strong>One online change available</strong><span>You can change this appointment once. After saving, contact the store for further changes.</span></div><button type="button" class="al-submit al-reschedule">Change date or time</button>'
-      : '<div class="al-limit"><strong>Online change already used</strong><span>Please contact the store if you need to change this appointment again.</span></div>';
+    const canReschedule = (receipt.bookingMode || 'slot') === 'slot' && Number(receipt.customerRescheduleCount || 0) < 1;
+    const changeControl = (receipt.bookingMode || 'slot') !== 'slot'
+      ? '<div class="al-limit"><strong>Contact the store to change this booking</strong><span>Online rescheduling is available for minute/hour appointments only.</span></div>'
+      : canReschedule
+        ? '<div class="al-notice"><strong>One online change available</strong><span>You can change this appointment once. After saving, contact the store for further changes.</span></div><button type="button" class="al-submit al-reschedule">Change date or time</button>'
+        : '<div class="al-limit"><strong>Online change already used</strong><span>Please contact the store if you need to change this appointment again.</span></div>';
     dialog.innerHTML = `<div class="al-head"><div><h2>Manage appointment</h2><p>${text(rule.serviceTitle || rule.productTitle)}</p></div><button class="al-close" type="button" aria-label="Close">×</button></div><div class="al-manage">${appointmentDetails(receipt)}<div class="al-error" hidden role="alert"></div><div class="al-manage-actions">${changeControl}<button type="button" class="al-danger al-cancel">Cancel appointment</button></div></div>`;
     mountDialog(dialog);
     dialog.querySelector('.al-reschedule')?.addEventListener('click', () => {
@@ -419,11 +441,15 @@
   }
 
   function open(widget, rule, context) {
-    info('Booking dialog opened.', { ...context, ruleId: rule.id });
+    info('Booking dialog opened.', { ...context, ruleId: rule.id, bookingMode: rule.bookingMode || 'slot' });
     const dialog = document.createElement('dialog');
+    const mode = ['slot', 'all_day', 'multi_slot'].includes(rule.bookingMode) ? rule.bookingMode : 'slot';
     const today = rule.storeDate || new Date().toISOString().slice(0, 10);
     const minDate = rule.dateFrom && rule.dateFrom > today ? rule.dateFrom : today;
-    dialog.innerHTML = `<div class="al-head"><div><h2>Book an appointment</h2><p>${text(rule.serviceTitle || rule.productTitle)}</p></div><button class="al-close" type="button" aria-label="Close">×</button></div><form class="al-form"><div class="al-form-body"><div class="al-meta">${rule.duration} minutes${rule.location ? ` · ${text(rule.location)}` : ''}${rule.staff ? ` · ${text(rule.staff)}` : ''}</div><p class="al-muted">All times are shown in the store time zone: ${text(rule.timezone || 'UTC')}.</p><div class="al-grid"><div class="al-field"><label for="al-date">Date</label><input id="al-date" name="date" type="date" min="${minDate}" ${maxDateAttribute(rule)} required></div><div><span class="al-legend">Time</span><div class="al-times"><span class="al-muted">Choose a date first.</span></div></div></div><div class="al-grid"><div class="al-field"><label for="al-name">Name</label><input id="al-name" name="name" autocomplete="name" maxlength="120" required></div><div class="al-field"><label for="al-email">Email</label><input id="al-email" name="email" type="email" autocomplete="email" maxlength="254" required></div></div><div class="al-field"><label for="al-phone">Phone (optional)</label><input id="al-phone" name="phone" type="tel" autocomplete="tel" maxlength="40"></div><div class="al-field"><label for="al-note">${text(rule.questionLabel || 'Anything we should know?')}</label><textarea id="al-note" name="note" maxlength="2000"></textarea></div><div class="al-questions"></div></div><div class="al-actions"><div class="al-error" hidden role="alert"></div><button class="al-submit" type="submit">Confirm booking</button></div></form>`;
+    const modeMeta = mode === 'all_day' ? 'All-day booking' : mode === 'multi_slot' ? `${Number(rule.sessionsRequired || 3)} sessions` : `${rule.duration} minutes`;
+    const scheduleTitle = mode === 'all_day' ? 'Choose a day' : mode === 'multi_slot' ? `Choose ${Number(rule.sessionsRequired || 3)} sessions` : 'Choose a time';
+    const timeLabel = mode === 'all_day' ? 'Availability' : 'Time';
+    dialog.innerHTML = `<div class="al-head"><div><h2>Book an appointment</h2><p>${text(rule.serviceTitle || rule.productTitle)}</p></div><button class="al-close" type="button" aria-label="Close">×</button></div><form class="al-form"><div class="al-form-body"><div class="al-meta">${text(modeMeta)}${rule.location ? ` · ${text(rule.location)}` : ''}${rule.staff ? ` · ${text(rule.staff)}` : ''}</div><p class="al-muted">${mode === 'all_day' ? 'Dates' : 'All times'} are shown in the store time zone: ${text(rule.timezone || 'UTC')}.</p><div class="al-mode-title"><strong>${text(scheduleTitle)}</strong></div><div class="al-grid"><div class="al-field"><label for="al-date">Date</label><input id="al-date" name="date" type="date" min="${minDate}" ${maxDateAttribute(rule)} required></div><div><span class="al-legend">${timeLabel}</span><div class="al-times"><span class="al-muted">Choose a date first.</span></div></div></div><div class="al-selected-sessions" hidden></div><div class="al-grid"><div class="al-field"><label for="al-name">Name</label><input id="al-name" name="name" autocomplete="name" maxlength="120" required></div><div class="al-field"><label for="al-email">Email</label><input id="al-email" name="email" type="email" autocomplete="email" maxlength="254" required></div></div><div class="al-field"><label for="al-phone">Phone (optional)</label><input id="al-phone" name="phone" type="tel" autocomplete="tel" maxlength="40"></div><div class="al-field"><label for="al-note">${text(rule.questionLabel || 'Anything we should know?')}</label><textarea id="al-note" name="note" maxlength="2000"></textarea></div><div class="al-questions"></div></div><div class="al-actions"><div class="al-error" hidden role="alert"></div><button class="al-submit" type="submit">Confirm booking</button></div></form>`;
     const questions = dialog.querySelector('.al-questions');
     (rule.customQuestions || []).forEach((question, index) => {
       questions.insertAdjacentHTML('beforeend', `<div class="al-field"><label for="al-q-${index}">${text(question.label)}</label><input id="al-q-${index}" data-question="${text(question.label)}" maxlength="1000" ${question.required ? 'required' : ''}></div>`);
@@ -431,22 +457,62 @@
     mountDialog(dialog);
     const dateInput = dialog.querySelector('[name=date]');
     const times = dialog.querySelector('.al-times');
+    const selectedRoot = dialog.querySelector('.al-selected-sessions');
     let selectedTime = '';
+    let selectedAllDayDate = '';
+    let selectedOccurrences = [];
+    const occurrenceKey = item => `${item.date}T${item.time}`;
+
+    const renderSelected = () => {
+      if (mode !== 'multi_slot') return;
+      selectedRoot.hidden = false;
+      selectedRoot.innerHTML = `<div class="al-selected-head"><strong>Selected sessions</strong><span>${selectedOccurrences.length} / ${Number(rule.sessionsRequired || 3)}</span></div><div class="al-selected-list">${selectedOccurrences.length ? selectedOccurrences.map(item => `<button type="button" data-remove-session="${text(occurrenceKey(item))}"><span>${text(item.date)} · ${text(item.time)}</span><i>×</i></button>`).join('') : '<span class="al-muted">Choose dates and time slots until your booking is complete.</span>'}</div>`;
+      selectedRoot.querySelectorAll('[data-remove-session]').forEach(button => button.addEventListener('click', () => {
+        selectedOccurrences = selectedOccurrences.filter(item => occurrenceKey(item) !== button.dataset.removeSession);
+        renderSelected();
+        renderTimeStates();
+      }));
+    };
+    const renderTimeStates = () => {
+      if (mode !== 'multi_slot') return;
+      times.querySelectorAll('.al-time').forEach(button => {
+        const key = `${dateInput.value}T${button.dataset.time}`;
+        button.setAttribute('aria-pressed', String(selectedOccurrences.some(item => occurrenceKey(item) === key)));
+      });
+    };
+    if (mode === 'multi_slot') renderSelected();
 
     dateInput.addEventListener('change', async () => {
       selectedTime = '';
-      times.innerHTML = '<span class="al-muted">Loading times…</span>';
-      info('Loading availability.', { ...context, date: dateInput.value });
+      if (mode === 'all_day') selectedAllDayDate = '';
+      times.innerHTML = `<span class="al-muted">${mode === 'all_day' ? 'Checking date…' : 'Loading times…'}</span>`;
+      info('Loading availability.', { ...context, date: dateInput.value, bookingMode: mode });
       try {
         const payload = await requestJson(apiUrl('/api/public/availability', { ...context, date: dateInput.value }), {}, 'availability');
+        if (mode === 'all_day') {
+          selectedAllDayDate = payload.available ? dateInput.value : '';
+          times.innerHTML = payload.available ? `<div class="al-all-day"><strong>Available all day</strong><span>${payload.remaining > 1 ? `${payload.remaining} bookings remaining` : 'This date can be booked'}</span></div>` : '<span class="al-muted">This date is unavailable.</span>';
+          return;
+        }
         times.innerHTML = payload.slots.length ? payload.slots.map(time => `<button type="button" class="al-time" data-time="${time}" aria-pressed="false">${time}</button>`).join('') : '<span class="al-muted">No times available on this date.</span>';
         times.querySelectorAll('.al-time').forEach(button => button.addEventListener('click', () => {
-          selectedTime = button.dataset.time;
-          times.querySelectorAll('.al-time').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
+          if (mode === 'multi_slot') {
+            const item = { date: dateInput.value, time: button.dataset.time };
+            const key = occurrenceKey(item);
+            const exists = selectedOccurrences.some(current => occurrenceKey(current) === key);
+            if (exists) selectedOccurrences = selectedOccurrences.filter(current => occurrenceKey(current) !== key);
+            else if (selectedOccurrences.length < Number(rule.sessionsRequired || 3)) selectedOccurrences.push(item);
+            selectedOccurrences.sort((a, b) => occurrenceKey(a).localeCompare(occurrenceKey(b)));
+            renderSelected();
+            renderTimeStates();
+          } else {
+            selectedTime = button.dataset.time;
+            times.querySelectorAll('.al-time').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
+          }
         }));
-        info('Availability rendered.', { ...context, date: dateInput.value, slotCount: payload.slots.length });
+        renderTimeStates();
       } catch (error) {
-        times.innerHTML = '<span class="al-muted">Could not load times. Please try another date.</span>';
+        times.innerHTML = '<span class="al-muted">Could not load availability. Please try another date.</span>';
         failure('Availability could not be rendered.', { ...context, date: dateInput.value, status: error.status, message: error.message });
       }
     });
@@ -455,11 +521,9 @@
       event.preventDefault();
       const errorBox = dialog.querySelector('.al-error');
       errorBox.hidden = true;
-      if (!selectedTime) {
-        errorBox.textContent = 'Please select a time.';
-        errorBox.hidden = false;
-        return;
-      }
+      if (mode === 'slot' && !selectedTime) { errorBox.textContent = 'Please select a time.'; errorBox.hidden = false; return; }
+      if (mode === 'all_day' && !selectedAllDayDate) { errorBox.textContent = 'Please choose an available date.'; errorBox.hidden = false; return; }
+      if (mode === 'multi_slot' && selectedOccurrences.length !== Number(rule.sessionsRequired || 3)) { errorBox.textContent = `Please select exactly ${Number(rule.sessionsRequired || 3)} sessions.`; errorBox.hidden = false; return; }
       const form = new FormData(event.currentTarget);
       const submit = dialog.querySelector('.al-submit');
       submit.disabled = true;
@@ -467,28 +531,34 @@
       const body = {
         shopId: context.shopId,
         productId: context.productId,
-        date: form.get('date'),
-        time: selectedTime,
+        date: mode === 'multi_slot' ? selectedOccurrences[0]?.date : form.get('date'),
+        time: mode === 'slot' ? selectedTime : '',
+        occurrences: mode === 'multi_slot' ? selectedOccurrences : [],
         customer: { name: form.get('name'), email: form.get('email'), phone: form.get('phone') },
         note: form.get('note'),
         answers: [...dialog.querySelectorAll('[data-question]')].map(input => ({ question: input.dataset.question, answer: input.value }))
       };
-      info('Submitting booking.', { ...context, date: body.date, time: body.time });
       try {
         const payload = await requestJson(apiUrl('/api/public/bookings'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }, 'booking');
         const receipt = saveBookingReceipt(context, payload.booking);
         renderBookingState(widget, rule, context, receipt);
-        dialog.querySelector('.al-form').innerHTML = `<div class="al-success"><h3>Appointment confirmed</h3><p>${text(payload.booking.date)} at ${text(payload.booking.time)}</p><p>Store time zone: ${text(payload.booking.timezone || rule.timezone || 'UTC')}</p>${payload.booking.location ? `<p>${text(payload.booking.location)}</p>` : ''}<button class="al-submit" type="button">Done</button></div>`;
+        dialog.querySelector('.al-form').innerHTML = `<div class="al-success"><h3>Appointment confirmed</h3><p>${text(bookingWhenText(payload.booking))}</p><p>Store time zone: ${text(payload.booking.timezone || rule.timezone || 'UTC')}</p>${payload.booking.location ? `<p>${text(payload.booking.location)}</p>` : ''}<button class="al-submit" type="button">Done</button></div>`;
         dialog.querySelector('.al-submit').addEventListener('click', () => dialog.close());
-        info('Booking confirmed.', { ...context, bookingId: payload.booking.id, date: payload.booking.date, time: payload.booking.time });
+        info('Booking confirmed.', { ...context, bookingId: payload.booking.id, bookingMode: mode });
       } catch (error) {
-        errorBox.textContent = error.status === 409 ? 'That time was just booked. Please choose another time.' : error.message;
+        errorBox.textContent = error.status === 409 ? 'One of those selections is no longer available. Please choose again.' : error.message;
         errorBox.hidden = false;
-        if (error.status === 409) dateInput.dispatchEvent(new Event('change'));
+        if (error.status === 409) {
+          if (mode === 'multi_slot') {
+            selectedOccurrences = [];
+            renderSelected();
+          }
+          if (dateInput.value) dateInput.dispatchEvent(new Event('change'));
+        }
         submit.disabled = false;
         submit.textContent = 'Confirm booking';
-        failure('Booking submission failed.', { ...context, date: body.date, time: body.time, status: error.status, message: error.message });
       }
     });
   }
+
 })();

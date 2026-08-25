@@ -1,6 +1,6 @@
 # Appointment Lite for SHOPLINE
 
-Version `0.3.4` — fixes the service-editor scroll/sticky navigation UX, explains slot generation from duration + buffer, and gives booking actions clear text labels and semantic colors.
+Version `0.4.0` — introduces booking modes so one service model can support minute/hour appointments, all-day reservations, and multi-session bookings across product-page and direct booking channels.
 
 Appointment Lite now supports two booking entry models:
 
@@ -10,6 +10,24 @@ Appointment Lite now supports two booking entry models:
 Typical scenarios include furniture installation and measurements, showroom visits, wedding fittings, jewelry or design consultations, beauty appointments, technician visits, lessons, workshops, small-group classes, and made-to-order product appointments.
 
 
+
+## v0.4.0 Booking Modes Foundation
+
+Appointment Lite now separates three independent questions:
+
+- **Service type** — appointment, in-store, home/onsite, consultation, class/course, or other.
+- **Booking source** — SHOPLINE product page, hosted booking page, or both.
+- **Booking mode** — how the customer selects time.
+
+Booking modes in v0.4.0:
+
+- **Minute / hour** (`slot`) — one generated start time using duration + buffer. This is the existing appointment engine.
+- **All day** (`all_day`) — the customer selects a date only. Duration, buffer, and hourly windows are removed from the customer flow; capacity is reserved per day.
+- **Multiple sessions** (`multi_slot`) — the customer selects an exact number of generated sessions in one booking, designed for course packs and repeat services.
+
+The same Theme App Block and hosted booking page render the correct experience from `bookingMode`; merchants do not install separate blocks for each mode. Multi-session capacity is protected for every selected occurrence through the `BookingReservation` collection, so a bundle cannot partially overbook one of its sessions. Existing bookings and services are migrated to `slot` automatically.
+
+Multi-day date-range inventory is intentionally deferred to v0.4.1 because range inventory and conflict rules are materially different from date-level and time-slot capacity.
 
 ## v0.3.4 Service Editor UX + Booking Actions
 
@@ -105,9 +123,9 @@ Appointment rule times are store-local times. The backend remains authoritative 
 
 ```text
 src/
-  lib/                 signatures, slot generation, scheduling policies, validation
+  lib/                 signatures, slot generation, booking modes, scheduling policies, validation
   middleware/          stateless admin session, CSRF, errors
-  models/              Shop, AppointmentRule, Booking
+  models/              Shop, AppointmentRule, Booking, BookingReservation
   routes/              OAuth, admin API, public booking API
   services/            SHOPLINE, booking, email, plan boundaries
   views/                admin shell + hosted standalone booking page

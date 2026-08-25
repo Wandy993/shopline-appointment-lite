@@ -3,7 +3,8 @@ import rateLimit from 'express-rate-limit';
 import mongoose from 'mongoose';
 import { AppointmentRule } from '../models/AppointmentRule.js';
 import { Booking } from '../models/Booking.js';
-import { addDays, filterSlotsByCapacity, futureSlotsForDate, zonedNow } from '../lib/slots.js';
+import { BookingReservation } from '../models/BookingReservation.js';
+import { addDays, bookingModeFor, filterSlotsByCapacity, futureSlotsForDate, isAllDayBookableDate, zonedNow } from '../lib/slots.js';
 import { validateBookingInput, validateDateInput, validateSlotInput } from '../lib/validation.js';
 import { cancelManagedBooking, createBookingForStore, getLegacyBookingStatus, getManagedAvailability, getManagedBooking, rescheduleManagedBooking } from '../services/bookings.js';
 import { findInstalledShop, validShopHandle, validShoplineStoreId } from '../services/shops.js';
@@ -18,13 +19,18 @@ function validRuleId(value) { return mongoose.isValidObjectId(String(value || ''
 function publicBooking(booking) {
   const customerRescheduleCount = Number(booking.customerRescheduleCount || 0);
   const timezone = booking.timezone || 'UTC';
+  const bookingMode = ['slot', 'all_day', 'multi_slot'].includes(booking.bookingMode) ? booking.bookingMode : 'slot';
+  const occurrences = Array.isArray(booking.occurrences) && booking.occurrences.length
+    ? booking.occurrences.map(item => ({ date: item.date, time: item.time || '' }))
+    : [{ date: booking.date, time: bookingMode === 'all_day' ? '' : booking.time }];
   return {
     id: booking._id, serviceTitle: booking.productTitle, productTitle: booking.productTitle,
     bookingSource: booking.bookingSource || (booking.sourceType === 'standalone' ? 'direct' : 'product'),
     sourceType: booking.sourceType || 'product', serviceType: booking.serviceType === 'product' ? 'appointment' : (booking.serviceType || 'appointment'),
-    date: booking.date, time: booking.time, timezone, storeDate: zonedNow(timezone).date,
+    bookingMode, occurrences,
+    date: booking.date, time: bookingMode === 'all_day' ? '' : booking.time, timezone, storeDate: zonedNow(timezone).date,
     location: booking.location, staff: booking.staff, status: booking.status, customerRescheduleCount,
-    customerCanReschedule: booking.status === 'confirmed' && customerRescheduleCount < 1
+    customerCanReschedule: bookingMode === 'slot' && booking.status === 'confirmed' && customerRescheduleCount < 1
   };
 }
 
@@ -34,6 +40,7 @@ function serializeRule(rule, timezone) {
   return {
     id: rule._id, bookingSource: rule.bookingSource || (rule.sourceType === 'standalone' ? 'direct' : 'product'),
     sourceType: rule.sourceType || 'product', serviceType: rule.serviceType === 'product' ? 'appointment' : (rule.serviceType || 'appointment'),
+    bookingMode: bookingModeFor(rule), sessionsRequired: Number(rule.sessionsRequired || 3),
     productId: rule.productId || '', productTitle: rule.productTitle || '', serviceTitle: rule.serviceTitle || rule.productTitle,
     serviceDescription: rule.serviceDescription || '', duration: rule.duration, buffer: rule.buffer,
     capacity: Number(rule.capacity || 1), minimumNoticeMinutes: Number(rule.minimumNoticeMinutes || 0),
@@ -93,15 +100,30 @@ publicRouter.get('/availability', async (req, res) => {
   const result = await findPublicRule(req);
   if (result.error) return res.status(result.error.status).json(result.error.body);
   const timezone = result.shop.timezone || 'UTC';
-  const allSlots = futureSlotsForDate(result.rule, date, timezone);
-  const booked = await Booking.find({ shopId: result.shop._id, ruleId: result.rule._id, date, status: 'confirmed' }).select('time').lean();
+  const mode = bookingModeFor(result.rule);
+  const capacity = Number(result.rule.capacity || 1);
+  const reservations = await BookingReservation.find({ shopId: result.shop._id, ruleId: result.rule._id, date }).select('bookingId time slotPosition').lean();
+  const reservedBookingIds = reservations.map(item => item.bookingId).filter(Boolean);
+  const legacyFilter = { shopId: result.shop._id, ruleId: result.rule._id, date, status: 'confirmed' };
+  if (reservedBookingIds.length) legacyFilter._id = { $nin: reservedBookingIds };
+  const legacyBookings = await Booking.find(legacyFilter).select('time slotPosition').lean();
   res.set('Cache-Control', 'no-store');
+  if (mode === 'all_day') {
+    const count = reservations.length + legacyBookings.length;
+    return res.json({
+      date, timezone, storeDate: zonedNow(timezone).date, bookingMode: mode,
+      available: isAllDayBookableDate(result.rule, date, timezone) && count < capacity,
+      remaining: Math.max(0, capacity - count), capacity, slots: []
+    });
+  }
+  const allSlots = futureSlotsForDate(result.rule, date, timezone);
+  const booked = [...reservations.map(item => ({ time: item.time })), ...legacyBookings];
   res.json({
-    date, timezone, storeDate: zonedNow(timezone).date,
-    slots: filterSlotsByCapacity(allSlots, booked, Number(result.rule.capacity || 1)),
-    capacity: Number(result.rule.capacity || 1)
+    date, timezone, storeDate: zonedNow(timezone).date, bookingMode: mode,
+    slots: filterSlotsByCapacity(allSlots, booked, capacity), capacity
   });
 });
+
 
 publicRouter.post('/bookings', bookingLimiter, async (req, res, next) => {
   try {
