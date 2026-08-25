@@ -263,13 +263,39 @@
   });
   debug.observer.observe(document.documentElement, { childList: true, subtree: true });
 
+  let dialogLockDepth = 0;
+  let dialogScrollY = 0;
+
+  function lockPageForDialog() {
+    dialogLockDepth += 1;
+    if (dialogLockDepth > 1) return;
+    dialogScrollY = window.scrollY || window.pageYOffset || 0;
+    document.documentElement.classList.add('al-dialog-open');
+    document.body.classList.add('al-dialog-open');
+    document.body.style.setProperty('--al-dialog-scroll-y', `-${dialogScrollY}px`);
+  }
+
+  function unlockPageForDialog() {
+    if (!dialogLockDepth) return;
+    dialogLockDepth -= 1;
+    if (dialogLockDepth) return;
+    document.documentElement.classList.remove('al-dialog-open');
+    document.body.classList.remove('al-dialog-open');
+    document.body.style.removeProperty('--al-dialog-scroll-y');
+    window.scrollTo(0, dialogScrollY);
+  }
+
   function mountDialog(dialog) {
     dialog.className = 'al-dialog';
     dialog.style.setProperty('--al-accent', '#166534');
     document.body.append(dialog);
     dialog.showModal();
+    lockPageForDialog();
     dialog.querySelector('.al-close')?.addEventListener('click', () => dialog.close());
-    dialog.addEventListener('close', () => dialog.remove());
+    dialog.addEventListener('close', () => {
+      unlockPageForDialog();
+      dialog.remove();
+    }, { once: true });
     dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); });
   }
 

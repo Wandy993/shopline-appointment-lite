@@ -29,8 +29,13 @@ test('booking dialog keeps selected times and submit action visible', async () =
   assert.match(asset, /class="al-actions"/);
   assert.match(stylesheet, /var\(--al-accent,#166534\)/);
   assert.match(stylesheet, /\.al-time\[aria-pressed=true\][^{]*\{[^}]*color:#fff/);
-  assert.match(stylesheet, /\.al-form-body\{[^}]*min-height:0[^}]*overflow:auto/);
+  assert.match(stylesheet, /\.al-form-body\{[^}]*min-height:0[^}]*overflow-y:auto[^}]*overflow-x:hidden/);
   assert.match(stylesheet, /\.al-actions\{[^}]*flex:0 0 auto/);
+  assert.match(stylesheet, /\.al-dialog\{[^}]*100vw[^}]*100dvh/);
+  assert.match(stylesheet, /\.al-form-body\{[^}]*overflow-y:auto[^}]*overflow-x:hidden/);
+  assert.match(stylesheet, /font-size:16px/);
+  assert.match(asset, /lockPageForDialog/);
+  assert.match(asset, /document\.body\.classList\.add\('al-dialog-open'\)/);
 });
 
 test('confirmed booking is remembered without storing customer PII', async () => {

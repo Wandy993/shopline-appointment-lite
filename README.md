@@ -1,6 +1,6 @@
 # Appointment Lite for SHOPLINE
 
-Version `0.2.4` — bilingual admin, booking activity timeline, per-store email studio, corrected SHOPLINE access-token refresh, and clean release packaging.
+Version `0.2.5` — fixes appointment-rule copy and card overflow, restores product selection, and hardens the storefront booking dialog for mobile Safari.
 
 Appointment Lite turns selected SHOPLINE products into appointment or consultation services. It is designed for wedding fittings, jewelry consultations, furniture consultations, beauty services, classes, and made-to-order products.
 

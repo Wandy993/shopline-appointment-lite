@@ -1,8 +1,9 @@
-bash <<'APPOINTMENT_LITE_V024'
+bash <<'APPOINTMENT_LITE_V025'
 set -u
 
-VERSION="0.2.4"
-ZIP_NAME="appointment-lite-v0.2.4-token-refresh-release-hygiene.zip"
+VERSION="0.2.5"
+RELEASE_SLUG="appointment-lite-v0.2.5-rules-product-picker-mobile-fix"
+ZIP_NAME="${RELEASE_SLUG}.zip"
 ZIP_PATH="${ZIP_PATH:-$HOME/Downloads/$ZIP_NAME}"
 TARGET_DIR="${TARGET_DIR:-$PWD}"
 DEPLOY_RAILWAY="${DEPLOY_RAILWAY:-1}"
@@ -15,15 +16,10 @@ fail() {
   printf 'Appointment Lite %s stopped: %s\n' "$VERSION" "$1" >&2
   printf '========================================\n' >&2
   if [ -n "$TEMP_DIR" ]; then printf 'Temporary files retained at: %s\n' "$TEMP_DIR" >&2; fi
-  printf 'The Terminal window will remain open.\n' >&2
   return 1
 }
 
-if [ ! -f "$ZIP_PATH" ]; then
-  fail "ZIP not found: $ZIP_PATH"
-  exit 1
-fi
-
+if [ ! -f "$ZIP_PATH" ]; then fail "ZIP not found: $ZIP_PATH"; exit 1; fi
 mkdir -p "$TARGET_DIR" || { fail "Cannot create target directory."; exit 1; }
 TARGET_DIR="$(cd "$TARGET_DIR" && pwd -P)" || { fail "Cannot resolve target directory."; exit 1; }
 if [ "$TARGET_DIR" = "/" ] || [ "$TARGET_DIR" = "$HOME" ]; then
@@ -31,38 +27,47 @@ if [ "$TARGET_DIR" = "/" ] || [ "$TARGET_DIR" = "$HOME" ]; then
   exit 1
 fi
 
-say "1/11 Check ZIP integrity"
+say "1/12 Check ZIP integrity"
 unzip -t "$ZIP_PATH" >/dev/null || { fail "ZIP integrity check failed."; exit 1; }
 
-say "2/11 Extract release"
-TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/appointment-lite-v024.XXXXXX")" || { fail "Could not create temp directory."; exit 1; }
+say "2/12 Check Git and sync remote before overlay"
+if [ ! -d "$TARGET_DIR/.git" ]; then
+  fail "Existing Appointment Lite Git repository not found at $TARGET_DIR"
+  exit 1
+fi
+CURRENT_BRANCH="$(git -C "$TARGET_DIR" branch --show-current)"
+if [ -z "$CURRENT_BRANCH" ]; then fail "Detached Git HEAD detected."; exit 1; fi
+if [ -n "$(git -C "$TARGET_DIR" status --porcelain 2>/dev/null)" ]; then
+  fail "Working tree has uncommitted tracked/untracked changes. Commit or stash them before applying v0.2.5."
+  exit 1
+fi
+if git -C "$TARGET_DIR" remote get-url origin >/dev/null 2>&1; then
+  git -C "$TARGET_DIR" fetch origin "$CURRENT_BRANCH" || { fail "git fetch failed."; exit 1; }
+  if git -C "$TARGET_DIR" show-ref --verify --quiet "refs/remotes/origin/$CURRENT_BRANCH"; then
+    if git -C "$TARGET_DIR" merge-base --is-ancestor HEAD "origin/$CURRENT_BRANCH" && ! git -C "$TARGET_DIR" merge-base --is-ancestor "origin/$CURRENT_BRANCH" HEAD; then
+      git -C "$TARGET_DIR" merge --ff-only "origin/$CURRENT_BRANCH" || { fail "Fast-forward to origin/$CURRENT_BRANCH failed."; exit 1; }
+    elif ! git -C "$TARGET_DIR" merge-base --is-ancestor "origin/$CURRENT_BRANCH" HEAD && ! git -C "$TARGET_DIR" merge-base --is-ancestor HEAD "origin/$CURRENT_BRANCH"; then
+      fail "Local and origin/$CURRENT_BRANCH have diverged. Resolve Git before applying the release; no files have been changed."
+      exit 1
+    fi
+  fi
+fi
+
+say "3/12 Create Git backup tag"
+BACKUP_TAG="appointment-lite-pre-v0.2.5-$(date +%Y%m%d-%H%M%S)"
+git -C "$TARGET_DIR" tag "$BACKUP_TAG" HEAD || { fail "Git backup tag failed."; exit 1; }
+printf 'Backup tag: %s\n' "$BACKUP_TAG"
+
+say "4/12 Extract release"
+TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/appointment-lite-v025.XXXXXX")" || { fail "Could not create temp directory."; exit 1; }
 unzip -q "$ZIP_PATH" -d "$TEMP_DIR" || { fail "ZIP extraction failed."; exit 1; }
-SOURCE_DIR="$TEMP_DIR/appointment-lite-v0.2.4-token-refresh-release-hygiene"
+SOURCE_DIR="$TEMP_DIR/$RELEASE_SLUG"
 if [ ! -f "$SOURCE_DIR/package.json" ] || [ ! -f "$SOURCE_DIR/src/server.js" ]; then
   fail "Release root is invalid."
   exit 1
 fi
 
-say "3/11 Create Git backup"
-if [ ! -d "$TARGET_DIR/.git" ]; then
-  git -C "$TARGET_DIR" init || { fail "git init failed."; exit 1; }
-fi
-if [ -n "$(git -C "$TARGET_DIR" status --porcelain 2>/dev/null)" ]; then
-  git -C "$TARGET_DIR" add -A -- . ':!theme-app-extension' 2>/dev/null || git -C "$TARGET_DIR" add -A -- . || { fail "git add failed."; exit 1; }
-  git -C "$TARGET_DIR" reset -- theme-app-extension >/dev/null 2>&1 || true
-  if ! git -C "$TARGET_DIR" diff --cached --quiet; then
-    git -C "$TARGET_DIR" -c user.name="Appointment Lite Release" -c user.email="local@appointment-lite.invalid" commit -m "backup before Appointment Lite v0.2.4" || { fail "Git backup commit failed."; exit 1; }
-  else
-    printf 'Only ignored/local Theme App Extension files are uncommitted; no backup commit is needed.\n'
-  fi
-fi
-BACKUP_TAG="appointment-lite-pre-v0.2.4-$(date +%Y%m%d-%H%M%S)"
-if git -C "$TARGET_DIR" rev-parse --verify HEAD >/dev/null 2>&1; then
-  git -C "$TARGET_DIR" tag "$BACKUP_TAG" HEAD || { fail "Git backup tag failed."; exit 1; }
-  printf 'Backup tag: %s\n' "$BACKUP_TAG"
-fi
-
-say "4/11 Overlay backend and source files"
+say "5/12 Overlay backend and source files"
 rsync -a \
   --exclude='.git/' \
   --exclude='.env' \
@@ -71,47 +76,49 @@ rsync -a \
   --exclude='dist/' \
   "$SOURCE_DIR/" "$TARGET_DIR/" || { fail "rsync overlay failed."; exit 1; }
 
-say "5/11 Install locked dependencies"
+say "6/12 Install locked dependencies"
 (cd "$TARGET_DIR" && npm ci) || { fail "npm ci failed."; exit 1; }
 
-say "6/11 Run tests"
+say "7/12 Run full tests"
 (cd "$TARGET_DIR" && npm test) || { fail "npm test failed."; exit 1; }
 
-say "7/11 Run JavaScript checks"
+say "8/12 Run JavaScript checks"
 (cd "$TARGET_DIR" && npm run check) || { fail "npm run check failed."; exit 1; }
 
-say "8/11 Sync Theme App Extension source"
+say "9/12 Sync Theme App Extension source"
 if [ -d "$TARGET_DIR/theme-app-extension" ]; then
+  mkdir -p "$TARGET_DIR/theme-app-extension/blocks" "$TARGET_DIR/theme-app-extension/public" "$TARGET_DIR/theme-app-extension/i18n"
   rsync -a --delete "$TARGET_DIR/theme-extension-source/blocks/" "$TARGET_DIR/theme-app-extension/blocks/" || { fail "Theme blocks sync failed."; exit 1; }
   rsync -a --delete "$TARGET_DIR/theme-extension-source/public/" "$TARGET_DIR/theme-app-extension/public/" || { fail "Theme public assets sync failed."; exit 1; }
   rsync -a --delete "$TARGET_DIR/theme-extension-source/i18n/" "$TARGET_DIR/theme-app-extension/i18n/" || { fail "Theme i18n sync failed."; exit 1; }
 else
-  printf 'theme-app-extension is not present, so theme push will be skipped.\n'
-  printf 'Create it later with: cd "%s" && sl extension create --name theme-app-extension\n' "$TARGET_DIR"
+  printf 'theme-app-extension is not present, so Theme Extension push will be skipped.\n'
   PUSH_THEME=0
 fi
 
-say "9/11 Commit and push release"
-git -C "$TARGET_DIR" add -A || { fail "git add failed after overlay."; exit 1; }
+say "10/12 Commit and push v0.2.5"
+git -C "$TARGET_DIR" add -A -- . ':!theme-app-extension' 2>/dev/null || git -C "$TARGET_DIR" add -A -- . || { fail "git add failed."; exit 1; }
+git -C "$TARGET_DIR" reset -- theme-app-extension >/dev/null 2>&1 || true
 if ! git -C "$TARGET_DIR" diff --cached --quiet; then
-  git -C "$TARGET_DIR" commit -m "release: Appointment Lite v0.2.4 token refresh and release hygiene" || { fail "Release commit failed."; exit 1; }
+  git -C "$TARGET_DIR" commit -m "fix: Appointment Lite v0.2.5 rules picker and mobile booking UI" || { fail "Release commit failed."; exit 1; }
 fi
-CURRENT_BRANCH="$(git -C "$TARGET_DIR" branch --show-current)"
-if git -C "$TARGET_DIR" remote get-url origin >/dev/null 2>&1 && [ -n "$CURRENT_BRANCH" ]; then
+if git -C "$TARGET_DIR" remote get-url origin >/dev/null 2>&1; then
   git -C "$TARGET_DIR" push origin "$CURRENT_BRANCH" || { fail "git push failed."; exit 1; }
 else
-  printf 'Git push skipped because origin or current branch is unavailable.\n'
+  printf 'Git push skipped because origin is unavailable.\n'
 fi
 
-say "10/11 Deploy Railway"
+say "11/12 Deploy Railway"
 if [ "$DEPLOY_RAILWAY" = "1" ]; then
   command -v railway >/dev/null 2>&1 || { fail "Railway CLI not found."; exit 1; }
-  (cd "$TARGET_DIR" && railway up -y) || { fail "Railway deployment failed."; exit 1; }
+  (cd "$TARGET_DIR" && railway status) || { fail "Railway project is not linked correctly."; exit 1; }
+  (cd "$TARGET_DIR" && railway up) || { fail "Railway deployment failed."; exit 1; }
+  (cd "$TARGET_DIR" && railway status) || true
 else
   printf 'Railway deployment skipped because DEPLOY_RAILWAY=%s.\n' "$DEPLOY_RAILWAY"
 fi
 
-say "11/11 Push SHOPLINE Theme App Extension"
+say "12/12 Push SHOPLINE Theme App Extension"
 if [ "$PUSH_THEME" = "1" ]; then
   command -v sl >/dev/null 2>&1 || { fail "SHOPLINE CLI not found."; exit 1; }
   (cd "$TARGET_DIR/theme-app-extension" && sl extension push) || { fail "sl extension push failed."; exit 1; }
@@ -120,10 +127,8 @@ else
 fi
 
 printf '\n========================================\n'
-printf 'Appointment Lite v0.2.4 complete\n'
+printf '✅ Appointment Lite v0.2.5 complete\n'
 printf '========================================\n'
-git -C "$TARGET_DIR" status --short
-printf '\nTemporary extraction retained at: %s\n' "$TEMP_DIR"
-printf 'Press Return to finish. '
-read -r _
-APPOINTMENT_LITE_V024
+printf 'Backup tag: %s\n' "$BACKUP_TAG"
+git -C "$TARGET_DIR" status
+APPOINTMENT_LITE_V025

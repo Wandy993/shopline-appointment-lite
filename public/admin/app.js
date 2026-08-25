@@ -24,17 +24,17 @@ const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
 
 const zh = {
-  'Appointment management': '预约管理', 'Workspace': '工作台', 'Overview': '概览', 'Services & rules': '服务与规则', 'Bookings': '预约记录',
+  'Appointment management': '预约管理', 'Workspace': '工作台', 'Overview': '概览', 'Services & rules': '预约服务', 'Bookings': '预约记录',
   'Configuration': '配置', 'Email Studio': '邮件设计', 'Storefront setup': '店铺前台设置', 'Store connected': '店铺已连接',
   'Checking notifications…': '正在检查通知…', 'Loading store…': '正在加载店铺…', 'Syncing time zone': '正在同步时区',
   'APPOINTMENT MANAGEMENT': '预约管理', 'Manage every appointment with clarity.': '清晰管理每一次预约。',
   'Configure bookable services, coordinate schedules, and keep customer updates consistent.': '配置可预约服务、协调时间安排，并保持客户通知一致。',
-  'Create service rule': '创建服务规则', 'View bookings': '查看预约', 'Active services': '启用的服务', 'All bookings': '全部预约',
+  'Create service rule': '创建预约服务', 'View bookings': '查看预约', 'Active services': '启用的预约服务', 'All bookings': '全部预约',
   'Lifetime records': '累计记录', 'Upcoming': '即将开始', 'Store-local schedule': '按店铺时区', 'Email notifications': '邮件通知',
   'Customer updates': '客户通知', 'NEXT UP': '即将开始', 'Upcoming appointments': '近期预约', 'View all': '查看全部',
-  'LAUNCH PATH': '启用进度', 'Workspace readiness': '配置完成度', 'SERVICE CATALOG': '服务目录',
-  'Services & appointment rules': '服务与预约规则', 'Choose which products are bookable and define the experience around them.': '选择可预约商品，并配置完整预约体验。',
-  'New service rule': '新建服务规则', '0 services': '0 个服务', 'CUSTOMER SCHEDULE': '客户预约',
+  'LAUNCH PATH': '启用进度', 'Workspace readiness': '配置完成度', 'SERVICE CATALOG': '预约服务',
+  'Services & appointment rules': '预约服务', 'Choose which products are bookable and define the experience around them.': '管理商品的预约规则、可预约时段与服务安排。',
+  'New service rule': '新建预约服务', '0 services': '0 条预约规则', 'CUSTOMER SCHEDULE': '客户预约',
   'Review appointments, update service details, and keep customers informed.': '查看预约、调整服务信息并及时通知客户。', 'Store time': '店铺时间',
   'All': '全部', 'Confirmed': '已确认', 'Cancelled': '已取消', 'Customer & service': '客户与服务', 'Date & time': '日期与时间',
   'Assignment': '服务安排', 'Status': '状态', 'CUSTOMER COMMUNICATION': '客户沟通',
@@ -49,8 +49,8 @@ const zh = {
   'LIVE PREVIEW': '实时预览', 'Confirmation': '预约确认', 'Desktop': '桌面端',
   'Preview content uses sample appointment data. Customer details are never stored in this editor.': '预览使用示例预约数据，不会在编辑器中保存客户资料。',
   'STOREFRONT CONNECTION': '店铺前台连接', 'Add the booking experience to your product page in a few steps.': '只需几步即可把预约功能添加到商品页。',
-  'Your store is ready to use Appointment Lite.': '你的店铺已可以使用 Appointment Lite。', 'Create a service rule': '创建服务规则',
-  'Select a product, duration, availability, location, and specialist.': '选择商品、服务时长、可预约时间、地点和服务人员。', 'Create a rule': '创建规则',
+  'Your store is ready to use Appointment Lite.': '你的店铺已可以使用 Appointment Lite。', 'Create a service rule': '创建预约服务',
+  'Select a product, duration, availability, location, and specialist.': '选择商品、预约时长、可预约时段、地点和服务人员。', 'Create a rule': '创建预约服务',
   'Add Appointment Lite to your product page': '将 Appointment Lite 添加到商品页',
   'Open the theme editor, place the App Block in the product information area, then save the theme.': '打开主题编辑器，将 App Block 放到商品信息区域，然后保存主题。',
   'Open theme editor': '打开主题编辑器', 'Preparing your theme editor link…': '正在准备主题编辑器链接…',
@@ -58,9 +58,9 @@ const zh = {
   'Before you publish': '发布前检查', 'Use this short checklist to confirm the customer experience.': '请用以下清单确认客户体验。',
   'The App Block is visible on product pages': '商品页可看到 App Block', 'Date and time choices match your schedule': '日期和时间符合你的排期',
   'Confirmation emails use your store branding': '确认邮件使用店铺品牌', 'A test booking appears in Bookings': '测试预约出现在预约记录中',
-  'SERVICE CONFIGURATION': '服务配置', 'New appointment rule': '新建预约规则', 'Start with the product customers will book.': '先选择客户要预约的商品。',
-  'Service': '服务', 'Availability': '可预约时间', 'Experience': '预约体验', 'What are customers booking?': '客户预约什么？',
-  'Connect one SHOPLINE product to this appointment experience.': '将一个 SHOPLINE 商品连接到此预约服务。', 'SHOPLINE product': 'SHOPLINE 商品',
+  'SERVICE CONFIGURATION': '预约服务配置', 'New appointment rule': '新建预约服务', 'Start with the product customers will book.': '先选择客户需要预约的商品。',
+  'Service': '基本信息', 'Availability': '可预约时段', 'Experience': '服务信息', 'What are customers booking?': '选择预约商品',
+  'Connect one SHOPLINE product to this appointment experience.': '选择一个 SHOPLINE 商品作为此预约服务的入口。', 'SHOPLINE product': 'SHOPLINE 商品',
   'Select a product': '选择商品', 'Each product can have one appointment rule.': '每个商品可配置一条预约规则。', 'Appointment duration': '预约时长',
   'minutes': '分钟', 'Buffer after appointment': '预约后缓冲时间', 'When can customers book?': '客户可在何时预约？',
   'Times are interpreted in the store time zone shown in the top bar.': '所有时间均以顶部显示的店铺时区为准。', 'Available from': '开始日期',
@@ -68,8 +68,8 @@ const zh = {
   'Shape the customer experience': '完善客户预约体验', 'Add lightweight assignment details and collect useful context.': '添加服务安排，并收集必要信息。',
   'Location': '地点', 'Staff or specialist': '服务人员', 'Notes prompt': '备注提示', 'Custom questions': '自定义问题', 'up to 5': '最多 5 个',
   'Add question': '添加问题', 'Service is active': '启用此服务', 'Show the booking experience on matching product pages.': '在匹配的商品页展示预约功能。',
-  'Cancel': '取消', 'Back': '返回', 'Continue': '继续', 'Save service rule': '保存服务规则', 'PRODUCT CATALOG': '商品目录',
-  'Choose the product customers will book.': '选择客户需要预约的商品。', 'Back to service': '返回服务配置', 'BOOKING DETAILS': '预约详情',
+  'Cancel': '取消', 'Back': '返回', 'Continue': '继续', 'Save service rule': '保存预约服务', 'PRODUCT CATALOG': '选择商品',
+  'Choose the product customers will book.': '选择客户需要预约的商品。', 'Back to service': '返回预约配置', 'BOOKING DETAILS': '预约详情',
   'Edit appointment': '编辑预约', 'Update the customer appointment.': '更新客户预约。', 'Times use the store time zone.': '时间以店铺时区为准。',
   'Date': '日期', 'Time': '时间', 'Staff': '服务人员', 'Saving validates the selected slot and emails the customer when delivery is configured. Email failure never rolls back the booking.': '保存时会校验时间，并在邮件通知启用后告知客户。邮件发送失败不会撤销预约更改。',
   'Save and notify': '保存并通知', 'BOOKING ACTIVITY': '预约动态', 'Appointment history': '预约历史', 'Done': '完成',
@@ -90,12 +90,12 @@ Object.assign(zh, {
   'Email notifications ready': '邮件通知已就绪', 'Email notifications need setup': '邮件通知待设置', 'Email design customized': '已自定义邮件设计',
   'Question shown to customers': '向客户展示的问题', Required: '必填', Remove: '移除', 'No matching products': '没有匹配的商品',
   'Could not load products': '无法加载商品', 'Set the store-local schedule customers can choose from.': '设置客户可选择的店铺本地时间。',
-  'Finish the customer-facing details and activate the service.': '完善客户看到的信息并启用服务。', 'Edit service rule': '编辑服务规则',
-  'Service rule updated.': '服务规则已更新。', 'Service rule created.': '服务规则已创建。',
-  'No services match your search': '没有匹配的服务', 'No service rules yet': '还没有服务规则', 'Try a different keyword.': '请尝试其他关键词。',
-  'Create a rule to make a SHOPLINE product bookable.': '创建规则，让 SHOPLINE 商品支持预约。', 'min appointment': '分钟预约', 'min buffer': '分钟缓冲',
-  Active: '已启用', Paused: '已暂停', Specialist: '服务人员', 'Any staff': '未指定人员', 'Not set': '未设置', Questions: '问题', custom: '个自定义',
-  'Edit service': '编辑服务', Delete: '删除', 'Service rule deleted.': '服务规则已删除。', 'No bookings found': '没有找到预约',
+  'Finish the customer-facing details and activate the service.': '完善客户看到的服务信息并启用预约。', 'Edit service rule': '编辑预约服务',
+  'Service rule updated.': '预约服务已更新。', 'Service rule created.': '预约服务已创建。',
+  'No services match your search': '没有匹配的预约服务', 'No service rules yet': '还没有预约服务', 'Try a different keyword.': '请尝试其他关键词。',
+  'Create a rule to make a SHOPLINE product bookable.': '创建预约服务，让指定 SHOPLINE 商品支持预约。', 'min appointment': '分钟预约', 'min buffer': '分钟缓冲',
+  Active: '已启用', Paused: '已暂停', Specialist: '服务人员', 'Any staff': '未指定人员', 'Not set': '未设置', Questions: '自定义问题', custom: '个',
+  'Edit service': '编辑', Delete: '删除', 'Service rule deleted.': '预约服务已删除。', 'No bookings found': '没有找到预约',
   'Try another search.': '请尝试其他搜索条件。', 'Confirmed appointments will appear here.': '已确认的预约会显示在这里。', 'No location': '未设置地点',
   'View history': '查看历史', Edit: '编辑', 'Appointment created': '预约已创建', 'The customer completed this booking.': '客户已完成本次预约。',
   'Customer changed the time': '客户修改了时间', 'The customer used their online change.': '客户已使用一次在线修改机会。',
@@ -237,7 +237,7 @@ function renderProductOptions(query = '') {
   const normalized = query.trim().toLowerCase();
   const matches = state.products.filter(product => !normalized || product.title.toLowerCase().includes(normalized));
   $('#productOptions').innerHTML = matches.length ? matches.map(product => `<button type="button" class="product-option ${$('#productSelect').value === product.id ? 'selected' : ''}" role="option" aria-selected="${$('#productSelect').value === product.id}" data-product-id="${escapeHtml(product.id)}"><span class="product-option-avatar">${escapeHtml(product.title.slice(0, 1).toUpperCase())}</span><span><strong>${escapeHtml(product.title)}</strong><small>${escapeHtml(product.handle || t('SHOPLINE product'))}</small></span><i>✓</i></button>`).join('') : `<div class="empty-compact">${t('No matching products')}</div>`;
-  $$('.select-option').forEach(button => button.addEventListener('click', () => selectProduct(button.dataset.productId)));
+  $$('#productOptions .product-option').forEach(button => button.addEventListener('click', () => selectProduct(button.dataset.productId)));
 }
 
 function selectProduct(productId) {
@@ -344,13 +344,19 @@ async function saveRule(event) {
 function renderRules() {
   const query = $('#ruleSearch').value.trim().toLowerCase();
   const rules = state.rules.filter(rule => !query || [rule.productTitle, rule.staff, rule.location].some(value => String(value || '').toLowerCase().includes(query)));
-  $('#ruleResultCount').textContent = state.locale === 'zh-CN' ? `${rules.length} 个服务` : `${rules.length} service${rules.length === 1 ? '' : 's'}`;
+  $('#ruleResultCount').textContent = state.locale === 'zh-CN' ? `${rules.length} 条预约规则` : `${rules.length} service rule${rules.length === 1 ? '' : 's'}`;
   const root = $('#rulesList');
   if (!rules.length) {
     root.innerHTML = `<div class="panel empty"><strong>${t(state.rules.length ? 'No services match your search' : 'No service rules yet')}</strong><span>${t(state.rules.length ? 'Try a different keyword.' : 'Create a rule to make a SHOPLINE product bookable.')}</span></div>`;
     return;
   }
-  root.innerHTML = rules.map(rule => `<article class="panel service-card"><div class="service-head"><div class="service-identity"><div class="service-avatar">${escapeHtml(rule.productTitle.slice(0, 1).toUpperCase())}</div><div><strong>${escapeHtml(rule.productTitle)}</strong><span>${rule.duration} ${t('min appointment')} · ${rule.buffer} ${t('min buffer')}</span></div></div><span class="status-badge ${rule.enabled ? 'enabled' : 'disabled'}">${t(rule.enabled ? 'Active' : 'Paused')}</span></div><div class="service-meta"><div><span>${t('Specialist')}</span><strong>${escapeHtml(rule.staff || t('Any staff'))}</strong></div><div><span>${t('Location')}</span><strong>${escapeHtml(rule.location || t('Not set'))}</strong></div><div><span>${t('Questions')}</span><strong>${(rule.customQuestions || []).length} ${t('custom')}</strong></div></div><div class="service-actions"><button class="secondary small" data-edit="${rule._id}">${t('Edit service')}</button><button class="secondary small" data-delete="${rule._id}">${t('Delete')}</button></div></article>`).join('');
+  root.innerHTML = rules.map(rule => {
+    const bufferLabel = state.locale === 'zh-CN' ? (rule.buffer ? `缓冲 ${rule.buffer} 分钟` : '无缓冲') : (rule.buffer ? `${rule.buffer} min buffer` : 'No buffer');
+    const timingLabel = state.locale === 'zh-CN' ? `预约 ${rule.duration} 分钟 · ${bufferLabel}` : `${rule.duration} min appointment · ${bufferLabel}`;
+    const questionCount = (rule.customQuestions || []).length;
+    const questionLabel = state.locale === 'zh-CN' ? (questionCount ? `${questionCount} 个` : '未配置') : (questionCount ? `${questionCount} custom` : 'None');
+    return `<article class="panel service-card"><div class="service-head"><div class="service-identity"><div class="service-avatar">${escapeHtml(rule.productTitle.slice(0, 1).toUpperCase())}</div><div><strong title="${escapeHtml(rule.productTitle)}">${escapeHtml(rule.productTitle)}</strong><span>${timingLabel}</span></div></div><span class="status-badge ${rule.enabled ? 'enabled' : 'disabled'}">${t(rule.enabled ? 'Active' : 'Paused')}</span></div><div class="service-meta"><div><span>${t('Specialist')}</span><strong>${escapeHtml(rule.staff || t('Any staff'))}</strong></div><div><span>${t('Location')}</span><strong>${escapeHtml(rule.location || t('Not set'))}</strong></div><div><span>${t('Questions')}</span><strong>${questionLabel}</strong></div></div><div class="service-actions"><button class="secondary small" data-edit="${rule._id}">${t('Edit service')}</button><button class="secondary small" data-delete="${rule._id}">${t('Delete')}</button></div></article>`;
+  }).join('');
   $$('[data-edit]').forEach(button => button.addEventListener('click', () => openRule(state.rules.find(rule => rule._id === button.dataset.edit))));
   $$('[data-delete]').forEach(button => button.addEventListener('click', () => confirmAction('Delete this service rule?', 'Rules with booking history cannot be deleted. If customers have booked it before, pause the service instead.', 'Delete rule', async () => {
     await api(`/rules/${button.dataset.delete}`, { method: 'DELETE' });
