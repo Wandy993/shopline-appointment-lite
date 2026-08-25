@@ -26,7 +26,6 @@ const shopSchema = new mongoose.Schema({
   shoplineStoreId: { type: String, unique: true, sparse: true, trim: true, index: true },
   primaryDomain: { type: String, default: '', lowercase: true, trim: true },
   accessToken: { type: String, required: true, select: false },
-  refreshToken: { type: String, default: '', select: false },
   tokenExpiresAt: Date,
   scopes: [String],
   locale: { type: String, default: 'en' },

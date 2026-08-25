@@ -6,3 +6,7 @@ coverage/
 *.zip
 theme-app-extension/.env
 theme-app-extension/.shopline-cli.local.yml
+
+# Local SHOPLINE CLI project. Keep the distributable source in theme-extension-source/.
+theme-app-extension/
+dist/

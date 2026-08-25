@@ -1,6 +1,6 @@
 # Appointment Lite for SHOPLINE
 
-Version `0.4.0` — bilingual merchant workspace, smooth loading states, searchable product dialog, booking activity history, branded email settings, and one-click storefront setup.
+Version `0.2.4` — bilingual admin, booking activity timeline, per-store email studio, corrected SHOPLINE access-token refresh, and clean release packaging.
 
 Appointment Lite turns selected SHOPLINE products into appointment or consultation services. It is designed for wedding fittings, jewelry consultations, furniture consultations, beauty services, classes, and made-to-order products.
 
@@ -141,6 +141,19 @@ railway domain
 ```
 
 `railway up` uploads and deploys the current project; it does not create a public domain by itself. After a domain is available, update `APP_URL` and the SHOPLINE callback configuration, then redeploy.
+
+
+## Release packaging
+
+Create a clean distributable ZIP with:
+
+```bash
+npm run release:zip
+```
+
+The release builder excludes local or sensitive development state such as `.git/`, `.env`, `node_modules/`, `dist/`, and the locally bound `theme-app-extension/` directory.
+
+Keep the SHOPLINE CLI-created Theme App Extension on the developer machine. The portable source remains in `theme-extension-source/` and is synchronized into the bound extension before `sl extension push`.
 
 ## Theme App Extension: manual CLI creation
 

@@ -1,6 +1,6 @@
 {
   "name": "appointment-lite",
-  "version": "0.4.0",
+  "version": "0.2.4",
   "description": "SHOPLINE Product Appointment & Consultation MVP",
   "type": "module",
   "engines": {
@@ -10,7 +10,8 @@
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
     "test": "node --test",
-    "check": "node --check src/server.js && node --check public/admin/app.js && node --check public/manage/app.js && node --check theme-extension-source/public/appointment-lite.js"
+    "check": "node --check src/server.js && node --check public/admin/app.js && node --check public/manage/app.js && node --check theme-extension-source/public/appointment-lite.js",
+    "release:zip": "bash scripts/build-release.sh"
   },
   "dependencies": {
     "@alicloud/dm20151123": "^1.10.2",

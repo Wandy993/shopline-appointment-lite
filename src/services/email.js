@@ -1,12 +1,9 @@
-import DmPackage, { SingleSendMailRequest } from '@alicloud/dm20151123';
-import { Config as OpenApiConfig } from '@alicloud/openapi-client';
-import { RuntimeOptions } from '@alicloud/tea-util';
 import { Resend } from 'resend';
 import { config } from '../config.js';
 import { DEFAULT_EMAIL_SETTINGS, interpolateTemplate, normalizeEmailSettings, templateVariables } from '../lib/email-settings.js';
 import { Shop } from '../models/Shop.js';
 
-const DmClient = DmPackage.default;
+let aliyunSdk;
 let aliyunClient;
 let resendClient;
 
@@ -34,8 +31,25 @@ export function emailStatus() {
   };
 }
 
-function directMail() {
+async function loadAliyunSdk() {
+  if (aliyunSdk) return aliyunSdk;
+  const [dmModule, openApiModule, teaUtilModule] = await Promise.all([
+    import('@alicloud/dm20151123'),
+    import('@alicloud/openapi-client'),
+    import('@alicloud/tea-util')
+  ]);
+  aliyunSdk = {
+    DmClient: dmModule.default.default,
+    SingleSendMailRequest: dmModule.SingleSendMailRequest,
+    OpenApiConfig: openApiModule.Config,
+    RuntimeOptions: teaUtilModule.RuntimeOptions
+  };
+  return aliyunSdk;
+}
+
+async function directMail() {
   if (aliyunClient) return aliyunClient;
+  const { DmClient, OpenApiConfig } = await loadAliyunSdk();
   const options = {
     accessKeyId: config.email.aliyun.accessKeyId,
     accessKeySecret: config.email.aliyun.accessKeySecret,
@@ -48,6 +62,7 @@ function directMail() {
 }
 
 async function deliverWithAliyun(message) {
+  const { SingleSendMailRequest, RuntimeOptions } = await loadAliyunSdk();
   const request = new SingleSendMailRequest({
     accountName: config.email.aliyun.accountName,
     addressType: 1,
@@ -59,7 +74,8 @@ async function deliverWithAliyun(message) {
     ...(message.replyTo ? { replyAddress: message.replyTo, replyAddressAlias: message.fromName || config.email.aliyun.fromAlias } : {}),
     ...(config.email.aliyun.tagName ? { tagName: config.email.aliyun.tagName } : {})
   });
-  const response = await directMail().singleSendMailWithOptions(request, new RuntimeOptions({}));
+  const client = await directMail();
+  const response = await client.singleSendMailWithOptions(request, new RuntimeOptions({}));
   return { provider: 'aliyun', requestId: response?.body?.requestId || '' };
 }
 
