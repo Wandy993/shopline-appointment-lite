@@ -1,12 +1,9 @@
-# Appointment Lite v0.3.3 Product Sync + Safe Delete
+# Appointment Lite v0.3.4 Service Editor UX + Booking Actions
 
-Download `appointment-lite-v0.3.3-product-sync-safe-delete.zip` and the one-click command to `~/Downloads`, then run from the existing project root:
+Download `appointment-lite-v0.3.4-service-editor-ux-booking-actions.zip` and the one-click command to `~/Downloads`, then run from the existing project root:
 
 ```bash
-cd /Users/SL/Documents/appointment-lite
-bash "$HOME/Downloads/appointment-lite-v0.3.3-mac-one-click-command.txt"
+bash "$HOME/Downloads/appointment-lite-v0.3.4-mac-one-click-command.txt"
 ```
 
-The command verifies the ZIP, syncs Git safely, creates a backup tag, overlays v0.3.3, runs `npm ci`, all tests and JavaScript checks, commits and pushes Git, deploys Railway with `railway up`, syncs the local SHOPLINE Theme App Extension, and runs `sl extension push`.
-
-v0.3.3 reconciles the SHOPLINE Admin REST and Admin GraphQL product catalogs so product/service items missing from one API source can still be selected. Deleting a service now preserves historical Booking records; deletion is blocked only while confirmed bookings still exist.
+The command verifies the release, safely syncs Git, creates a backup tag, overlays v0.3.4, runs `npm ci`, the full test suite and JavaScript checks, commits and pushes Git, queues Railway with `railway up --detach`, then immediately syncs and pushes the SHOPLINE Theme App Extension. It does not wait for Railway build/deploy completion before `sl extension push`.

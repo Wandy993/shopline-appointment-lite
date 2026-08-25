@@ -33,7 +33,7 @@ export function adminPage() {
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light">
   <title>Appointment Lite</title>
-  <link rel="stylesheet" href="/admin/styles.css?v=0.3.3">
+  <link rel="stylesheet" href="/admin/styles.css?v=0.3.4">
 </head>
 <body>
   <div class="app-shell">
@@ -159,9 +159,11 @@ export function adminPage() {
           </div></fieldset>
           <div id="productSourceFields"><div class="field"><label>Linked SHOPLINE product</label><div id="productPicker" class="custom-select"><button id="productPickerButton" type="button" aria-haspopup="dialog"><span id="productPickerLabel">Select a product</span>${icons.chevron}</button></div><p class="hint">The App Block uses this product binding to find the correct appointment service on the storefront.</p></div></div>
           <div class="field-row thirds"><div class="field"><label for="duration">Duration</label><div class="input-suffix"><input id="duration" type="number" min="5" max="480" step="5" value="60" required><span>min</span></div></div><div class="field"><label for="buffer">Buffer</label><div class="input-suffix"><input id="buffer" type="number" min="0" max="240" step="5" value="0" required><span>min</span></div></div><div class="field"><label for="capacity">Capacity</label><div class="input-suffix"><input id="capacity" type="number" min="1" max="100" step="1" value="1" required><span>spots</span></div></div></div>
+          <div class="timing-helper"><strong>How timing works</strong><p>Duration is the appointment length. Buffer is reserved after each appointment before the next start time. Capacity controls how many customers can book the same start time.</p></div>
         </section>
         <section class="rule-step hidden" data-rule-step="1">
           <div class="step-intro"><h3>When can customers book?</h3><p>Set your regular hours, booking policies, and date-specific exceptions. All times use the store time zone.</p></div>
+          <div id="slotLogicNotice" class="slot-logic-notice"><div class="slot-logic-icon">i</div><div><strong>Start-time calculation</strong><p id="slotLogicText"></p><small id="slotLogicExample"></small></div></div>
           <div class="field-row"><div class="field"><label for="minimumNoticeMinutes">Minimum notice</label><select id="minimumNoticeMinutes"><option value="0">No minimum</option><option value="60">1 hour</option><option value="120">2 hours</option><option value="240">4 hours</option><option value="720">12 hours</option><option value="1440">1 day</option><option value="2880">2 days</option><option value="10080">7 days</option></select></div><div class="field"><label for="bookingWindowDays">Booking window</label><div class="input-suffix"><input id="bookingWindowDays" type="number" min="1" max="365" value="90" required><span>days ahead</span></div></div></div>
           <div class="field-row"><div class="field"><label for="dateFrom">Available from <span>optional</span></label><input id="dateFrom" type="date"></div><div class="field"><label for="dateUntil">Available until <span>optional</span></label><input id="dateUntil" type="date"></div></div>
           <fieldset><legend>Weekly schedule</legend><div id="weeklySchedule" class="schedule"></div><p class="hint">Enable the days customers can normally book.</p></fieldset>
@@ -202,7 +204,7 @@ export function adminPage() {
   </dialog>
 
   <dialog id="confirmDialog" class="confirm-modal"><div class="confirm-icon">!</div><div class="confirm-copy"><h2 id="confirmTitle">Please confirm</h2><p id="confirmMessage"></p></div><div class="modal-actions"><button id="confirmNo" class="secondary">Keep it</button><button id="confirmYes" class="danger">Confirm</button></div></dialog>
-  <script type="module" src="/admin/app.js?v=0.3.3"></script>
+  <script type="module" src="/admin/app.js?v=0.3.4"></script>
 </body>
 </html>`;
 }

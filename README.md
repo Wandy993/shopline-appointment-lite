@@ -1,6 +1,6 @@
 # Appointment Lite for SHOPLINE
 
-Version `0.3.3` — reconciles SHOPLINE REST and Admin GraphQL product catalogs and allows obsolete appointment services to be removed without deleting historical Booking records.
+Version `0.3.4` — fixes the service-editor scroll/sticky navigation UX, explains slot generation from duration + buffer, and gives booking actions clear text labels and semantic colors.
 
 Appointment Lite now supports two booking entry models:
 
@@ -9,6 +9,14 @@ Appointment Lite now supports two booking entry models:
 
 Typical scenarios include furniture installation and measurements, showroom visits, wedding fittings, jewelry or design consultations, beauty appointments, technician visits, lessons, workshops, small-group classes, and made-to-order product appointments.
 
+
+
+## v0.3.4 Service Editor UX + Booking Actions
+
+- The service editor is now a fixed-height internal scroller: header, wizard progress, close button, and bottom actions stay visible while the step content scrolls.
+- Service configuration sections have stronger spacing and grouping so service type, booking source, timing, weekly schedule, and exceptions no longer visually run together.
+- Availability now explains the slot algorithm in the UI. A 60-minute service with a 15-minute buffer creates starts every 75 minutes; for 09:00–17:00 that means 09:00, 10:15, 11:30, 12:45, 14:00, and 15:15.
+- Booking-list actions now use text for Activity and semantic colors for edit, complete, no-show, and cancel.
 
 ## v0.3.3 Product Sync Reliability + Safe Service Deletion
 

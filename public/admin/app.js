@@ -231,6 +231,11 @@ Object.assign(zh, {
 });
 
 Object.assign(zh, {
+  'How timing works': '时间如何计算', 'Duration is the appointment length. Buffer is reserved after each appointment before the next start time. Capacity controls how many customers can book the same start time.': '服务时长是一次预约实际占用的时间；缓冲时间会预留在两次预约之间，用于整理、移动或准备；单时段容量决定同一个开始时间可被多少位客户预约。',
+  'Start-time calculation': '预约时间计算', 'A {duration}-minute service with a {buffer}-minute buffer creates a new start time every {step} minutes.': '{duration} 分钟服务 + {buffer} 分钟缓冲，会每隔 {step} 分钟生成一个新的预约开始时间。',
+  'Example for {start}–{end}: {slots}. The last appointment must finish by {end}.': '例如 {start}–{end}：可预约开始时间为 {slots}。最后一笔预约必须在 {end} 前结束。',
+  'No enabled weekly hours yet. Start times will appear after you enable a day or add special hours.': '暂未启用每周营业时间。启用星期或添加特殊营业时间后，这里会显示预约开始时间示例。',
+  'Activity': '预约动态',
   'Open the configured product page or direct booking page and submit one test booking. The booking should appear in Bookings.': '打开已配置的商品页或独立预约页，提交一条测试预约，并确认该记录出现在预约记录中。',
   'Any service can use the product-page App Block, a direct booking page, or both. The booking source is configured independently from the service type.': '任何服务都可以使用商品页 App Block、独立预约页或同时使用两种入口；预约入口与服务类型独立配置。',
   'Step 1 connects product-page services to the storefront App Block': '第 1 步将商品页服务连接到店铺 App Block'
@@ -329,6 +334,59 @@ function renderDashboard(payload) {
   $('#setupChecklist').innerHTML = checks.map(item => `<div class="check-item ${item.done ? 'done' : ''}"><i>✓</i><span>${escapeHtml(item.label)}</span></div>`).join('');
 }
 
+function minutesFromClock(value) {
+  const match = String(value || '').match(/^(\d{2}):(\d{2})$/);
+  if (!match) return NaN;
+  return Number(match[1]) * 60 + Number(match[2]);
+}
+
+function clockFromMinutes(value) {
+  const hours = Math.floor(value / 60);
+  const minutes = value % 60;
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
+function slotPreview(start, end, duration, buffer) {
+  const from = minutesFromClock(start);
+  const until = minutesFromClock(end);
+  const serviceMinutes = Number(duration);
+  const bufferMinutes = Number(buffer || 0);
+  const step = serviceMinutes + bufferMinutes;
+  if (![from, until, serviceMinutes, bufferMinutes, step].every(Number.isFinite) || serviceMinutes <= 0 || step <= 0 || until <= from) return [];
+  const result = [];
+  for (let cursor = from; cursor + serviceMinutes <= until; cursor += step) result.push(clockFromMinutes(cursor));
+  return result;
+}
+
+function renderSlotLogic() {
+  const textNode = $('#slotLogicText');
+  const exampleNode = $('#slotLogicExample');
+  if (!textNode || !exampleNode) return;
+  const duration = Number($('#duration')?.value || 0);
+  const buffer = Number($('#buffer')?.value || 0);
+  const step = duration + buffer;
+  if (!Number.isFinite(duration) || duration <= 0 || !Number.isFinite(buffer) || buffer < 0 || step <= 0) {
+    textNode.textContent = '';
+    exampleNode.textContent = '';
+    return;
+  }
+  textNode.textContent = t('A {duration}-minute service with a {buffer}-minute buffer creates a new start time every {step} minutes.', {
+    duration: String(duration), buffer: String(buffer), step: String(step)
+  });
+  const row = $$('.schedule-row').find(item => item.querySelector('input[type=checkbox]')?.checked);
+  if (!row) {
+    exampleNode.textContent = t('No enabled weekly hours yet. Start times will appear after you enable a day or add special hours.');
+    return;
+  }
+  const times = row.querySelectorAll('input[type=time]');
+  const start = times[0]?.value || '';
+  const end = times[1]?.value || '';
+  const slots = slotPreview(start, end, duration, buffer);
+  exampleNode.textContent = slots.length
+    ? t('Example for {start}–{end}: {slots}. The last appointment must finish by {end}.', { start, end, slots: slots.join(', ') })
+    : t('No enabled weekly hours yet. Start times will appear after you enable a day or add special hours.');
+}
+
 function renderSchedule(values = []) {
   $('#weeklySchedule').innerHTML = days.map((day, weekday) => {
     const current = values.find(value => value.weekday === weekday);
@@ -336,7 +394,12 @@ function renderSchedule(values = []) {
     const enabled = Boolean(current?.enabled);
     return `<div class="schedule-row ${enabled ? 'enabled' : ''}" data-weekday="${weekday}"><label><input type="checkbox" ${enabled ? 'checked' : ''}>${t(day)}</label><input type="time" value="${escapeHtml(window.start)}" aria-label="${t(day)} ${t('start')}"><input type="time" value="${escapeHtml(window.end)}" aria-label="${t(day)} ${t('end')}"></div>`;
   }).join('');
-  $$('.schedule-row input[type=checkbox]').forEach(input => input.addEventListener('change', () => input.closest('.schedule-row').classList.toggle('enabled', input.checked)));
+  $$('.schedule-row input[type=checkbox]').forEach(input => input.addEventListener('change', () => {
+    input.closest('.schedule-row').classList.toggle('enabled', input.checked);
+    renderSlotLogic();
+  }));
+  $$('.schedule-row input[type=time]').forEach(input => input.addEventListener('input', renderSlotLogic));
+  renderSlotLogic();
 }
 
 function addQuestion(question = {}) {
@@ -461,6 +524,9 @@ function setRuleStep(step) {
   const subtitles = ['Choose how customers will book this service.', 'Set the store-local schedule customers can choose from.', 'Finish the customer-facing details and activate the service.'];
   $('#ruleDialogSubtitle').textContent = t(subtitles[state.ruleStep]);
   $('#formError').classList.add('hidden');
+  const body = $('#ruleDialog .modal-body');
+  if (body) body.scrollTop = 0;
+  if (state.ruleStep === 1) renderSlotLogic();
 }
 
 function validateRuleStep(step) {
@@ -743,7 +809,7 @@ function renderBookingList(bookings) {
     root.innerHTML = `<div class="empty"><strong>${t('No bookings found')}</strong><span>${t(state.bookings.length ? 'No bookings match the current filters.' : 'Confirmed appointments will appear here.')}</span></div>`;
     return;
   }
-  root.innerHTML = bookings.map(booking => `<div class="booking-row"><div class="booking-primary"><strong>${escapeHtml(booking.productTitle)}</strong><span>${escapeHtml(booking.customer.name)} · ${escapeHtml(booking.customer.email)}</span></div><div class="booking-cell"><strong>${escapeHtml(booking.date)}</strong><span>${escapeHtml(booking.time)} · ${escapeHtml(booking.timezone || state.shop?.timezone || 'UTC')}</span></div><div class="booking-cell"><strong>${escapeHtml(booking.staff || t('Any staff'))}</strong><span>${escapeHtml(booking.location || t('No location'))}</span></div><span class="status-badge ${booking.status}">${bookingStatusLabel(booking.status)}</span><div class="row-actions"><button class="secondary small icon-only" data-flow-booking="${booking._id}" title="${t('View history')}" aria-label="${t('View history')}">↻</button>${booking.status === 'confirmed' ? `<button class="secondary small" data-edit-booking="${booking._id}">${t('Edit')}</button><button class="secondary small" data-complete="${booking._id}">${t('Mark complete')}</button><button class="secondary small" data-no-show="${booking._id}">${t('No-show')}</button><button class="secondary small" data-cancel="${booking._id}">${t('Cancel')}</button>` : ''}</div></div>`).join('');
+  root.innerHTML = bookings.map(booking => `<div class="booking-row"><div class="booking-primary"><strong>${escapeHtml(booking.productTitle)}</strong><span>${escapeHtml(booking.customer.name)} · ${escapeHtml(booking.customer.email)}</span></div><div class="booking-cell"><strong>${escapeHtml(booking.date)}</strong><span>${escapeHtml(booking.time)} · ${escapeHtml(booking.timezone || state.shop?.timezone || 'UTC')}</span></div><div class="booking-cell"><strong>${escapeHtml(booking.staff || t('Any staff'))}</strong><span>${escapeHtml(booking.location || t('No location'))}</span></div><span class="status-badge ${booking.status}">${bookingStatusLabel(booking.status)}</span><div class="row-actions"><button class="small booking-action activity" data-flow-booking="${booking._id}">${t('Activity')}</button>${booking.status === 'confirmed' ? `<button class="small booking-action edit" data-edit-booking="${booking._id}">${t('Edit')}</button><button class="small booking-action complete" data-complete="${booking._id}">${t('Mark complete')}</button><button class="small booking-action no-show" data-no-show="${booking._id}">${t('No-show')}</button><button class="small booking-action cancel" data-cancel="${booking._id}">${t('Cancel')}</button>` : ''}</div></div>`).join('');
   bindBookingRows();
 }
 
@@ -1227,6 +1293,7 @@ function bind() {
   $('#addException')?.addEventListener('click', () => addException());
   $$('#serviceTypeGrid [data-service-type]').forEach(button => button.addEventListener('click', () => setServiceType(button.dataset.serviceType)));
   $$('#bookingSourceGrid [data-booking-source]').forEach(button => button.addEventListener('click', () => setBookingSource(button.dataset.bookingSource)));
+  ['duration', 'buffer'].forEach(id => $(`#${id}`)?.addEventListener('input', renderSlotLogic));
   $('#confirmNo').addEventListener('click', () => { pendingConfirm = null; $('#confirmDialog').close(); });
   $('#confirmYes').addEventListener('click', async () => {
     const action = pendingConfirm;

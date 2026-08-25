@@ -28,6 +28,17 @@ test('duration and buffer produce deterministic slots', () => {
   assert.deepEqual(slotsForDate(rule, '2026-08-24'), ['09:00', '10:15', '11:30']);
 });
 
+
+
+test('60-minute service plus 15-minute buffer explains the 09:00-17:00 storefront starts', () => {
+  const fullDayRule = {
+    duration: 60,
+    buffer: 15,
+    weeklyAvailability: [{ weekday: 5, enabled: true, windows: [{ start: '09:00', end: '17:00' }] }]
+  };
+  assert.deepEqual(slotsForDate(fullDayRule, '2026-08-28'), ['09:00', '10:15', '11:30', '12:45', '14:00', '15:15']);
+});
+
 test('past slots are filtered using the store time zone rather than the customer device time zone', () => {
   const now = new Date('2026-08-24T10:30:00.000Z');
   const sameDayRule = {

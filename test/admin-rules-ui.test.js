@@ -24,3 +24,17 @@ test('service cards constrain long titles and expose service operations', async 
   assert.match(stylesheet, /-webkit-line-clamp:2/);
   assert.match(stylesheet, /\.service-type-grid/);
 });
+
+
+test('service editor keeps navigation visible and explains slot timing', async () => {
+  const view = await readFile(new URL('../src/views/admin.js', import.meta.url), 'utf8');
+  const asset = await readFile(new URL('../public/admin/app.js', import.meta.url), 'utf8');
+  const stylesheet = await readFile(new URL('../public/admin/styles.css', import.meta.url), 'utf8');
+  assert.match(view, /id="slotLogicNotice"/);
+  assert.match(view, /id="slotLogicText"/);
+  assert.match(asset, /function renderSlotLogic\(/);
+  assert.match(asset, /duration \+ buffer/);
+  assert.match(stylesheet, /\.rule-modal form\{[^}]*grid-template-rows:auto auto minmax\(0,1fr\) auto/);
+  assert.match(stylesheet, /\.rule-modal \.modal-body\{[^}]*overflow-y:auto/);
+  assert.match(stylesheet, /\.rule-modal \.modal-actions\{[^}]*z-index:4/);
+});

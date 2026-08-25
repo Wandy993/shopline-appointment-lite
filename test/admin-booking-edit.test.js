@@ -38,3 +38,17 @@ test('admin uses designed controls and exposes a per-store Email Studio', async 
   assert.doesNotMatch(view, /Railway|Aliyun|HTTPS OpenAPI|About the Gmail/);
   assert.doesNotMatch(asset, /payload\.email\.provider/);
 });
+
+
+test('booking actions use text labels and semantic action colors', async () => {
+  const asset = await readFile(new URL('../public/admin/app.js', import.meta.url), 'utf8');
+  const stylesheet = await readFile(new URL('../public/admin/styles.css', import.meta.url), 'utf8');
+  assert.match(asset, /data-flow-booking=.*\$\{t\('Activity'\)\}/s);
+  assert.doesNotMatch(asset, /data-flow-booking=.*>↻<\/button>/s);
+  assert.match(asset, /booking-action complete/);
+  assert.match(asset, /booking-action no-show/);
+  assert.match(asset, /booking-action cancel/);
+  assert.match(stylesheet, /\.booking-action\.complete/);
+  assert.match(stylesheet, /\.booking-action\.no-show/);
+  assert.match(stylesheet, /\.booking-action\.cancel/);
+});

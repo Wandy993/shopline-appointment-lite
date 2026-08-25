@@ -428,3 +428,60 @@ button{min-height:38px;padding:8px 14px;border-color:var(--border-strong);border
 .picker-sync-meta{margin:0;padding:0 2px;color:#8290a3;font-size:10px;line-height:1.45}
 @keyframes product-sync-spin{to{transform:rotate(360deg)}}
 @media(max-width:600px){.picker-search-row{grid-template-columns:1fr}.product-sync-button{width:100%;justify-content:center}.picker-sync-meta{font-size:9px}}
+
+
+/* v0.3.4 — Service Editor UX + Booking Actions */
+.rule-modal{height:min(92dvh,900px);max-height:92dvh;overflow:hidden}
+.rule-modal form{height:100%;min-height:0;display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;overflow:hidden}
+.rule-modal .modal-head{position:relative;z-index:4;background:#fff}
+.rule-modal .wizard-steps{position:relative;z-index:3}
+.rule-modal .modal-body{min-height:0;max-height:none;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding:26px 28px 32px}
+.rule-modal .modal-actions{position:relative;z-index:4;flex:0 0 auto;background:#fff;box-shadow:0 -10px 24px rgba(41,65,102,.05)}
+.rule-step{display:grid;gap:24px}
+.rule-step.hidden{display:none!important}
+.rule-step .step-intro,.rule-step .field,.rule-step .field-row,.rule-step fieldset{margin:0}
+.rule-step .choice-fieldset{padding:18px;border:1px solid #e0e8f2;border-radius:13px;background:#fbfdff}
+.rule-step .choice-fieldset>legend{padding:0 5px;margin-left:-5px;background:#fbfdff}
+.rule-step #productSourceFields{margin:0}
+.rule-step .field-row.thirds{padding:18px;border:1px solid #e0e8f2;border-radius:13px;background:#fbfdff}
+.rule-step .field-row.thirds .field{margin:0}
+.rule-step>fieldset:not(.choice-fieldset):not(.exceptions-fieldset){padding:18px;border:1px solid #dce5f0;border-radius:13px;background:#fbfdff}
+.rule-step>fieldset:not(.choice-fieldset):not(.exceptions-fieldset)>legend{padding:0 6px;margin-left:-6px;background:#fbfdff}
+.rule-step .exceptions-fieldset{margin:0;padding:18px}
+.timing-helper{margin-top:-8px;padding:12px 14px;border:1px solid #dfe8f3;border-radius:11px;background:#f7faff;color:#667890}
+.timing-helper strong{display:block;margin-bottom:3px;color:#405a7a;font-size:10px;font-weight:720}
+.timing-helper p{margin:0;font-size:10px;line-height:1.55}
+.slot-logic-notice{display:grid;grid-template-columns:30px minmax(0,1fr);gap:11px;padding:14px 15px;border:1px solid #d6e4f8;border-radius:12px;background:#f4f8ff}
+.slot-logic-icon{width:28px;height:28px;display:grid;place-items:center;border-radius:8px;color:#245fbf;background:#e2edff;font-size:12px;font-weight:800}
+.slot-logic-notice strong{display:block;color:#355477;font-size:11px;font-weight:720}
+.slot-logic-notice p{margin:4px 0 3px;color:#57708f;font-size:10px;line-height:1.55}
+.slot-logic-notice small{display:block;color:#71849c;font-size:9px;line-height:1.55}
+.booking-table .table-head,.booking-table .booking-row{grid-template-columns:minmax(220px,1.55fr) minmax(135px,.72fr) minmax(145px,.78fr) 92px minmax(330px,1.15fr)}
+.booking-row .row-actions{gap:5px;flex-wrap:nowrap}
+.booking-action{min-height:29px;padding:5px 8px;border-width:1px;border-style:solid;border-radius:8px;box-shadow:none;font-size:9px;font-weight:680;white-space:nowrap}
+.booking-action.activity{color:#2f64aa;border-color:#c9daf3;background:#f2f7ff}
+.booking-action.activity:hover{color:#23518d;border-color:#aac4ea;background:#eaf3ff}
+.booking-action.edit{color:#53657b;border-color:#d2dce8;background:#fff}
+.booking-action.edit:hover{color:#344861;border-color:#bcc9d8;background:#f8fafc}
+.booking-action.complete{color:#267456;border-color:#c7e4d7;background:#eef8f3}
+.booking-action.complete:hover{color:#1f6248;border-color:#a8d5c2;background:#e5f5ed}
+.booking-action.no-show{color:#9a6418;border-color:#ead8b9;background:#fff8ec}
+.booking-action.no-show:hover{color:#805111;border-color:#dfc596;background:#fff3df}
+.booking-action.cancel{color:#ac3d49;border-color:#efcbd0;background:#fff4f5}
+.booking-action.cancel:hover{color:#912f3a;border-color:#e5adb5;background:#ffecee}
+@media(max-width:1180px){
+  .booking-table .table-head,.booking-table .booking-row{grid-template-columns:minmax(210px,1.35fr) minmax(125px,.7fr) minmax(135px,.7fr) 88px minmax(280px,1fr)}
+  .booking-row .row-actions{flex-wrap:wrap}
+}
+@media(max-width:900px){
+  .rule-modal{width:min(760px,calc(100% - 18px));height:min(96dvh,900px);max-height:96dvh}
+  .rule-modal .modal-body{padding:22px 20px 28px}
+  .booking-table .booking-row{grid-template-columns:1fr auto}
+  .booking-row .row-actions{flex-wrap:wrap}
+}
+@media(max-width:600px){
+  .rule-modal{width:100%;height:100dvh;max-height:100dvh;border-radius:0}
+  .rule-modal .modal-head{padding:16px 17px}.rule-modal .wizard-steps{padding:9px 12px}.rule-modal .modal-body{padding:20px 16px 26px}.rule-modal .modal-actions{padding:11px 14px}
+  .rule-step{gap:19px}.rule-step .choice-fieldset,.rule-step .field-row.thirds,.rule-step>fieldset:not(.choice-fieldset):not(.exceptions-fieldset),.rule-step .exceptions-fieldset{padding:14px}
+  .booking-action{font-size:9px}
+}
