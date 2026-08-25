@@ -1,6 +1,6 @@
 # Appointment Lite for SHOPLINE
 
-Version `0.2.6` — adds first-install Quickstart, merchant-chosen Email Studio test recipients, and mobile date-field alignment while retaining the v0.2.5 rules/product-picker/mobile fixes.
+Version `0.2.7` — refreshes the full merchant admin with the Mist Teal design system while preserving the v0.2.6 onboarding, Email Studio, booking, and storefront behavior.
 
 Appointment Lite turns selected SHOPLINE products into appointment or consultation services. It is designed for wedding fittings, jewelry consultations, furniture consultations, beauty services, classes, and made-to-order products.
 

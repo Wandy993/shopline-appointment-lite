@@ -12,7 +12,7 @@ export const EMAIL_TEMPLATE_KEYS = Object.freeze([
 export const DEFAULT_EMAIL_SETTINGS = Object.freeze({
   brandName: 'Appointment Lite',
   logoUrl: '',
-  accentColor: '#5B5BD6',
+  accentColor: '#2E7D73',
   replyToEmail: '',
   merchantNotificationEmail: '',
   templates: Object.freeze({
