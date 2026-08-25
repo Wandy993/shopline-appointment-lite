@@ -38,3 +38,17 @@ test('service editor keeps navigation visible and explains slot timing', async (
   assert.match(stylesheet, /\.rule-modal \.modal-body\{[^}]*overflow-y:auto/);
   assert.match(stylesheet, /\.rule-modal \.modal-actions\{[^}]*z-index:4/);
 });
+
+test('booking-mode unit suffixes stay horizontal and timing guidance keeps clear spacing', async () => {
+  const stylesheet = await readFile(new URL('../public/admin/styles.css', import.meta.url), 'utf8');
+  const view = await readFile(new URL('../src/views/admin.js', import.meta.url), 'utf8');
+  const marker = '/* v0.4.0 UI Polish.1 — horizontal input units + booking-mode spacing */';
+  const patch = stylesheet.slice(stylesheet.indexOf(marker));
+  assert.ok(patch.startsWith(marker));
+  assert.match(patch, /\.input-suffix>input\{[^}]*width:0;[^}]*min-width:0;[^}]*flex:1 1 auto/);
+  assert.match(patch, /\.input-suffix>span\{[^}]*flex:0 0 auto;[^}]*white-space:nowrap;[^}]*writing-mode:horizontal-tb/);
+  assert.match(patch, /\.mode-settings\{[^}]*display:grid;[^}]*gap:16px;[^}]*padding-bottom:2px/);
+  assert.match(patch, /\.timing-helper\{[^}]*margin-top:0;[^}]*position:relative/);
+  assert.match(view, /styles\.css\?v=0\.4\.0\.1/);
+  assert.match(view, /app\.js\?v=0\.4\.0\.1/);
+});

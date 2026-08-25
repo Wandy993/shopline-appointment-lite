@@ -489,3 +489,70 @@ button{min-height:38px;padding:8px 14px;border-color:var(--border-strong);border
 /* v0.4.0 — Booking Modes Foundation */
 .booking-mode-wizard button{min-width:86px}.booking-mode-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.booking-mode-option{min-height:142px;padding:14px;display:flex;flex-direction:column;align-items:flex-start;gap:6px;border:1px solid #dbe4f0;border-radius:12px;background:#fff;text-align:left;transition:.16s ease}.booking-mode-option:hover{border-color:#b9cdf0;background:#f9fbff}.booking-mode-option.selected{border-color:#8fb0ed;background:#edf4ff;box-shadow:0 0 0 2px rgba(47,111,237,.05)}.booking-mode-option strong{color:#344861;font-size:12px;font-weight:730}.booking-mode-option>span:not(.mode-icon){color:#78889d;font-size:9.5px;line-height:1.5}.mode-icon{min-width:34px;height:28px;padding:0 8px;display:grid;place-items:center;border-radius:8px;color:#245fbf;background:#edf4ff;font-size:10px;font-weight:800}.booking-mode-option.selected .mode-icon{color:#fff;background:var(--brand)}.mode-recommendation{display:block;margin-top:7px;color:#5f7390;font-size:10px;line-height:1.5}.mode-settings{margin-top:22px;padding-top:20px;border-top:1px solid #e5ebf3}.mode-explainer{padding:13px 14px;border:1px solid #dfe7f2;border-radius:11px;background:#f8faff}.mode-explainer strong,.mode-explainer span{display:block}.mode-explainer strong{color:#405a7a;font-size:11px}.mode-explainer span{margin-top:4px;color:#708198;font-size:10px;line-height:1.55}.compact-suffix{max-width:260px}.schedule.all-day-mode .schedule-row{grid-template-columns:1fr}.schedule.all-day-mode .schedule-row input[type=time]{display:none}.schedule-row.all-day label{grid-column:1}.exception-row.all-day{grid-template-columns:minmax(130px,1fr) minmax(140px,1fr) auto}.exception-row.all-day .exception-start,.exception-row.all-day .exception-end{display:none}.service-mode-badge{padding:3px 7px;border-radius:999px;color:#526985;background:#f1f5fa;font-size:8.5px;font-weight:700;white-space:nowrap}
 @media(max-width:760px){.booking-mode-grid{grid-template-columns:1fr}.booking-mode-option{min-height:92px}.booking-mode-wizard button{min-width:0}.exception-row.all-day{grid-template-columns:1fr}.exception-row.all-day button{width:100%}}
+
+/* v0.4.0 UI Polish.1 — horizontal input units + booking-mode spacing */
+.input-suffix{
+  min-width:0;
+  height:42px;
+  padding:0;
+  display:flex;
+  align-items:stretch;
+  overflow:hidden;
+}
+.input-suffix>input{
+  width:0;
+  min-width:0;
+  height:40px;
+  flex:1 1 auto;
+  padding:10px 11px;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  box-shadow:none!important;
+}
+.input-suffix>span{
+  min-width:max-content;
+  height:100%;
+  flex:0 0 auto;
+  padding:0 12px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border-left:1px solid #e2e8f0;
+  color:#718198;
+  font-size:10px;
+  line-height:1;
+  white-space:nowrap;
+  word-break:keep-all;
+  writing-mode:horizontal-tb;
+  text-orientation:mixed;
+}
+.mode-settings{
+  display:grid;
+  gap:16px;
+  margin-top:22px;
+  padding-top:20px;
+  padding-bottom:2px;
+  border-top:1px solid #e5ebf3;
+}
+.mode-settings>.field-row,
+.mode-settings>.field,
+.mode-settings>.timing-helper,
+.mode-settings>.mode-explainer{
+  margin:0;
+}
+.mode-settings .field{
+  margin-bottom:0;
+}
+.timing-helper{
+  margin-top:0;
+  position:relative;
+  clear:both;
+}
+.compact-suffix{
+  max-width:none;
+}
+@media(max-width:600px){
+  .input-suffix>span{padding:0 10px;font-size:10px}
+  .mode-settings{gap:14px;margin-top:18px;padding-top:16px}
+}
