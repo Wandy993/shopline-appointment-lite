@@ -188,3 +188,25 @@ test('reservation schema protects capacity for every occurrence', () => {
   const indexes = BookingReservation.schema.indexes();
   assert.ok(indexes.some(([keys, options]) => keys.slotKey === 1 && keys.slotPosition === 1 && options.unique === true && options.name === 'one_active_reservation_per_capacity_position'));
 });
+
+test('non-multi booking modes persist sessionsRequired=1 without Mongoose schema rejection', async () => {
+  const { AppointmentRule } = await import('../src/models/AppointmentRule.js');
+  const { value, errors } = validateRuleInput({
+    bookingSource: 'direct',
+    serviceType: 'consultation',
+    bookingMode: 'slot',
+    serviceTitle: 'Staff consultation',
+    duration: 60,
+    buffer: 0,
+    capacity: 1,
+    minimumNoticeMinutes: 0,
+    bookingWindowDays: 90,
+    weeklyAvailability: [{ weekday: 1, enabled: true, windows: [{ start: '09:00', end: '17:00' }] }],
+    staffAssignment: { mode: 'none', staffIds: [] }
+  });
+  assert.deepEqual(errors, []);
+  assert.equal(value.sessionsRequired, 1);
+  const doc = new AppointmentRule({ shopId: '507f191e810c19729de860ea', ...value });
+  const validationError = doc.validateSync();
+  assert.equal(validationError, undefined);
+});

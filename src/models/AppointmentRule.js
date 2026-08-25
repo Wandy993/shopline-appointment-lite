@@ -37,7 +37,7 @@ const appointmentRuleSchema = new mongoose.Schema({
   sourceType: { type: String, enum: ['product', 'standalone'], default: 'product', index: true },
   serviceType: { type: String, enum: ['appointment', 'product', 'in_store', 'onsite', 'consultation', 'class', 'other'], default: 'appointment' },
   bookingMode: { type: String, enum: ['slot', 'all_day', 'multi_slot'], default: 'slot', index: true },
-  sessionsRequired: { type: Number, min: 2, max: 12, default: 3 },
+  sessionsRequired: { type: Number, min: 1, max: 12, default: 1 },
 
   serviceTitle: { type: String, required: true, trim: true, maxlength: 255 },
   serviceDescription: { type: String, default: '', trim: true, maxlength: 500 },

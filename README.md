@@ -1,6 +1,6 @@
 # Appointment Lite for SHOPLINE
 
-Version `0.5.0` — adds first-class staff scheduling: team management, per-staff working hours, service assignments, customer/staff selection modes, conflict-safe booking allocation, merchant reassignment, and staff-aware booking filters across all booking modes.
+Version `0.5.0-hotfix.1` — adds first-class staff scheduling: team management, per-staff working hours, service assignments, customer/staff selection modes, conflict-safe booking allocation, merchant reassignment, and staff-aware booking filters across all booking modes.
 
 Appointment Lite now supports two booking entry models:
 
@@ -10,6 +10,14 @@ Appointment Lite now supports two booking entry models:
 Typical scenarios include furniture installation and measurements, showroom visits, wedding fittings, jewelry or design consultations, beauty appointments, technician visits, lessons, workshops, small-group classes, and made-to-order product appointments.
 
 
+
+
+## v0.5.0-hotfix.1 Service Save Fix
+
+- Fixes service creation/update for minute/hour and all-day modes by allowing the persisted single-occurrence value `sessionsRequired = 1`.
+- Multi-session services still require 2–12 sessions through application validation.
+- Normalizes existing non-multi services to `sessionsRequired = 1` during startup compatibility checks.
+- Converts Mongoose `ValidationError` failures into actionable HTTP 422 responses instead of a generic 500 error.
 
 ## v0.5.0 Staff Management Foundation
 

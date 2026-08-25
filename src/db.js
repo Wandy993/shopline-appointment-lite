@@ -52,7 +52,9 @@ export async function ensureOperationalIndexes() {
   await AppointmentRule.updateMany({ staffAssignment: { $exists: false } }, { $set: { staffAssignment: { mode: 'none', staffIds: [] } } });
 
   // v0.4.0: explicit booking modes and occurrence reservations. Existing bookings remain minute/hour appointments.
-  await AppointmentRule.updateMany({ bookingMode: { $exists: false } }, { $set: { bookingMode: 'slot', sessionsRequired: 3 } });
+  await AppointmentRule.updateMany({ bookingMode: { $exists: false } }, { $set: { bookingMode: 'slot', sessionsRequired: 1 } });
+  // v0.5.0-hotfix.1: non-multi booking modes represent exactly one occurrence.
+  await AppointmentRule.updateMany({ bookingMode: { $ne: 'multi_slot' }, sessionsRequired: { $ne: 1 } }, { $set: { sessionsRequired: 1 } });
   await Booking.updateMany({ bookingMode: { $exists: false } }, { $set: { bookingMode: 'slot' } });
   const legacyConfirmed = await Booking.find({ status: 'confirmed' }).select('_id shopId ruleId bookingMode date time slotKey slotPosition occurrences').lean();
   for (const booking of legacyConfirmed) {

@@ -1,12 +1,5 @@
-# Appointment Lite v0.5.0 Staff Management Foundation
+# Appointment Lite v0.5.0-hotfix.1 Service Save Fix
 
-Download `appointment-lite-v0.5.0-staff-management-foundation.zip` and the external one-click command to `~/Downloads`, then run from the existing project root:
+This hotfix fixes the Mongoose schema mismatch that prevented normal minute/hour and all-day services from being saved after v0.5.0.
 
-```bash
-cd /Users/SL/Documents/appointment-lite
-bash "$HOME/Downloads/appointment-lite-v0.5.0-mac-one-click-command.txt"
-```
-
-The command checks Git before overlay, creates a backup tag, overlays v0.5.0 while preserving the locally bound Theme App Extension, runs `npm ci`, the full test suite, and JavaScript checks, syncs the portable Theme Extension source, commits and pushes Git, queues Railway with `railway up --detach`, and immediately runs `sl extension push` without waiting for Railway build completion.
-
-v0.5.0 adds managed Staff records, weekly staff schedules and exceptions, service-to-staff assignments, automatic/customer/fixed assignment modes, cross-service conflict protection, multi-session same-staff allocation, merchant reassignment, and Staff filtering in Bookings. Existing services stay in `No staff required` mode after upgrade until the merchant opts them into managed staffing.
+Download the release ZIP and external Mac one-click command to `~/Downloads`, then run from the existing project root. The command validates Git state, creates a backup tag, overlays the hotfix, runs `npm ci`, the full test suite and JavaScript checks, pushes Git, queues Railway with `railway up --detach`, and immediately pushes the SHOPLINE Theme App Extension.

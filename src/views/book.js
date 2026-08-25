@@ -6,7 +6,7 @@ export function bookingPage(ruleId) {
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="robots" content="noindex,nofollow">
   <title>Book an appointment</title>
-  <link rel="stylesheet" href="/book/assets/styles.css?v=0.5.0">
+  <link rel="stylesheet" href="/book/assets/styles.css?v=0.5.0-hotfix.1">
 </head>
 <body data-rule-id="${String(ruleId).replace(/[^a-f\d]/gi, '')}">
   <main class="booking-shell">
@@ -25,7 +25,7 @@ export function bookingPage(ruleId) {
     <section id="successView" class="booking-card hidden"><div class="success-state"><span class="success-mark">✓</span><span class="eyebrow">BOOKING CONFIRMED</span><h1 id="successTitle">You're booked.</h1><p id="successWhen"></p><p id="successDetails" class="muted"></p><a id="manageBooking" class="primary link-button" href="#">Manage appointment</a></div></section>
     <footer>Powered by Appointment Lite</footer>
   </main>
-  <script type="module" src="/book/assets/app.js?v=0.5.0"></script>
+  <script type="module" src="/book/assets/app.js?v=0.5.0-hotfix.1"></script>
 </body>
 </html>`;
 }
