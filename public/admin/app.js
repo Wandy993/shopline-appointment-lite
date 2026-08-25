@@ -551,7 +551,7 @@ function renderEmailPreview() {
   storeCurrentTemplate();
   state.emailSettings.brandName = $('#emailBrandName').value || 'Appointment Lite';
   state.emailSettings.logoUrl = $('#emailLogoUrl').value;
-  state.emailSettings.accentColor = /^#[0-9a-f]{6}$/i.test($('#emailAccentHex').value) ? $('#emailAccentHex').value.toUpperCase() : '#2E7D73';
+  state.emailSettings.accentColor = /^#[0-9a-f]{6}$/i.test($('#emailAccentHex').value) ? $('#emailAccentHex').value.toUpperCase() : '#2F6FED';
   const template = state.emailSettings.templates[state.activeTemplate];
   const brandName = state.emailSettings.brandName;
   const accent = state.emailSettings.accentColor;

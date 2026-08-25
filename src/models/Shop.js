@@ -9,7 +9,7 @@ const emailTemplateSchema = new mongoose.Schema({
 const emailSettingsSchema = new mongoose.Schema({
   brandName: { type: String, maxlength: 80, default: 'Appointment Lite' },
   logoUrl: { type: String, maxlength: 500, default: '' },
-  accentColor: { type: String, match: /^#[0-9a-f]{6}$/i, default: '#2E7D73' },
+  accentColor: { type: String, match: /^#[0-9a-f]{6}$/i, default: '#2F6FED' },
   replyToEmail: { type: String, maxlength: 254, default: '' },
   merchantNotificationEmail: { type: String, maxlength: 254, default: '' },
   templates: {

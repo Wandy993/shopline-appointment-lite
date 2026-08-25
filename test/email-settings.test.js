@@ -5,7 +5,7 @@ import { DEFAULT_EMAIL_SETTINGS, interpolateTemplate, normalizeEmailSettings, va
 test('email settings inherit safe branded defaults for every notification type', () => {
   const settings = normalizeEmailSettings({});
   assert.equal(settings.brandName, 'Appointment Lite');
-  assert.equal(settings.accentColor, '#2E7D73');
+  assert.equal(settings.accentColor, '#2F6FED');
   assert.deepEqual(Object.keys(settings.templates), Object.keys(DEFAULT_EMAIL_SETTINGS.templates));
   assert.match(settings.templates.confirmation.subject, /\{\{product_title\}\}/);
 });
