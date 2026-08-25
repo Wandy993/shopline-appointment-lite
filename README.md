@@ -1,6 +1,6 @@
 # Appointment Lite for SHOPLINE
 
-Version `0.2.5` — fixes appointment-rule copy and card overflow, restores product selection, and hardens the storefront booking dialog for mobile Safari.
+Version `0.2.6` — adds first-install Quickstart, merchant-chosen Email Studio test recipients, and mobile date-field alignment while retaining the v0.2.5 rules/product-picker/mobile fixes.
 
 Appointment Lite turns selected SHOPLINE products into appointment or consultation services. It is designed for wedding fittings, jewelry consultations, furniture consultations, beauty services, classes, and made-to-order products.
 
@@ -16,11 +16,11 @@ Implemented:
 - Atomic duplicate-slot protection using a MongoDB partial unique index.
 - Server-authoritative past-slot protection using the SHOPLINE store's IANA time zone; storefront and management availability never return elapsed slots.
 - Provider-neutral email notifications through Aliyun DirectMail HTTPS OpenAPI or Resend; missing or failing email configuration never rolls back a booking.
-- Per-store Email Studio for brand name, email logo, accent color, reply-to routing, merchant notifications, five editable subject/body templates, template variables, live preview, and branded test delivery.
+- Per-store Email Studio for brand name, email logo, accent color, reply-to routing, merchant notifications, five editable subject/body templates, template variables, live preview, and branded test delivery to a merchant-selected test recipient.
 - Confirmation email with a private, cross-device Manage Appointment link. The page immediately moves the high-entropy email token into session storage and removes it from the address bar; MongoDB stores only its SHA-256 hash.
 - Customer emails for confirmation, one-time self-service rescheduling, cancellation, and merchant edits; optional merchant new-booking notification.
 - Per-booking activity history for creation, customer rescheduling, merchant edits, and customer/merchant cancellations. Existing records receive a safe legacy creation event when displayed.
-- SHOPLINE product-template App Block deep link that opens in a new window when the extension UUID and read-only theme permission are available, with a safe theme-page fallback for older installs.
+- SHOPLINE product-template App Block deep link that opens in a new window when the extension UUID and read-only theme permission are available, with a safe theme-page fallback for older installs. New stores with no rules or bookings receive a three-step Quickstart that begins with enabling the App Block, then creating a service, then testing the storefront booking flow.
 - English-first storefront locale directories with Simplified Chinese strings.
 - Free/Pro plan boundaries remain reserved without a real billing dependency; rule-count enforcement is disabled by default for the MVP.
 - Standalone Theme App Extension **source template** in `theme-extension-source/`.

@@ -1,10 +1,10 @@
-# Appointment Lite v0.2.5 Mac release overlay
+# Appointment Lite v0.2.6 Merchant Experience Upgrade
 
 Use `docs/INSTALL_MAC_COMMAND.txt` or the command supplied with the release ZIP.
 
 This release command is designed for the existing local Appointment Lite Git repository. It:
 
-- verifies the exact v0.2.5 ZIP before touching local files;
+- verifies the exact v0.2.6 ZIP before touching local files;
 - fetches the current Git remote **before** overlaying release files;
 - fast-forwards automatically when the local branch is only behind the remote, and stops before changing files if the histories have diverged;
 - creates a Git backup tag;
@@ -12,7 +12,7 @@ This release command is designed for the existing local Appointment Lite Git rep
 - overlays only distributable source files;
 - runs `npm ci`, the complete test suite, and syntax checks;
 - synchronizes `theme-extension-source/` into the existing CLI-created Theme App Extension;
-- commits and pushes v0.2.5;
+- commits and pushes v0.2.6;
 - deploys the backend with `railway up` (without the deprecated/incompatible `-y` flag);
 - pushes the Theme App Extension with `sl extension push`.
 

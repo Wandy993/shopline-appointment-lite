@@ -21,6 +21,14 @@ const emailSettingsSchema = new mongoose.Schema({
   }
 }, { _id: false });
 
+
+const onboardingSchema = new mongoose.Schema({
+  quickstartStartedAt: Date,
+  quickstartDismissedAt: Date,
+  appBlockConfirmedAt: Date,
+  themeEditorOpenedAt: Date
+}, { _id: false });
+
 const shopSchema = new mongoose.Schema({
   handle: { type: String, required: true, unique: true, lowercase: true, trim: true, index: true },
   shoplineStoreId: { type: String, unique: true, sparse: true, trim: true, index: true },
@@ -33,6 +41,7 @@ const shopSchema = new mongoose.Schema({
   timezone: { type: String, default: 'UTC' },
   email: { type: String, default: '' },
   emailSettings: { type: emailSettingsSchema, default: () => ({}) },
+  onboarding: { type: onboardingSchema, default: () => ({}) },
   plan: { type: String, enum: ['free', 'pro'], default: 'free' },
   installedAt: { type: Date, default: Date.now },
   uninstalledAt: Date

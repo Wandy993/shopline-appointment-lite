@@ -90,6 +90,14 @@ export function validateEmailSettings(input = {}) {
   return { errors: [...new Set(errors)], value };
 }
 
+
+export function validateTestEmailRecipient(input) {
+  const value = text(input, 254);
+  if (!value) return { error: 'Enter an email address for the test message.', value: '' };
+  if (!EMAIL_PATTERN.test(value)) return { error: 'Enter a valid email address for the test message.', value };
+  return { error: '', value };
+}
+
 export function templateVariables(booking = {}, extras = {}) {
   return {
     customer_name: booking.customer?.name || 'Customer',

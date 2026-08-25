@@ -34,6 +34,7 @@ test('booking dialog keeps selected times and submit action visible', async () =
   assert.match(stylesheet, /\.al-dialog\{[^}]*100vw[^}]*100dvh/);
   assert.match(stylesheet, /\.al-form-body\{[^}]*overflow-y:auto[^}]*overflow-x:hidden/);
   assert.match(stylesheet, /font-size:16px/);
+  assert.match(stylesheet, /input\[type=\"date\"\][^{]*\{[^}]*inline-size:100%!important[^}]*max-inline-size:100%!important/);
   assert.match(asset, /lockPageForDialog/);
   assert.match(asset, /document\.body\.classList\.add\('al-dialog-open'\)/);
 });

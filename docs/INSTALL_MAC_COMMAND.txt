@@ -1,8 +1,8 @@
-bash <<'APPOINTMENT_LITE_V025'
+bash <<'APPOINTMENT_LITE_V026'
 set -u
 
-VERSION="0.2.5"
-RELEASE_SLUG="appointment-lite-v0.2.5-rules-product-picker-mobile-fix"
+VERSION="0.2.6"
+RELEASE_SLUG="appointment-lite-v0.2.6-merchant-experience-upgrade"
 ZIP_NAME="${RELEASE_SLUG}.zip"
 ZIP_PATH="${ZIP_PATH:-$HOME/Downloads/$ZIP_NAME}"
 TARGET_DIR="${TARGET_DIR:-$PWD}"
@@ -38,7 +38,7 @@ fi
 CURRENT_BRANCH="$(git -C "$TARGET_DIR" branch --show-current)"
 if [ -z "$CURRENT_BRANCH" ]; then fail "Detached Git HEAD detected."; exit 1; fi
 if [ -n "$(git -C "$TARGET_DIR" status --porcelain 2>/dev/null)" ]; then
-  fail "Working tree has uncommitted tracked/untracked changes. Commit or stash them before applying v0.2.5."
+  fail "Working tree has uncommitted tracked/untracked changes. Commit or stash them before applying v0.2.6."
   exit 1
 fi
 if git -C "$TARGET_DIR" remote get-url origin >/dev/null 2>&1; then
@@ -54,12 +54,12 @@ if git -C "$TARGET_DIR" remote get-url origin >/dev/null 2>&1; then
 fi
 
 say "3/12 Create Git backup tag"
-BACKUP_TAG="appointment-lite-pre-v0.2.5-$(date +%Y%m%d-%H%M%S)"
+BACKUP_TAG="appointment-lite-pre-v0.2.6-$(date +%Y%m%d-%H%M%S)"
 git -C "$TARGET_DIR" tag "$BACKUP_TAG" HEAD || { fail "Git backup tag failed."; exit 1; }
 printf 'Backup tag: %s\n' "$BACKUP_TAG"
 
 say "4/12 Extract release"
-TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/appointment-lite-v025.XXXXXX")" || { fail "Could not create temp directory."; exit 1; }
+TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/appointment-lite-v026.XXXXXX")" || { fail "Could not create temp directory."; exit 1; }
 unzip -q "$ZIP_PATH" -d "$TEMP_DIR" || { fail "ZIP extraction failed."; exit 1; }
 SOURCE_DIR="$TEMP_DIR/$RELEASE_SLUG"
 if [ ! -f "$SOURCE_DIR/package.json" ] || [ ! -f "$SOURCE_DIR/src/server.js" ]; then
@@ -96,11 +96,11 @@ else
   PUSH_THEME=0
 fi
 
-say "10/12 Commit and push v0.2.5"
+say "10/12 Commit and push v0.2.6"
 git -C "$TARGET_DIR" add -A -- . ':!theme-app-extension' 2>/dev/null || git -C "$TARGET_DIR" add -A -- . || { fail "git add failed."; exit 1; }
 git -C "$TARGET_DIR" reset -- theme-app-extension >/dev/null 2>&1 || true
 if ! git -C "$TARGET_DIR" diff --cached --quiet; then
-  git -C "$TARGET_DIR" commit -m "fix: Appointment Lite v0.2.5 rules picker and mobile booking UI" || { fail "Release commit failed."; exit 1; }
+  git -C "$TARGET_DIR" commit -m "feat: Appointment Lite v0.2.6 merchant experience upgrade" || { fail "Release commit failed."; exit 1; }
 fi
 if git -C "$TARGET_DIR" remote get-url origin >/dev/null 2>&1; then
   git -C "$TARGET_DIR" push origin "$CURRENT_BRANCH" || { fail "git push failed."; exit 1; }
@@ -127,8 +127,8 @@ else
 fi
 
 printf '\n========================================\n'
-printf '✅ Appointment Lite v0.2.5 complete\n'
+printf '✅ Appointment Lite v0.2.6 complete\n'
 printf '========================================\n'
 printf 'Backup tag: %s\n' "$BACKUP_TAG"
 git -C "$TARGET_DIR" status
-APPOINTMENT_LITE_V025
+APPOINTMENT_LITE_V026

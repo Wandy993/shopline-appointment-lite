@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DEFAULT_EMAIL_SETTINGS, interpolateTemplate, normalizeEmailSettings, validateEmailSettings } from '../src/lib/email-settings.js';
+import { DEFAULT_EMAIL_SETTINGS, interpolateTemplate, normalizeEmailSettings, validateEmailSettings, validateTestEmailRecipient } from '../src/lib/email-settings.js';
 
 test('email settings inherit safe branded defaults for every notification type', () => {
   const settings = normalizeEmailSettings({});
@@ -20,4 +20,11 @@ test('merchant email settings validate URLs, colors, and routing addresses', () 
 test('template variables interpolate known values without evaluating template text', () => {
   const output = interpolateTemplate('Hi {{customer_name}} — {{unknown}}', { customer_name: 'Jamie' });
   assert.equal(output, 'Hi Jamie — {{unknown}}');
+});
+
+
+test('test-email recipient is merchant supplied and strictly validated', () => {
+  assert.deepEqual(validateTestEmailRecipient(' Owner@Example.com '), { error: '', value: 'Owner@Example.com' });
+  assert.match(validateTestEmailRecipient('').error, /Enter an email address/);
+  assert.match(validateTestEmailRecipient('not-an-email').error, /valid email address/);
 });

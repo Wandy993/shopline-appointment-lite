@@ -46,3 +46,15 @@ The server regenerates valid slots from the stored rule before inserting. A cust
 ## Timezone boundary
 
 This MVP stores merchant-local `date` and `time` strings plus the shop's IANA timezone snapshot. Availability and all booking mutations compare those strings against the server's current minute formatted in that IANA time zone, so elapsed slots cannot be created or selected. The UI labels times as store-local instead of silently converting them to the customer's device time zone. A later calendar-integration release should add an unambiguous UTC instant calculated with a timezone-aware library and migration tests for DST transitions.
+
+
+## Merchant onboarding state
+
+`Shop.onboarding` stores only lightweight setup progress:
+
+- `quickstartStartedAt` — a previously unconfigured merchant entered the first-install Quickstart; this keeps the three-step guide active across service creation until completion or dismissal.
+- `themeEditorOpenedAt` — merchant opened the theme-editor deep link.
+- `appBlockConfirmedAt` — merchant explicitly confirmed that the Appointment Lite App Block is enabled.
+- `quickstartDismissedAt` — merchant dismissed or completed the first-install Quickstart.
+
+Service creation and test-booking completion are derived from existing rule/booking records rather than duplicated in the Shop document.

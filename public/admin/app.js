@@ -1,7 +1,7 @@
 const state = {
   csrf: '', shop: null, email: null, emailSettings: null, rules: [], bookings: [], products: [],
   bookingFilter: '', ruleStep: 0, activeTemplate: 'confirmation', emailEditorReady: false,
-  locale: 'en', currentView: 'dashboard', themeLinkLoaded: false, bootstrap: null
+  locale: 'en', currentView: 'dashboard', themeLinkLoaded: false, bootstrap: null, onboarding: null, lastTestEmail: ''
 };
 const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const viewLabels = {
@@ -121,6 +121,31 @@ Object.assign(zh, {
   'Cancel booking': '取消预约'
 });
 
+Object.assign(zh, {
+  'QUICK SETUP': '快速设置', 'Launch Appointment Lite': '启用 Appointment Lite',
+  'Complete the storefront connection first, then create a service and test the booking flow.': '先完成店铺前台连接，再创建预约服务并测试完整预约流程。',
+  'Enable the Appointment Lite App Block': '启用 Appointment Lite App Block',
+  'Open the product template in the SHOPLINE theme editor, add or activate the Appointment Lite App Block, then save the theme.': '打开 SHOPLINE 主题编辑器中的商品模板，添加或启用 Appointment Lite App Block，然后保存主题。',
+  "I've enabled the App Block": '我已启用 App Block', 'Create your first appointment service': '创建第一个预约服务',
+  'Select the SHOPLINE product customers will book, then configure duration, availability, location, and specialist.': '选择客户需要预约的 SHOPLINE 商品，并配置预约时长、可预约时段、地点和服务人员。',
+  'Create a service': '创建预约服务', 'Test the storefront booking flow': '测试店铺前台预约流程',
+  'Open the configured product page and submit one test booking. The booking should appear in Bookings.': '打开已配置的商品页并完成一次测试预约，预约记录应出现在“预约记录”中。',
+  'Preview bookable product': '预览可预约商品', 'Quick setup': '快速设置',
+  'New merchants should enable the App Block before creating a service so the storefront is ready when the first rule goes live.': '新商家应先启用 App Block，再创建预约服务，这样第一条规则启用时店铺前台已经准备就绪。',
+  'Step 1 connects the storefront App Block': '第 1 步连接店铺前台 App Block', 'Step 2 creates the first appointment service': '第 2 步创建第一个预约服务',
+  'Step 3 verifies the complete customer booking experience': '第 3 步验证完整的客户预约体验',
+  'EMAIL TEST': '测试邮件', 'Send a test email': '发送测试邮件', 'Choose the inbox that should receive this preview.': '选择接收本次预览邮件的邮箱。',
+  'Test recipient': '测试收件邮箱', 'This address is used only for this test. It does not change your saved notification recipients.': '该邮箱仅用于本次测试，不会修改已保存的通知收件邮箱。',
+  'Send test email': '发送测试邮件', 'QUICK START': '快速开始', 'Set up Appointment Lite': '设置 Appointment Lite',
+  'Get your first booking flow ready in three steps.': '通过 3 个步骤完成第一个预约流程。',
+  'Start with the App Block so your storefront is ready before you publish a service.': '先启用 App Block，确保创建预约服务前店铺前台已经准备完成。',
+  'Open the product template, activate the Appointment Lite App Block, and save the theme.': '打开商品模板，启用 Appointment Lite App Block，并保存主题。',
+  'Choose a SHOPLINE product and configure the available schedule.': '选择一个 SHOPLINE 商品并配置可预约时间。',
+  'Test a booking on your storefront': '在店铺前台测试预约', 'Open the configured product and complete one test appointment.': '打开已配置的商品并完成一次测试预约。',
+  "I'll finish later": '稍后完成', '{done} of 3 complete': '已完成 {done}/3', 'App Block enabled': 'App Block 已启用', 'App Block enabled.': 'App Block 已标记为启用。',
+  'Enter an email address for the test message.': '请输入接收测试邮件的邮箱。', 'Enter a valid email address for the test message.': '请输入有效的测试收件邮箱。'
+});
+
 function t(value, variables = {}) {
   let result = state.locale === 'zh-CN' ? (zh[value] || value) : value;
   for (const [key, replacement] of Object.entries(variables)) result = result.replaceAll(`{${key}}`, replacement);
@@ -203,9 +228,9 @@ function renderDashboard(payload) {
 
   const checks = [
     { done: Boolean(payload.shop.storeId), label: t('SHOPLINE store connected') },
+    { done: Boolean(payload.onboarding?.appBlockConfirmed), label: t('Enable the Appointment Lite App Block') },
     { done: payload.stats.activeRuleCount > 0, label: t('At least one active service rule') },
-    { done: payload.email.configured, label: t('Email notifications ready') },
-    { done: Boolean(payload.emailSettings?.brandName), label: t('Email design customized') }
+    { done: payload.stats.bookingCount > 0, label: t('Test the storefront booking flow') }
   ];
   const completed = checks.filter(item => item.done).length;
   const percent = Math.round(completed / checks.length * 100);
@@ -573,15 +598,111 @@ async function saveEmailSettings({ silent = false } = {}) {
   } finally { button.disabled = false; }
 }
 
-async function sendTest() {
-  const button = $('#sendTestEmail');
+function openTestEmailDialog() {
+  if (!state.email?.configured) return toast(t('Complete the email settings before sending notifications.'), 'error');
+  const input = $('#testEmailRecipient');
+  input.value = state.lastTestEmail || state.emailSettings?.merchantNotificationEmail || state.shop?.email || '';
+  $('#testEmailError').classList.add('hidden');
+  $('#testEmailDialog').showModal();
+  setTimeout(() => { input.focus(); input.select(); }, 0);
+}
+
+async function sendTest(event) {
+  event.preventDefault();
+  const input = $('#testEmailRecipient');
+  const button = $('#confirmSendTestEmail');
+  const errorBox = $('#testEmailError');
+  if (!input.checkValidity()) {
+    input.reportValidity();
+    return;
+  }
   button.disabled = true;
+  errorBox.classList.add('hidden');
   try {
     if (!await saveEmailSettings({ silent: true })) return;
-    const payload = await api('/email/test', { method: 'POST', body: '{}' });
+    const payload = await api('/email/test', { method: 'POST', body: JSON.stringify({ to: input.value.trim() }) });
+    state.lastTestEmail = payload.to;
+    $('#testEmailDialog').close();
     toast(state.locale === 'zh-CN' ? `测试邮件已发送至 ${payload.to}。` : `Test email sent to ${payload.to}.`);
-  } catch (error) { showError(error); }
-  finally { button.disabled = !state.email?.configured; }
+  } catch (error) {
+    errorBox.textContent = t(error.message || String(error));
+    errorBox.classList.remove('hidden');
+  } finally { button.disabled = false; }
+}
+
+function setOnboardingStep(id, { done = false, active = false, locked = false } = {}) {
+  const element = $(`#${id}`);
+  if (!element) return;
+  element.classList.toggle('completed', done);
+  element.classList.toggle('active', active && !done);
+  element.classList.toggle('locked', locked && !done);
+  const number = element.querySelector('.quickstart-number');
+  if (number) number.textContent = done ? '✓' : number.dataset.step || number.textContent;
+}
+
+function setPreviewLink(id, url, enabled) {
+  const link = $(`#${id}`);
+  if (!link) return;
+  link.href = enabled && url ? url : '#';
+  link.classList.toggle('disabled', !(enabled && url));
+}
+
+function renderOnboarding(payload = state.bootstrap) {
+  if (!payload) return;
+  const onboarding = payload.onboarding || {};
+  state.onboarding = onboarding;
+  const blockDone = Boolean(onboarding.appBlockConfirmed);
+  const serviceDone = payload.stats.activeRuleCount > 0;
+  const testDone = payload.stats.bookingCount > 0;
+  const steps = [blockDone, serviceDone, testDone];
+  const activeIndex = steps.findIndex(done => !done);
+
+  const setupSteps = ['setupBlockStep', 'setupServiceStep', 'setupTestStep'];
+  setupSteps.forEach((id, index) => setOnboardingStep(id, { done: steps[index], active: index === activeIndex }));
+  const quickSteps = ['quickstartBlockStep', 'quickstartServiceStep', 'quickstartTestStep'];
+  quickSteps.forEach((id, index) => setOnboardingStep(id, { done: steps[index], active: index === activeIndex, locked: index > 0 && !steps[index - 1] }));
+
+  const completed = steps.filter(Boolean).length;
+  $('#quickstartProgressLabel').textContent = t('{done} of 3 complete', { done: String(completed) });
+  $('#quickstartProgress').style.width = `${Math.round(completed / 3 * 100)}%`;
+
+  ['confirmAppBlock', 'quickstartConfirmBlock'].forEach(id => {
+    const button = $(`#${id}`);
+    if (!button) return;
+    button.disabled = blockDone;
+    button.textContent = blockDone ? t('App Block enabled') : t("I've enabled the App Block");
+  });
+
+  setPreviewLink('setupPreviewProduct', onboarding.previewUrl, serviceDone);
+  setPreviewLink('quickstartPreviewProduct', onboarding.previewUrl, serviceDone);
+  $('#quickstartDone').classList.toggle('hidden', completed !== 3);
+  $('#dismissQuickstart').classList.toggle('hidden', completed === 3);
+}
+
+async function updateOnboarding(action, { reload = true } = {}) {
+  const payload = await api('/onboarding', { method: 'PUT', body: JSON.stringify({ action }) });
+  state.onboarding = { ...(state.onboarding || {}), ...(payload.onboarding || {}) };
+  if (reload) await loadBootstrap();
+  return payload;
+}
+
+async function confirmAppBlockEnabled() {
+  const buttons = [$('#confirmAppBlock'), $('#quickstartConfirmBlock')].filter(Boolean);
+  buttons.forEach(button => { button.disabled = true; });
+  try {
+    await updateOnboarding('confirm-app-block');
+    toast(t('App Block enabled.'));
+  } catch (error) {
+    buttons.forEach(button => { button.disabled = false; });
+    showError(error);
+  }
+}
+
+async function dismissQuickstart() {
+  const dialog = $('#quickstartDialog');
+  try { await updateOnboarding('dismiss-quickstart', { reload: false }); }
+  catch (error) { showError(error); return; }
+  if (dialog.open) dialog.close();
 }
 
 let pendingConfirm = null;
@@ -600,6 +721,7 @@ async function loadBootstrap() {
   state.shop = payload.shop;
   state.email = payload.email;
   state.emailSettings = clone(payload.emailSettings);
+  state.onboarding = payload.onboarding || {};
   $('#shopBadge').textContent = `${payload.shop.handle}.myshopline.com`;
   $('#timezoneBadge').textContent = payload.shop.timezone || 'UTC';
   $('#bookingTimezone').textContent = payload.shop.timezone || 'UTC';
@@ -615,6 +737,19 @@ async function loadBootstrap() {
   $('#sendTestEmail').disabled = !payload.email.configured;
   renderDashboard(payload);
   renderEmailStudio();
+  renderOnboarding(payload);
+  if (payload.onboarding?.shouldShowQuickstart && !$('#quickstartDialog').open) {
+    if (!payload.onboarding.quickstartStarted) {
+      try {
+        const started = await updateOnboarding('start-quickstart', { reload: false });
+        payload.onboarding = { ...payload.onboarding, ...(started.onboarding || {}), shouldShowQuickstart: true };
+        state.onboarding = payload.onboarding;
+      } catch (error) { console.warn('Could not persist Quickstart start state:', error.message); }
+    }
+    await loadThemeEditorLink();
+    renderOnboarding(payload);
+    $('#quickstartDialog').showModal();
+  }
 }
 
 async function setLocale(locale, { save = true } = {}) {
@@ -627,7 +762,7 @@ async function setLocale(locale, { save = true } = {}) {
   renderTemplateTabs();
   if (state.rules.length) renderRules();
   if (state.bookings.length) renderBookings();
-  if (state.bootstrap) renderDashboard(state.bootstrap);
+  if (state.bootstrap) { renderDashboard(state.bootstrap); renderOnboarding(state.bootstrap); }
   if (state.emailSettings) renderEmailStudio();
   if (save) {
     try { await api('/preferences', { method: 'PUT', body: JSON.stringify({ adminLocale: state.locale }) }); }
@@ -637,12 +772,14 @@ async function setLocale(locale, { save = true } = {}) {
 
 async function loadThemeEditorLink() {
   if (state.themeLinkLoaded) return;
-  const link = $('#openThemeEditor');
+  const links = [$('#openThemeEditor'), $('#quickstartThemeEditor')].filter(Boolean);
   const hint = $('#themeEditorHint');
   try {
     const payload = await api('/storefront/deep-link');
-    link.href = payload.url;
-    link.classList.remove('disabled');
+    links.forEach(link => {
+      link.href = payload.url;
+      link.classList.remove('disabled');
+    });
     hint.textContent = t(payload.available ? 'The editor will open on the product template in a new window.' : 'Open the theme page, choose Customize, then add Appointment Lite to the product template.');
     state.themeLinkLoaded = true;
   } catch (error) {
@@ -707,7 +844,16 @@ function bind() {
     if (action) try { await action(); } catch (error) { showError(error); }
   });
   $('#saveEmailSettings').addEventListener('click', () => saveEmailSettings());
-  $('#sendTestEmail').addEventListener('click', sendTest);
+  $('#sendTestEmail').addEventListener('click', openTestEmailDialog);
+  $('#testEmailForm').addEventListener('submit', sendTest);
+  $$('[data-close-test-email]').forEach(button => button.addEventListener('click', () => $('#testEmailDialog').close()));
+  $('#confirmAppBlock').addEventListener('click', confirmAppBlockEnabled);
+  $('#quickstartConfirmBlock').addEventListener('click', confirmAppBlockEnabled);
+  $$('[data-dismiss-quickstart]').forEach(button => button.addEventListener('click', dismissQuickstart));
+  $('#dismissQuickstart').addEventListener('click', dismissQuickstart);
+  $('#quickstartDone').addEventListener('click', dismissQuickstart);
+  $('#quickstartCreateService').addEventListener('click', () => { if ($('#quickstartDialog').open) $('#quickstartDialog').close(); openRule(); });
+  ['openThemeEditor', 'quickstartThemeEditor'].forEach(id => $(`#${id}`)?.addEventListener('click', () => { updateOnboarding('theme-editor-opened', { reload: false }).catch(() => {}); }));
   ['emailBrandName', 'emailLogoUrl', 'templateSubject', 'templateHeading', 'templateBody'].forEach(id => $(`#${id}`).addEventListener('input', renderEmailPreview));
   $('#emailAccentColor').addEventListener('input', event => { $('#emailAccentHex').value = event.target.value.toUpperCase(); renderEmailPreview(); });
   $('#emailAccentHex').addEventListener('input', event => { if (/^#[0-9a-f]{6}$/i.test(event.target.value)) $('#emailAccentColor').value = event.target.value; renderEmailPreview(); });

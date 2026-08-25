@@ -9,7 +9,7 @@ import { shoplineGet, syncShopMetadata } from '../services/shopline.js';
 import { cancelBookingByMerchant, updateBookingByMerchant } from '../services/bookings.js';
 import { emailStatus, sendTestEmail } from '../services/email.js';
 import { zonedNow } from '../lib/slots.js';
-import { normalizeEmailSettings, validateEmailSettings } from '../lib/email-settings.js';
+import { normalizeEmailSettings, validateEmailSettings, validateTestEmailRecipient } from '../lib/email-settings.js';
 import { buildThemeAppBlockDeepLink } from '../lib/theme-deep-link.js';
 
 export const adminRouter = Router();
@@ -31,6 +31,32 @@ function storefrontFallbackUrl(handle) {
   return `https://${handle}.myshopline.com/admin/online-store/themes`;
 }
 
+
+function storefrontHost(shop) {
+  const primary = String(shop.primaryDomain || '').trim().replace(/^https?:\/\//i, '').replace(/\/$/, '');
+  return primary || `${shop.handle}.myshopline.com`;
+}
+
+function onboardingStatus(shop, { ruleCount = 0, activeRuleCount = 0, bookingCount = 0, firstActiveRule = null } = {}) {
+  const onboarding = shop.onboarding || {};
+  const previewUrl = firstActiveRule?.productHandle ? `https://${storefrontHost(shop)}/products/${encodeURIComponent(firstActiveRule.productHandle)}` : '';
+  const quickstartStarted = Boolean(onboarding.quickstartStartedAt);
+  const appBlockConfirmed = Boolean(onboarding.appBlockConfirmedAt);
+  const serviceCreated = activeRuleCount > 0;
+  const testBookingCompleted = bookingCount > 0;
+  const eligible = quickstartStarted || (ruleCount === 0 && bookingCount === 0);
+  return {
+    quickstartStarted,
+    quickstartDismissed: Boolean(onboarding.quickstartDismissedAt),
+    appBlockConfirmed,
+    themeEditorOpened: Boolean(onboarding.themeEditorOpenedAt),
+    shouldShowQuickstart: !onboarding.quickstartDismissedAt && eligible && !(appBlockConfirmed && serviceCreated && testBookingCompleted),
+    serviceCreated,
+    testBookingCompleted,
+    previewUrl
+  };
+}
+
 adminRouter.get('/bootstrap', async (req, res) => {
   if (!req.shop.shoplineStoreId) {
     try {
@@ -40,18 +66,20 @@ adminRouter.get('/bootstrap', async (req, res) => {
   }
   const storeNow = zonedNow(req.shop.timezone || 'UTC');
   const upcomingFilter = { shopId: req.shop._id, status: 'confirmed', $or: [{ date: { $gt: storeNow.date } }, { date: storeNow.date, time: { $gt: storeNow.time } }] };
-  const [ruleCount, activeRuleCount, bookingCount, upcomingCount, nextBookings] = await Promise.all([
+  const [ruleCount, activeRuleCount, bookingCount, upcomingCount, nextBookings, firstActiveRule] = await Promise.all([
     AppointmentRule.countDocuments({ shopId: req.shop._id }),
     AppointmentRule.countDocuments({ shopId: req.shop._id, enabled: true }),
     Booking.countDocuments({ shopId: req.shop._id }),
     Booking.countDocuments(upcomingFilter),
     Booking.find(upcomingFilter)
-      .sort({ date: 1, time: 1 }).limit(4).select('productTitle date time timezone location staff customer.name').lean()
+      .sort({ date: 1, time: 1 }).limit(4).select('productTitle date time timezone location staff customer.name').lean(),
+    AppointmentRule.findOne({ shopId: req.shop._id, enabled: true }).sort({ updatedAt: -1 }).select('productTitle productHandle').lean()
   ]);
   const delivery = emailStatus();
   res.json({
     shop: { handle: req.shop.handle, storeId: req.shop.shoplineStoreId || '', locale: req.shop.locale, adminLocale: req.shop.adminLocale || 'en', timezone: req.shop.timezone, plan: req.shop.plan, email: req.shop.email || '' },
     email: { configured: delivery.configured, from: delivery.from || '' }, emailSettings: normalizeEmailSettings(req.shop.emailSettings || {}), nextBookings,
+    onboarding: onboardingStatus(req.shop, { ruleCount, activeRuleCount, bookingCount, firstActiveRule }),
     limits: { ...limitsFor(req.shop.plan), enforced: config.planLimitsEnabled }, csrfToken: req.csrfToken,
     stats: { ruleCount, activeRuleCount, bookingCount, upcomingCount }
   });
@@ -143,6 +171,25 @@ adminRouter.get('/storefront/deep-link', async (req, res) => {
   }
 });
 
+adminRouter.put('/onboarding', async (req, res) => {
+  const action = String(req.body?.action || '');
+  const now = new Date();
+  if (action === 'start-quickstart') req.shop.set('onboarding.quickstartStartedAt', req.shop.onboarding?.quickstartStartedAt || now);
+  else if (action === 'confirm-app-block') req.shop.set('onboarding.appBlockConfirmedAt', now);
+  else if (action === 'theme-editor-opened') req.shop.set('onboarding.themeEditorOpenedAt', now);
+  else if (action === 'dismiss-quickstart') req.shop.set('onboarding.quickstartDismissedAt', now);
+  else return res.status(422).json({ error: 'VALIDATION_ERROR', message: 'Choose a supported onboarding action.' });
+  await req.shop.save();
+  res.json({
+    onboarding: {
+      quickstartStarted: Boolean(req.shop.onboarding?.quickstartStartedAt),
+      quickstartDismissed: Boolean(req.shop.onboarding?.quickstartDismissedAt),
+      appBlockConfirmed: Boolean(req.shop.onboarding?.appBlockConfirmedAt),
+      themeEditorOpened: Boolean(req.shop.onboarding?.themeEditorOpenedAt)
+    }
+  });
+});
+
 adminRouter.put('/bookings/:id', async (req, res, next) => {
   try {
     const { errors, value } = validateAdminBookingInput(req.body);
@@ -169,8 +216,9 @@ adminRouter.put('/email/settings', async (req, res) => {
 
 adminRouter.post('/email/test', async (req, res) => {
   const settings = normalizeEmailSettings(req.shop.emailSettings || {});
-  const to = settings.merchantNotificationEmail || req.shop.email || config.email.merchantTo;
-  if (!to) return res.status(422).json({ error: 'EMAIL_REQUIRED', message: 'Add a notification email before sending a test.' });
+  const recipient = validateTestEmailRecipient(req.body?.to);
+  if (recipient.error) return res.status(422).json({ error: 'EMAIL_REQUIRED', message: recipient.error });
+  const to = recipient.value;
   const result = await sendTestEmail(to, settings);
   if (result.skipped) return res.status(422).json({ error: 'EMAIL_NOT_CONFIGURED', message: 'Email notifications are not ready. Complete the sending configuration before trying again.' });
   if (result.failed) return res.status(502).json({ error: 'EMAIL_FAILED', message: 'The test email could not be sent. Check the sending configuration and try again.' });

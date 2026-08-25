@@ -3,7 +3,7 @@ set -u
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd -P)"
 VERSION="$(node -p "require('$ROOT_DIR/package.json').version")"
-NAME="appointment-lite-v${VERSION}-rules-product-picker-mobile-fix"
+NAME="appointment-lite-v${VERSION}-merchant-experience-upgrade"
 DIST_DIR="$ROOT_DIR/dist"
 STAGE_DIR="${TMPDIR:-/tmp}/${NAME}.$$"
 OUTPUT="$DIST_DIR/${NAME}.zip"

@@ -22,9 +22,10 @@ Requires the signed `al_session` HTTP-only cookie. Mutations also require `X-CSR
 - `GET /api/admin/bookings?status=confirmed|cancelled`
 - `PUT /api/admin/preferences` — saves the store's admin language (`en` or `zh-CN`)
 - `GET /api/admin/storefront/deep-link` — returns the official product-template App Block editor URL or a safe theme-page fallback
+- `PUT /api/admin/onboarding` — records Quickstart actions (`start-quickstart`, `theme-editor-opened`, `confirm-app-block`, `dismiss-quickstart`)
 - `PUT /api/admin/bookings/:id` — merchant date/time/location/staff edit; invokes the optional customer email notification hook
 - `POST /api/admin/bookings/:id/cancel` — merchant cancellation and optional customer notification
-- `POST /api/admin/email/test` — sends a test email to the shop notification address
+- `POST /api/admin/email/test` — sends a test email to the merchant-supplied `to` address for this request only
 - `PUT /api/admin/email/settings` — validates and saves the current store's email brand, routing preferences, and message templates
 
 ## Public storefront API
