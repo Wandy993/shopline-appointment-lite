@@ -1,6 +1,6 @@
 {
   "name": "appointment-lite",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "SHOPLINE appointment services with product/direct booking channels, scheduling operations, and refined merchant UI",
   "type": "module",
   "engines": {

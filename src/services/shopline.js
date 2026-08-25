@@ -72,7 +72,7 @@ export async function accessTokenForShop(shopId) {
   return { handle: shop.handle, accessToken: shop.accessToken };
 }
 
-export async function shoplineGet(shopId, endpoint, query = {}) {
+export async function shoplineGetPage(shopId, endpoint, query = {}) {
   const { handle, accessToken } = await accessTokenForShop(shopId);
   const url = new URL(`https://${handle}.myshopline.com/admin/openapi/${config.shopline.apiVersion}/${endpoint}`);
   for (const [key, value] of Object.entries(query)) if (value !== '' && value != null) url.searchParams.set(key, value);
@@ -82,7 +82,11 @@ export async function shoplineGet(shopId, endpoint, query = {}) {
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(`SHOPLINE API failed (${response.status}): ${payload.message || payload.errors || 'unknown error'}`);
-  return payload;
+  return { payload, link: response.headers.get('link') || '' };
+}
+
+export async function shoplineGet(shopId, endpoint, query = {}) {
+  return (await shoplineGetPage(shopId, endpoint, query)).payload;
 }
 
 export async function syncShopMetadata(shopId) {

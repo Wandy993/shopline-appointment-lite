@@ -5,7 +5,8 @@ import { Booking } from '../models/Booking.js';
 import { validateAdminBookingInput, validateBookingStatus, validateRuleInput } from '../lib/validation.js';
 import { requireAdmin, requireCsrf } from '../middleware/auth.js';
 import { limitsFor } from '../services/plans.js';
-import { shoplineGet, syncShopMetadata } from '../services/shopline.js';
+import { shoplineGet, shoplineGetPage, syncShopMetadata } from '../services/shopline.js';
+import { nextPageInfoFromLink } from '../lib/shopline-pagination.js';
 import { cancelBookingByMerchant, setBookingStatusByMerchant, updateBookingByMerchant } from '../services/bookings.js';
 import { emailStatus, sendTestEmail } from '../services/email.js';
 import { zonedNow } from '../lib/slots.js';
@@ -90,9 +91,33 @@ adminRouter.get('/bootstrap', async (req, res) => {
 
 adminRouter.get('/products', async (req, res, next) => {
   try {
-    const payload = await shoplineGet(req.shop._id, 'products/products.json', { limit: 100, status: 'active', fields: 'id,title,handle,path,status' });
-    const products = payload.products || payload.data?.products || payload.data || [];
-    res.json({ products: Array.isArray(products) ? products.map(product => ({ id: String(product.id), title: product.title, handle: product.handle || '', path: product.path || '' })) : [] });
+    const products = [];
+    let pageInfo = '';
+    let pages = 0;
+    do {
+      const { payload, link } = await shoplineGetPage(req.shop._id, 'products/products.json', {
+        limit: 50,
+        fields: 'id,title,handle,path,status',
+        ...(pageInfo ? { page_info: pageInfo } : { order_by: 'created_at_desc' })
+      });
+      const pageProducts = payload.products || payload.data?.products || payload.data || [];
+      if (Array.isArray(pageProducts)) products.push(...pageProducts);
+      pageInfo = nextPageInfoFromLink(link);
+      pages += 1;
+    } while (pageInfo && pages < 20);
+
+    const normalized = products
+      .filter(product => product && String(product.status || '').toLowerCase() !== 'archived')
+      .map(product => ({
+        id: String(product.id),
+        title: product.title || 'Untitled product',
+        handle: product.handle || '',
+        path: product.path || '',
+        status: String(product.status || 'active').toLowerCase()
+      }));
+
+    res.set('Cache-Control', 'no-store');
+    res.json({ products: normalized, syncedAt: new Date().toISOString() });
   } catch (error) { next(error); }
 });
 

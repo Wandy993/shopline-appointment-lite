@@ -1,6 +1,6 @@
 # Appointment Lite for SHOPLINE
 
-Version `0.3.1` — refines Appointment Lite into a SHOPLINE-native service appointment model where service type is independent from product/direct booking channels, with a cleaner service list, booking filters, and Email Studio preview.
+Version `0.3.2` — adds an explicit SHOPLINE product catalog sync workflow so newly created or draft products can be refreshed inside the product picker without leaving Appointment Lite.
 
 Appointment Lite now supports two booking entry models:
 
@@ -8,6 +8,16 @@ Appointment Lite now supports two booking entry models:
 - **Standalone services** — create in-store visits, home/onsite services, consultations, classes/courses, or other services without creating a SHOPLINE product. Each active standalone service receives a shareable hosted booking URL.
 
 Typical scenarios include furniture installation and measurements, showroom visits, wedding fittings, jewelry or design consultations, beauty appointments, technician visits, lessons, workshops, small-group classes, and made-to-order product appointments.
+
+
+## v0.3.2 Product Catalog Sync
+
+- Adds a **Sync SHOPLINE products** action directly inside the product picker.
+- A manual sync bypasses the in-page product cache and immediately reloads the catalog from SHOPLINE.
+- Newly created products are requested newest-first.
+- Draft products are shown and can be selected while archived products stay hidden.
+- Product catalog requests use no-store responses and cursor pagination so the picker is not limited to the first page of products.
+- The picker shows sync progress, result count, and clear success/failure feedback.
 
 ## v0.3.1 Service Model Refinement + UI Cleanup
 

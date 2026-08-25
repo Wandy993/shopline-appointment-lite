@@ -22,6 +22,7 @@ const sample = {
 const variables = ['customer_name', 'product_title', 'date', 'time', 'timezone', 'location', 'staff', 'store_name'];
 const serviceTypeLabels = { appointment: 'Appointment', product: 'Appointment', in_store: 'In-store appointment', onsite: 'Home / onsite service', consultation: 'Consultation', class: 'Class / course', other: 'Other service' };
 const bookingSourceLabels = { product: 'Product page', direct: 'Booking page', both: 'Product page + booking link' };
+const productStatusLabels = { active: 'Published', draft: 'Draft' };
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
 
@@ -77,7 +78,11 @@ const zh = {
   'Save and notify': '保存并通知', 'BOOKING ACTIVITY': '预约动态', 'Appointment history': '预约历史', 'Done': '完成',
   'Please confirm': '请确认', 'Keep it': '保留', 'Confirm': '确认', 'English': 'English', '简体中文': '简体中文',
   'Search services, staff, or location': '搜索服务、人员或地点', 'Search customer, product, or email': '搜索客户、商品或邮箱',
-  'Search products by name': '按名称搜索商品', 'Your store name': '你的店铺名称', 'e.g. Main showroom': '例如：主展厅', 'e.g. Sarah': '例如：Sarah',
+  'Search products by name': '按名称搜索商品', 'Sync SHOPLINE products': '同步 SHOPLINE 商品', 'Syncing…': '同步中…',
+  'Products refresh automatically when this dialog is opened for the first time.': '首次打开此窗口时会自动加载商品；在 SHOPLINE 新建或修改商品后，可点击同步获取最新商品。',
+  'Loading products from SHOPLINE…': '正在从 SHOPLINE 加载商品…', 'Syncing latest products from SHOPLINE…': '正在同步 SHOPLINE 最新商品…',
+  'SHOPLINE products synced.': 'SHOPLINE 商品已同步。', 'Could not sync SHOPLINE products. Try again.': 'SHOPLINE 商品同步失败，请重试。',
+  'Published': '已发布', 'Draft': '草稿', 'products synced just now': '个商品 · 刚刚同步', 'Your store name': '你的店铺名称', 'e.g. Main showroom': '例如：主展厅', 'e.g. Sarah': '例如：Sarah',
   'Anything we should know?': '还有什么需要我们了解？'
 };
 
@@ -365,8 +370,12 @@ function renderExceptions(values = []) {
 
 function renderProductOptions(query = '') {
   const normalized = query.trim().toLowerCase();
-  const matches = state.products.filter(product => !normalized || product.title.toLowerCase().includes(normalized));
-  $('#productOptions').innerHTML = matches.length ? matches.map(product => `<button type="button" class="product-option ${$('#productSelect').value === product.id ? 'selected' : ''}" role="option" aria-selected="${$('#productSelect').value === product.id}" data-product-id="${escapeHtml(product.id)}"><span class="product-option-avatar">${escapeHtml(product.title.slice(0, 1).toUpperCase())}</span><span><strong>${escapeHtml(product.title)}</strong><small>${escapeHtml(product.handle || t('SHOPLINE product'))}</small></span><i>✓</i></button>`).join('') : `<div class="empty-compact">${t('No matching products')}</div>`;
+  const matches = state.products.filter(product => !normalized || [product.title, product.handle].some(value => String(value || '').toLowerCase().includes(normalized)));
+  $('#productOptions').innerHTML = matches.length ? matches.map(product => {
+    const status = productStatusLabels[product.status] ? t(productStatusLabels[product.status]) : '';
+    const meta = [product.handle || t('SHOPLINE product'), status].filter(Boolean).join(' · ');
+    return `<button type="button" class="product-option ${$('#productSelect').value === product.id ? 'selected' : ''}" role="option" aria-selected="${$('#productSelect').value === product.id}" data-product-id="${escapeHtml(product.id)}"><span class="product-option-avatar">${escapeHtml(product.title.slice(0, 1).toUpperCase())}</span><span><strong>${escapeHtml(product.title)}</strong><small>${escapeHtml(meta)}</small></span><i>✓</i></button>`;
+  }).join('') : `<div class="empty-compact">${t('No matching products')}</div>`;
   $$('#productOptions .product-option').forEach(button => button.addEventListener('click', () => selectProduct(button.dataset.productId)));
 }
 
@@ -379,15 +388,40 @@ function selectProduct(productId) {
   renderProductOptions($('#productSearch').value);
 }
 
-async function ensureProducts() {
-  if (state.products.length) return;
+async function ensureProducts(force = false) {
+  if (!force && state.products.length) return;
+  const previousProducts = state.products;
+  const syncButton = $('#productSyncButton');
+  const syncLabel = syncButton?.querySelector('span');
+  if (syncButton) {
+    syncButton.disabled = true;
+    syncButton.classList.add('is-syncing');
+  }
+  if (syncLabel) syncLabel.textContent = t('Syncing…');
+  if ($('#productSyncMeta')) $('#productSyncMeta').textContent = t(force ? 'Syncing latest products from SHOPLINE…' : 'Loading products from SHOPLINE…');
   $('#productOptions').innerHTML = productSkeletons();
   try {
-    state.products = (await api('/products')).products;
-    renderProductOptions();
+    const payload = await api(`/products?refresh=${Date.now()}`, { cache: 'no-store' });
+    state.products = payload.products || [];
+    renderProductOptions($('#productSearch')?.value || '');
+    if ($('#productSyncMeta')) {
+      $('#productSyncMeta').textContent = state.locale === 'zh-CN'
+        ? `${state.products.length} ${t('products synced just now')}`
+        : `${state.products.length} product${state.products.length === 1 ? '' : 's'} synced just now`;
+    }
+    if (force) toast(t('SHOPLINE products synced.'));
   } catch (error) {
-    $('#productOptions').innerHTML = `<div class="empty-compact">${t('Could not load products')}</div>`;
+    state.products = previousProducts;
+    if (previousProducts.length) renderProductOptions($('#productSearch')?.value || '');
+    else $('#productOptions').innerHTML = `<div class="empty-compact">${t('Could not load products')}</div>`;
+    if ($('#productSyncMeta')) $('#productSyncMeta').textContent = t('Could not sync SHOPLINE products. Try again.');
     showError(error);
+  } finally {
+    if (syncButton) {
+      syncButton.disabled = false;
+      syncButton.classList.remove('is-syncing');
+    }
+    if (syncLabel) syncLabel.textContent = t('Sync SHOPLINE products');
   }
 }
 
@@ -1139,6 +1173,7 @@ function bind() {
     renderProductOptions();
   });
   $('#productSearch').addEventListener('input', event => renderProductOptions(event.target.value));
+  $('#productSyncButton').addEventListener('click', () => ensureProducts(true));
   $('#languageButton').addEventListener('click', () => {
     const menu = $('#languageMenu');
     menu.classList.toggle('hidden');

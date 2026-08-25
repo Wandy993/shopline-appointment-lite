@@ -77,5 +77,5 @@ test('public and admin routes expose product, direct, and dual booking channels'
 test('theme App Block renders the service title instead of forcing the product title', async () => {
   const asset = await readFile(new URL('../theme-extension-source/public/appointment-lite.js', import.meta.url), 'utf8');
   assert.match(asset, /rule\.serviceTitle \|\| rule\.productTitle/);
-  assert.match(asset, /const VERSION = '0\.3\.1'/);
+  assert.match(asset, /const VERSION = '0\.3\.2'/);
 });

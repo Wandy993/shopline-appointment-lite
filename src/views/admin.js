@@ -13,6 +13,7 @@ const icons = {
   globe: icon('<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/>'),
   close: icon('<path d="m6 6 12 12M18 6 6 18"/>'),
   search: icon('<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>'),
+  refresh: icon('<path d="M20 11a8 8 0 1 0-2.34 5.66"/><path d="M20 4v7h-7"/>'),
   chevron: icon('<path d="m6 9 6 6 6-6"/>')
 };
 
@@ -32,7 +33,7 @@ export function adminPage() {
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light">
   <title>Appointment Lite</title>
-  <link rel="stylesheet" href="/admin/styles.css">
+  <link rel="stylesheet" href="/admin/styles.css?v=0.3.2">
 </head>
 <body>
   <div class="app-shell">
@@ -173,7 +174,7 @@ export function adminPage() {
     </form>
   </dialog>
 
-  <dialog id="productDialog" class="modal picker-modal"><div class="modal-head"><div><span class="eyebrow">PRODUCT CATALOG</span><h2>Select a product</h2><p>Choose the product customers will book.</p></div><button type="button" class="icon-button" data-close-product-dialog aria-label="Close">${icons.close}</button></div><div class="picker-search-wrap"><label class="select-search">${icons.search}<input id="productSearch" type="search" placeholder="Search products by name"></label></div><div id="productOptions" class="product-dialog-options" role="listbox"></div><div class="modal-actions"><button type="button" class="secondary" data-close-product-dialog>Back to service</button></div></dialog>
+  <dialog id="productDialog" class="modal picker-modal"><div class="modal-head"><div><span class="eyebrow">PRODUCT CATALOG</span><h2>Select a product</h2><p>Choose the product customers will book.</p></div><button type="button" class="icon-button" data-close-product-dialog aria-label="Close">${icons.close}</button></div><div class="picker-search-wrap"><div class="picker-search-row"><label class="select-search">${icons.search}<input id="productSearch" type="search" placeholder="Search products by name"></label><button id="productSyncButton" type="button" class="secondary product-sync-button">${icons.refresh}<span>Sync SHOPLINE products</span></button></div><p id="productSyncMeta" class="picker-sync-meta">Products refresh automatically when this dialog is opened for the first time.</p></div><div id="productOptions" class="product-dialog-options" role="listbox"></div><div class="modal-actions"><button type="button" class="secondary" data-close-product-dialog>Back to service</button></div></dialog>
 
   <dialog id="bookingDialog" class="modal booking-modal"><form id="bookingForm"><div class="modal-head"><div><span class="eyebrow">BOOKING DETAILS</span><h2>Edit appointment</h2><p id="bookingDialogSummary">Update the customer appointment.</p></div><button type="button" class="icon-button" data-close-booking-dialog aria-label="Close">${icons.close}</button></div><div class="modal-body"><input type="hidden" id="bookingId"><div class="inline-notice">${icons.globe}<span id="bookingEditTimezone">Times use the store time zone.</span></div><div class="field-row"><div class="field"><label for="bookingDate">Date</label><input id="bookingDate" type="date" required></div><div class="field"><label for="bookingTime">Time</label><input id="bookingTime" type="time" required></div></div><div class="field-row"><div class="field"><label for="bookingLocation">Location</label><input id="bookingLocation" maxlength="200"></div><div class="field"><label for="bookingStaff">Staff</label><input id="bookingStaff" maxlength="200"></div></div><p class="hint">Saving validates the selected slot and emails the customer when delivery is configured. Email failure never rolls back the booking.</p><div id="bookingFormError" class="form-error hidden" role="alert"></div></div><div class="modal-actions"><button type="button" class="secondary" data-close-booking-dialog>Cancel</button><button id="saveBooking" type="submit" class="primary">Save and notify</button></div></form></dialog>
 
@@ -201,7 +202,7 @@ export function adminPage() {
   </dialog>
 
   <dialog id="confirmDialog" class="confirm-modal"><div class="confirm-icon">!</div><div class="confirm-copy"><h2 id="confirmTitle">Please confirm</h2><p id="confirmMessage"></p></div><div class="modal-actions"><button id="confirmNo" class="secondary">Keep it</button><button id="confirmYes" class="danger">Confirm</button></div></dialog>
-  <script type="module" src="/admin/app.js"></script>
+  <script type="module" src="/admin/app.js?v=0.3.2"></script>
 </body>
 </html>`;
 }

@@ -1,8 +1,8 @@
-bash <<'APPOINTMENT_LITE_V031'
+#!/usr/bin/env bash
 set -u
 
-VERSION="0.3.1"
-RELEASE_SLUG="appointment-lite-v0.3.1-service-model-refinement-ui-cleanup"
+VERSION="0.3.2"
+RELEASE_SLUG="appointment-lite-v0.3.2-product-catalog-sync"
 ZIP_NAME="${RELEASE_SLUG}.zip"
 ZIP_PATH="${ZIP_PATH:-$HOME/Downloads/$ZIP_NAME}"
 TARGET_DIR="${TARGET_DIR:-$PWD}"
@@ -10,125 +10,117 @@ DEPLOY_RAILWAY="${DEPLOY_RAILWAY:-1}"
 PUSH_THEME="${PUSH_THEME:-1}"
 TEMP_DIR=""
 
-say() { printf '\n[%s] %s\n' "Appointment Lite $VERSION" "$1"; }
+say() { printf '\n[Appointment Lite %s] %s\n' "$VERSION" "$1"; }
 fail() {
   printf '\n========================================\n' >&2
   printf 'Appointment Lite %s stopped: %s\n' "$VERSION" "$1" >&2
   printf '========================================\n' >&2
   if [ -n "$TEMP_DIR" ]; then printf 'Temporary files retained at: %s\n' "$TEMP_DIR" >&2; fi
-  return 1
+  exit 1
 }
 
-if [ ! -f "$ZIP_PATH" ]; then fail "ZIP not found: $ZIP_PATH"; exit 1; fi
-mkdir -p "$TARGET_DIR" || { fail "Cannot create target directory."; exit 1; }
-TARGET_DIR="$(cd "$TARGET_DIR" && pwd -P)" || { fail "Cannot resolve target directory."; exit 1; }
-if [ "$TARGET_DIR" = "/" ] || [ "$TARGET_DIR" = "$HOME" ]; then
-  fail "Refusing to overlay / or the home directory. Run this inside the Appointment Lite project folder."
-  exit 1
-fi
+[ -f "$ZIP_PATH" ] || fail "ZIP not found: $ZIP_PATH"
+TARGET_DIR="$(cd "$TARGET_DIR" && pwd -P)" || fail "Cannot resolve project directory."
+[ -d "$TARGET_DIR/.git" ] || fail "Existing Appointment Lite Git repository not found at $TARGET_DIR"
 
-say "1/12 Check ZIP integrity"
-unzip -t "$ZIP_PATH" >/dev/null || { fail "ZIP integrity check failed."; exit 1; }
+say "1/13 Check ZIP integrity"
+unzip -t "$ZIP_PATH" >/dev/null || fail "ZIP integrity check failed."
 
-say "2/12 Check Git and sync remote before overlay"
-if [ ! -d "$TARGET_DIR/.git" ]; then
-  fail "Existing Appointment Lite Git repository not found at $TARGET_DIR"
-  exit 1
-fi
+say "2/13 Check Git and sync remote before overlay"
 CURRENT_BRANCH="$(git -C "$TARGET_DIR" branch --show-current)"
-if [ -z "$CURRENT_BRANCH" ]; then fail "Detached Git HEAD detected."; exit 1; fi
+[ -n "$CURRENT_BRANCH" ] || fail "Detached Git HEAD detected."
 if [ -n "$(git -C "$TARGET_DIR" status --porcelain 2>/dev/null)" ]; then
-  fail "Working tree has uncommitted tracked/untracked changes. Commit or stash them before applying v0.3.1."
-  exit 1
+  git -C "$TARGET_DIR" status
+  fail "Working tree has uncommitted changes. Commit or stash them before applying v0.3.2."
 fi
 if git -C "$TARGET_DIR" remote get-url origin >/dev/null 2>&1; then
-  git -C "$TARGET_DIR" fetch origin "$CURRENT_BRANCH" || { fail "git fetch failed."; exit 1; }
+  git -C "$TARGET_DIR" fetch origin "$CURRENT_BRANCH" || fail "git fetch failed."
   if git -C "$TARGET_DIR" show-ref --verify --quiet "refs/remotes/origin/$CURRENT_BRANCH"; then
     if git -C "$TARGET_DIR" merge-base --is-ancestor HEAD "origin/$CURRENT_BRANCH" && ! git -C "$TARGET_DIR" merge-base --is-ancestor "origin/$CURRENT_BRANCH" HEAD; then
-      git -C "$TARGET_DIR" merge --ff-only "origin/$CURRENT_BRANCH" || { fail "Fast-forward to origin/$CURRENT_BRANCH failed."; exit 1; }
+      git -C "$TARGET_DIR" merge --ff-only "origin/$CURRENT_BRANCH" || fail "Fast-forward failed."
     elif ! git -C "$TARGET_DIR" merge-base --is-ancestor "origin/$CURRENT_BRANCH" HEAD && ! git -C "$TARGET_DIR" merge-base --is-ancestor HEAD "origin/$CURRENT_BRANCH"; then
-      fail "Local and origin/$CURRENT_BRANCH have diverged. Resolve Git before applying the release; no files have been changed."
-      exit 1
+      fail "Local and origin/$CURRENT_BRANCH have diverged. Resolve Git first; no release files have been changed."
     fi
   fi
 fi
 
-say "3/12 Create Git backup tag"
-BACKUP_TAG="appointment-lite-pre-v0.3.1-$(date +%Y%m%d-%H%M%S)"
-git -C "$TARGET_DIR" tag "$BACKUP_TAG" HEAD || { fail "Git backup tag failed."; exit 1; }
+say "3/13 Create upgrade backup tag"
+BACKUP_TAG="appointment-lite-pre-v0.3.2-$(date +%Y%m%d-%H%M%S)"
+git -C "$TARGET_DIR" tag "$BACKUP_TAG" HEAD || fail "Git backup tag failed."
 printf 'Backup tag: %s\n' "$BACKUP_TAG"
 
-say "4/12 Extract release"
-TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/appointment-lite-v030.XXXXXX")" || { fail "Could not create temp directory."; exit 1; }
-unzip -q "$ZIP_PATH" -d "$TEMP_DIR" || { fail "ZIP extraction failed."; exit 1; }
+say "4/13 Extract release"
+TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/appointment-lite-v032.XXXXXX")" || fail "Could not create temp directory."
+unzip -q "$ZIP_PATH" -d "$TEMP_DIR" || fail "ZIP extraction failed."
 SOURCE_DIR="$TEMP_DIR/$RELEASE_SLUG"
-if [ ! -f "$SOURCE_DIR/package.json" ] || [ ! -f "$SOURCE_DIR/src/server.js" ]; then
-  fail "Release root is invalid."
-  exit 1
-fi
+[ -f "$SOURCE_DIR/package.json" ] && [ -f "$SOURCE_DIR/src/server.js" ] || fail "Release root is invalid."
 
-say "5/12 Overlay backend and source files"
+say "5/13 Overlay v0.3.2 source"
 rsync -a \
   --exclude='.git/' \
   --exclude='.env' \
   --exclude='theme-app-extension/' \
   --exclude='node_modules/' \
   --exclude='dist/' \
-  "$SOURCE_DIR/" "$TARGET_DIR/" || { fail "rsync overlay failed."; exit 1; }
+  "$SOURCE_DIR/" "$TARGET_DIR/" || fail "rsync overlay failed."
 
-say "6/12 Install locked dependencies"
-(cd "$TARGET_DIR" && npm ci) || { fail "npm ci failed."; exit 1; }
+say "6/13 Install locked dependencies"
+(cd "$TARGET_DIR" && npm ci) || fail "npm ci failed."
 
-say "7/12 Run full tests"
-(cd "$TARGET_DIR" && npm test) || { fail "npm test failed."; exit 1; }
+say "7/13 Run full tests"
+(cd "$TARGET_DIR" && npm test) || fail "npm test failed."
 
-say "8/12 Run JavaScript checks"
-(cd "$TARGET_DIR" && npm run check) || { fail "npm run check failed."; exit 1; }
+say "8/13 Run JavaScript checks"
+(cd "$TARGET_DIR" && npm run check) || fail "npm run check failed."
 
-say "9/12 Sync Theme App Extension source"
+say "9/13 Verify release version"
+ACTUAL_VERSION="$(cd "$TARGET_DIR" && node -p "require('./package.json').version")" || fail "Cannot read package version."
+[ "$ACTUAL_VERSION" = "0.3.2" ] || fail "Expected package version 0.3.2, got $ACTUAL_VERSION."
+
+grep -q 'id="productSyncButton"' "$TARGET_DIR/src/views/admin.js" || fail "Product sync UI is missing."
+grep -q "order_by: 'created_at_desc'" "$TARGET_DIR/src/routes/admin.js" || fail "Newest-first SHOPLINE product sync is missing."
+
+say "10/13 Sync Theme App Extension source"
 if [ -d "$TARGET_DIR/theme-app-extension" ]; then
   mkdir -p "$TARGET_DIR/theme-app-extension/blocks" "$TARGET_DIR/theme-app-extension/public" "$TARGET_DIR/theme-app-extension/i18n"
-  rsync -a --delete "$TARGET_DIR/theme-extension-source/blocks/" "$TARGET_DIR/theme-app-extension/blocks/" || { fail "Theme blocks sync failed."; exit 1; }
-  rsync -a --delete "$TARGET_DIR/theme-extension-source/public/" "$TARGET_DIR/theme-app-extension/public/" || { fail "Theme public assets sync failed."; exit 1; }
-  rsync -a --delete "$TARGET_DIR/theme-extension-source/i18n/" "$TARGET_DIR/theme-app-extension/i18n/" || { fail "Theme i18n sync failed."; exit 1; }
+  rsync -a --delete "$TARGET_DIR/theme-extension-source/blocks/" "$TARGET_DIR/theme-app-extension/blocks/" || fail "Theme blocks sync failed."
+  rsync -a --delete "$TARGET_DIR/theme-extension-source/public/" "$TARGET_DIR/theme-app-extension/public/" || fail "Theme public assets sync failed."
+  rsync -a --delete "$TARGET_DIR/theme-extension-source/i18n/" "$TARGET_DIR/theme-app-extension/i18n/" || fail "Theme i18n sync failed."
 else
-  printf 'theme-app-extension is not present, so Theme Extension push will be skipped.\n'
+  printf 'theme-app-extension is not present; Theme Extension push will be skipped.\n'
   PUSH_THEME=0
 fi
 
-say "10/12 Commit and push v0.3.1"
-git -C "$TARGET_DIR" add -A -- . ':!theme-app-extension' 2>/dev/null || git -C "$TARGET_DIR" add -A -- . || { fail "git add failed."; exit 1; }
+say "11/13 Commit and push v0.3.2"
+git -C "$TARGET_DIR" add -A -- . ':!theme-app-extension' 2>/dev/null || git -C "$TARGET_DIR" add -A -- . || fail "git add failed."
 git -C "$TARGET_DIR" reset -- theme-app-extension >/dev/null 2>&1 || true
 if ! git -C "$TARGET_DIR" diff --cached --quiet; then
-  git -C "$TARGET_DIR" commit -m "feat: Appointment Lite v0.3.1 service model refinement and UI cleanup" || { fail "Release commit failed."; exit 1; }
+  git -C "$TARGET_DIR" commit -m "feat: Appointment Lite v0.3.2 product catalog sync" || fail "Release commit failed."
 fi
 if git -C "$TARGET_DIR" remote get-url origin >/dev/null 2>&1; then
-  git -C "$TARGET_DIR" push origin "$CURRENT_BRANCH" || { fail "git push failed."; exit 1; }
-else
-  printf 'Git push skipped because origin is unavailable.\n'
+  git -C "$TARGET_DIR" push origin "$CURRENT_BRANCH" || fail "git push failed."
 fi
 
-say "11/12 Deploy Railway"
+say "12/13 Deploy Railway"
 if [ "$DEPLOY_RAILWAY" = "1" ]; then
-  command -v railway >/dev/null 2>&1 || { fail "Railway CLI not found."; exit 1; }
-  (cd "$TARGET_DIR" && railway status) || { fail "Railway project is not linked correctly."; exit 1; }
-  (cd "$TARGET_DIR" && railway up) || { fail "Railway deployment failed."; exit 1; }
+  command -v railway >/dev/null 2>&1 || fail "Railway CLI not found."
+  (cd "$TARGET_DIR" && railway status) || fail "Railway project is not linked correctly."
+  (cd "$TARGET_DIR" && railway up) || fail "Railway deployment failed."
   (cd "$TARGET_DIR" && railway status) || true
 else
   printf 'Railway deployment skipped because DEPLOY_RAILWAY=%s.\n' "$DEPLOY_RAILWAY"
 fi
 
-say "12/12 Push SHOPLINE Theme App Extension"
+say "13/13 Push SHOPLINE Theme App Extension"
 if [ "$PUSH_THEME" = "1" ]; then
-  command -v sl >/dev/null 2>&1 || { fail "SHOPLINE CLI not found."; exit 1; }
-  (cd "$TARGET_DIR/theme-app-extension" && sl extension push) || { fail "sl extension push failed."; exit 1; }
+  command -v sl >/dev/null 2>&1 || fail "SHOPLINE CLI not found."
+  (cd "$TARGET_DIR/theme-app-extension" && sl extension push) || fail "sl extension push failed."
 else
   printf 'Theme push skipped because PUSH_THEME=%s.\n' "$PUSH_THEME"
 fi
 
 printf '\n========================================\n'
-printf '✅ Appointment Lite v0.3.1 complete\n'
+printf '✅ Appointment Lite v0.3.2 Product Catalog Sync complete\n'
 printf '========================================\n'
 printf 'Backup tag: %s\n' "$BACKUP_TAG"
 git -C "$TARGET_DIR" status
-APPOINTMENT_LITE_V031

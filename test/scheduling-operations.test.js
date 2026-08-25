@@ -139,7 +139,7 @@ test('theme App Block honors the booking-window max date and stays Arctic Blue',
   const asset = await readFile(new URL('../theme-extension-source/public/appointment-lite.js', import.meta.url), 'utf8');
   const stylesheet = await readFile(new URL('../theme-extension-source/public/appointment-lite.css', import.meta.url), 'utf8');
   assert.match(asset, /bookingWindowUntil/);
-  assert.match(asset, /const VERSION = '0\.3\.1'/);
+  assert.match(asset, /const VERSION = '0\.3\.2'/);
   assert.match(asset, /#2F6FED/);
   assert.match(stylesheet, /--al-accent:#2f6fed/);
 });

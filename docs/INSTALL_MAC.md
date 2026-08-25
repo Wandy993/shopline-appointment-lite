@@ -1,24 +1,17 @@
-# Appointment Lite v0.3.1 Service Model Refinement + UI Cleanup
+# Appointment Lite v0.3.2 Product Catalog Sync
 
 Use `docs/INSTALL_MAC_COMMAND.txt` or the command supplied next to the release ZIP.
 
-The release command is designed for the existing local Appointment Lite Git repository. It:
+This release adds an explicit **Sync SHOPLINE products** action to the product picker and improves catalog freshness:
 
-- validates the v0.3.1 ZIP before touching the project;
-- fetches the active Git branch first and fast-forwards only when safe;
-- stops before overlay if local/remote histories have diverged;
-- creates an upgrade backup tag;
-- preserves `.env`, `.git`, `node_modules`, `dist`, and the locally bound `theme-app-extension/`;
-- overlays the v0.3.1 source;
-- runs `npm ci`, the full test suite, and JavaScript syntax checks;
-- synchronizes reusable Theme App Extension source into the local CLI-created extension;
-- commits and pushes v0.3.1;
-- deploys with `railway up` (no deprecated `-y` argument);
-- pushes the SHOPLINE Theme App Extension with `sl extension push`.
+- reloads products from SHOPLINE without closing the service editor;
+- bypasses the in-page cache on manual sync;
+- includes published and draft products while excluding archived products;
+- requests newest products first;
+- follows SHOPLINE `page_info` pagination so larger catalogs are not limited to the first page;
+- shows sync progress, synced count, success, and failure feedback.
 
-v0.3.1 includes a compatibility migration. Existing product/standalone rules become product/direct booking sources, legacy service titles are preserved, old product service types become general appointments, and the product uniqueness index is updated. Existing rules and bookings are retained.
-
-Standalone in-store, onsite, consultation, class/course, and other services do not need the Theme App Block. The extension remains required for SHOPLINE product appointments.
+The release command validates the ZIP, syncs Git safely, creates a backup tag, overlays the source while preserving `.env` and the local Theme App Extension binding, installs dependencies, runs all tests and JavaScript checks, commits/pushes Git, deploys Railway with `railway up`, and pushes the SHOPLINE Theme App Extension.
 
 To validate locally without deployment:
 
