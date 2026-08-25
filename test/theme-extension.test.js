@@ -25,9 +25,9 @@ test('theme asset exposes diagnostics and handles editor re-renders', async () =
 test('booking dialog keeps selected times and submit action visible', async () => {
   const asset = await readFile(new URL('../theme-extension-source/public/appointment-lite.js', import.meta.url), 'utf8');
   const stylesheet = await readFile(new URL('../theme-extension-source/public/appointment-lite.css', import.meta.url), 'utf8');
-  assert.match(asset, /dialog\.style\.setProperty\('--al-accent', '#166534'\)/);
+  assert.match(asset, /dialog\.style\.setProperty\('--al-accent', '#2F6FED'\)/);
   assert.match(asset, /class="al-actions"/);
-  assert.match(stylesheet, /var\(--al-accent,#166534\)/);
+  assert.match(stylesheet, /var\(--al-accent,#2f6fed\)/);
   assert.match(stylesheet, /\.al-time\[aria-pressed=true\][^{]*\{[^}]*color:#fff/);
   assert.match(stylesheet, /\.al-form-body\{[^}]*min-height:0[^}]*overflow-y:auto[^}]*overflow-x:hidden/);
   assert.match(stylesheet, /\.al-actions\{[^}]*flex:0 0 auto/);

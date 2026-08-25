@@ -13,3 +13,8 @@ After signing in to SHOPLINE CLI:
 The production API URL is part of the extension source, while SHOPLINE's `shop.id` and `product.id` identify the current storefront context automatically. To troubleshoot, open the preview's browser console and filter for `[Appointment Lite]`.
 
 Do not copy a `.shopline-cli.yml` from another app; the CLI must generate it for the selected app.
+
+
+## Standalone services
+
+The Theme App Extension is only required for `sourceType=product`. In-store, onsite, consultation, class, and other standalone services are hosted by the app at `/book/:ruleId` and can be shared without adding a Theme App Block.

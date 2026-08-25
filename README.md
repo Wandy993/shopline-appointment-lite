@@ -1,62 +1,71 @@
 # Appointment Lite for SHOPLINE
 
-Version `0.2.8` — switches the full merchant admin to the Arctic Blue design system while preserving the v0.2.7 information architecture and all existing onboarding, Email Studio, booking, and storefront behavior.
+Version `0.3.0` — expands Appointment Lite from product-only booking into a lightweight service scheduling system with standalone booking links, daily scheduling operations, capacity, booking policies, and date-specific availability exceptions while keeping the Arctic Blue admin design system.
 
-Appointment Lite turns selected SHOPLINE products into appointment or consultation services. It is designed for wedding fittings, jewelry consultations, furniture consultations, beauty services, classes, and made-to-order products.
+Appointment Lite now supports two booking entry models:
 
-## MVP status
+- **SHOPLINE product appointments** — bind an appointment service to a SHOPLINE product and expose it through the Theme App Block.
+- **Standalone services** — create in-store visits, home/onsite services, consultations, classes/courses, or other services without creating a SHOPLINE product. Each active standalone service receives a shareable hosted booking URL.
+
+Typical scenarios include furniture installation and measurements, showroom visits, wedding fittings, jewelry or design consultations, beauty appointments, technician visits, lessons, workshops, small-group classes, and made-to-order product appointments.
+
+## v0.3.0 Scheduling Operations
 
 Implemented:
 
-- SHOPLINE OAuth installation, signed callback verification, token persistence, and refresh structure.
-- Responsive English/Simplified Chinese merchant workspace with a saved custom language menu, guided setup, overview insights, loading skeletons, searchable service cards, booking management, and fully designed application dialogs and selection controls. New installs default to English.
-- Three-step appointment rule builder, SHOPLINE product selection, rule CRUD, booking search/filtering, editing, and cancellation.
-- Duration, buffer, available date range, weekday schedule, daily windows, text-only location/staff, enabled state, notes prompt, and up to five custom questions.
-- Public rule/availability APIs and booking creation.
-- Atomic duplicate-slot protection using a MongoDB partial unique index.
-- Server-authoritative past-slot protection using the SHOPLINE store's IANA time zone; storefront and management availability never return elapsed slots.
-- Provider-neutral email notifications through Aliyun DirectMail HTTPS OpenAPI or Resend; missing or failing email configuration never rolls back a booking.
-- Per-store Email Studio for brand name, email logo, accent color, reply-to routing, merchant notifications, five editable subject/body templates, template variables, live preview, and branded test delivery to a merchant-selected test recipient.
-- Confirmation email with a private, cross-device Manage Appointment link. The page immediately moves the high-entropy email token into session storage and removes it from the address bar; MongoDB stores only its SHA-256 hash.
-- Customer emails for confirmation, one-time self-service rescheduling, cancellation, and merchant edits; optional merchant new-booking notification.
-- Per-booking activity history for creation, customer rescheduling, merchant edits, and customer/merchant cancellations. Existing records receive a safe legacy creation event when displayed.
-- SHOPLINE product-template App Block deep link that opens in a new window when the extension UUID and read-only theme permission are available, with a safe theme-page fallback for older installs. New stores with no rules or bookings receive a three-step Quickstart that begins with enabling the App Block, then creating a service, then testing the storefront booking flow.
-- English-first storefront locale directories with Simplified Chinese strings.
-- Free/Pro plan boundaries remain reserved without a real billing dependency; rule-count enforcement is disabled by default for the MVP.
-- Standalone Theme App Extension **source template** in `theme-extension-source/`.
+- Six service types: product booking, in-store appointment, home/onsite service, consultation, class/course, and other standalone service.
+- Standalone booking pages at `/book/:ruleId`, sharing the same booking engine, customer management token, email notifications, and merchant booking records as product App Block bookings.
+- Calendar and list views for daily operations, with service/status/date/search filters and CSV export.
+- Merchant lifecycle statuses: `confirmed`, `completed`, `no_show`, and `cancelled`, with append-only activity events.
+- Per-service **capacity** from 1–100 spots. MongoDB reserves a deterministic position inside each slot so simultaneous requests cannot overbook capacity.
+- **Minimum notice** to prevent last-minute appointments.
+- **Booking window** to control how far ahead customers can reserve.
+- **Availability exceptions** for holidays, one-off closures, and special hours. Exceptions can also open a date that is normally closed in the weekly schedule.
+- Product services keep the zero-configuration SHOPLINE Theme App Block. Standalone services do not require theme editing.
+- The first-install Quickstart still presents the App Block first for product appointments, but standalone-service merchants can continue directly to service creation.
+- Responsive English/Simplified Chinese merchant workspace, Arctic Blue visual system, per-store Email Studio, Quickstart/Setup, secure customer management links, and server-authoritative store-time-zone validation are retained.
+- Free/Pro plan boundaries remain reserved without a billing dependency; rule-count enforcement stays disabled by default during the MVP.
 
-Intentionally deferred: Google Calendar, SMS, deposits, staff-resource scheduling, resource capacity, recurring appointments, and complex timezone conversion.
+For home/onsite services, merchants can use the existing required custom-question field to collect a service address or access instructions. A structured address/resource-routing model remains intentionally deferred so the Lite product does not inherit full field-service-management complexity yet.
+
+Intentionally deferred: Google/Outlook Calendar sync, SMS, deposits, per-staff resource calendars, travel zones/routing, recurring appointments, and complex timezone conversion.
 
 ## Lightweight architecture
 
 ```text
 SHOPLINE Admin
-  └─ OAuth + occasional product/rule management ──> Node.js API ──> MongoDB
-
-Product page App Block
-  ├─ rule config: GET once, cached in browser for 5 minutes
-  ├─ selected-day availability: small uncached GET
-  └─ final booking: one POST ──> atomic MongoDB insert
-                                  └─ optional Aliyun DirectMail / Resend HTTPS email
+  ├─ product service ──> Appointment Rule ─┐
+  └─ standalone service ────────────────┐  │
+                                        v  v
+                                  Node.js API ──> MongoDB
+                                      │
+                    ┌─────────────────┴──────────────────┐
+                    │                                    │
+           Product Theme App Block              Hosted /book/:ruleId
+                    │                                    │
+                    └──── availability + booking POST ───┘
+                                      │
+                          optional email notification
 ```
 
-Static UI and slot generation run in the browser. The API only serves small JSON responses. MongoDB uses a maximum application pool of 10 connections. Rule responses opt into five-minute public caching; availability is never cached. The final insert is authoritative, so caching cannot produce a double booking.
+Static UI and slot generation run mostly in the browser. Public availability is uncached and capacity-aware; the final booking insert is authoritative. MongoDB owns the capacity-position uniqueness guarantee, so concurrent customers cannot exceed the configured slot capacity.
 
-Appointment rule times are store-local times, not silently converted to the customer's device time zone. The storefront, cross-device management page, and emails display the store's IANA time zone explicitly. The backend remains authoritative and rejects any create, customer reschedule, or merchant edit whose selected minute has already passed in that store time zone.
+Appointment rule times are store-local times. The backend remains authoritative for create, customer reschedule, and merchant edit operations and rejects elapsed slots, slots outside the booking window, slots inside the minimum-notice period, and full-capacity slots.
 
 ## Project layout
 
 ```text
 src/
-  lib/                 signatures, slot generation, validation
+  lib/                 signatures, slot generation, scheduling policies, validation
   middleware/          stateless admin session, CSRF, errors
   models/              Shop, AppointmentRule, Booking
-  routes/              OAuth, admin API, public storefront API
+  routes/              OAuth, admin API, public booking API
   services/            SHOPLINE, booking, email, plan boundaries
-  views/                admin application shell
-public/admin/           SHOPLINE-like admin UI
-public/manage/          Cross-device customer management page
-theme-extension-source/ App Block source; not initialized by SHOPLINE CLI
+  views/                admin shell + hosted standalone booking page
+public/admin/           merchant admin workspace
+public/manage/          cross-device customer management page
+public/book/            standalone service booking UI
+theme-extension-source/ SHOPLINE product App Block source
 test/                   Node test runner suites
 docs/                   data model and API notes
 ```
@@ -189,7 +198,7 @@ npm test
 npm run check
 ```
 
-Tests cover query signing/tampering, stateless session signing, weekday/date bounds, store-time-zone past-slot filtering, duration+buffer slot generation, rule and booking validation, denormalized booking creation, booking activity events, the App Block deep-link shape, server-side slot validation, and conversion of MongoDB duplicate-key errors into a `409 SLOT_CONFLICT`.
+Tests cover query/session signing, weekday/date bounds, store-time-zone past-slot filtering, duration and buffer generation, standalone one-off availability, availability exceptions, minimum notice, booking windows, capacity allocation under duplicate-key races, rule/booking validation, booking lifecycle events, hosted booking UI, App Block behavior, and merchant scheduling operations.
 
 ## Security and production checklist
 

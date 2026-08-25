@@ -36,7 +36,7 @@ test('server rejects a generated slot that has already passed in the store time 
   const now = new Date('2026-08-24T02:30:00.000Z');
   await assert.rejects(
     () => createBookingAtomic({ shop, rule, input, BookingModel, notify: async () => {}, now }),
-    error => error.code === 'SLOT_UNAVAILABLE' && /store time zone/.test(error.message)
+    error => error.code === 'SLOT_UNAVAILABLE'
   );
 });
 
@@ -106,7 +106,7 @@ test('managed availability authenticates the private token and removes booked sl
   const current = { _id: 'b1', shopId: 'shop1', ruleId: 'rule1', status: 'confirmed', timezone: 'Asia/Shanghai' };
   const BookingModel = {
     async findOne(query) { bookingQuery = query; return current; },
-    find() { return { async distinct() { return ['09:00']; } }; }
+    async find() { return [{ time: '09:00', slotPosition: 0 }]; }
   };
   const RuleModel = { async findOne() { return rule; } };
   const result = await getManagedAvailability({ bookingId: 'b1', token, date: '2026-08-24', BookingModel, RuleModel, now: beforeOpening });

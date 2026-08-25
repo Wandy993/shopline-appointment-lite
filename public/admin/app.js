@@ -1,6 +1,6 @@
 const state = {
   csrf: '', shop: null, email: null, emailSettings: null, rules: [], bookings: [], products: [],
-  bookingFilter: '', ruleStep: 0, activeTemplate: 'confirmation', emailEditorReady: false,
+  ruleStep: 0, activeTemplate: 'confirmation', emailEditorReady: false, bookingView: 'list', calendarMonth: '',
   locale: 'en', currentView: 'dashboard', themeLinkLoaded: false, bootstrap: null, onboarding: null, lastTestEmail: ''
 };
 const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -20,6 +20,7 @@ const sample = {
   date: '2026-09-08', time: '14:00', timezone: 'Asia/Shanghai', location: 'Main showroom', staff: 'Alex Morgan'
 };
 const variables = ['customer_name', 'product_title', 'date', 'time', 'timezone', 'location', 'staff', 'store_name'];
+const serviceTypeLabels = { product: 'Product booking', in_store: 'In-store appointment', onsite: 'Home / onsite service', consultation: 'Consultation', class: 'Class / course', other: 'Other service' };
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
 
@@ -97,7 +98,7 @@ Object.assign(zh, {
   Active: '已启用', Paused: '已暂停', Specialist: '服务人员', 'Any staff': '未指定人员', 'Not set': '未设置', Questions: '自定义问题', custom: '个',
   'Edit service': '编辑', Delete: '删除', 'Service rule deleted.': '预约服务已删除。', 'No bookings found': '没有找到预约',
   'Try another search.': '请尝试其他搜索条件。', 'Confirmed appointments will appear here.': '已确认的预约会显示在这里。', 'No location': '未设置地点',
-  'View history': '查看历史', Edit: '编辑', 'Appointment created': '预约已创建', 'The customer completed this booking.': '客户已完成本次预约。',
+  'View history': '查看历史', Edit: '编辑', 'Appointment created': '预约已创建', 'The customer submitted this booking.': '客户已提交本次预约。',
   'Customer changed the time': '客户修改了时间', 'The customer used their online change.': '客户已使用一次在线修改机会。',
   'Store updated the appointment': '店铺更新了预约', 'The date, time, location, or specialist was updated.': '日期、时间、地点或服务人员已更新。',
   'Customer cancelled': '客户取消了预约', 'Store cancelled the appointment': '店铺取消了预约', 'The time was released for other customers.': '该时间已释放，可供其他客户预约。',
@@ -125,25 +126,72 @@ Object.assign(zh, {
   'QUICK SETUP': '快速设置', 'Launch Appointment Lite': '启用 Appointment Lite',
   'Complete the storefront connection first, then create a service and test the booking flow.': '先完成店铺前台连接，再创建预约服务并测试完整预约流程。',
   'Enable the Appointment Lite App Block': '启用 Appointment Lite App Block',
-  'Open the product template in the SHOPLINE theme editor, add or activate the Appointment Lite App Block, then save the theme.': '打开 SHOPLINE 主题编辑器中的商品模板，添加或启用 Appointment Lite App Block，然后保存主题。',
+  'Required for SHOPLINE product appointments. Open the product template in the SHOPLINE theme editor, add or activate the Appointment Lite App Block, then save the theme. Standalone services can continue without it.': 'SHOPLINE 商品预约需要启用 App Block。打开主题编辑器中的商品模板，添加或启用 Appointment Lite App Block 并保存；独立服务无需启用即可继续。',
   "I've enabled the App Block": '我已启用 App Block', 'Create your first appointment service': '创建第一个预约服务',
   'Select the SHOPLINE product customers will book, then configure duration, availability, location, and specialist.': '选择客户需要预约的 SHOPLINE 商品，并配置预约时长、可预约时段、地点和服务人员。',
   'Create a service': '创建预约服务', 'Test the storefront booking flow': '测试店铺前台预约流程',
   'Open the configured product page and submit one test booking. The booking should appear in Bookings.': '打开已配置的商品页并完成一次测试预约，预约记录应出现在“预约记录”中。',
   'Preview bookable product': '预览可预约商品', 'Quick setup': '快速设置',
-  'New merchants should enable the App Block before creating a service so the storefront is ready when the first rule goes live.': '新商家应先启用 App Block，再创建预约服务，这样第一条规则启用时店铺前台已经准备就绪。',
-  'Step 1 connects the storefront App Block': '第 1 步连接店铺前台 App Block', 'Step 2 creates the first appointment service': '第 2 步创建第一个预约服务',
+  'Product appointments use the App Block. In-store, onsite, consultation, class, and other standalone services can be created without editing the theme.': '商品预约通过 App Block 展示；到店、上门、咨询、课程及其他独立服务无需编辑主题即可创建。',
+  'Step 1 connects product appointments to the storefront App Block': '第 1 步为商品预约连接店铺前台 App Block', 'Step 2 creates the first appointment service': '第 2 步创建第一个预约服务',
   'Step 3 verifies the complete customer booking experience': '第 3 步验证完整的客户预约体验',
   'EMAIL TEST': '测试邮件', 'Send a test email': '发送测试邮件', 'Choose the inbox that should receive this preview.': '选择接收本次预览邮件的邮箱。',
   'Test recipient': '测试收件邮箱', 'This address is used only for this test. It does not change your saved notification recipients.': '该邮箱仅用于本次测试，不会修改已保存的通知收件邮箱。',
   'Send test email': '发送测试邮件', 'QUICK START': '快速开始', 'Set up Appointment Lite': '设置 Appointment Lite',
   'Get your first booking flow ready in three steps.': '通过 3 个步骤完成第一个预约流程。',
-  'Start with the App Block so your storefront is ready before you publish a service.': '先启用 App Block，确保创建预约服务前店铺前台已经准备完成。',
-  'Open the product template, activate the Appointment Lite App Block, and save the theme.': '打开商品模板，启用 Appointment Lite App Block，并保存主题。',
+  'The App Block is required for product appointments. Standalone services can continue directly to Step 2.': '商品预约需要启用 App Block；独立服务可以直接进入第 2 步。',
+  'For product appointments, open the product template, activate the Appointment Lite App Block, and save the theme. Standalone services can skip this step.': '商品预约请打开商品模板、启用 Appointment Lite App Block 并保存主题；独立服务可以跳过此步骤。',
   'Choose a SHOPLINE product and configure the available schedule.': '选择一个 SHOPLINE 商品并配置可预约时间。',
   'Test a booking on your storefront': '在店铺前台测试预约', 'Open the configured product and complete one test appointment.': '打开已配置的商品并完成一次测试预约。',
   "I'll finish later": '稍后完成', '{done} of 3 complete': '已完成 {done}/3', 'App Block enabled': 'App Block 已启用', 'App Block enabled.': 'App Block 已标记为启用。',
   'Enter an email address for the test message.': '请输入接收测试邮件的邮箱。', 'Enter a valid email address for the test message.': '请输入有效的测试收件邮箱。'
+});
+
+
+
+Object.assign(zh, {
+
+  'Connect the App Block for product bookings, or create a standalone service, then test the booking flow.': '商品预约可先连接 App Block；独立服务可以直接创建服务，然后测试预约流程。',
+  'Required for SHOPLINE product appointments. Open the product template in the SHOPLINE theme editor, add or activate the Appointment Lite App Block, then save the theme. Standalone services can continue without it.': 'SHOPLINE 商品预约需要启用 App Block。打开主题编辑器中的商品模板，添加或启用 Appointment Lite App Block 并保存；独立服务无需启用即可继续。',
+  'Product appointments use the App Block. In-store, onsite, consultation, class, and other standalone services can be created without editing the theme.': '商品预约通过 App Block 展示；到店、上门、咨询、课程及其他独立服务无需编辑主题即可创建。',
+  'Step 1 connects product appointments to the storefront App Block': '第 1 步为商品预约连接店铺前台 App Block',
+  'The App Block is required for product appointments. Standalone services can continue directly to Step 2.': '商品预约需要启用 App Block；独立服务可以直接进入第 2 步。',
+  'For product appointments, open the product template, activate the Appointment Lite App Block, and save the theme. Standalone services can skip this step.': '商品预约请打开商品模板、启用 Appointment Lite App Block 并保存主题；独立服务可以跳过此步骤。',
+  'Open booking experience': '打开预约体验',
+  'Create product appointments, in-store visits, home services, consultations, classes, and shareable booking experiences.': '创建商品预约、到店服务、上门服务、咨询、课程，以及可分享的独立预约服务。',
+  'New service': '新建服务', 'Loading services…': '正在加载服务…', 'SCHEDULING OPERATIONS': '预约运营',
+  'Run your daily schedule in a list or calendar, update status, and export records when needed.': '通过列表或日历管理每日预约、更新状态，并按需导出记录。',
+  'Export CSV': '导出 CSV', 'Search customer, service, or email': '搜索客户、服务或邮箱', 'All services': '全部服务', 'All statuses': '全部状态',
+  'Completed': '已完成', 'No-show': '未到店', 'List': '列表', 'Calendar': '日历', 'From': '开始日期', 'To': '结束日期', 'Clear filters': '清除筛选',
+  'New appointment service': '新建预约服务', 'Choose how customers will book this service.': '选择客户如何预约这项服务。',
+  'What kind of service is this?': '这是什么类型的服务？',
+  'Product appointments use your SHOPLINE product page. Other services get a standalone booking link you can share anywhere.': '商品预约通过 SHOPLINE 商品页进入；其他服务会自动生成可分享的独立预约链接。',
+  'Product booking': '商品预约', 'Appointments connected to a SHOPLINE product and App Block.': '绑定 SHOPLINE 商品，并通过 App Block 展示预约入口。',
+  'In-store appointment': '到店预约', 'Showroom visits, fittings, measurements, or store services.': '适合展厅到访、试穿、量尺或门店服务。',
+  'Home / onsite service': '上门服务', 'Installation, repair, measurement, or technician visits.': '适合安装、维修、上门量尺或师傅上门。',
+  'Consultation': '咨询预约', 'Design, sales, remote, or professional consultations.': '适合设计、销售、远程或专业咨询。',
+  'Class / course': '课程 / 课堂', 'Lessons, workshops, group sessions, and classes.': '适合课程、工作坊、小班课或团体活动。',
+  'Other service': '其他服务', 'Create a flexible standalone appointment service.': '创建灵活的独立预约服务。',
+  'Each product can have one active appointment service.': '每个商品可配置一项预约服务。', 'Service name': '服务名称',
+  'A shareable booking link is created automatically after you save.': '保存后会自动生成可分享的预约链接。', 'Duration': '服务时长', 'Buffer': '缓冲时间', 'Capacity': '单时段容量', 'min': '分钟', 'spots': '名额',
+  'Set your regular hours, booking policies, and date-specific exceptions. All times use the store time zone.': '设置常规营业时间、预约策略和特殊日期，所有时间均以店铺时区为准。',
+  'Minimum notice': '最短提前预约', 'No minimum': '无限制', '1 hour': '1 小时', '2 hours': '2 小时', '4 hours': '4 小时', '12 hours': '12 小时', '1 day': '1 天', '2 days': '2 天', '7 days': '7 天',
+  'Booking window': '可提前预约范围', 'days ahead': '天内', 'Enable the days customers can normally book.': '启用客户通常可以预约的星期。',
+  'Availability exceptions': '特殊日期', 'Add exception': '添加特殊日期', 'Close a holiday or override one date with special opening hours.': '可关闭节假日，或为某一天设置特殊营业时间。',
+  'Closed all day': '全天关闭', 'Special hours': '特殊营业时间', 'Service description': '服务说明', 'What should customers know before booking?': '客户预约前需要了解什么？',
+  'Add the location, specialist, service details, and questions customers should see.': '添加地点、服务人员、服务说明和客户需要填写的问题。',
+  'Show the booking experience when customers open this service.': '启用后客户即可通过对应入口预约此服务。',
+  'Service name is required before continuing.': '请先填写服务名称。', 'Enter valid duration, buffer, and capacity.': '请输入有效的服务时长、缓冲时间和单时段容量。',
+  'Enter a valid booking window and minimum notice.': '请输入有效的预约范围和最短提前预约时间。', 'Enable at least one weekday or add an open exception.': '请至少启用一个星期，或添加一个开放的特殊日期。',
+  'Booking link': '预约链接', 'Copy link': '复制链接', 'Open booking page': '打开预约页', 'Booking link copied.': '预约链接已复制。',
+  'Product page': '商品页', 'Standalone link': '独立预约链接', 'per slot': '每时段', 'No notice': '无需提前', 'ahead': '提前',
+  'Mark complete': '标记完成', 'Mark no-show': '标记未到店', 'Mark this appointment completed?': '将这条预约标记为已完成？',
+  'The booking will move out of the active schedule and remain in history.': '该预约会从进行中的排期中移出，并保留在历史记录中。',
+  'Mark completed': '标记完成', 'Mark this appointment as no-show?': '将这条预约标记为未到店？', 'Use no-show when the customer did not attend the scheduled appointment.': '当客户未按预约时间到场时使用“未到店”。',
+  'Booking marked completed.': '预约已标记为完成。', 'Booking marked no-show.': '预约已标记为未到店。',
+  'Appointment completed': '预约已完成', 'The store marked this appointment as completed.': '店铺已将这条预约标记为完成。',
+  'Customer did not attend': '客户未到店', 'The store marked this appointment as no-show.': '店铺已将这条预约标记为未到店。',
+  'No bookings match the current filters.': '没有符合当前筛选条件的预约。', 'booking': '条预约', 'bookings': '条预约'
 });
 
 function t(value, variables = {}) {
@@ -258,6 +306,30 @@ function addQuestion(question = {}) {
   $('#questions').append(row);
 }
 
+function addException(exception = {}) {
+  if ($$('.exception-row').length >= 120) return toast(t('Too many availability exceptions.'), 'error');
+  const row = document.createElement('div');
+  row.className = 'exception-row';
+  const closed = exception.closed !== false;
+  const window = exception.windows?.[0] || { start: '09:00', end: '17:00' };
+  row.innerHTML = `<input class="exception-date" type="date" value="${escapeHtml(exception.date || '')}" aria-label="${t('Date')}"><select class="exception-mode" aria-label="${t('Availability exceptions')}"><option value="closed" ${closed ? 'selected' : ''}>${t('Closed all day')}</option><option value="hours" ${!closed ? 'selected' : ''}>${t('Special hours')}</option></select><input class="exception-start" type="time" value="${escapeHtml(window.start)}" ${closed ? 'disabled' : ''}><input class="exception-end" type="time" value="${escapeHtml(window.end)}" ${closed ? 'disabled' : ''}><button type="button" class="secondary small">${t('Remove')}</button>`;
+  const sync = () => {
+    const disabled = row.querySelector('.exception-mode').value === 'closed';
+    row.querySelector('.exception-start').disabled = disabled;
+    row.querySelector('.exception-end').disabled = disabled;
+    row.classList.toggle('closed', disabled);
+  };
+  row.querySelector('.exception-mode').addEventListener('change', sync);
+  row.querySelector('button').addEventListener('click', () => row.remove());
+  sync();
+  $('#availabilityExceptions').append(row);
+}
+
+function renderExceptions(values = []) {
+  $('#availabilityExceptions').innerHTML = '';
+  (values || []).forEach(addException);
+}
+
 function renderProductOptions(query = '') {
   const normalized = query.trim().toLowerCase();
   const matches = state.products.filter(product => !normalized || product.title.toLowerCase().includes(normalized));
@@ -286,6 +358,17 @@ async function ensureProducts() {
   }
 }
 
+function setServiceType(type = 'product') {
+  const normalized = serviceTypeLabels[type] ? type : 'other';
+  const sourceType = normalized === 'product' ? 'product' : 'standalone';
+  $('#serviceType').value = normalized;
+  $('#sourceType').value = sourceType;
+  $$('#serviceTypeGrid [data-service-type]').forEach(button => button.classList.toggle('selected', button.dataset.serviceType === normalized));
+  $('#productSourceFields').classList.toggle('hidden', sourceType !== 'product');
+  $('#standaloneSourceFields').classList.toggle('hidden', sourceType === 'product');
+  $('#serviceActiveHint').textContent = t(sourceType === 'product' ? 'Show the booking experience on matching product pages.' : 'Show the booking experience when customers open this service.');
+}
+
 function setRuleStep(step) {
   state.ruleStep = Math.max(0, Math.min(2, step));
   $$('[data-rule-step]').forEach(panel => panel.classList.toggle('hidden', Number(panel.dataset.ruleStep) !== state.ruleStep));
@@ -293,16 +376,23 @@ function setRuleStep(step) {
   $('#ruleBack').classList.toggle('hidden', state.ruleStep === 0);
   $('#ruleNext').classList.toggle('hidden', state.ruleStep === 2);
   $('#saveRule').classList.toggle('hidden', state.ruleStep !== 2);
-  const subtitles = ['Start with the product customers will book.', 'Set the store-local schedule customers can choose from.', 'Finish the customer-facing details and activate the service.'];
+  const subtitles = ['Choose how customers will book this service.', 'Set the store-local schedule customers can choose from.', 'Finish the customer-facing details and activate the service.'];
   $('#ruleDialogSubtitle').textContent = t(subtitles[state.ruleStep]);
   $('#formError').classList.add('hidden');
 }
 
 function validateRuleStep(step) {
   let message = '';
-  if (step === 0 && !$('#productSelect').value) message = 'Select a SHOPLINE product before continuing.';
-  if (step === 0 && (!$('#duration').checkValidity() || !$('#buffer').checkValidity())) message = 'Enter a valid duration and buffer.';
-  if (step === 1 && !$$('.schedule-row input[type=checkbox]').some(input => input.checked)) message = 'Enable at least one weekday.';
+  const sourceType = $('#sourceType').value;
+  if (step === 0 && sourceType === 'product' && !$('#productSelect').value) message = 'Select a SHOPLINE product before continuing.';
+  if (step === 0 && sourceType === 'standalone' && !$('#serviceTitle').value.trim()) message = 'Service name is required before continuing.';
+  if (step === 0 && (!$('#duration').checkValidity() || !$('#buffer').checkValidity() || !$('#capacity').checkValidity())) message = 'Enter valid duration, buffer, and capacity.';
+  if (step === 1 && (!$('#bookingWindowDays').checkValidity() || !$('#minimumNoticeMinutes').checkValidity())) message = 'Enter a valid booking window and minimum notice.';
+  if (step === 1) {
+    const weeklyOpen = $$('.schedule-row input[type=checkbox]').some(input => input.checked);
+    const exceptionOpen = $$('.exception-row').some(row => row.querySelector('.exception-mode').value === 'hours' && row.querySelector('.exception-date').value);
+    if (!weeklyOpen && !exceptionOpen) message = 'Enable at least one weekday or add an open exception.';
+  }
   if (message) {
     $('#formError').textContent = t(message);
     $('#formError').classList.remove('hidden');
@@ -313,15 +403,28 @@ function validateRuleStep(step) {
 
 async function openRule(rule = null) {
   $('#ruleForm').reset();
-  if (!rule) $('#questionLabel').value = t('Anything we should know?');
   $('#ruleId').value = rule?._id || '';
-  $('#ruleDialogTitle').textContent = t(rule ? 'Edit service rule' : 'New service rule');
+  $('#ruleDialogTitle').textContent = t(rule ? 'Edit service rule' : 'New appointment service');
   $('#questions').innerHTML = '';
   $('#productSearch').value = '';
+  $('#serviceTitle').value = '';
+  $('#capacity').value = rule?.capacity || 1;
+  $('#minimumNoticeMinutes').value = String(rule?.minimumNoticeMinutes ?? 0);
+  $('#bookingWindowDays').value = rule?.bookingWindowDays || 90;
+  $('#serviceDescription').value = rule?.serviceDescription || '';
+  $('#questionLabel').value = rule?.questionLabel || t('Anything we should know?');
+  $('#enabled').checked = rule?.enabled !== false;
   renderSchedule(rule?.weeklyAvailability || [1, 2, 3, 4, 5].map(weekday => ({ weekday, enabled: true, windows: [{ start: '09:00', end: '17:00' }] })));
-  await ensureProducts();
-  if (rule && !state.products.some(product => product.id === rule.productId)) state.products.push({ id: rule.productId, title: rule.productTitle, handle: rule.productHandle || '' });
-  selectProduct(rule?.productId || '');
+  renderExceptions(rule?.availabilityExceptions || []);
+  setServiceType(rule?.serviceType || (rule?.sourceType === 'standalone' ? 'other' : 'product'));
+  if (($('#sourceType').value === 'product')) {
+    await ensureProducts();
+    if (rule?.productId && !state.products.some(product => product.id === rule.productId)) state.products.push({ id: rule.productId, title: rule.productTitle, handle: rule.productHandle || '' });
+    selectProduct(rule?.productId || '');
+  } else {
+    selectProduct('');
+    $('#serviceTitle').value = rule?.productTitle || '';
+  }
   if (rule) {
     $('#duration').value = rule.duration;
     $('#buffer').value = rule.buffer;
@@ -329,20 +432,38 @@ async function openRule(rule = null) {
     $('#dateUntil').value = rule.dateUntil || '';
     $('#location').value = rule.location || '';
     $('#staff').value = rule.staff || '';
-    $('#questionLabel').value = rule.questionLabel || t('Anything we should know?');
-    $('#enabled').checked = rule.enabled;
     (rule.customQuestions || []).forEach(addQuestion);
+  } else {
+    $('#duration').value = 60;
+    $('#buffer').value = 0;
+    $('#dateFrom').value = '';
+    $('#dateUntil').value = '';
+    $('#location').value = '';
+    $('#staff').value = '';
   }
   setRuleStep(0);
   $('#ruleDialog').showModal();
 }
 
 function rulePayload() {
+  const sourceType = $('#sourceType').value;
   const product = state.products.find(item => item.id === $('#productSelect').value);
   return {
-    productId: product?.id || '', productTitle: product?.title || '', productHandle: product?.handle || '',
-    duration: Number($('#duration').value), buffer: Number($('#buffer').value), dateFrom: $('#dateFrom').value, dateUntil: $('#dateUntil').value,
+    sourceType, serviceType: $('#serviceType').value,
+    productId: sourceType === 'product' ? (product?.id || '') : '',
+    productTitle: sourceType === 'product' ? (product?.title || '') : $('#serviceTitle').value,
+    serviceTitle: sourceType === 'product' ? (product?.title || '') : $('#serviceTitle').value,
+    productHandle: sourceType === 'product' ? (product?.handle || '') : '',
+    serviceDescription: $('#serviceDescription').value,
+    duration: Number($('#duration').value), buffer: Number($('#buffer').value), capacity: Number($('#capacity').value),
+    minimumNoticeMinutes: Number($('#minimumNoticeMinutes').value), bookingWindowDays: Number($('#bookingWindowDays').value),
+    dateFrom: $('#dateFrom').value, dateUntil: $('#dateUntil').value,
     weeklyAvailability: $$('.schedule-row').map(row => ({ weekday: Number(row.dataset.weekday), enabled: row.querySelector('input[type=checkbox]').checked, windows: [{ start: row.querySelectorAll('input[type=time]')[0].value, end: row.querySelectorAll('input[type=time]')[1].value }] })),
+    availabilityExceptions: $$('.exception-row').map(row => ({
+      date: row.querySelector('.exception-date').value,
+      closed: row.querySelector('.exception-mode').value === 'closed',
+      windows: row.querySelector('.exception-mode').value === 'hours' ? [{ start: row.querySelector('.exception-start').value, end: row.querySelector('.exception-end').value }] : []
+    })).filter(item => item.date),
     location: $('#location').value, staff: $('#staff').value, questionLabel: $('#questionLabel').value, enabled: $('#enabled').checked,
     customQuestions: $$('.question-row').map(row => ({ label: row.querySelector('input[type=text]').value, required: row.querySelector('input[type=checkbox]').checked }))
   };
@@ -366,23 +487,49 @@ async function saveRule(event) {
   } finally { button.disabled = false; }
 }
 
+function formatNotice(rule) {
+  const minutes = Number(rule.minimumNoticeMinutes || 0);
+  if (!minutes) return t('No notice');
+  if (minutes % 1440 === 0) return `${minutes / 1440}d ${t('ahead')}`;
+  if (minutes % 60 === 0) return `${minutes / 60}h ${t('ahead')}`;
+  return `${minutes}m ${t('ahead')}`;
+}
+
+async function copyBookingLink(url) {
+  try {
+    await navigator.clipboard.writeText(url);
+    toast(t('Booking link copied.'));
+  } catch {
+    const input = document.createElement('textarea');
+    input.value = url;
+    document.body.append(input);
+    input.select();
+    document.execCommand('copy');
+    input.remove();
+    toast(t('Booking link copied.'));
+  }
+}
+
 function renderRules() {
   const query = $('#ruleSearch').value.trim().toLowerCase();
-  const rules = state.rules.filter(rule => !query || [rule.productTitle, rule.staff, rule.location].some(value => String(value || '').toLowerCase().includes(query)));
-  $('#ruleResultCount').textContent = state.locale === 'zh-CN' ? `${rules.length} 条预约规则` : `${rules.length} service rule${rules.length === 1 ? '' : 's'}`;
+  const rules = state.rules.filter(rule => !query || [rule.productTitle, rule.staff, rule.location, serviceTypeLabels[rule.serviceType] || ''].some(value => String(value || '').toLowerCase().includes(query)));
+  $('#ruleResultCount').textContent = state.locale === 'zh-CN' ? `${rules.length} 项服务` : `${rules.length} service${rules.length === 1 ? '' : 's'}`;
   const root = $('#rulesList');
   if (!rules.length) {
-    root.innerHTML = `<div class="panel empty"><strong>${t(state.rules.length ? 'No services match your search' : 'No service rules yet')}</strong><span>${t(state.rules.length ? 'Try a different keyword.' : 'Create a rule to make a SHOPLINE product bookable.')}</span></div>`;
+    root.innerHTML = `<div class="panel empty"><strong>${t(state.rules.length ? 'No services match your search' : 'No service rules yet')}</strong><span>${t(state.rules.length ? 'Try a different keyword.' : 'Create your first appointment service.')}</span></div>`;
     return;
   }
   root.innerHTML = rules.map(rule => {
     const bufferLabel = state.locale === 'zh-CN' ? (rule.buffer ? `缓冲 ${rule.buffer} 分钟` : '无缓冲') : (rule.buffer ? `${rule.buffer} min buffer` : 'No buffer');
-    const timingLabel = state.locale === 'zh-CN' ? `预约 ${rule.duration} 分钟 · ${bufferLabel}` : `${rule.duration} min appointment · ${bufferLabel}`;
-    const questionCount = (rule.customQuestions || []).length;
-    const questionLabel = state.locale === 'zh-CN' ? (questionCount ? `${questionCount} 个` : '未配置') : (questionCount ? `${questionCount} custom` : 'None');
-    return `<article class="panel service-card"><div class="service-head"><div class="service-identity"><div class="service-avatar">${escapeHtml(rule.productTitle.slice(0, 1).toUpperCase())}</div><div><strong title="${escapeHtml(rule.productTitle)}">${escapeHtml(rule.productTitle)}</strong><span>${timingLabel}</span></div></div><span class="status-badge ${rule.enabled ? 'enabled' : 'disabled'}">${t(rule.enabled ? 'Active' : 'Paused')}</span></div><div class="service-meta"><div><span>${t('Specialist')}</span><strong>${escapeHtml(rule.staff || t('Any staff'))}</strong></div><div><span>${t('Location')}</span><strong>${escapeHtml(rule.location || t('Not set'))}</strong></div><div><span>${t('Questions')}</span><strong>${questionLabel}</strong></div></div><div class="service-actions"><button class="secondary small" data-edit="${rule._id}">${t('Edit service')}</button><button class="secondary small" data-delete="${rule._id}">${t('Delete')}</button></div></article>`;
+    const timingLabel = state.locale === 'zh-CN' ? `${rule.duration} 分钟 · ${bufferLabel}` : `${rule.duration} min · ${bufferLabel}`;
+    const typeLabel = t(serviceTypeLabels[rule.serviceType] || (rule.sourceType === 'standalone' ? 'Other service' : 'Product booking'));
+    const sourceLabel = t(rule.sourceType === 'standalone' ? 'Standalone link' : 'Product page');
+    const capacityLabel = state.locale === 'zh-CN' ? `每时段 ${rule.capacity || 1} 个名额` : `${rule.capacity || 1} ${t('per slot')}`;
+    const linkActions = rule.sourceType === 'standalone' && rule.bookingUrl ? `<button class="secondary small" data-copy-link="${escapeHtml(rule.bookingUrl)}">${t('Copy link')}</button><a class="button-link secondary-link small" href="${escapeHtml(rule.bookingUrl)}" target="_blank" rel="noopener noreferrer">${t('Open booking page')}</a>` : '';
+    return `<article class="panel service-card"><div class="service-head"><div class="service-identity"><div class="service-avatar">${escapeHtml(rule.productTitle.slice(0, 1).toUpperCase())}</div><div><div class="service-title-row"><strong title="${escapeHtml(rule.productTitle)}">${escapeHtml(rule.productTitle)}</strong><span class="service-type-badge">${escapeHtml(typeLabel)}</span></div><span>${timingLabel}</span></div></div><span class="status-badge ${rule.enabled ? 'enabled' : 'disabled'}">${t(rule.enabled ? 'Active' : 'Paused')}</span></div><div class="service-meta service-meta-wide"><div><span>${sourceLabel}</span><strong>${rule.sourceType === 'standalone' ? t('Booking link') : t('SHOPLINE product')}</strong></div><div><span>${t('Capacity')}</span><strong>${capacityLabel}</strong></div><div><span>${t('Minimum notice')}</span><strong>${escapeHtml(formatNotice(rule))}</strong></div><div><span>${t('Specialist')}</span><strong>${escapeHtml(rule.staff || t('Any staff'))}</strong></div><div><span>${t('Location')}</span><strong>${escapeHtml(rule.location || t('Not set'))}</strong></div></div><div class="service-actions"><div class="service-link-actions">${linkActions}</div><div class="service-edit-actions"><button class="secondary small" data-edit="${rule._id}">${t('Edit service')}</button><button class="secondary small" data-delete="${rule._id}">${t('Delete')}</button></div></div></article>`;
   }).join('');
   $$('[data-edit]').forEach(button => button.addEventListener('click', () => openRule(state.rules.find(rule => rule._id === button.dataset.edit))));
+  $$('[data-copy-link]').forEach(button => button.addEventListener('click', () => copyBookingLink(button.dataset.copyLink)));
   $$('[data-delete]').forEach(button => button.addEventListener('click', () => confirmAction('Delete this service rule?', 'Rules with booking history cannot be deleted. If customers have booked it before, pause the service instead.', 'Delete rule', async () => {
     await api(`/rules/${button.dataset.delete}`, { method: 'DELETE' });
     toast(t('Service rule deleted.'));
@@ -428,17 +575,54 @@ async function saveBooking(event) {
   } finally { button.disabled = false; }
 }
 
-function renderBookings() {
+function bookingStatusLabel(status) {
+  return t({ confirmed: 'Confirmed', cancelled: 'Cancelled', completed: 'Completed', no_show: 'No-show' }[status] || status);
+}
+
+function filteredBookings() {
   const query = $('#bookingSearch').value.trim().toLowerCase();
-  const bookings = state.bookings.filter(booking => !query || [booking.productTitle, booking.customer?.name, booking.customer?.email, booking.staff, booking.location].some(value => String(value || '').toLowerCase().includes(query)));
-  const root = $('#bookingsList');
-  if (!bookings.length) {
-    root.innerHTML = `<div class="empty"><strong>${t('No bookings found')}</strong><span>${t(state.bookings.length ? 'Try another search.' : 'Confirmed appointments will appear here.')}</span></div>`;
-    return;
-  }
-  root.innerHTML = bookings.map(booking => `<div class="booking-row"><div class="booking-primary"><strong>${escapeHtml(booking.productTitle)}</strong><span>${escapeHtml(booking.customer.name)} · ${escapeHtml(booking.customer.email)}</span></div><div class="booking-cell"><strong>${escapeHtml(booking.date)}</strong><span>${escapeHtml(booking.time)} · ${escapeHtml(booking.timezone || state.shop?.timezone || 'UTC')}</span></div><div class="booking-cell"><strong>${escapeHtml(booking.staff || t('Any staff'))}</strong><span>${escapeHtml(booking.location || t('No location'))}</span></div><span class="status-badge ${booking.status}">${t(booking.status === 'confirmed' ? 'Confirmed' : 'Cancelled')}</span><div class="row-actions"><button class="secondary small icon-only" data-flow-booking="${booking._id}" title="${t('View history')}" aria-label="${t('View history')}">↻</button>${booking.status === 'confirmed' ? `<button class="secondary small" data-edit-booking="${booking._id}">${t('Edit')}</button><button class="secondary small" data-cancel="${booking._id}">${t('Cancel')}</button>` : ''}</div></div>`).join('');
+  const serviceId = $('#bookingServiceFilter').value;
+  const status = $('#bookingStatusFilter').value;
+  const from = $('#bookingFrom').value;
+  const to = $('#bookingTo').value;
+  return state.bookings.filter(booking => {
+    if (query && ![booking.productTitle, booking.customer?.name, booking.customer?.email, booking.customer?.phone, booking.staff, booking.location].some(value => String(value || '').toLowerCase().includes(query))) return false;
+    if (serviceId && String(booking.ruleId) !== serviceId) return false;
+    if (status && booking.status !== status) return false;
+    if (from && booking.date < from) return false;
+    if (to && booking.date > to) return false;
+    return true;
+  });
+}
+
+function renderBookingServiceFilter() {
+  const select = $('#bookingServiceFilter');
+  const current = select.value;
+  const services = new Map();
+  state.bookings.forEach(booking => services.set(String(booking.ruleId), booking.productTitle));
+  select.innerHTML = `<option value="">${t('All services')}</option>${[...services.entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([id, title]) => `<option value="${escapeHtml(id)}">${escapeHtml(title)}</option>`).join('')}`;
+  if ([...services.keys()].includes(current)) select.value = current;
+}
+
+async function markBookingStatus(booking, status) {
+  const isComplete = status === 'completed';
+  confirmAction(
+    isComplete ? 'Mark this appointment completed?' : 'Mark this appointment as no-show?',
+    isComplete ? 'The booking will move out of the active schedule and remain in history.' : 'Use no-show when the customer did not attend the scheduled appointment.',
+    isComplete ? 'Mark completed' : 'Mark no-show',
+    async () => {
+      await api(`/bookings/${booking._id}/status`, { method: 'POST', body: JSON.stringify({ status }) });
+      toast(t(isComplete ? 'Booking marked completed.' : 'Booking marked no-show.'));
+      await Promise.all([loadBookings(), loadBootstrap()]);
+    }
+  );
+}
+
+function bindBookingRows() {
   $$('[data-flow-booking]').forEach(button => button.addEventListener('click', () => openBookingFlow(state.bookings.find(booking => booking._id === button.dataset.flowBooking))));
   $$('[data-edit-booking]').forEach(button => button.addEventListener('click', () => openBooking(state.bookings.find(booking => booking._id === button.dataset.editBooking))));
+  $$('[data-complete]').forEach(button => button.addEventListener('click', () => markBookingStatus(state.bookings.find(booking => booking._id === button.dataset.complete), 'completed')));
+  $$('[data-no-show]').forEach(button => button.addEventListener('click', () => markBookingStatus(state.bookings.find(booking => booking._id === button.dataset.noShow), 'no_show')));
   $$('[data-cancel]').forEach(button => button.addEventListener('click', () => confirmAction('Cancel this appointment?', 'The time will be released immediately. The customer will be emailed when delivery is configured.', 'Cancel booking', async () => {
     const payload = await api(`/bookings/${button.dataset.cancel}/cancel`, { method: 'POST', body: '{}' });
     toast(t(payload.notification?.skipped ? 'Booking cancelled. Email delivery is not configured.' : payload.notification?.failed ? 'Booking cancelled, but the customer email failed.' : 'Booking cancelled and customer email sent.'), payload.notification?.failed ? 'error' : 'success');
@@ -446,12 +630,89 @@ function renderBookings() {
   })));
 }
 
+function renderBookingList(bookings) {
+  const root = $('#bookingsList');
+  if (!bookings.length) {
+    root.innerHTML = `<div class="empty"><strong>${t('No bookings found')}</strong><span>${t(state.bookings.length ? 'No bookings match the current filters.' : 'Confirmed appointments will appear here.')}</span></div>`;
+    return;
+  }
+  root.innerHTML = bookings.map(booking => `<div class="booking-row"><div class="booking-primary"><strong>${escapeHtml(booking.productTitle)}</strong><span>${escapeHtml(booking.customer.name)} · ${escapeHtml(booking.customer.email)}</span></div><div class="booking-cell"><strong>${escapeHtml(booking.date)}</strong><span>${escapeHtml(booking.time)} · ${escapeHtml(booking.timezone || state.shop?.timezone || 'UTC')}</span></div><div class="booking-cell"><strong>${escapeHtml(booking.staff || t('Any staff'))}</strong><span>${escapeHtml(booking.location || t('No location'))}</span></div><span class="status-badge ${booking.status}">${bookingStatusLabel(booking.status)}</span><div class="row-actions"><button class="secondary small icon-only" data-flow-booking="${booking._id}" title="${t('View history')}" aria-label="${t('View history')}">↻</button>${booking.status === 'confirmed' ? `<button class="secondary small" data-edit-booking="${booking._id}">${t('Edit')}</button><button class="secondary small" data-complete="${booking._id}">${t('Mark complete')}</button><button class="secondary small" data-no-show="${booking._id}">${t('No-show')}</button><button class="secondary small" data-cancel="${booking._id}">${t('Cancel')}</button>` : ''}</div></div>`).join('');
+  bindBookingRows();
+}
+
+function monthKey(date) { return String(date || '').slice(0, 7); }
+function shiftMonth(value, delta) {
+  const [year, month] = value.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1 + delta, 1));
+  return date.toISOString().slice(0, 7);
+}
+
+function shiftCalendarMonth(delta) {
+  const base = state.calendarMonth || new Date().toISOString().slice(0, 7);
+  state.calendarMonth = shiftMonth(base, delta);
+  renderBookings();
+}
+
+function renderCalendar(bookings) {
+  const root = $('#bookingCalendar');
+  const fallback = state.bootstrap?.onboarding?.storeDate || new Date().toISOString().slice(0, 7);
+  if (!state.calendarMonth) state.calendarMonth = monthKey(state.bootstrap?.nextBookings?.[0]?.date || new Date().toISOString().slice(0, 10));
+  const [year, month] = state.calendarMonth.split('-').map(Number);
+  const first = new Date(Date.UTC(year, month - 1, 1));
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const startWeekday = first.getUTCDay();
+  $('#calendarMonthLabel').textContent = first.toLocaleString(state.locale === 'zh-CN' ? 'zh-CN' : 'en', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  const byDate = bookings.reduce((map, booking) => { (map[booking.date] ||= []).push(booking); return map; }, {});
+  const headers = days.map(day => `<span class="calendar-weekday">${escapeHtml(t(day).slice(0, state.locale === 'zh-CN' ? 3 : 3))}</span>`).join('');
+  const blanks = Array.from({ length: startWeekday }, () => '<div class="calendar-day outside"></div>').join('');
+  const cells = Array.from({ length: daysInMonth }, (_, index) => {
+    const day = index + 1;
+    const date = `${state.calendarMonth}-${String(day).padStart(2, '0')}`;
+    const items = (byDate[date] || []).sort((a, b) => a.time.localeCompare(b.time));
+    const visible = items.slice(0, 3);
+    return `<div class="calendar-day ${items.length ? 'has-bookings' : ''}"><strong>${day}</strong><div class="calendar-events">${visible.map(booking => `<button type="button" class="calendar-event ${booking.status}" data-calendar-booking="${booking._id}"><span>${escapeHtml(booking.time)}</span><b>${escapeHtml(booking.productTitle)}</b></button>`).join('')}${items.length > 3 ? `<span class="calendar-more">+${items.length - 3}</span>` : ''}</div></div>`;
+  }).join('');
+  root.innerHTML = `<div class="calendar-grid">${headers}${blanks}${cells}</div>`;
+  $$('[data-calendar-booking]').forEach(button => button.addEventListener('click', () => openBookingFlow(state.bookings.find(booking => booking._id === button.dataset.calendarBooking))));
+}
+
+function setBookingView(view) {
+  state.bookingView = view === 'calendar' ? 'calendar' : 'list';
+  $$('[data-booking-view]').forEach(button => button.classList.toggle('active', button.dataset.bookingView === state.bookingView));
+  $('#bookingTable').classList.toggle('hidden', state.bookingView !== 'list');
+  $('#bookingCalendar').classList.toggle('hidden', state.bookingView !== 'calendar');
+  $('#calendarControls').classList.toggle('hidden', state.bookingView !== 'calendar');
+  renderBookings();
+}
+
+function renderBookings() {
+  const bookings = filteredBookings();
+  $('#bookingResultCount').textContent = state.locale === 'zh-CN' ? `${bookings.length} 条预约` : `${bookings.length} booking${bookings.length === 1 ? '' : 's'}`;
+  if (state.bookingView === 'calendar') renderCalendar(bookings.filter(booking => monthKey(booking.date) === state.calendarMonth));
+  else renderBookingList(bookings);
+}
+
+function exportBookingsCsv() {
+  const bookings = filteredBookings();
+  if (!bookings.length) return toast(t('No bookings match the current filters.'), 'error');
+  const rows = [['Service', 'Customer', 'Email', 'Phone', 'Date', 'Time', 'Time zone', 'Location', 'Staff', 'Status']];
+  bookings.forEach(booking => rows.push([booking.productTitle, booking.customer?.name, booking.customer?.email, booking.customer?.phone, booking.date, booking.time, booking.timezone, booking.location, booking.staff, booking.status]));
+  const csv = rows.map(row => row.map(value => `"${String(value || '').replaceAll('"', '""')}"`).join(',')).join('\n');
+  const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `appointment-bookings-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.append(link); link.click(); link.remove(); URL.revokeObjectURL(link.href);
+}
+
 async function loadBookings() {
   const root = $('#bookingsList');
   root.setAttribute('aria-busy', 'true');
   if (!state.bookings.length) root.innerHTML = bookingSkeletons(); else root.classList.add('is-loading');
   try {
-    state.bookings = (await api(`/bookings${state.bookingFilter ? `?status=${state.bookingFilter}` : ''}`)).bookings;
+    state.bookings = (await api('/bookings')).bookings;
+    renderBookingServiceFilter();
+    if (!state.calendarMonth) state.calendarMonth = monthKey(state.bookings.find(booking => booking.status === 'confirmed')?.date || new Date().toISOString().slice(0, 10));
     renderBookings();
   } catch (error) { showError(error); }
   finally { root.classList.remove('is-loading'); root.setAttribute('aria-busy', 'false'); }
@@ -465,11 +726,13 @@ function formatEventDate(value) {
 
 function eventMeta(event) {
   const labels = {
-    created: ['Appointment created', 'The customer completed this booking.'],
+    created: ['Appointment created', 'The customer submitted this booking.'],
     customer_rescheduled: ['Customer changed the time', 'The customer used their online change.'],
     merchant_updated: ['Store updated the appointment', 'The date, time, location, or specialist was updated.'],
     customer_cancelled: ['Customer cancelled', 'The time was released for other customers.'],
-    merchant_cancelled: ['Store cancelled the appointment', 'The time was released for other customers.']
+    merchant_cancelled: ['Store cancelled the appointment', 'The time was released for other customers.'],
+    merchant_completed: ['Appointment completed', 'The store marked this appointment as completed.'],
+    merchant_no_show: ['Customer did not attend', 'The store marked this appointment as no-show.']
   };
   return labels[event.type] || ['Booking updated', 'Appointment details changed.'];
 }
@@ -660,7 +923,7 @@ function renderOnboarding(payload = state.bootstrap) {
   const setupSteps = ['setupBlockStep', 'setupServiceStep', 'setupTestStep'];
   setupSteps.forEach((id, index) => setOnboardingStep(id, { done: steps[index], active: index === activeIndex }));
   const quickSteps = ['quickstartBlockStep', 'quickstartServiceStep', 'quickstartTestStep'];
-  quickSteps.forEach((id, index) => setOnboardingStep(id, { done: steps[index], active: index === activeIndex, locked: index > 0 && !steps[index - 1] }));
+  quickSteps.forEach((id, index) => setOnboardingStep(id, { done: steps[index], active: index === activeIndex, locked: index === 2 && !serviceDone }));
 
   const completed = steps.filter(Boolean).length;
   $('#quickstartProgressLabel').textContent = t('{done} of 3 complete', { done: String(completed) });
@@ -831,11 +1094,21 @@ function bind() {
   });
   $('#ruleSearch').addEventListener('input', renderRules);
   $('#bookingSearch').addEventListener('input', renderBookings);
-  $$('[data-booking-filter]').forEach(button => button.addEventListener('click', () => {
-    state.bookingFilter = button.dataset.bookingFilter;
-    $$('[data-booking-filter]').forEach(item => item.classList.toggle('active', item === button));
-    loadBookings();
-  }));
+  ['bookingServiceFilter', 'bookingStatusFilter', 'bookingFrom', 'bookingTo'].forEach(id => $(`#${id}`)?.addEventListener('change', renderBookings));
+  $$('[data-booking-view]').forEach(button => button.addEventListener('click', () => setBookingView(button.dataset.bookingView)));
+  $('#clearBookingFilters')?.addEventListener('click', () => {
+    $('#bookingSearch').value = '';
+    $('#bookingServiceFilter').value = '';
+    $('#bookingStatusFilter').value = '';
+    $('#bookingFrom').value = '';
+    $('#bookingTo').value = '';
+    renderBookings();
+  });
+  $('#calendarPrev')?.addEventListener('click', () => shiftCalendarMonth(-1));
+  $('#calendarNext')?.addEventListener('click', () => shiftCalendarMonth(1));
+  $('#exportBookings')?.addEventListener('click', exportBookingsCsv);
+  $('#addException')?.addEventListener('click', () => addException());
+  $$('#serviceTypeGrid [data-service-type]').forEach(button => button.addEventListener('click', () => setServiceType(button.dataset.serviceType)));
   $('#confirmNo').addEventListener('click', () => { pendingConfirm = null; $('#confirmDialog').close(); });
   $('#confirmYes').addEventListener('click', async () => {
     const action = pendingConfirm;

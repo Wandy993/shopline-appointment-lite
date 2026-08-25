@@ -22,10 +22,14 @@ test('admin uses designed controls and exposes a per-store Email Studio', async 
   const asset = await readFile(new URL('../public/admin/app.js', import.meta.url), 'utf8');
   assert.match(view, /Email Studio/);
   assert.match(view, /id="productDialog"/);
-  assert.match(view, /data-booking-filter/);
+  assert.match(view, /data-booking-view="calendar"/);
+  assert.match(view, /id="bookingServiceFilter"/);
+  assert.match(view, /id="bookingStatusFilter"/);
+  assert.match(view, /id="exportBookings"/);
   assert.match(view, /id="confirmDialog"/);
   assert.match(view, /id="emailPreview"/);
-  assert.doesNotMatch(view, /<select/i);
+  assert.match(view, /id="serviceTypeGrid"/);
+  assert.match(view, /id="availabilityExceptions"/);
   assert.doesNotMatch(asset, /\bconfirm\s*\(|\balert\s*\(/);
   assert.match(asset, /\/email\/settings/);
   assert.match(view, /id="languageMenu"/);

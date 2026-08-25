@@ -11,6 +11,12 @@ const weeklySchema = new mongoose.Schema({
   windows: { type: [windowSchema], default: [] }
 }, { _id: false });
 
+const exceptionSchema = new mongoose.Schema({
+  date: { type: String, required: true, match: /^\d{4}-\d{2}-\d{2}$/ },
+  closed: { type: Boolean, default: true },
+  windows: { type: [windowSchema], default: [] }
+}, { _id: true });
+
 const questionSchema = new mongoose.Schema({
   label: { type: String, required: true, maxlength: 120 },
   required: { type: Boolean, default: false }
@@ -18,14 +24,21 @@ const questionSchema = new mongoose.Schema({
 
 const appointmentRuleSchema = new mongoose.Schema({
   shopId: { type: mongoose.Schema.Types.ObjectId, ref: 'Shop', required: true, index: true },
-  productId: { type: String, required: true, trim: true },
+  sourceType: { type: String, enum: ['product', 'standalone'], default: 'product', index: true },
+  serviceType: { type: String, enum: ['product', 'in_store', 'onsite', 'consultation', 'class', 'other'], default: 'product' },
+  productId: { type: String, default: '', trim: true },
   productTitle: { type: String, required: true, trim: true, maxlength: 255 },
   productHandle: { type: String, default: '', trim: true },
+  serviceDescription: { type: String, default: '', trim: true, maxlength: 500 },
   duration: { type: Number, required: true, min: 5, max: 480, default: 60 },
   buffer: { type: Number, min: 0, max: 240, default: 0 },
+  capacity: { type: Number, min: 1, max: 100, default: 1 },
+  minimumNoticeMinutes: { type: Number, min: 0, max: 10080, default: 0 },
+  bookingWindowDays: { type: Number, min: 1, max: 365, default: 90 },
   dateFrom: { type: String, default: '' },
   dateUntil: { type: String, default: '' },
   weeklyAvailability: { type: [weeklySchema], default: [] },
+  availabilityExceptions: { type: [exceptionSchema], default: [] },
   location: { type: String, default: '', maxlength: 200 },
   staff: { type: String, default: '', maxlength: 200 },
   questionLabel: { type: String, default: 'Anything we should know?', maxlength: 120 },
@@ -33,6 +46,9 @@ const appointmentRuleSchema = new mongoose.Schema({
   enabled: { type: Boolean, default: true }
 }, { timestamps: true });
 
-appointmentRuleSchema.index({ shopId: 1, productId: 1 }, { unique: true });
+appointmentRuleSchema.index(
+  { shopId: 1, productId: 1 },
+  { unique: true, partialFilterExpression: { sourceType: 'product' }, name: 'one_rule_per_product' }
+);
 
 export const AppointmentRule = mongoose.model('AppointmentRule', appointmentRuleSchema);

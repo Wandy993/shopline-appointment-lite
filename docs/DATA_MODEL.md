@@ -1,60 +1,72 @@
 # Data model
 
-All collections live in the logical database selected by `MONGODB_DB_NAME` (default: `shopline_appointment_lite`). This isolates the app from other databases hosted by the same MongoDB service.
+All collections live in the logical database selected by `MONGODB_DB_NAME` (default `shopline_appointment_lite`).
 
 ## Shop
 
-One record per SHOPLINE handle. Stores the SHOPLINE store ID used by the zero-configuration Theme App Extension, primary domain, OAuth tokens, token expiry, granted scopes, storefront locale, independently selected admin locale (`en` or `zh-CN`, default `en`), store timezone, notification email, reserved plan, and install lifecycle timestamps. `emailSettings` stores that merchant's non-secret brand, routing preferences, and five message templates; provider credentials remain in deployment environment variables. Access and refresh tokens are excluded from normal Mongoose query results.
+One record per installed SHOPLINE store. In addition to OAuth/store metadata, it holds admin locale, store timezone, per-store Email Studio configuration, reserved plan information, and lightweight onboarding timestamps. OAuth tokens remain excluded from normal Mongoose query results.
 
 ## AppointmentRule
 
-One record per `(shopId, productId)`, enforced by a unique index.
+A rule is now a **service**, not necessarily a SHOPLINE product.
 
 Important fields:
 
-- Product snapshot: `productId`, `productTitle`, `productHandle`
-- Slot shape: `duration`, `buffer`
-- Date bounds: `dateFrom`, `dateUntil`
-- Weekly schedule: `weeklyAvailability[{ weekday, enabled, windows[{ start, end }] }]`
-- Lightweight resources: `location`, `staff` as text
-- Form: `questionLabel`, `customQuestions`
-- Lifecycle: `enabled`, timestamps
+- `sourceType`: `product | standalone`
+- `serviceType`: `product | in_store | onsite | consultation | class | other`
+- `productId`, `productHandle`: populated only for product services
+- `productTitle`: compatibility field used as the generic service display title for both source types
+- `serviceDescription`
+- `duration`, `buffer`
+- `capacity`: 1–100 bookings per generated slot
+- `minimumNoticeMinutes`: blocks appointments too close to the current store-local time
+- `bookingWindowDays`: limits how far ahead a customer can book
+- `dateFrom`, `dateUntil`
+- `weeklyAvailability[{ weekday, enabled, windows[{ start, end }] }]`
+- `availabilityExceptions[{ date, closed, windows[] }]`: a closed exception overrides weekly hours; an open exception can provide special hours even when that weekday is normally closed
+- `location`, `staff`, `questionLabel`, `customQuestions`, `enabled`
 
-The UI edits one time window per day in v0.1.0, while the model and slot generator already accept multiple windows.
+Product uniqueness uses a partial index only when `sourceType='product'`, so each SHOPLINE product has one appointment rule while standalone services can exist without a product ID.
 
 ## Booking
 
-Bookings preserve a snapshot of product title, duration, buffer, timezone, location, and staff so historical records remain readable after rule changes.
+Bookings preserve a denormalized service snapshot so records remain understandable after a rule changes.
 
-Customer data contains name, email, optional phone, note, and answers. Status is `confirmed` or `cancelled`. `managementTokenHash` stores only the SHA-256 hash of a high-entropy token returned once to the booking browser; it authorizes customer status checks, cancellation, and rescheduling without exposing customer data or trusting a booking ID alone. `customerRescheduleCount` enforces the single self-service change allowance, while merchant edits do not consume or reset that allowance. `merchantEditedAt` records the latest store-initiated change.
+Important fields include:
 
-`events[]` is an append-only booking activity trail. Every event records its type, actor, timestamp, and safe before/after snapshots of date, time, location, staff, and status. Events cover `created`, `customer_rescheduled`, `merchant_updated`, `customer_cancelled`, and `merchant_cancelled`. Existing bookings without events are presented with a synthesized creation event based on `createdAt`; no destructive data migration is required.
+- `sourceType`, `serviceType`, optional `productId`
+- `ruleId`, `productTitle`, `duration`, `buffer`, `timezone`, `location`, `staff`
+- `date`, `time`, `slotKey`
+- `slotPosition`: reserved position inside a capacity-enabled slot
+- customer name/email/optional phone/note/answers
+- `status`: `confirmed | cancelled | completed | no_show`
+- `managementTokenHash`, customer reschedule count, merchant edit timestamps
+- append-only `events[]` including `created`, reschedule/edit/cancel events, `merchant_completed`, and `merchant_no_show`
 
-### Atomic conflict protection
+### Capacity-safe atomic booking
 
-Each booking has `slotKey = YYYY-MM-DDTHH:mm`. MongoDB owns this partial unique index:
+The confirmed-booking partial unique index is:
 
 ```js
-{ shopId: 1, ruleId: 1, slotKey: 1 }
+{ shopId: 1, ruleId: 1, slotKey: 1, slotPosition: 1 }
 unique where { status: 'confirmed' }
 ```
 
-Two simultaneous inserts or reschedules for the same slot race at the database. Exactly one succeeds; the other gets duplicate-key error `11000`, which the service converts into HTTP `409 SLOT_CONFLICT`. Rescheduling also filters on the booking's previous `slotKey` so two concurrent changes cannot silently overwrite each other. Cancelling changes status to `cancelled`, removing the document from the partial index and making the slot bookable again without deleting history.
+For capacity `N`, the service attempts positions `0..N-1`. MongoDB arbitrates each position. This avoids the race in a count-then-insert design: concurrent customers can fill different positions but cannot exceed capacity. Cancelling or moving a confirmed booking releases its position.
 
-The server regenerates valid slots from the stored rule before inserting. A customer cannot create an arbitrary time by bypassing the browser UI.
+## Scheduling policy
 
-## Timezone boundary
+A selected date/time must be generated from the stored rule and pass all of these checks server-side:
 
-This MVP stores merchant-local `date` and `time` strings plus the shop's IANA timezone snapshot. Availability and all booking mutations compare those strings against the server's current minute formatted in that IANA time zone, so elapsed slots cannot be created or selected. The UI labels times as store-local instead of silently converting them to the customer's device time zone. A later calendar-integration release should add an unambiguous UTC instant calculated with a timezone-aware library and migration tests for DST transitions.
+1. date bounds;
+2. weekly hours or a date-specific exception;
+3. store-time-zone elapsed-slot protection;
+4. minimum notice;
+5. booking window;
+6. remaining slot capacity.
 
+Standalone one-off services are allowed to have no recurring weekday schedule when at least one open availability exception exists.
 
 ## Merchant onboarding state
 
-`Shop.onboarding` stores only lightweight setup progress:
-
-- `quickstartStartedAt` — a previously unconfigured merchant entered the first-install Quickstart; this keeps the three-step guide active across service creation until completion or dismissal.
-- `themeEditorOpenedAt` — merchant opened the theme-editor deep link.
-- `appBlockConfirmedAt` — merchant explicitly confirmed that the Appointment Lite App Block is enabled.
-- `quickstartDismissedAt` — merchant dismissed or completed the first-install Quickstart.
-
-Service creation and test-booking completion are derived from existing rule/booking records rather than duplicated in the Shop document.
+`Shop.onboarding` stores only setup progress timestamps. Product appointments use the Theme App Block; standalone services do not need theme editing. Quickstart still presents App Block setup first, but service creation is not locked behind it, allowing standalone-only merchants to continue directly. Once the first active service is standalone, onboarding treats the storefront-entry requirement as satisfied.

@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { Shop } from '../models/Shop.js';
 
 export function validShopHandle(value) {
@@ -8,7 +9,12 @@ export function validShoplineStoreId(value) {
   return /^\d{3,32}$/.test(String(value || ''));
 }
 
-export async function findInstalledShop({ shopId, shop: handle }, ShopModel = Shop) {
+export async function findInstalledShop({ shopId, shop: handle, objectId }, ShopModel = Shop) {
+  const normalizedObjectId = String(objectId || '').trim();
+  if (mongoose.isValidObjectId(normalizedObjectId)) {
+    const byObjectId = await ShopModel.findOne({ _id: normalizedObjectId, uninstalledAt: null }).lean();
+    if (byObjectId) return byObjectId;
+  }
   const normalizedStoreId = String(shopId || '').trim();
   if (validShoplineStoreId(normalizedStoreId)) {
     const byStoreId = await ShopModel.findOne({ shoplineStoreId: normalizedStoreId, uninstalledAt: null }).lean();

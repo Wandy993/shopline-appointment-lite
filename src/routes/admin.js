@@ -2,11 +2,11 @@ import { Router } from 'express';
 import { config } from '../config.js';
 import { AppointmentRule } from '../models/AppointmentRule.js';
 import { Booking } from '../models/Booking.js';
-import { validateAdminBookingInput, validateRuleInput } from '../lib/validation.js';
+import { validateAdminBookingInput, validateBookingStatus, validateRuleInput } from '../lib/validation.js';
 import { requireAdmin, requireCsrf } from '../middleware/auth.js';
 import { limitsFor } from '../services/plans.js';
 import { shoplineGet, syncShopMetadata } from '../services/shopline.js';
-import { cancelBookingByMerchant, updateBookingByMerchant } from '../services/bookings.js';
+import { cancelBookingByMerchant, setBookingStatusByMerchant, updateBookingByMerchant } from '../services/bookings.js';
 import { emailStatus, sendTestEmail } from '../services/email.js';
 import { zonedNow } from '../lib/slots.js';
 import { normalizeEmailSettings, validateEmailSettings, validateTestEmailRecipient } from '../lib/email-settings.js';
@@ -39,9 +39,11 @@ function storefrontHost(shop) {
 
 function onboardingStatus(shop, { ruleCount = 0, activeRuleCount = 0, bookingCount = 0, firstActiveRule = null } = {}) {
   const onboarding = shop.onboarding || {};
-  const previewUrl = firstActiveRule?.productHandle ? `https://${storefrontHost(shop)}/products/${encodeURIComponent(firstActiveRule.productHandle)}` : '';
+  const previewUrl = firstActiveRule?.sourceType === 'standalone'
+    ? `${config.appUrl}/book/${firstActiveRule._id}`
+    : firstActiveRule?.productHandle ? `https://${storefrontHost(shop)}/products/${encodeURIComponent(firstActiveRule.productHandle)}` : '';
   const quickstartStarted = Boolean(onboarding.quickstartStartedAt);
-  const appBlockConfirmed = Boolean(onboarding.appBlockConfirmedAt);
+  const appBlockConfirmed = Boolean(onboarding.appBlockConfirmedAt) || firstActiveRule?.sourceType === 'standalone';
   const serviceCreated = activeRuleCount > 0;
   const testBookingCompleted = bookingCount > 0;
   const eligible = quickstartStarted || (ruleCount === 0 && bookingCount === 0);
@@ -73,7 +75,7 @@ adminRouter.get('/bootstrap', async (req, res) => {
     Booking.countDocuments(upcomingFilter),
     Booking.find(upcomingFilter)
       .sort({ date: 1, time: 1 }).limit(4).select('productTitle date time timezone location staff customer.name').lean(),
-    AppointmentRule.findOne({ shopId: req.shop._id, enabled: true }).sort({ updatedAt: -1 }).select('productTitle productHandle').lean()
+    AppointmentRule.findOne({ shopId: req.shop._id, enabled: true }).sort({ updatedAt: -1 }).select('productTitle productHandle sourceType').lean()
   ]);
   const delivery = emailStatus();
   res.json({
@@ -95,7 +97,7 @@ adminRouter.get('/products', async (req, res, next) => {
 
 adminRouter.get('/rules', async (req, res) => {
   const rules = await AppointmentRule.find({ shopId: req.shop._id }).sort({ updatedAt: -1 }).lean();
-  res.json({ rules });
+  res.json({ rules: rules.map(rule => ({ ...rule, bookingUrl: rule.sourceType === 'standalone' ? `${config.appUrl}/book/${rule._id}` : '' })) });
 });
 
 adminRouter.post('/rules', async (req, res, next) => {
@@ -143,8 +145,14 @@ adminRouter.delete('/rules/:id', async (req, res) => {
 
 adminRouter.get('/bookings', async (req, res) => {
   const filter = { shopId: req.shop._id };
-  if (req.query.status && ['confirmed', 'cancelled'].includes(req.query.status)) filter.status = req.query.status;
-  const bookings = await Booking.find(filter).sort({ date: -1, time: -1 }).limit(500).lean();
+  if (req.query.status && ['confirmed', 'cancelled', 'completed', 'no_show'].includes(req.query.status)) filter.status = req.query.status;
+  if (req.query.ruleId) filter.ruleId = req.query.ruleId;
+  if (req.query.from || req.query.to) {
+    filter.date = {};
+    if (req.query.from) filter.date.$gte = String(req.query.from).slice(0, 10);
+    if (req.query.to) filter.date.$lte = String(req.query.to).slice(0, 10);
+  }
+  const bookings = await Booking.find(filter).sort({ date: -1, time: -1 }).limit(1000).lean();
   res.json({ bookings: bookings.map(withBookingHistory) });
 });
 
@@ -203,6 +211,15 @@ adminRouter.post('/bookings/:id/cancel', async (req, res, next) => {
   try {
     const result = await cancelBookingByMerchant({ shopObjectId: req.shop._id, bookingId: req.params.id });
     res.json(result);
+  } catch (error) { next(error); }
+});
+
+adminRouter.post('/bookings/:id/status', async (req, res, next) => {
+  try {
+    const { errors, value } = validateBookingStatus(req.body?.status);
+    if (errors.length) return res.status(422).json({ error: 'VALIDATION_ERROR', message: errors.join(' '), fields: errors });
+    const booking = await setBookingStatusByMerchant({ shopObjectId: req.shop._id, bookingId: req.params.id, status: value.status });
+    res.json({ booking });
   } catch (error) { next(error); }
 });
 

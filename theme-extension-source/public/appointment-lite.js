@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = '0.2.3';
+  const VERSION = '0.3.0';
   const API_BASE = 'https://appointment.toolkit.fans';
   const CACHE_TTL = 5 * 60 * 1000;
   const SELECTOR = '[data-appointment-lite]:not([data-al-ready])';
@@ -210,7 +210,7 @@
     try {
       const payload = await cachedRule(context);
       const rule = { ...payload.rule, timezone: payload.timezone || 'UTC', storeDate: payload.storeDate || '' };
-      widget.style.setProperty('--al-accent', '#166534');
+      widget.style.setProperty('--al-accent', '#2F6FED');
       widget.hidden = false;
       widget.dataset.alStatus = 'ready';
       const trigger = widget.querySelector('.al-trigger');
@@ -287,7 +287,7 @@
 
   function mountDialog(dialog) {
     dialog.className = 'al-dialog';
-    dialog.style.setProperty('--al-accent', '#166534');
+    dialog.style.setProperty('--al-accent', '#2F6FED');
     document.body.append(dialog);
     dialog.showModal();
     lockPageForDialog();
@@ -350,12 +350,21 @@
     });
   }
 
+  function bookingMaxDate(rule) {
+    return [rule.dateUntil, rule.bookingWindowUntil].filter(Boolean).sort()[0] || '';
+  }
+
+  function maxDateAttribute(rule) {
+    const value = bookingMaxDate(rule);
+    return value ? `max="${text(value)}"` : '';
+  }
+
   function openReschedule(widget, rule, context, receipt) {
     info('Booking reschedule dialog opened.', { ...context, bookingId: receipt.id });
     const dialog = document.createElement('dialog');
     const today = rule.storeDate || new Date().toISOString().slice(0, 10);
     const minDate = rule.dateFrom && rule.dateFrom > today ? rule.dateFrom : today;
-    dialog.innerHTML = `<div class="al-head"><div><button type="button" class="al-back">← Back</button><h2>Change date or time</h2><p>${text(rule.productTitle)}</p></div><button class="al-close" type="button" aria-label="Close">×</button></div><form class="al-form"><div class="al-form-body">${appointmentDetails(receipt)}<div class="al-notice"><strong>This is your only online change</strong><span>After you save, contact the store if you need another change.</span></div><div class="al-grid"><div class="al-field"><label for="al-reschedule-date">New date</label><input id="al-reschedule-date" name="date" type="date" min="${minDate}" ${rule.dateUntil ? `max="${rule.dateUntil}"` : ''} required></div><div><span class="al-legend">New time</span><div class="al-times"><span class="al-muted">Choose a date first.</span></div></div></div><p class="al-muted">All times are shown in the store time zone: ${text(rule.timezone || 'UTC')}.</p></div><div class="al-actions"><div class="al-error" hidden role="alert"></div><button class="al-submit" type="submit">Save changes</button></div></form>`;
+    dialog.innerHTML = `<div class="al-head"><div><button type="button" class="al-back">← Back</button><h2>Change date or time</h2><p>${text(rule.productTitle)}</p></div><button class="al-close" type="button" aria-label="Close">×</button></div><form class="al-form"><div class="al-form-body">${appointmentDetails(receipt)}<div class="al-notice"><strong>This is your only online change</strong><span>After you save, contact the store if you need another change.</span></div><div class="al-grid"><div class="al-field"><label for="al-reschedule-date">New date</label><input id="al-reschedule-date" name="date" type="date" min="${minDate}" ${maxDateAttribute(rule)} required></div><div><span class="al-legend">New time</span><div class="al-times"><span class="al-muted">Choose a date first.</span></div></div></div><p class="al-muted">All times are shown in the store time zone: ${text(rule.timezone || 'UTC')}.</p></div><div class="al-actions"><div class="al-error" hidden role="alert"></div><button class="al-submit" type="submit">Save changes</button></div></form>`;
     mountDialog(dialog);
     dialog.querySelector('.al-back').addEventListener('click', () => {
       dialog.close();
@@ -414,7 +423,7 @@
     const dialog = document.createElement('dialog');
     const today = rule.storeDate || new Date().toISOString().slice(0, 10);
     const minDate = rule.dateFrom && rule.dateFrom > today ? rule.dateFrom : today;
-    dialog.innerHTML = `<div class="al-head"><div><h2>Book an appointment</h2><p>${text(rule.productTitle)}</p></div><button class="al-close" type="button" aria-label="Close">×</button></div><form class="al-form"><div class="al-form-body"><div class="al-meta">${rule.duration} minutes${rule.location ? ` · ${text(rule.location)}` : ''}${rule.staff ? ` · ${text(rule.staff)}` : ''}</div><p class="al-muted">All times are shown in the store time zone: ${text(rule.timezone || 'UTC')}.</p><div class="al-grid"><div class="al-field"><label for="al-date">Date</label><input id="al-date" name="date" type="date" min="${minDate}" ${rule.dateUntil ? `max="${rule.dateUntil}"` : ''} required></div><div><span class="al-legend">Time</span><div class="al-times"><span class="al-muted">Choose a date first.</span></div></div></div><div class="al-grid"><div class="al-field"><label for="al-name">Name</label><input id="al-name" name="name" autocomplete="name" maxlength="120" required></div><div class="al-field"><label for="al-email">Email</label><input id="al-email" name="email" type="email" autocomplete="email" maxlength="254" required></div></div><div class="al-field"><label for="al-phone">Phone (optional)</label><input id="al-phone" name="phone" type="tel" autocomplete="tel" maxlength="40"></div><div class="al-field"><label for="al-note">${text(rule.questionLabel || 'Anything we should know?')}</label><textarea id="al-note" name="note" maxlength="2000"></textarea></div><div class="al-questions"></div></div><div class="al-actions"><div class="al-error" hidden role="alert"></div><button class="al-submit" type="submit">Confirm booking</button></div></form>`;
+    dialog.innerHTML = `<div class="al-head"><div><h2>Book an appointment</h2><p>${text(rule.productTitle)}</p></div><button class="al-close" type="button" aria-label="Close">×</button></div><form class="al-form"><div class="al-form-body"><div class="al-meta">${rule.duration} minutes${rule.location ? ` · ${text(rule.location)}` : ''}${rule.staff ? ` · ${text(rule.staff)}` : ''}</div><p class="al-muted">All times are shown in the store time zone: ${text(rule.timezone || 'UTC')}.</p><div class="al-grid"><div class="al-field"><label for="al-date">Date</label><input id="al-date" name="date" type="date" min="${minDate}" ${maxDateAttribute(rule)} required></div><div><span class="al-legend">Time</span><div class="al-times"><span class="al-muted">Choose a date first.</span></div></div></div><div class="al-grid"><div class="al-field"><label for="al-name">Name</label><input id="al-name" name="name" autocomplete="name" maxlength="120" required></div><div class="al-field"><label for="al-email">Email</label><input id="al-email" name="email" type="email" autocomplete="email" maxlength="254" required></div></div><div class="al-field"><label for="al-phone">Phone (optional)</label><input id="al-phone" name="phone" type="tel" autocomplete="tel" maxlength="40"></div><div class="al-field"><label for="al-note">${text(rule.questionLabel || 'Anything we should know?')}</label><textarea id="al-note" name="note" maxlength="2000"></textarea></div><div class="al-questions"></div></div><div class="al-actions"><div class="al-error" hidden role="alert"></div><button class="al-submit" type="submit">Confirm booking</button></div></form>`;
     const questions = dialog.querySelector('.al-questions');
     (rule.customQuestions || []).forEach((question, index) => {
       questions.insertAdjacentHTML('beforeend', `<div class="al-field"><label for="al-q-${index}">${text(question.label)}</label><input id="al-q-${index}" data-question="${text(question.label)}" maxlength="1000" ${question.required ? 'required' : ''}></div>`);

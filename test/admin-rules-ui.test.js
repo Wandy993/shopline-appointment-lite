@@ -8,14 +8,20 @@ test('product catalog binds clicks to rendered product option buttons', async ()
   assert.doesNotMatch(asset, /\$\$\('\.select-option'\)\.forEach\(button => button\.addEventListener\('click', \(\) => selectProduct/);
 });
 
-test('service cards constrain long product titles and use appointment-rule copy', async () => {
+test('service cards constrain long titles and expose service operations', async () => {
   const asset = await readFile(new URL('../public/admin/app.js', import.meta.url), 'utf8');
+  const view = await readFile(new URL('../src/views/admin.js', import.meta.url), 'utf8');
   const stylesheet = await readFile(new URL('../public/admin/styles.css', import.meta.url), 'utf8');
   assert.match(asset, /条预约规则/);
-  assert.match(asset, /预约 \$\{rule\.duration\} 分钟/);
+  assert.match(asset, /rule\.duration/);
   assert.match(asset, /'无缓冲'/);
-  assert.match(stylesheet, /\.service-card \{[^}]*min-width:0[^}]*overflow:hidden/);
-  assert.match(stylesheet, /\.service-identity>div:last-child \{[^}]*min-width:0/);
-  assert.match(stylesheet, /grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+  assert.match(asset, /Booking link copied/);
+  assert.match(view, /Home \/ onsite service/);
+  assert.match(view, /Class \/ course/);
+  assert.match(view, /id="capacity"/);
+  assert.match(view, /id="minimumNoticeMinutes"/);
+  assert.match(view, /id="availabilityExceptions"/);
+  assert.match(stylesheet, /\.service-card\s*\{[^}]*min-width:0[^}]*overflow:hidden/);
   assert.match(stylesheet, /-webkit-line-clamp:2/);
+  assert.match(stylesheet, /\.service-type-grid/);
 });

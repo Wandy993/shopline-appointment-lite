@@ -1,27 +1,29 @@
-# Appointment Lite v0.2.8 Arctic Blue UI System Refresh
+# Appointment Lite v0.3.0 Scheduling Operations
 
-Use `docs/INSTALL_MAC_COMMAND.txt` or the command supplied with the release ZIP.
+Use `docs/INSTALL_MAC_COMMAND.txt` or the command supplied next to the release ZIP.
 
-This release command is designed for the existing local Appointment Lite Git repository. It:
+The release command is designed for the existing local Appointment Lite Git repository. It:
 
-- verifies the exact v0.2.8 ZIP before touching local files;
-- fetches the current Git remote **before** overlaying release files;
-- fast-forwards automatically when the local branch is only behind the remote, and stops before changing files if the histories have diverged;
-- creates a Git backup tag;
-- preserves `.env`, `.git`, `node_modules`, and the locally bound `theme-app-extension/` directory;
-- overlays only distributable source files;
-- runs `npm ci`, the complete test suite, and syntax checks;
-- synchronizes `theme-extension-source/` into the existing CLI-created Theme App Extension;
-- commits and pushes v0.2.8;
-- deploys the backend with `railway up`;
-- pushes the Theme App Extension with `sl extension push`.
+- validates the v0.3.0 ZIP before touching the project;
+- fetches the active Git branch first and fast-forwards only when safe;
+- stops before overlay if local/remote histories have diverged;
+- creates an upgrade backup tag;
+- preserves `.env`, `.git`, `node_modules`, `dist`, and the locally bound `theme-app-extension/`;
+- overlays the v0.3.0 source;
+- runs `npm ci`, the full test suite, and JavaScript syntax checks;
+- synchronizes reusable Theme App Extension source into the local CLI-created extension;
+- commits and pushes v0.3.0;
+- deploys with `railway up` (no deprecated `-y` argument);
+- pushes the SHOPLINE Theme App Extension with `sl extension push`.
 
-The Arctic Blue refresh changes the merchant admin visual system only. Existing booking, onboarding, Email Studio, API, and storefront behavior is preserved. Existing merchants' saved custom email accent colors are not overwritten; `#2F6FED` is the default for new/unconfigured email branding.
+v0.3.0 includes a startup index migration. Existing product rules are backfilled as product services; existing confirmed bookings receive `slotPosition: 0`; the old single-booking slot index is replaced by the capacity-position index. Existing data is retained.
+
+Standalone in-store, onsite, consultation, class/course, and other services do not need the Theme App Block. The extension remains required for SHOPLINE product appointments.
 
 To validate locally without deployment:
 
 ```bash
-DEPLOY_RAILWAY=0 PUSH_THEME=0 bash ...
+DEPLOY_RAILWAY=0 PUSH_THEME=0 bash docs/INSTALL_MAC_COMMAND.txt
 ```
 
-The release ZIP intentionally excludes `node_modules/`, `.git/`, `.env`, `dist/`, and `theme-app-extension/`. The reusable extension source lives in `theme-extension-source/`.
+The release ZIP intentionally excludes `node_modules/`, `.git/`, `.env`, `dist/`, and `theme-app-extension/`.

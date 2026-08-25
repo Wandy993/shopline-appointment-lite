@@ -1,7 +1,7 @@
 {
   "name": "appointment-lite",
-  "version": "0.2.8",
-  "description": "SHOPLINE Product Appointment & Consultation MVP",
+  "version": "0.3.0",
+  "description": "SHOPLINE lightweight service appointments, scheduling operations, and standalone booking links",
   "type": "module",
   "engines": {
     "node": ">=20"
@@ -10,7 +10,7 @@
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
     "test": "node --test",
-    "check": "node --check src/server.js && node --check public/admin/app.js && node --check public/manage/app.js && node --check theme-extension-source/public/appointment-lite.js",
+    "check": "node --check src/server.js && node --check public/admin/app.js && node --check public/manage/app.js && node --check public/book/app.js && node --check theme-extension-source/public/appointment-lite.js",
     "release:zip": "bash scripts/build-release.sh"
   },
   "dependencies": {

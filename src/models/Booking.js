@@ -10,13 +10,13 @@ const bookingSnapshotSchema = new mongoose.Schema({
   time: { type: String, default: '' },
   location: { type: String, default: '' },
   staff: { type: String, default: '' },
-  status: { type: String, enum: ['confirmed', 'cancelled'], default: 'confirmed' }
+  status: { type: String, enum: ['confirmed', 'cancelled', 'completed', 'no_show'], default: 'confirmed' }
 }, { _id: false });
 
 const bookingEventSchema = new mongoose.Schema({
   type: {
     type: String,
-    enum: ['created', 'customer_rescheduled', 'merchant_updated', 'customer_cancelled', 'merchant_cancelled'],
+    enum: ['created', 'customer_rescheduled', 'merchant_updated', 'customer_cancelled', 'merchant_cancelled', 'merchant_completed', 'merchant_no_show'],
     required: true
   },
   actor: { type: String, enum: ['customer', 'merchant', 'system'], required: true },
@@ -28,11 +28,14 @@ const bookingEventSchema = new mongoose.Schema({
 const bookingSchema = new mongoose.Schema({
   shopId: { type: mongoose.Schema.Types.ObjectId, ref: 'Shop', required: true, index: true },
   ruleId: { type: mongoose.Schema.Types.ObjectId, ref: 'AppointmentRule', required: true, index: true },
-  productId: { type: String, required: true },
+  sourceType: { type: String, enum: ['product', 'standalone'], default: 'product' },
+  serviceType: { type: String, enum: ['product', 'in_store', 'onsite', 'consultation', 'class', 'other'], default: 'product' },
+  productId: { type: String, default: '' },
   productTitle: { type: String, required: true },
   date: { type: String, required: true, match: /^\d{4}-\d{2}-\d{2}$/ },
   time: { type: String, required: true, match: /^([01]\d|2[0-3]):[0-5]\d$/ },
   slotKey: { type: String, required: true },
+  slotPosition: { type: Number, default: 0, min: 0 },
   duration: { type: Number, required: true },
   buffer: { type: Number, default: 0 },
   timezone: { type: String, default: 'UTC' },
@@ -48,14 +51,16 @@ const bookingSchema = new mongoose.Schema({
   note: { type: String, default: '', maxlength: 2000 },
   answers: { type: [answerSchema], default: [] },
   events: { type: [bookingEventSchema], default: [] },
-  status: { type: String, enum: ['confirmed', 'cancelled'], default: 'confirmed', index: true },
+  status: { type: String, enum: ['confirmed', 'cancelled', 'completed', 'no_show'], default: 'confirmed', index: true },
   cancelledAt: Date,
+  completedAt: Date,
+  noShowAt: Date,
   merchantEditedAt: Date
 }, { timestamps: true });
 
 bookingSchema.index(
-  { shopId: 1, ruleId: 1, slotKey: 1 },
-  { unique: true, partialFilterExpression: { status: 'confirmed' }, name: 'one_confirmed_booking_per_slot' }
+  { shopId: 1, ruleId: 1, slotKey: 1, slotPosition: 1 },
+  { unique: true, partialFilterExpression: { status: 'confirmed' }, name: 'capacity_position_per_slot' }
 );
 
 export const Booking = mongoose.model('Booking', bookingSchema);

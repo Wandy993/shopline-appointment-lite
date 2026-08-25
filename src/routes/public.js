@@ -1,54 +1,103 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
+import mongoose from 'mongoose';
 import { AppointmentRule } from '../models/AppointmentRule.js';
 import { Booking } from '../models/Booking.js';
-import { futureSlotsForDate, zonedNow } from '../lib/slots.js';
+import { addDays, filterSlotsByCapacity, futureSlotsForDate, zonedNow } from '../lib/slots.js';
 import { validateBookingInput, validateDateInput, validateSlotInput } from '../lib/validation.js';
 import { cancelManagedBooking, createBookingForStore, getLegacyBookingStatus, getManagedAvailability, getManagedBooking, rescheduleManagedBooking } from '../services/bookings.js';
 import { findInstalledShop, validShopHandle, validShoplineStoreId } from '../services/shops.js';
+import { normalizeEmailSettings } from '../lib/email-settings.js';
 
 export const publicRouter = Router();
 const bookingLimiter = rateLimit({ windowMs: 60_000, limit: 10, standardHeaders: true, legacyHeaders: false, message: { error: 'RATE_LIMITED', message: 'Too many attempts. Please wait a minute.' } });
 
 function validBookingId(value) { return /^[a-f\d]{24}$/i.test(String(value || '')); }
+function validRuleId(value) { return mongoose.isValidObjectId(String(value || '')); }
+
 function publicBooking(booking) {
   const customerRescheduleCount = Number(booking.customerRescheduleCount || 0);
   const timezone = booking.timezone || 'UTC';
-  return { id: booking._id, productTitle: booking.productTitle, date: booking.date, time: booking.time, timezone, storeDate: zonedNow(timezone).date, location: booking.location, staff: booking.staff, status: booking.status, customerRescheduleCount, customerCanReschedule: booking.status === 'confirmed' && customerRescheduleCount < 1 };
+  return {
+    id: booking._id, serviceTitle: booking.productTitle, productTitle: booking.productTitle,
+    sourceType: booking.sourceType || 'product', serviceType: booking.serviceType || 'product',
+    date: booking.date, time: booking.time, timezone, storeDate: zonedNow(timezone).date,
+    location: booking.location, staff: booking.staff, status: booking.status, customerRescheduleCount,
+    customerCanReschedule: booking.status === 'confirmed' && customerRescheduleCount < 1
+  };
+}
+
+function serializeRule(rule, timezone) {
+  const storeDate = zonedNow(timezone).date;
+  const bookingWindowDays = Number(rule.bookingWindowDays || 90);
+  return {
+    id: rule._id, sourceType: rule.sourceType || 'product', serviceType: rule.serviceType || 'product',
+    productId: rule.productId || '', productTitle: rule.productTitle, serviceTitle: rule.productTitle,
+    serviceDescription: rule.serviceDescription || '', duration: rule.duration, buffer: rule.buffer,
+    capacity: Number(rule.capacity || 1), minimumNoticeMinutes: Number(rule.minimumNoticeMinutes || 0),
+    bookingWindowDays, bookingWindowUntil: addDays(storeDate, bookingWindowDays),
+    dateFrom: rule.dateFrom, dateUntil: rule.dateUntil, weeklyAvailability: rule.weeklyAvailability,
+    availabilityExceptions: rule.availabilityExceptions || [], location: rule.location, staff: rule.staff,
+    questionLabel: rule.questionLabel, customQuestions: rule.customQuestions
+  };
+}
+
+async function findPublicRule(req) {
+  const ruleId = String(req.query.ruleId || '').trim();
+  if (ruleId) {
+    if (!validRuleId(ruleId)) return { error: { status: 400, body: { error: 'INVALID_REQUEST', message: 'A valid ruleId is required.' } } };
+    const rule = await AppointmentRule.findOne({ _id: ruleId, enabled: true }).lean();
+    if (!rule) return { error: { status: 404, body: { error: 'NOT_FOUND', message: 'Appointment service not found.' } } };
+    const shop = await findInstalledShop({ objectId: rule.shopId });
+    if (!shop) return { error: { status: 404, body: { error: 'NOT_FOUND', message: 'Store not found.' } } };
+    return { rule, shop };
+  }
+
+  const handle = String(req.query.shop || '').toLowerCase();
+  const shopId = String(req.query.shopId || '').trim();
+  const productId = String(req.query.productId || '');
+  if ((!validShoplineStoreId(shopId) && !validShopHandle(handle)) || !productId) return { error: { status: 400, body: { error: 'INVALID_REQUEST', message: 'shopId (or legacy shop) and productId are required.' } } };
+  const shop = await findInstalledShop({ shopId, shop: handle });
+  if (!shop) return { error: { status: 404, body: { error: 'NOT_FOUND', message: 'Store not found.' } } };
+  const rule = await AppointmentRule.findOne({ shopId: shop._id, sourceType: 'product', productId, enabled: true }).lean();
+  if (!rule) return { error: { status: 404, body: { error: 'NOT_FOUND', message: 'No appointment rule for this product.' } } };
+  return { rule, shop };
 }
 
 publicRouter.get('/rule', async (req, res) => {
-  const handle = String(req.query.shop || '').toLowerCase();
-  const shopId = String(req.query.shopId || '').trim();
-  const productId = String(req.query.productId || '');
-  if ((!validShoplineStoreId(shopId) && !validShopHandle(handle)) || !productId) return res.status(400).json({ error: 'INVALID_REQUEST', message: 'shopId (or legacy shop) and productId are required.' });
-  const shop = await findInstalledShop({ shopId, shop: handle });
-  if (!shop) return res.status(404).json({ error: 'NOT_FOUND', message: 'Store not found.' });
-  const rule = await AppointmentRule.findOne({ shopId: shop._id, productId, enabled: true }).lean();
-  if (!rule) return res.status(404).json({ error: 'NOT_FOUND', message: 'No appointment rule for this product.' });
+  const result = await findPublicRule(req);
+  if (result.error) return res.status(result.error.status).json(result.error.body);
+  const timezone = result.shop.timezone || 'UTC';
   res.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
-  const timezone = shop.timezone || 'UTC';
-  res.json({ rule: {
-    id: rule._id, productId: rule.productId, productTitle: rule.productTitle, duration: rule.duration, buffer: rule.buffer,
-    dateFrom: rule.dateFrom, dateUntil: rule.dateUntil, weeklyAvailability: rule.weeklyAvailability,
-    location: rule.location, staff: rule.staff, questionLabel: rule.questionLabel, customQuestions: rule.customQuestions
-  }, timezone, storeDate: zonedNow(timezone).date });
+  res.json({ rule: serializeRule(result.rule, timezone), timezone, storeDate: zonedNow(timezone).date });
+});
+
+publicRouter.get('/service', async (req, res) => {
+  const result = await findPublicRule(req);
+  if (result.error) return res.status(result.error.status).json(result.error.body);
+  if ((result.rule.sourceType || 'product') !== 'standalone') return res.status(404).json({ error: 'NOT_FOUND', message: 'Standalone service not found.' });
+  const timezone = result.shop.timezone || 'UTC';
+  const emailSettings = normalizeEmailSettings(result.shop.emailSettings || {});
+  res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=300');
+  res.json({
+    rule: serializeRule(result.rule, timezone), timezone, storeDate: zonedNow(timezone).date,
+    brand: { name: emailSettings.brandName || result.shop.handle || 'Appointment Lite', logoUrl: emailSettings.logoUrl || '', accentColor: emailSettings.accentColor || '#2F6FED' }
+  });
 });
 
 publicRouter.get('/availability', async (req, res) => {
-  const handle = String(req.query.shop || '').toLowerCase();
-  const shopId = String(req.query.shopId || '').trim();
-  const productId = String(req.query.productId || '');
   const date = String(req.query.date || '');
-  const shop = await findInstalledShop({ shopId, shop: handle });
-  if (!shop) return res.status(404).json({ error: 'NOT_FOUND', message: 'Store not found.' });
-  const rule = await AppointmentRule.findOne({ shopId: shop._id, productId, enabled: true }).lean();
-  if (!rule) return res.status(404).json({ error: 'NOT_FOUND', message: 'Appointment rule not found.' });
-  const timezone = shop.timezone || 'UTC';
-  const allSlots = futureSlotsForDate(rule, date, timezone);
-  const booked = await Booking.find({ shopId: shop._id, ruleId: rule._id, date, status: 'confirmed' }).distinct('time');
+  const result = await findPublicRule(req);
+  if (result.error) return res.status(result.error.status).json(result.error.body);
+  const timezone = result.shop.timezone || 'UTC';
+  const allSlots = futureSlotsForDate(result.rule, date, timezone);
+  const booked = await Booking.find({ shopId: result.shop._id, ruleId: result.rule._id, date, status: 'confirmed' }).select('time').lean();
   res.set('Cache-Control', 'no-store');
-  res.json({ date, timezone, storeDate: zonedNow(timezone).date, slots: allSlots.filter(time => !booked.includes(time)) });
+  res.json({
+    date, timezone, storeDate: zonedNow(timezone).date,
+    slots: filterSlotsByCapacity(allSlots, booked, Number(result.rule.capacity || 1)),
+    capacity: Number(result.rule.capacity || 1)
+  });
 });
 
 publicRouter.post('/bookings', bookingLimiter, async (req, res, next) => {
@@ -56,10 +105,12 @@ publicRouter.post('/bookings', bookingLimiter, async (req, res, next) => {
     const handle = String(req.body.shop || '').toLowerCase();
     const shopId = String(req.body.shopId || '').trim();
     const { errors, value } = validateBookingInput(req.body);
-    if (!validShoplineStoreId(shopId) && !validShopHandle(handle)) errors.push('Invalid shop identity.');
-    if (!value.productId) errors.push('Product is required.');
+    const standalone = Boolean(value.ruleId);
+    if (standalone && !validRuleId(value.ruleId)) errors.push('A valid appointment service is required.');
+    if (!standalone && !validShoplineStoreId(shopId) && !validShopHandle(handle)) errors.push('Invalid shop identity.');
+    if (!standalone && !value.productId) errors.push('Product is required.');
     if (errors.length) return res.status(422).json({ error: 'VALIDATION_ERROR', message: errors.join(' '), fields: errors });
-    const { booking, managementToken } = await createBookingForStore({ shopId, handle, productId: value.productId, input: value });
+    const { booking, managementToken } = await createBookingForStore({ shopId, handle, productId: value.productId, ruleId: value.ruleId, input: value });
     res.status(201).json({ booking: { ...publicBooking(booking), managementToken } });
   } catch (error) { next(error); }
 });
