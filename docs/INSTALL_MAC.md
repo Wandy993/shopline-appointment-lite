@@ -1,4 +1,4 @@
-# Appointment Lite v0.5.4-hotfix.1 Staff Avatar + Admin i18n Cleanup
+# Appointment Lite v0.5.4-hotfix.2 Avatar + Confirmation + Typography Hotfix
 
 This hotfix embeds preset avatars in public staff metadata, replaces low-quality built-in portraits, and fixes Chinese text persisting after switching Admin back to English.
 

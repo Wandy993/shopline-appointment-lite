@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -u
 
-VERSION="0.5.4-hotfix.1"
-RELEASE_SLUG="appointment-lite-v0.5.4-hotfix.1-staff-avatar-i18n-cleanup"
+VERSION="0.5.4-hotfix.2"
+RELEASE_SLUG="appointment-lite-v0.5.4-hotfix.2-avatar-confirmation-typography"
 ZIP_NAME="${RELEASE_SLUG}.zip"
 ZIP_PATH="${ZIP_PATH:-$HOME/Downloads/$ZIP_NAME}"
 TARGET_DIR="${TARGET_DIR:-$PWD}"
@@ -31,7 +31,7 @@ CURRENT_BRANCH="$(git -C "$TARGET_DIR" branch --show-current)"
 [ -n "$CURRENT_BRANCH" ] || fail "Detached Git HEAD detected."
 if [ -n "$(git -C "$TARGET_DIR" status --porcelain 2>/dev/null)" ]; then
   git -C "$TARGET_DIR" status
-  fail "Working tree has uncommitted changes. Commit or stash them before applying v0.5.4-hotfix.1."
+  fail "Working tree has uncommitted changes. Commit or stash them before applying v0.5.4-hotfix.2."
 fi
 if git -C "$TARGET_DIR" remote get-url origin >/dev/null 2>&1; then
   git -C "$TARGET_DIR" fetch origin "$CURRENT_BRANCH" || fail "git fetch failed."
@@ -45,17 +45,17 @@ if git -C "$TARGET_DIR" remote get-url origin >/dev/null 2>&1; then
 fi
 
 say "3/13 Create upgrade backup tag"
-BACKUP_TAG="appointment-lite-pre-v0.5.4-hotfix.1-$(date +%Y%m%d-%H%M%S)"
+BACKUP_TAG="appointment-lite-pre-v0.5.4-hotfix.2-$(date +%Y%m%d-%H%M%S)"
 git -C "$TARGET_DIR" tag "$BACKUP_TAG" HEAD || fail "Git backup tag failed."
 printf 'Backup tag: %s\n' "$BACKUP_TAG"
 
 say "4/13 Extract release"
-TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/appointment-lite-v054h1.XXXXXX")" || fail "Could not create temp directory."
+TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/appointment-lite-v054h2.XXXXXX")" || fail "Could not create temp directory."
 unzip -q "$ZIP_PATH" -d "$TEMP_DIR" || fail "ZIP extraction failed."
 SOURCE_DIR="$TEMP_DIR/$RELEASE_SLUG"
 [ -f "$SOURCE_DIR/package.json" ] && [ -f "$SOURCE_DIR/src/server.js" ] || fail "Release root is invalid."
 
-say "5/13 Overlay v0.5.4-hotfix.1 source"
+say "5/13 Overlay v0.5.4-hotfix.2 source"
 rsync -a \
   --exclude='.git/' \
   --exclude='.env' \
@@ -74,15 +74,16 @@ say "7/13 Run full tests"
 say "8/13 Run JavaScript checks"
 (cd "$TARGET_DIR" && npm run check) || fail "npm run check failed."
 
-say "9/13 Verify staff avatars and admin locale cleanup"
+say "9/13 Verify portrait, confirmation and typography fixes"
 ACTUAL_VERSION="$(cd "$TARGET_DIR" && node -p "require('./package.json').version")" || fail "Cannot read package version."
 [ "$ACTUAL_VERSION" = "$VERSION" ] || fail "Expected package version $VERSION, got $ACTUAL_VERSION."
 grep -q 'publicStaffAvatar' "$TARGET_DIR/src/services/staffing.js" || fail "Embedded storefront avatar resolver is missing."
-grep -q 'const enByZh = new Map' "$TARGET_DIR/public/admin/app.js" || fail "Admin reverse locale mapping is missing."
+grep -q 'flex:0 0 auto!important' "$TARGET_DIR/theme-extension-source/public/appointment-lite.css" || fail "Compact confirmation flex reset is missing."
+grep -q 'BlinkMacSystemFont' "$TARGET_DIR/theme-extension-source/public/appointment-lite.css" || fail "Unified storefront typography is missing."
 [ -f "$TARGET_DIR/public/staff-avatars/staff-1.webp" ] || fail "Bundled AI staff portraits are missing."
-[ "$(wc -c < "$TARGET_DIR/public/staff-avatars/staff-1.webp")" -gt 10000 ] || fail "Staff portrait assets are still low quality."
+[ "$(wc -c < "$TARGET_DIR/public/staff-avatars/staff-1.webp")" -gt 10000 ] || fail "Staff portrait assets are unexpectedly small."
 grep -q 'al-rule:${VERSION}' "$TARGET_DIR/theme-extension-source/public/appointment-lite.js" || fail "Versioned storefront rule cache is missing."
-grep -q "const VERSION = '0.5.4-hotfix.1'" "$TARGET_DIR/theme-extension-source/public/appointment-lite.js" || fail "Theme asset version is not v0.5.4-hotfix.1."
+grep -q "const VERSION = '0.5.4-hotfix.2'" "$TARGET_DIR/theme-extension-source/public/appointment-lite.js" || fail "Theme asset version is not v0.5.4-hotfix.2."
 
 say "10/13 Sync Theme App Extension source"
 if [ -d "$TARGET_DIR/theme-app-extension" ]; then
@@ -95,11 +96,11 @@ else
   PUSH_THEME=0
 fi
 
-say "11/13 Commit and push v0.5.4-hotfix.1"
+say "11/13 Commit and push v0.5.4-hotfix.2"
 git -C "$TARGET_DIR" add -A -- . ':!theme-app-extension' 2>/dev/null || git -C "$TARGET_DIR" add -A -- . || fail "git add failed."
 git -C "$TARGET_DIR" reset -- theme-app-extension >/dev/null 2>&1 || true
 if ! git -C "$TARGET_DIR" diff --cached --quiet; then
-  git -C "$TARGET_DIR" commit -m "fix: Appointment Lite v0.5.4-hotfix.1 staff avatars and admin i18n" || fail "Release commit failed."
+  git -C "$TARGET_DIR" commit -m "fix: Appointment Lite v0.5.4-hotfix.2 avatar confirmation typography" || fail "Release commit failed."
 fi
 if git -C "$TARGET_DIR" remote get-url origin >/dev/null 2>&1; then
   git -C "$TARGET_DIR" push origin "$CURRENT_BRANCH" || fail "git push failed."
@@ -128,7 +129,7 @@ else
 fi
 
 printf '\n========================================\n'
-printf 'Appointment Lite v0.5.4-hotfix.1 complete\n'
+printf 'Appointment Lite v0.5.4-hotfix.2 complete\n'
 printf '========================================\n'
 printf 'Backup tag: %s\n' "$BACKUP_TAG"
 git -C "$TARGET_DIR" status

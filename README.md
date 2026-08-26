@@ -1,6 +1,6 @@
 # Appointment Lite for SHOPLINE
 
-Version `0.5.4-hotfix.1` — fixes storefront preset avatars, upgrades built-in staff portrait quality, and completes English/Chinese admin locale switching.
+Version `0.5.4-hotfix.2` — replaces the blurry staff portrait presets, makes booking confirmations truly content-sized, and forces consistent storefront typography.
 
 Appointment Lite now supports two booking entry models:
 
@@ -13,6 +13,14 @@ Typical scenarios include furniture installation and measurements, showroom visi
 
 
 
+
+
+## v0.5.4-hotfix.2 Avatar + Confirmation + Typography Hotfix
+
+- Replaces the previous blurry staff portrait presets with a clearer generated set while preserving existing preset IDs.
+- Shrinks the Theme App Extension confirmation dialog to its actual content height by releasing the booking form flex height.
+- Uses one system sans-serif typography stack for all storefront booking copy, fields, buttons, staff pickers, time slots and confirmation text.
+- Keeps custom staff photo upload and initials fallback unchanged.
 
 ## v0.5.4-hotfix.1 Staff Avatar + Admin i18n Cleanup
 
