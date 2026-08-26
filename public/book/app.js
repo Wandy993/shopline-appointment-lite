@@ -6,9 +6,13 @@ let selectedAllDayDate = '';
 let selectedOccurrences = [];
 let selectedStaffId = '';
 let brand = { name: 'Appointment Lite', accentColor: '#2F6FED' };
+let calendarCursor = '';
+let selectedDate = '';
+let minBookableDate = '';
+let maxBookableDate = '';
 
 const typeLabels = { appointment: 'Appointment', product: 'Appointment', in_store: 'In-store appointment', onsite: 'Home / onsite service', consultation: 'Consultation', class: 'Class / course', other: 'Service appointment' };
-const modeLabels = { slot: 'Minute / hour', all_day: 'All day', multi_slot: 'Multiple sessions' };
+const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 async function api(path, options = {}) {
   const response = await fetch(path, options);
@@ -75,16 +79,16 @@ function renderStaffPicker(options = []) {
     menu.classList.add('hidden');
     $('#staffPickerButton').setAttribute('aria-expanded', 'false');
     menu.querySelectorAll('[data-staff-id]').forEach(option => option.classList.toggle('selected', option.dataset.staffId === selectedStaffId));
-    if ($('#bookingDate').value) await loadAvailability($('#bookingDate').value);
+    if (selectedDate) await loadAvailability(selectedDate);
   }));
 }
 
 function emptyAvailabilityMessage(payload = {}) {
   const reason = String(payload.reason || '');
   if (reason === 'SERVICE_CLOSED') return 'This service is not available on this date. Staff special hours do not open a closed service date.';
-  if (reason === 'POLICY_BLOCKED') return 'This date is outside the service booking notice or booking window.';
+  if (reason === 'POLICY_BLOCKED') return 'This date is outside the booking notice or booking window.';
   if (reason === 'CAPACITY_FULL') return 'This date is fully booked.';
-  if (reason === 'STAFF_UNAVAILABLE') return "The selected staff member is not available during this service's bookable times on this date.";
+  if (reason === 'STAFF_UNAVAILABLE') return "The selected staff member is not available on this date.";
   if (reason === 'STAFF_SELECTION_REQUIRED') return 'Choose a staff member to see availability.';
   return 'No times available on this date.';
 }
@@ -100,29 +104,123 @@ function formatBookingWhen(booking) {
   return `${booking.date} at ${booking.time}`;
 }
 
+function dateFromKey(key) {
+  const [year, month, day] = String(key || '').split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day, 12));
+}
+
+function dateKey(date) {
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+}
+
+function monthKey(dateString) {
+  const date = dateFromKey(dateString);
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-01`;
+}
+
+function shiftMonth(cursor, amount) {
+  const date = dateFromKey(cursor);
+  date.setUTCMonth(date.getUTCMonth() + amount, 1);
+  return dateKey(date);
+}
+
+function serviceOpenOnDate(date) {
+  if (!rule) return false;
+  if (rule.dateFrom && date < rule.dateFrom) return false;
+  if (rule.dateUntil && date > rule.dateUntil) return false;
+  const exception = (rule.availabilityExceptions || []).find(item => item.date === date);
+  if (exception) return !exception.closed && (bookingMode() === 'all_day' || (exception.windows || []).length > 0);
+  const weekday = dateFromKey(date).getUTCDay();
+  const schedule = (rule.weeklyAvailability || []).find(item => Number(item.weekday) === weekday);
+  return Boolean(schedule?.enabled && (bookingMode() === 'all_day' || (schedule.windows || []).length > 0));
+}
+
+function withinCalendarRange(date) {
+  if (minBookableDate && date < minBookableDate) return false;
+  if (maxBookableDate && date > maxBookableDate) return false;
+  return true;
+}
+
+function calendarSessionCount(date) {
+  if (bookingMode() !== 'multi_slot') return 0;
+  return selectedOccurrences.filter(item => item.date === date).length;
+}
+
+function renderCalendar() {
+  const root = $('#calendarGrid');
+  if (!root || !calendarCursor) return;
+  const cursor = dateFromKey(calendarCursor);
+  $('#calendarTitle').textContent = `${monthNames[cursor.getUTCMonth()]} ${cursor.getUTCFullYear()}`;
+  const first = new Date(cursor);
+  first.setUTCDate(1 - first.getUTCDay());
+  const monthIndex = cursor.getUTCMonth();
+  const today = rule?.storeDate || minBookableDate;
+  const cells = [];
+  for (let i = 0; i < 42; i += 1) {
+    const current = new Date(first);
+    current.setUTCDate(first.getUTCDate() + i);
+    const key = dateKey(current);
+    const outside = current.getUTCMonth() !== monthIndex;
+    const open = !outside && withinCalendarRange(key) && serviceOpenOnDate(key);
+    const selected = key === selectedDate;
+    const sessionCount = calendarSessionCount(key);
+    cells.push(`<button type="button" class="calendar-day${outside ? ' outside' : ''}${selected ? ' selected' : ''}${key === today ? ' today' : ''}${!open ? ' unavailable' : ''}" data-date="${key}" ${open ? '' : 'disabled'} aria-pressed="${selected ? 'true' : 'false'}" aria-label="${key}${open ? '' : ', unavailable'}"><span>${current.getUTCDate()}</span>${sessionCount ? `<i>${sessionCount}</i>` : ''}</button>`);
+  }
+  root.innerHTML = cells.join('');
+  root.querySelectorAll('[data-date]:not(:disabled)').forEach(button => button.addEventListener('click', () => selectDate(button.dataset.date)));
+  const prevCursor = shiftMonth(calendarCursor, -1);
+  const nextCursor = shiftMonth(calendarCursor, 1);
+  const prevEnd = `${prevCursor.slice(0, 7)}-31`;
+  $('#calendarPrev').disabled = Boolean(minBookableDate && prevEnd < minBookableDate.slice(0, 7) + '-01');
+  $('#calendarNext').disabled = Boolean(maxBookableDate && nextCursor > monthKey(maxBookableDate));
+}
+
+async function selectDate(date, { keepMonth = false } = {}) {
+  selectedDate = date;
+  $('#bookingDate').value = date;
+  $('#selectedDateLabel').textContent = new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(dateFromKey(date));
+  if (!keepMonth) calendarCursor = monthKey(date);
+  selectedTime = '';
+  if (bookingMode() === 'all_day') selectedAllDayDate = '';
+  renderCalendar();
+  await loadAvailability(date);
+}
+
+function findInitialDate(start) {
+  let current = dateFromKey(start);
+  for (let i = 0; i < 366; i += 1) {
+    const key = dateKey(current);
+    if ((!maxBookableDate || key <= maxBookableDate) && withinCalendarRange(key) && serviceOpenOnDate(key)) return key;
+    current.setUTCDate(current.getUTCDate() + 1);
+  }
+  return start;
+}
+
 function renderSelectedSessions() {
   const root = $('#selectedSessions');
   if (bookingMode() !== 'multi_slot') { root.classList.add('hidden'); return; }
   root.classList.remove('hidden');
   const required = Number(rule.sessionsRequired || 3);
   root.innerHTML = `<div class="selected-session-head"><strong>Selected sessions</strong><span>${selectedOccurrences.length} / ${required}</span></div><div class="selected-session-list">${selectedOccurrences.length ? selectedOccurrences.map(item => `<button type="button" class="selected-session" data-remove-session="${escapeHtml(occurrenceKey(item))}"><span>${escapeHtml(item.date)} · ${escapeHtml(item.time)}</span><i>×</i></button>`).join('') : '<span class="muted">Choose dates and time slots until your package is complete.</span>'}</div>`;
-  root.querySelectorAll('[data-remove-session]').forEach(button => button.addEventListener('click', () => {
+  root.querySelectorAll('[data-remove-session]').forEach(button => button.addEventListener('click', async () => {
     selectedOccurrences = selectedOccurrences.filter(item => occurrenceKey(item) !== button.dataset.removeSession);
     renderSelectedSessions();
+    renderCalendar();
     renderCurrentTimeSelection();
+    if (selectedDate) await loadAvailability(selectedDate);
   }));
 }
 
 function renderCurrentTimeSelection() {
   if (bookingMode() !== 'multi_slot') return;
   $('#timeSlots').querySelectorAll('.time-slot').forEach(button => {
-    const key = `${$('#bookingDate').value}T${button.dataset.time}`;
+    const key = `${selectedDate}T${button.dataset.time}`;
     button.setAttribute('aria-pressed', String(selectedOccurrences.some(item => occurrenceKey(item) === key)));
   });
 }
 
 function renderService(payload) {
-  rule = payload.rule;
+  rule = { ...payload.rule, storeDate: payload.storeDate || '' };
   brand = payload.brand || brand;
   document.documentElement.style.setProperty('--brand', brand.accentColor || '#2F6FED');
   document.documentElement.style.setProperty('--brand-soft', `color-mix(in srgb,${brand.accentColor || '#2F6FED'} 9%,white)`);
@@ -133,19 +231,18 @@ function renderService(payload) {
   $('#serviceDescription').textContent = rule.serviceDescription || '';
   $('#serviceDescription').classList.toggle('hidden', !rule.serviceDescription);
   const mode = bookingMode();
-  $('#timezoneText').textContent = mode === 'all_day' ? `Dates use ${payload.timezone}.` : `All times use ${payload.timezone}.`;
+  $('#timezoneText').textContent = mode === 'all_day' ? `Dates use the store time zone: ${payload.timezone}.` : `All times are shown in the store time zone: ${payload.timezone}.`;
   $('#noteLabel').textContent = rule.questionLabel || 'Anything we should know?';
-  const modeMeta = mode === 'all_day' ? 'All-day booking' : mode === 'multi_slot' ? `${rule.sessionsRequired || 3} sessions per booking` : `${rule.duration} min`;
+  const modeMeta = mode === 'all_day' ? 'All-day booking' : mode === 'multi_slot' ? `${rule.sessionsRequired || 3} sessions` : `${rule.duration} minutes`;
   const staffMode = rule.staffAssignment?.mode || 'none';
   const staffOptions = Array.isArray(rule.staffOptions) ? rule.staffOptions : [];
-  const managedStaffMeta = staffMode === 'fixed' && staffOptions[0] ? staffOptions[0].name : staffMode === 'any' ? 'Assigned automatically' : '';
+  const managedStaffMeta = staffMode === 'fixed' && staffOptions[0] ? staffOptions[0].name : staffMode === 'any' ? 'Staff assigned automatically' : '';
   const meta = [modeMeta, rule.location, managedStaffMeta || rule.staff, rule.capacity > 1 ? `${rule.capacity} ${mode === 'all_day' ? 'bookings per day' : 'spots per time'}` : '', formatNotice(rule.minimumNoticeMinutes)].filter(Boolean);
   $('#serviceMeta').innerHTML = meta.map(value => `<span>${escapeHtml(value)}</span>`).join('');
   const today = payload.storeDate || new Date().toISOString().slice(0, 10);
-  $('#bookingDate').min = rule.dateFrom && rule.dateFrom > today ? rule.dateFrom : today;
+  minBookableDate = rule.dateFrom && rule.dateFrom > today ? rule.dateFrom : today;
   const maxByWindow = rule.bookingWindowUntil || '';
-  const maxDate = [rule.dateUntil, maxByWindow].filter(Boolean).sort()[0] || '';
-  if (maxDate) $('#bookingDate').max = maxDate;
+  maxBookableDate = [rule.dateUntil, maxByWindow].filter(Boolean).sort()[0] || '';
   $('#customQuestions').innerHTML = (rule.customQuestions || []).map(question => `<label class="field"><span>${escapeHtml(question.label)}${question.required ? ' *' : ''}</span><input data-question="${escapeHtml(question.label)}" maxlength="1000" ${question.required ? 'required' : ''}></label>`).join('');
   const staffField = $('#staffField');
   const staffSelect = $('#staffSelect');
@@ -154,37 +251,32 @@ function renderService(payload) {
   staffSelect.value = '';
   setStaffPickerValue(null);
   renderStaffPicker(staffOptions);
-
-  if (mode === 'all_day') {
-    $('#scheduleHeading').textContent = 'Choose a day';
-    $('#timeLabel').textContent = 'Availability';
-    $('#timeSlots').innerHTML = '<span class="muted">Choose a date to check availability.</span>';
-  } else if (mode === 'multi_slot') {
-    $('#scheduleHeading').textContent = `Choose ${rule.sessionsRequired || 3} sessions`;
-    $('#timeLabel').textContent = 'Available times';
-    $('#timeSlots').innerHTML = '<span class="muted">Choose a date, then add a session.</span>';
-    renderSelectedSessions();
-  }
+  $('#timeLabel').textContent = mode === 'all_day' ? 'Availability' : mode === 'multi_slot' ? 'Available sessions' : 'Available time slots';
+  if (mode === 'multi_slot') renderSelectedSessions();
+  const initial = findInitialDate(minBookableDate);
+  calendarCursor = monthKey(initial);
   $('#loading').classList.add('hidden');
   $('#bookingView').classList.remove('hidden');
+  renderCalendar();
+  selectDate(initial, { keepMonth: true });
 }
 
 async function loadAvailability(date) {
   const root = $('#timeSlots');
-  root.innerHTML = `<span class="muted">${bookingMode() === 'all_day' ? 'Checking date…' : 'Loading times…'}</span>`;
+  root.innerHTML = `<span class="muted">${bookingMode() === 'all_day' ? 'Checking this date…' : 'Loading available times…'}</span>`;
   try {
     const staffQuery = selectedStaffId ? `&staffId=${encodeURIComponent(selectedStaffId)}` : '';
     const selectedQuery = bookingMode() === 'multi_slot' && selectedOccurrences.length ? `&selected=${encodeURIComponent(selectedOccurrences.map(item => `${item.date}T${item.time}`).join(','))}` : '';
     const payload = await api(`/api/public/availability?ruleId=${encodeURIComponent(ruleId)}&date=${encodeURIComponent(date)}${staffQuery}${selectedQuery}`);
-    if (payload.requiresStaffSelection) { root.innerHTML = '<span class="muted">Choose a staff member first.</span>'; return; }
+    if (payload.requiresStaffSelection) { root.innerHTML = '<span class="muted availability-empty">Choose a staff member to see available times.</span>'; return; }
     if (bookingMode() === 'all_day') {
       selectedAllDayDate = payload.available ? date : '';
       root.innerHTML = payload.available
         ? `<div class="all-day-available"><strong>Available all day</strong><span>${payload.remaining > 1 ? `${payload.remaining} bookings remaining` : 'This date can be booked'}</span></div>`
-        : `<span class="muted">${escapeHtml(emptyAvailabilityMessage(payload))}</span>`;
+        : `<span class="muted availability-empty">${escapeHtml(emptyAvailabilityMessage(payload))}</span>`;
       return;
     }
-    root.innerHTML = payload.slots.length ? payload.slots.map(time => `<button type="button" class="time-slot" data-time="${time}" aria-pressed="false">${time}</button>`).join('') : `<span class="muted">${escapeHtml(emptyAvailabilityMessage(payload))}</span>`;
+    root.innerHTML = payload.slots.length ? payload.slots.map(time => `<button type="button" class="time-slot" data-time="${time}" aria-pressed="false">${time}</button>`).join('') : `<span class="muted availability-empty">${escapeHtml(emptyAvailabilityMessage(payload))}</span>`;
     root.querySelectorAll('.time-slot').forEach(button => button.addEventListener('click', async () => {
       if (bookingMode() === 'multi_slot') {
         const item = { date, time: button.dataset.time };
@@ -194,7 +286,7 @@ async function loadAvailability(date) {
         else if (selectedOccurrences.length < Number(rule.sessionsRequired || 3)) selectedOccurrences.push(item);
         selectedOccurrences.sort((a, b) => occurrenceKey(a).localeCompare(occurrenceKey(b)));
         renderSelectedSessions();
-        renderCurrentTimeSelection();
+        renderCalendar();
         await loadAvailability(date);
       } else {
         selectedTime = button.dataset.time;
@@ -202,8 +294,11 @@ async function loadAvailability(date) {
       }
     }));
     renderCurrentTimeSelection();
-  } catch (error) { root.innerHTML = `<span class="muted">${escapeHtml(error.message)}</span>`; }
+  } catch (error) { root.innerHTML = `<span class="muted availability-empty">${escapeHtml(error.message)}</span>`; }
 }
+
+$('#calendarPrev').addEventListener('click', () => { calendarCursor = shiftMonth(calendarCursor, -1); renderCalendar(); });
+$('#calendarNext').addEventListener('click', () => { calendarCursor = shiftMonth(calendarCursor, 1); renderCalendar(); });
 
 $('#staffPickerButton').addEventListener('click', () => {
   const menu = $('#staffPickerMenu');
@@ -219,17 +314,12 @@ document.addEventListener('click', event => {
   }
 });
 
-$('#bookingDate').addEventListener('change', async event => {
-  selectedTime = '';
-  if (bookingMode() === 'all_day') selectedAllDayDate = '';
-  await loadAvailability(event.target.value);
-});
-
 $('#bookingForm').addEventListener('submit', async event => {
   event.preventDefault();
   const errorBox = $('#formError');
   const mode = bookingMode();
   if ((rule.staffAssignment?.mode || 'none') === 'customer_choice' && !selectedStaffId) { errorBox.textContent = 'Please choose a staff member.'; errorBox.classList.remove('hidden'); return; }
+  if (!selectedDate) { errorBox.textContent = 'Please choose a date.'; errorBox.classList.remove('hidden'); return; }
   if (mode === 'slot' && !selectedTime) { errorBox.textContent = 'Please select a time.'; errorBox.classList.remove('hidden'); return; }
   if (mode === 'all_day' && !selectedAllDayDate) { errorBox.textContent = 'Please choose an available date.'; errorBox.classList.remove('hidden'); return; }
   if (mode === 'multi_slot' && selectedOccurrences.length !== Number(rule.sessionsRequired || 3)) { errorBox.textContent = `Please select exactly ${rule.sessionsRequired || 3} sessions.`; errorBox.classList.remove('hidden'); return; }
@@ -242,7 +332,7 @@ $('#bookingForm').addEventListener('submit', async event => {
     const body = {
       ruleId,
       staffId: selectedStaffId,
-      date: mode === 'multi_slot' ? selectedOccurrences[0]?.date : form.get('date'),
+      date: mode === 'multi_slot' ? selectedOccurrences[0]?.date : selectedDate,
       time: mode === 'slot' ? selectedTime : '',
       occurrences: mode === 'multi_slot' ? selectedOccurrences : [],
       customer: { name: form.get('name'), email: form.get('email'), phone: form.get('phone') },
@@ -263,8 +353,9 @@ $('#bookingForm').addEventListener('submit', async event => {
       if (mode === 'multi_slot') {
         selectedOccurrences = [];
         renderSelectedSessions();
+        renderCalendar();
       }
-      if ($('#bookingDate').value) loadAvailability($('#bookingDate').value);
+      if (selectedDate) loadAvailability(selectedDate);
     }
   } finally { submit.disabled = false; submit.textContent = 'Confirm booking'; }
 });

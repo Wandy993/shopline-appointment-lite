@@ -1,7 +1,5 @@
-# Appointment Lite v0.5.1 Staff Notifications + Staff Operations
+# Appointment Lite v0.5.2 Storefront Calendar Booking UX
 
-This release upgrades the v0.5.0 staff foundation with employee avatars, a custom storefront staff picker, opt-in staff email notifications, and a daily Staff Operations schedule.
+This release redesigns the customer-facing Theme App Block and hosted booking page around a calendar-first booking experience while preserving the existing booking engine, staff scheduling, capacity, all-day bookings, and multiple-session bookings.
 
-Use the generated one-click command delivered with the release ZIP. The command verifies the exact ZIP, syncs Git safely, installs locked dependencies, runs the full test suite and JavaScript checks, commits/pushes the release, queues Railway with `railway up --detach`, and then immediately pushes the SHOPLINE Theme App Extension with `sl extension push`.
-
-Custom staff images are compressed in the browser so the normal 100 KB JSON request limit remains sufficient; the release does not add object storage or new infrastructure.
+Use `docs/INSTALL_MAC_COMMAND.txt` or the separately delivered one-click command. The release command verifies Git state, overlays the clean ZIP, runs `npm ci`, the full `npm test`, and `npm run check`, syncs the locally bound SHOPLINE Theme App Extension, pushes Git, queues Railway with `railway up --detach`, and immediately runs `sl extension push`.

@@ -1,6 +1,6 @@
 # Appointment Lite for SHOPLINE
 
-Version `0.5.1-hotfix.2` — keeps the hidden-field service editor fix and adds clear staff/service availability diagnostics. Staff special working hours are honored at the employee layer, while storefronts now explain when the appointment service itself is closed on that date.
+Version `0.5.2` — introduces a calendar-first storefront booking experience with a desktop two-column calendar + booking panel, responsive mobile stacking, and matching Theme App Block / hosted booking UI across minute-hour, all-day, and multiple-session booking modes.
 
 Appointment Lite now supports two booking entry models:
 
@@ -13,7 +13,18 @@ Typical scenarios include furniture installation and measurements, showroom visi
 
 
 
-## v0.5.1-hotfix.2 Service Editor hidden-field fix
+
+## v0.5.2 Storefront Calendar Booking UX
+
+- Replaces the customer-facing native date field with an Appointment Lite monthly calendar on the Theme App Block and hosted booking page.
+- Desktop uses a balanced two-column experience: calendar/time-zone context on the left; staff, time slots, customer details, and confirmation on the right.
+- Mobile automatically collapses to a single-column flow while keeping the confirmation action easy to reach.
+- Calendar dates respect the service weekly schedule, date range, special closed/open dates, and booking window before a customer requests live capacity/staff availability.
+- Minute/hour bookings show available time pills; all-day bookings show date-level availability; multiple-session bookings mark dates that already contain selected sessions.
+- Staff selection continues to use the custom avatar picker, and changing staff immediately refreshes the selected date's availability.
+- The booking API, capacity rules, staff conflict checks, booking notifications, and appointment management behavior are unchanged.
+
+## v0.5.1-hotfix.1 Service Editor hidden-field fix
 
 - Prevents hidden `sessionsRequired` / all-day-only controls from blocking Save with browser `not focusable` validation errors.
 - Disables inactive Booking Mode controls and re-enables only the controls for the selected mode.
@@ -330,6 +341,6 @@ Tests cover query/session signing, weekday/date bounds, store-time-zone past-slo
 Private MVP. Add the desired license before public distribution.
 
 
-## v0.5.1-hotfix.2 — Staff exception availability clarity
+## v0.5.2 — Staff exception availability clarity
 
 Staff schedule exceptions now explicitly explain that they only change the employee schedule. A service date must also be open in the service availability configuration. Public availability responses include reason codes so storefronts can distinguish a closed service date, policy restriction, full capacity, missing staff selection, and staff unavailability instead of showing one generic empty state.

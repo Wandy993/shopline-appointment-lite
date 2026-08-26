@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = '0.5.1-hotfix.2';
+  const VERSION = '0.5.2';
   const API_BASE = 'https://appointment.toolkit.fans';
   const CACHE_TTL = 5 * 60 * 1000;
   const SELECTOR = '[data-appointment-lite]:not([data-al-ready])';
@@ -83,6 +83,40 @@
     if (reason === 'STAFF_UNAVAILABLE') return "The selected staff member is not available during this service's bookable times on this date.";
     if (reason === 'STAFF_SELECTION_REQUIRED') return 'Choose a staff member to see availability.';
     return 'No times available on this date.';
+  }
+
+
+
+  const calendarMonthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+  function calendarDateFromKey(key) {
+    const [year, month, day] = String(key || '').split('-').map(Number);
+    return new Date(Date.UTC(year, month - 1, day, 12));
+  }
+
+  function calendarDateKey(date) {
+    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+  }
+
+  function calendarMonthKey(dateString) {
+    const date = calendarDateFromKey(dateString);
+    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-01`;
+  }
+
+  function calendarShiftMonth(cursor, amount) {
+    const date = calendarDateFromKey(cursor);
+    date.setUTCMonth(date.getUTCMonth() + amount, 1);
+    return calendarDateKey(date);
+  }
+
+  function calendarServiceOpen(rule, date, mode) {
+    if (rule.dateFrom && date < rule.dateFrom) return false;
+    if (rule.dateUntil && date > rule.dateUntil) return false;
+    const exception = (rule.availabilityExceptions || []).find(item => item.date === date);
+    if (exception) return !exception.closed && (mode === 'all_day' || (exception.windows || []).length > 0);
+    const weekday = calendarDateFromKey(date).getUTCDay();
+    const schedule = (rule.weeklyAvailability || []).find(item => Number(item.weekday) === weekday);
+    return Boolean(schedule?.enabled && (mode === 'all_day' || (schedule.windows || []).length > 0));
   }
 
   function contextFor(widget) {
@@ -330,8 +364,8 @@
     window.scrollTo(0, dialogScrollY);
   }
 
-  function mountDialog(dialog) {
-    dialog.className = 'al-dialog';
+  function mountDialog(dialog, variant = '') {
+    dialog.className = ['al-dialog', variant].filter(Boolean).join(' ');
     dialog.style.setProperty('--al-accent', '#2F6FED');
     document.body.append(dialog);
     dialog.showModal();
@@ -471,101 +505,110 @@
     const mode = ['slot', 'all_day', 'multi_slot'].includes(rule.bookingMode) ? rule.bookingMode : 'slot';
     const today = rule.storeDate || new Date().toISOString().slice(0, 10);
     const minDate = rule.dateFrom && rule.dateFrom > today ? rule.dateFrom : today;
+    const maxDate = bookingMaxDate(rule);
     const modeMeta = mode === 'all_day' ? 'All-day booking' : mode === 'multi_slot' ? `${Number(rule.sessionsRequired || 3)} sessions` : `${rule.duration} minutes`;
-    const scheduleTitle = mode === 'all_day' ? 'Choose a day' : mode === 'multi_slot' ? `Choose ${Number(rule.sessionsRequired || 3)} sessions` : 'Choose a time';
-    const timeLabel = mode === 'all_day' ? 'Availability' : 'Time';
     const staffMode = rule.staffAssignment?.mode || 'none';
     const staffOptions = Array.isArray(rule.staffOptions) ? rule.staffOptions : [];
     const staffSelector = staffMode === 'customer_choice' ? `<div class="al-field al-staff-choice"><label>Staff</label><div class="al-staff-picker"><button type="button" class="al-staff-trigger" aria-haspopup="listbox" aria-expanded="false"><span class="al-staff-value"><span class="al-staff-avatar al-staff-initials al-staff-small">?</span><span><strong>Choose staff</strong><small>Select a team member</small></span></span><span class="al-staff-chevron">⌄</span></button><div class="al-staff-menu" role="listbox" hidden>${staffOptions.map(item => `<button type="button" class="al-staff-option" data-staff-id="${text(item.id)}">${staffAvatar(item, 'al-staff-small')}<span><strong>${text(item.name)}</strong><small>View availability</small></span><i>✓</i></button>`).join('')}</div><input type="hidden" name="staffId" value=""></div><small>Availability updates for the selected staff member.</small></div>` : '';
     const managedStaffMeta = staffMode === 'fixed' && staffOptions[0] ? staffOptions[0].name : staffMode === 'any' ? 'Staff assigned automatically' : rule.staff;
-    dialog.innerHTML = `<div class="al-head"><div><h2>Book an appointment</h2><p>${text(rule.serviceTitle || rule.productTitle)}</p></div><button class="al-close" type="button" aria-label="Close">×</button></div><form class="al-form"><div class="al-form-body"><div class="al-meta">${text(modeMeta)}${rule.location ? ` · ${text(rule.location)}` : ''}${managedStaffMeta ? ` · ${text(managedStaffMeta)}` : ''}</div><p class="al-muted">${mode === 'all_day' ? 'Dates' : 'All times'} are shown in the store time zone: ${text(rule.timezone || 'UTC')}.</p>${staffSelector}<div class="al-mode-title"><strong>${text(scheduleTitle)}</strong></div><div class="al-grid"><div class="al-field"><label for="al-date">Date</label><input id="al-date" name="date" type="date" min="${minDate}" ${maxDateAttribute(rule)} required></div><div><span class="al-legend">${timeLabel}</span><div class="al-times"><span class="al-muted">Choose a date first.</span></div></div></div><div class="al-selected-sessions" hidden></div><div class="al-grid"><div class="al-field"><label for="al-name">Name</label><input id="al-name" name="name" autocomplete="name" maxlength="120" required></div><div class="al-field"><label for="al-email">Email</label><input id="al-email" name="email" type="email" autocomplete="email" maxlength="254" required></div></div><div class="al-field"><label for="al-phone">Phone (optional)</label><input id="al-phone" name="phone" type="tel" autocomplete="tel" maxlength="40"></div><div class="al-field"><label for="al-note">${text(rule.questionLabel || 'Anything we should know?')}</label><textarea id="al-note" name="note" maxlength="2000"></textarea></div><div class="al-questions"></div></div><div class="al-actions"><div class="al-error" hidden role="alert"></div><button class="al-submit" type="submit">Confirm booking</button></div></form>`;
+    const metaParts = [modeMeta, rule.location, managedStaffMeta].filter(Boolean);
+    dialog.innerHTML = `<div class="al-head"><div><h2>Book an appointment</h2><p>${text(rule.serviceTitle || rule.productTitle)}</p></div><button class="al-close" type="button" aria-label="Close">×</button></div><form class="al-form"><div class="al-form-body"><div class="al-service-summary">${metaParts.map((value, index) => `<span>${index === 0 ? '◷' : index === 1 ? '⌂' : '◎'} ${text(value)}</span>`).join('<i>·</i>')}<span>◉ ${text(rule.timezone || 'UTC')}</span></div><div class="al-booking-layout"><aside class="al-calendar-column"><div class="al-calendar-card"><div class="al-calendar-toolbar"><button type="button" class="al-calendar-nav al-calendar-prev" aria-label="Previous month">‹</button><strong class="al-calendar-title">Calendar</strong><button type="button" class="al-calendar-nav al-calendar-next" aria-label="Next month">›</button></div><div class="al-calendar-weekdays" aria-hidden="true"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div><div class="al-calendar-grid" role="grid" aria-label="Choose a booking date"></div><input type="hidden" name="date" required></div><div class="al-timezone-note"><span>◷</span><p>${mode === 'all_day' ? 'Dates use' : 'All times are shown in'} the store time zone: <strong>${text(rule.timezone || 'UTC')}</strong>.</p></div><div class="al-selected-sessions" hidden></div></aside><section class="al-booking-panel">${staffSelector}<div class="al-time-section"><div class="al-field-label-row"><span>${mode === 'all_day' ? 'Availability' : mode === 'multi_slot' ? 'Available sessions' : 'Available time slots'}</span><small class="al-selected-date-label">Choose a date</small></div><div class="al-times"><span class="al-muted">Choose a date first.</span></div></div><div class="al-details-divider"><span>Your details</span></div><div class="al-grid"><div class="al-field"><label for="al-name">Name *</label><input id="al-name" name="name" autocomplete="name" maxlength="120" placeholder="Enter your name" required></div><div class="al-field"><label for="al-email">Email *</label><input id="al-email" name="email" type="email" autocomplete="email" maxlength="254" placeholder="Enter your email" required></div></div><div class="al-field"><label for="al-phone">Phone (optional)</label><input id="al-phone" name="phone" type="tel" autocomplete="tel" maxlength="40" placeholder="Enter your phone number"></div><div class="al-field"><label for="al-note">${text(rule.questionLabel || 'Anything we should know?')}</label><textarea id="al-note" name="note" maxlength="2000" placeholder="Add a note for the team"></textarea></div><div class="al-questions"></div></section></div></div><div class="al-actions"><div class="al-error" hidden role="alert"></div><button class="al-submit" type="submit">Confirm booking</button><p class="al-action-note">You can reschedule or cancel your appointment later.</p></div></form>`;
     const questions = dialog.querySelector('.al-questions');
     (rule.customQuestions || []).forEach((question, index) => {
-      questions.insertAdjacentHTML('beforeend', `<div class="al-field"><label for="al-q-${index}">${text(question.label)}</label><input id="al-q-${index}" data-question="${text(question.label)}" maxlength="1000" ${question.required ? 'required' : ''}></div>`);
+      questions.insertAdjacentHTML('beforeend', `<div class="al-field"><label for="al-q-${index}">${text(question.label)}${question.required ? ' *' : ''}</label><input id="al-q-${index}" data-question="${text(question.label)}" maxlength="1000" ${question.required ? 'required' : ''}></div>`);
     });
-    mountDialog(dialog);
+    mountDialog(dialog, 'al-booking-dialog');
+
     const dateInput = dialog.querySelector('[name=date]');
     const times = dialog.querySelector('.al-times');
     const selectedRoot = dialog.querySelector('.al-selected-sessions');
+    const calendarRoot = dialog.querySelector('.al-calendar-grid');
+    const calendarTitle = dialog.querySelector('.al-calendar-title');
+    const calendarPrev = dialog.querySelector('.al-calendar-prev');
+    const calendarNext = dialog.querySelector('.al-calendar-next');
+    const selectedDateLabel = dialog.querySelector('.al-selected-date-label');
     const staffSelect = dialog.querySelector('[name=staffId]');
     const staffPicker = dialog.querySelector('.al-staff-picker');
     const staffTrigger = dialog.querySelector('.al-staff-trigger');
     const staffMenu = dialog.querySelector('.al-staff-menu');
     let selectedStaffId = staffSelect?.value || '';
+    let selectedDate = '';
+    let calendarCursor = calendarMonthKey(minDate);
     let selectedTime = '';
     let selectedAllDayDate = '';
     let selectedOccurrences = [];
     const occurrenceKey = item => `${item.date}T${item.time}`;
+    const inRange = date => (!minDate || date >= minDate) && (!maxDate || date <= maxDate);
+
+    const sessionCountForDate = date => mode === 'multi_slot' ? selectedOccurrences.filter(item => item.date === date).length : 0;
+    const renderCalendar = () => {
+      const cursor = calendarDateFromKey(calendarCursor);
+      calendarTitle.textContent = `${calendarMonthNames[cursor.getUTCMonth()]} ${cursor.getUTCFullYear()}`;
+      const first = new Date(cursor);
+      first.setUTCDate(1 - first.getUTCDay());
+      const monthIndex = cursor.getUTCMonth();
+      const cells = [];
+      for (let i = 0; i < 42; i += 1) {
+        const current = new Date(first);
+        current.setUTCDate(first.getUTCDate() + i);
+        const key = calendarDateKey(current);
+        const outside = current.getUTCMonth() !== monthIndex;
+        const open = !outside && inRange(key) && calendarServiceOpen(rule, key, mode);
+        const selected = key === selectedDate;
+        const sessionCount = sessionCountForDate(key);
+        cells.push(`<button type="button" class="al-calendar-day${outside ? ' outside' : ''}${selected ? ' selected' : ''}${key === today ? ' today' : ''}${!open ? ' unavailable' : ''}" data-date="${key}" ${open ? '' : 'disabled'} aria-pressed="${selected ? 'true' : 'false'}"><span>${current.getUTCDate()}</span>${sessionCount ? `<i>${sessionCount}</i>` : ''}</button>`);
+      }
+      calendarRoot.innerHTML = cells.join('');
+      calendarRoot.querySelectorAll('[data-date]:not(:disabled)').forEach(button => button.addEventListener('click', () => selectDate(button.dataset.date)));
+      calendarPrev.disabled = Boolean(minDate && calendarShiftMonth(calendarCursor, -1) < calendarMonthKey(minDate));
+      calendarNext.disabled = Boolean(maxDate && calendarShiftMonth(calendarCursor, 1) > calendarMonthKey(maxDate));
+    };
 
     const renderSelected = () => {
       if (mode !== 'multi_slot') return;
       selectedRoot.hidden = false;
       selectedRoot.innerHTML = `<div class="al-selected-head"><strong>Selected sessions</strong><span>${selectedOccurrences.length} / ${Number(rule.sessionsRequired || 3)}</span></div><div class="al-selected-list">${selectedOccurrences.length ? selectedOccurrences.map(item => `<button type="button" data-remove-session="${text(occurrenceKey(item))}"><span>${text(item.date)} · ${text(item.time)}</span><i>×</i></button>`).join('') : '<span class="al-muted">Choose dates and time slots until your booking is complete.</span>'}</div>`;
-      selectedRoot.querySelectorAll('[data-remove-session]').forEach(button => button.addEventListener('click', () => {
+      selectedRoot.querySelectorAll('[data-remove-session]').forEach(button => button.addEventListener('click', async () => {
         selectedOccurrences = selectedOccurrences.filter(item => occurrenceKey(item) !== button.dataset.removeSession);
         renderSelected();
-        renderTimeStates();
+        renderCalendar();
+        if (selectedDate) await loadAvailability(selectedDate);
       }));
     };
+
     const renderTimeStates = () => {
       if (mode !== 'multi_slot') return;
       times.querySelectorAll('.al-time').forEach(button => {
-        const key = `${dateInput.value}T${button.dataset.time}`;
+        const key = `${selectedDate}T${button.dataset.time}`;
         button.setAttribute('aria-pressed', String(selectedOccurrences.some(item => occurrenceKey(item) === key)));
       });
     };
-    if (mode === 'multi_slot') renderSelected();
 
-    if (staffPicker && staffTrigger && staffMenu) {
-      staffTrigger.addEventListener('click', () => {
-        staffMenu.hidden = !staffMenu.hidden;
-        staffTrigger.setAttribute('aria-expanded', String(!staffMenu.hidden));
-      });
-      staffMenu.querySelectorAll('[data-staff-id]').forEach(button => button.addEventListener('click', () => {
-        const item = staffOptions.find(option => String(option.id) === button.dataset.staffId);
-        selectedStaffId = item?.id || '';
-        staffSelect.value = selectedStaffId;
-        selectedTime = '';
-        selectedAllDayDate = '';
-        selectedOccurrences = [];
-        renderSelected();
-        const value = staffTrigger.querySelector('.al-staff-value');
-        value.innerHTML = item ? `${staffAvatar(item, 'al-staff-small')}<span><strong>${text(item.name)}</strong><small>Selected staff member</small></span>` : '<span class="al-staff-avatar al-staff-initials al-staff-small">?</span><span><strong>Choose staff</strong><small>Select a team member</small></span>';
-        staffMenu.querySelectorAll('[data-staff-id]').forEach(option => option.classList.toggle('selected', option.dataset.staffId === selectedStaffId));
-        staffMenu.hidden = true;
-        staffTrigger.setAttribute('aria-expanded', 'false');
-        if (dateInput.value) dateInput.dispatchEvent(new Event('change'));
-      }));
-      dialog.addEventListener('click', event => {
-        if (!staffPicker.contains(event.target)) { staffMenu.hidden = true; staffTrigger.setAttribute('aria-expanded', 'false'); }
-      });
-    }
-
-    dateInput.addEventListener('change', async () => {
+    const loadAvailability = async date => {
       selectedTime = '';
       if (mode === 'all_day') selectedAllDayDate = '';
-      times.innerHTML = `<span class="al-muted">${mode === 'all_day' ? 'Checking date…' : 'Loading times…'}</span>`;
-      info('Loading availability.', { ...context, date: dateInput.value, bookingMode: mode });
+      times.innerHTML = `<span class="al-muted">${mode === 'all_day' ? 'Checking this date…' : 'Loading available times…'}</span>`;
+      info('Loading availability.', { ...context, date, bookingMode: mode });
       try {
-        const payload = await requestJson(apiUrl('/api/public/availability', { ...context, date: dateInput.value, ...(selectedStaffId ? { staffId: selectedStaffId } : {}), ...(mode === 'multi_slot' && selectedOccurrences.length ? { selected: selectedOccurrences.map(item => `${item.date}T${item.time}`).join(',') } : {}) }), {}, 'availability');
-        if (payload.requiresStaffSelection) { times.innerHTML = '<span class="al-muted">Choose a staff member first.</span>'; return; }
+        const payload = await requestJson(apiUrl('/api/public/availability', { ...context, date, ...(selectedStaffId ? { staffId: selectedStaffId } : {}), ...(mode === 'multi_slot' && selectedOccurrences.length ? { selected: selectedOccurrences.map(item => `${item.date}T${item.time}`).join(',') } : {}) }), {}, 'availability');
+        if (payload.requiresStaffSelection) { times.innerHTML = '<span class="al-muted al-availability-empty">Choose a staff member to see available times.</span>'; return; }
         if (mode === 'all_day') {
-          selectedAllDayDate = payload.available ? dateInput.value : '';
-          times.innerHTML = payload.available ? `<div class="al-all-day"><strong>Available all day</strong><span>${payload.remaining > 1 ? `${payload.remaining} bookings remaining` : 'This date can be booked'}</span></div>` : `<span class="al-muted">${text(emptyAvailabilityMessage(payload))}</span>`;
+          selectedAllDayDate = payload.available ? date : '';
+          times.innerHTML = payload.available ? `<div class="al-all-day"><strong>Available all day</strong><span>${payload.remaining > 1 ? `${payload.remaining} bookings remaining` : 'This date can be booked'}</span></div>` : `<span class="al-muted al-availability-empty">${text(emptyAvailabilityMessage(payload))}</span>`;
           return;
         }
-        times.innerHTML = payload.slots.length ? payload.slots.map(time => `<button type="button" class="al-time" data-time="${time}" aria-pressed="false">${time}</button>`).join('') : `<span class="al-muted">${text(emptyAvailabilityMessage(payload))}</span>`;
+        times.innerHTML = payload.slots.length ? payload.slots.map(time => `<button type="button" class="al-time" data-time="${time}" aria-pressed="false">${time}</button>`).join('') : `<span class="al-muted al-availability-empty">${text(emptyAvailabilityMessage(payload))}</span>`;
         times.querySelectorAll('.al-time').forEach(button => button.addEventListener('click', async () => {
           if (mode === 'multi_slot') {
-            const item = { date: dateInput.value, time: button.dataset.time };
+            const item = { date, time: button.dataset.time };
             const key = occurrenceKey(item);
             const exists = selectedOccurrences.some(current => occurrenceKey(current) === key);
             if (exists) selectedOccurrences = selectedOccurrences.filter(current => occurrenceKey(current) !== key);
             else if (selectedOccurrences.length < Number(rule.sessionsRequired || 3)) selectedOccurrences.push(item);
             selectedOccurrences.sort((a, b) => occurrenceKey(a).localeCompare(occurrenceKey(b)));
             renderSelected();
-            renderTimeStates();
-            dateInput.dispatchEvent(new Event('change'));
+            renderCalendar();
+            await loadAvailability(date);
           } else {
             selectedTime = button.dataset.time;
             times.querySelectorAll('.al-time').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
@@ -573,16 +616,72 @@
         }));
         renderTimeStates();
       } catch (error) {
-        times.innerHTML = '<span class="al-muted">Could not load availability. Please try another date.</span>';
-        failure('Availability could not be rendered.', { ...context, date: dateInput.value, status: error.status, message: error.message });
+        times.innerHTML = '<span class="al-muted al-availability-empty">Could not load availability. Please try another date.</span>';
+        failure('Availability could not be rendered.', { ...context, date, status: error.status, message: error.message });
       }
-    });
+    };
+
+    const selectDate = async date => {
+      selectedDate = date;
+      dateInput.value = date;
+      selectedDateLabel.textContent = new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(calendarDateFromKey(date));
+      calendarCursor = calendarMonthKey(date);
+      renderCalendar();
+      await loadAvailability(date);
+    };
+
+    const findInitialDate = start => {
+      const current = calendarDateFromKey(start);
+      for (let i = 0; i < 366; i += 1) {
+        const key = calendarDateKey(current);
+        if ((!maxDate || key <= maxDate) && inRange(key) && calendarServiceOpen(rule, key, mode)) return key;
+        current.setUTCDate(current.getUTCDate() + 1);
+      }
+      return start;
+    };
+
+    if (mode === 'multi_slot') renderSelected();
+    renderCalendar();
+    calendarPrev.addEventListener('click', () => { calendarCursor = calendarShiftMonth(calendarCursor, -1); renderCalendar(); });
+    calendarNext.addEventListener('click', () => { calendarCursor = calendarShiftMonth(calendarCursor, 1); renderCalendar(); });
+
+    if (staffPicker && staffTrigger && staffMenu) {
+      staffTrigger.addEventListener('click', () => {
+        staffMenu.hidden = !staffMenu.hidden;
+        staffTrigger.setAttribute('aria-expanded', String(!staffMenu.hidden));
+      });
+      staffMenu.querySelectorAll('[data-staff-id]').forEach(button => button.addEventListener('click', async () => {
+        const item = staffOptions.find(option => String(option.id) === button.dataset.staffId);
+        selectedStaffId = item?.id || '';
+        staffSelect.value = selectedStaffId;
+        selectedTime = '';
+        selectedAllDayDate = '';
+        selectedOccurrences = [];
+        renderSelected();
+        renderCalendar();
+        const value = staffTrigger.querySelector('.al-staff-value');
+        value.innerHTML = item ? `${staffAvatar(item, 'al-staff-small')}<span><strong>${text(item.name)}</strong><small>Selected staff member</small></span>` : '<span class="al-staff-avatar al-staff-initials al-staff-small">?</span><span><strong>Choose staff</strong><small>Select a team member</small></span>';
+        staffMenu.querySelectorAll('[data-staff-id]').forEach(option => option.classList.toggle('selected', option.dataset.staffId === selectedStaffId));
+        staffMenu.hidden = true;
+        staffTrigger.setAttribute('aria-expanded', 'false');
+        if (selectedDate) await loadAvailability(selectedDate);
+      }));
+      dialog.addEventListener('click', event => {
+        if (!staffPicker.contains(event.target)) { staffMenu.hidden = true; staffTrigger.setAttribute('aria-expanded', 'false'); }
+      });
+    }
+
+    const initialDate = findInitialDate(minDate);
+    calendarCursor = calendarMonthKey(initialDate);
+    renderCalendar();
+    selectDate(initialDate);
 
     dialog.querySelector('form').addEventListener('submit', async event => {
       event.preventDefault();
       const errorBox = dialog.querySelector('.al-error');
       errorBox.hidden = true;
       if (staffMode === 'customer_choice' && !selectedStaffId) { errorBox.textContent = 'Please choose a staff member.'; errorBox.hidden = false; return; }
+      if (!selectedDate) { errorBox.textContent = 'Please choose a date.'; errorBox.hidden = false; return; }
       if (mode === 'slot' && !selectedTime) { errorBox.textContent = 'Please select a time.'; errorBox.hidden = false; return; }
       if (mode === 'all_day' && !selectedAllDayDate) { errorBox.textContent = 'Please choose an available date.'; errorBox.hidden = false; return; }
       if (mode === 'multi_slot' && selectedOccurrences.length !== Number(rule.sessionsRequired || 3)) { errorBox.textContent = `Please select exactly ${Number(rule.sessionsRequired || 3)} sessions.`; errorBox.hidden = false; return; }
@@ -594,7 +693,7 @@
         shopId: context.shopId,
         productId: context.productId,
         staffId: selectedStaffId,
-        date: mode === 'multi_slot' ? selectedOccurrences[0]?.date : form.get('date'),
+        date: mode === 'multi_slot' ? selectedOccurrences[0]?.date : selectedDate,
         time: mode === 'slot' ? selectedTime : '',
         occurrences: mode === 'multi_slot' ? selectedOccurrences : [],
         customer: { name: form.get('name'), email: form.get('email'), phone: form.get('phone') },
@@ -615,13 +714,15 @@
           if (mode === 'multi_slot') {
             selectedOccurrences = [];
             renderSelected();
+            renderCalendar();
           }
-          if (dateInput.value) dateInput.dispatchEvent(new Event('change'));
+          if (selectedDate) loadAvailability(selectedDate);
         }
         submit.disabled = false;
         submit.textContent = 'Confirm booking';
       }
     });
   }
+
 
 })();
