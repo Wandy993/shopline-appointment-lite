@@ -4,7 +4,7 @@ All collections live in the logical database selected by `MONGODB_DB_NAME` (defa
 
 ## Shop
 
-One record per installed SHOPLINE store. In addition to OAuth/store metadata, it holds admin locale, store timezone, per-store Email Studio configuration, reserved plan information, and lightweight onboarding timestamps. OAuth tokens remain excluded from normal Mongoose query results.
+One record per installed SHOPLINE store. In addition to OAuth/store metadata, it holds admin locale, store timezone, per-store Email Studio configuration and lightweight onboarding timestamps. OAuth tokens remain excluded from normal Mongoose query results.
 
 ## AppointmentRule
 
@@ -138,3 +138,29 @@ This migration does not convert existing services to all-day or multi-session au
 ## v0.5.1 staff profile compatibility
 
 Staff records created before v0.5.1 continue to work without migration. Missing avatar data renders with the default `aurora` preset. Missing `notifications.emailEnabled` is treated as disabled so an upgrade cannot unexpectedly start sending employee emails.
+
+
+## v0.6.0.2 notification and calendar records
+
+### Merchant email recipients
+
+`Shop.emailSettings` stores a primary merchant notification inbox, optional additional inboxes, and independent switches for new bookings, changes, and cancellations. These are ordinary email addresses; no Google account is required. Provider credentials remain environment-level secrets and are never stored per shop.
+
+### Staff notification email
+
+`Staff.email` plus `Staff.notifications.emailEnabled` controls assignment lifecycle messages. Staff do not need a SHOPLINE admin account or Google authorization. Booking snapshots keep `staffEmail` only as the assignment-time operational snapshot.
+
+### CalendarConnection
+
+Google connections are optional and use `connectionType`:
+
+- `business`: one store-wide merchant-owned Google Calendar; `staffId=null`; all confirmed store bookings can be projected into it.
+- `staff`: an optional personal staff calendar; only bookings assigned to that staff member are projected into it.
+
+Important fields include `calendarId`, `calendarName`, `calendarTimeZone`, encrypted `refreshTokenEncrypted`, `syncAppointments`, `sendCustomerInvites`, health timestamps, and `architectureVersion`. `sendCustomerInvites` defaults to `false`. Refresh tokens remain `select:false`.
+
+`Booking.calendarEvents[]` can contain both business-calendar and personal-staff-calendar mappings. Each mapping records the connection ID/type, calendar ID, occurrence key, Google event ID, invite state, and sync status.
+
+### Customer calendar links
+
+Customer-facing Google Add-to-Calendar URLs are generated from the canonical booking snapshot. A signed one-year token protects the `.ics` download endpoint; the endpoint is no-store and does not require a Google account. Multi-session bookings use `.ics` because a single Google template URL cannot represent multiple independent occurrences cleanly.

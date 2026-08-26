@@ -10,6 +10,7 @@ import { validateBookingInput, validateDateInput, validateSlotInput } from '../l
 import { cancelManagedBooking, createBookingForStore, getLegacyBookingStatus, getManagedAvailability, getManagedBooking, rescheduleManagedBooking } from '../services/bookings.js';
 import { findInstalledShop, validShopHandle, validShoplineStoreId } from '../services/shops.js';
 import { normalizeEmailSettings } from '../lib/email-settings.js';
+import { buildBookingIcs, calendarLinksForBooking, readBookingCalendarToken } from '../lib/calendar-links.js';
 
 export const publicRouter = Router();
 const bookingLimiter = rateLimit({ windowMs: 60_000, limit: 10, standardHeaders: true, legacyHeaders: false, message: { error: 'RATE_LIMITED', message: 'Too many attempts. Please wait a minute.' } });
@@ -31,7 +32,8 @@ function publicBooking(booking) {
     bookingMode, occurrences,
     date: booking.date, time: bookingMode === 'all_day' ? '' : booking.time, timezone, storeDate: zonedNow(timezone).date,
     location: booking.location, staff: booking.staff, staffId: booking.staffId ? String(booking.staffId) : '', status: booking.status, customerRescheduleCount,
-    customerCanReschedule: bookingMode === 'slot' && booking.status === 'confirmed' && customerRescheduleCount < 1
+    customerCanReschedule: bookingMode === 'slot' && booking.status === 'confirmed' && customerRescheduleCount < 1,
+    calendar: booking.status === 'confirmed' ? calendarLinksForBooking(booking) : { google: '', ics: '' }
   };
 }
 
@@ -158,6 +160,22 @@ publicRouter.get('/availability', async (req, res) => {
   });
 });
 
+
+
+publicRouter.get('/bookings/:id/calendar.ics', async (req, res) => {
+  if (!validBookingId(req.params.id)) return res.status(404).type('text/plain').send('Calendar file not found.');
+  const access = readBookingCalendarToken(req.query.token);
+  if (!access || String(access.bookingId) !== String(req.params.id)) return res.status(404).type('text/plain').send('Calendar file not found.');
+  const booking = await Booking.findById(req.params.id).lean();
+  if (!booking) return res.status(404).type('text/plain').send('Calendar file not found.');
+  const safeName = String(booking.productTitle || 'appointment').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'appointment';
+  res.set({
+    'Cache-Control': 'no-store',
+    'Content-Type': 'text/calendar; charset=utf-8',
+    'Content-Disposition': `attachment; filename="${safeName}.ics"`
+  });
+  res.send(buildBookingIcs(booking));
+});
 
 publicRouter.post('/bookings', bookingLimiter, async (req, res, next) => {
   try {

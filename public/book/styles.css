@@ -19,3 +19,6 @@
 
 /* v0.5.4-hotfix.2 — same storefront typography and compact hosted confirmation */
 .booking-shell,.booking-shell button,.booking-shell input,.booking-shell textarea,.booking-shell select,.booking-shell option{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif!important;font-synthesis:none}#successView{width:min(620px,100%);margin:0 auto}.success-state{padding:30px 28px 26px}.success-state .success-mark{margin-bottom:12px}.success-state h1{margin:8px 0 6px}.success-state #successDetails{margin-top:15px}.success-state .link-button{margin-top:16px}@media(max-width:620px){#successView{width:calc(100% - 20px);border-radius:16px}.success-state{padding:24px 16px 20px}}
+
+/* v0.6.0.2 customer add-to-calendar actions */
+.success-calendar-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;width:100%;max-width:470px;margin:18px auto 0}.success-calendar-actions .calendar-link{display:inline-flex;justify-content:center;align-items:center;flex:1 1 210px;border:1px solid var(--line-strong);border-radius:10px;background:#fff;color:var(--brand);padding:11px 14px;text-decoration:none;font-size:13px;font-weight:750}.success-calendar-actions .calendar-link:hover{background:var(--brand-soft);border-color:var(--brand)}.success-calendar-actions .hidden{display:none!important}

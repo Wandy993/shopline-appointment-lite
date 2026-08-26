@@ -6,7 +6,7 @@ export function bookingPage(ruleId) {
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="robots" content="noindex,nofollow">
   <title>Book an appointment</title>
-  <link rel="stylesheet" href="/book/assets/styles.css?v=0.6.0-google-sync.1">
+  <link rel="stylesheet" href="/book/assets/styles.css?v=0.6.0.2">
 </head>
 <body data-rule-id="${String(ruleId).replace(/[^a-f\d]/gi, '')}">
   <main class="booking-shell">
@@ -49,10 +49,10 @@ export function bookingPage(ruleId) {
         <div class="booking-actions"><div id="formError" class="form-error hidden" role="alert"></div><button id="submitBooking" class="primary" type="submit">Confirm booking</button><p>You can reschedule or cancel your appointment later.</p></div>
       </form>
     </section>
-    <section id="successView" class="booking-card hidden"><div class="success-state"><span class="success-mark">✓</span><span class="eyebrow">BOOKING CONFIRMED</span><h1 id="successTitle">You're booked.</h1><p id="successWhen"></p><p id="successDetails" class="muted"></p><a id="manageBooking" class="primary link-button" href="#">Manage appointment</a></div></section>
+    <section id="successView" class="booking-card hidden"><div class="success-state"><span class="success-mark">✓</span><span class="eyebrow">BOOKING CONFIRMED</span><h1 id="successTitle">You're booked.</h1><p id="successWhen"></p><p id="successDetails" class="muted"></p><div id="successCalendarActions" class="success-calendar-actions"><a id="addGoogleCalendar" class="secondary-link calendar-link hidden" href="#" target="_blank" rel="noopener noreferrer">Add to Google Calendar</a><a id="downloadCalendarIcs" class="secondary-link calendar-link hidden" href="#">Apple / Outlook / Other (.ics)</a></div><a id="manageBooking" class="primary link-button" href="#">Manage appointment</a></div></section>
     <footer>Powered by Appointment Lite</footer>
   </main>
-  <script type="module" src="/book/assets/app.js?v=0.6.0-google-sync.1"></script>
+  <script type="module" src="/book/assets/app.js?v=0.6.0.2"></script>
 </body>
 </html>`;
 }

@@ -41,6 +41,7 @@ const bookingEventSchema = new mongoose.Schema({
 const calendarEventSchema = new mongoose.Schema({
   provider: { type: String, enum: ['google'], default: 'google' },
   connectionId: { type: mongoose.Schema.Types.ObjectId, ref: 'CalendarConnection', default: null },
+  connectionType: { type: String, enum: ['business', 'staff'], default: 'staff' },
   staffId: { type: mongoose.Schema.Types.ObjectId, ref: 'Staff', default: null },
   calendarId: { type: String, default: '', maxlength: 1024 },
   occurrenceKey: { type: String, default: '', maxlength: 300 },

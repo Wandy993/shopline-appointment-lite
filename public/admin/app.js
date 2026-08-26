@@ -14,7 +14,9 @@ const templateMeta = {
   rescheduled: { label: 'Customer changed', manage: true },
   merchantUpdated: { label: 'Store changed', manage: false },
   cancelled: { label: 'Cancelled', manage: false },
-  merchantNewBooking: { label: 'Merchant alert', manage: false }
+  merchantNewBooking: { label: 'Merchant new', manage: false },
+  merchantBookingUpdated: { label: 'Merchant updated', manage: false },
+  merchantBookingCancelled: { label: 'Merchant cancelled', manage: false }
 };
 const sample = {
   customer_name: 'Jamie Chen', customer_email: 'jamie@example.com', product_title: 'Private design consultation',
@@ -376,7 +378,7 @@ const staffAvatarPresets = ['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunse
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp' };
 function staffPresetImage(preset) {
   const file = staffAvatarFiles[preset] || staffAvatarFiles.aurora;
-  return `<img src="/assets/staff/${file}?v=0.6.0-google-sync.1" alt="" loading="lazy" decoding="async">`;
+  return `<img src="/assets/staff/${file}?v=0.6.0.2" alt="" loading="lazy" decoding="async">`;
 }
 let staffAvatarDraft = { kind: 'preset', value: 'aurora' };
 
@@ -720,6 +722,31 @@ async function ensureStaff() {
   return state.staff;
 }
 
+function calendarEndpoint(target, suffix = '') {
+  const key = String(target || '');
+  if (key === 'store') return `/calendar/google/store${suffix}`;
+  return `/calendar/google/${encodeURIComponent(key)}${suffix}`;
+}
+
+function calendarConnectionCard({ target, title, subtitle, avatar = '', connection, connectedLabel = 'Connected', connectDisabled = false, personal = false }) {
+  const connected = connection?.status === 'connected';
+  const errored = connection?.status === 'error';
+  const statusLabel = connected ? connectedLabel : errored ? 'Connection error' : 'Not connected';
+  const statusClass = connected ? 'enabled' : errored ? 'no_show' : 'disabled';
+  const syncEnabled = connection?.syncAppointments !== false;
+  const invitesEnabled = connection?.sendCustomerInvites === true;
+  const lastSync = connection?.lastSyncAt ? new Date(connection.lastSyncAt).toLocaleString(state.locale === 'zh-CN' ? 'zh-CN' : 'en') : t('Not synced yet');
+  const actions = connection
+    ? `<button type="button" class="secondary small" data-calendar-manage="${target}">${t('Change calendar')}</button><button type="button" class="secondary small" data-calendar-connect="${target}" ${connectDisabled ? 'disabled' : ''}>${t('Reconnect')}</button><button type="button" class="secondary small" data-calendar-sync-now="${target}" ${!connected || !syncEnabled ? 'disabled' : ''}>${t('Sync now')}</button><button type="button" class="text-button calendar-disconnect" data-calendar-disconnect="${target}">${t('Disconnect')}</button>`
+    : `<button type="button" class="primary small" data-calendar-connect="${target}" ${connectDisabled ? 'disabled' : ''}>${t(target === 'store' ? 'Connect business Google Calendar' : 'Connect personal Google Calendar')}</button>`;
+  const options = connection ? `<div class="calendar-sync-options">
+    <label class="calendar-sync-toggle"><input type="checkbox" data-calendar-setting="syncAppointments" data-calendar-target="${target}" ${syncEnabled ? 'checked' : ''}><span><strong>${t('Sync appointments')}</strong><small>${t(personal ? 'Optional: keep a second copy in this staff member’s personal Google Calendar.' : 'Create, update, move, and cancel all store appointments in this business calendar.')}</small></span></label>
+    <label class="calendar-sync-toggle"><input type="checkbox" data-calendar-setting="sendCustomerInvites" data-calendar-target="${target}" ${invitesEnabled ? 'checked' : ''}><span><strong>${t('Send Google invitations to customers')}</strong><small>${t('Optional and off by default. First-time customers may see an unknown-sender warning. Appointment Lite email links are recommended instead.')}</small></span></label>
+    <div class="calendar-sync-state"><span>${t('Last sync')}</span><strong>${escapeHtml(lastSync)}</strong>${connection.lastSyncError ? `<small>${t('Sync error')}: ${escapeHtml(connection.lastSyncError)}</small>` : `<small>${t(syncEnabled ? (invitesEnabled ? 'Google guest invitations on' : 'Customer uses email Add to Calendar') : 'Appointment sync paused')}</small>`}</div>
+  </div>` : '';
+  return `<article class="panel calendar-staff-card ${target === 'store' ? 'calendar-business-card' : ''}"><div class="calendar-staff-person">${avatar}<div><strong>${escapeHtml(title)}</strong><span>${escapeHtml(subtitle || '')}</span></div></div><span class="status-badge ${statusClass}">${t(statusLabel)}</span><div class="calendar-staff-details"><div><span>${t('Google account')}</span><strong>${escapeHtml(connection?.accountLabel || '—')}</strong></div><div><span>${t('Selected calendar')}</span><strong>${escapeHtml(connection?.calendarName || '—')}</strong>${connection?.calendarTimeZone ? `<small>${escapeHtml(connection.calendarTimeZone)}</small>` : ''}</div></div>${errored && connection?.lastError ? `<p class="calendar-error-copy">${escapeHtml(connection.lastError)}</p>` : ''}<div class="calendar-staff-actions">${actions}</div>${options}</article>`;
+}
+
 function renderCalendarSync() {
   const payload = state.calendarSync;
   if (!payload) return;
@@ -728,14 +755,24 @@ function renderCalendarSync() {
   const configText = $('#calendarConfigText');
   const configBadge = $('#calendarConfigBadge');
   const configMeta = $('#calendarConfigMeta');
-  if (configTitle) configTitle.textContent = t(configured ? 'Google Calendar sync is active.' : 'Google Calendar is not configured yet.');
-  if (configText) configText.textContent = t(configured ? 'Live appointment sync' : 'Add the Google Calendar Railway variables before connecting staff accounts.');
+  if (configTitle) configTitle.textContent = t(configured ? 'Google Calendar integration is ready.' : 'Google Calendar is not configured yet.');
+  if (configText) configText.textContent = t(configured ? 'Business calendar sync is optional. Email notifications work independently with Gmail, QQ, 163, Outlook, and other providers.' : 'Add the Google Calendar Railway variables only if the merchant wants Google Calendar sync.');
   if (configBadge) {
-    configBadge.textContent = t(configured ? 'Live appointment sync' : 'Not connected');
+    configBadge.textContent = t(configured ? 'OAuth ready' : 'Optional integration');
     configBadge.className = `status-badge ${configured ? 'enabled' : 'disabled'}`;
   }
   if (configMeta) {
-    configMeta.innerHTML = `<span><strong>${t('Redirect URI')}</strong>${escapeHtml(payload.redirectUri || '')}</span><span><strong>${t('Owned calendars only')}</strong>calendar.events.owned</span>${configured ? `<small>${t('New bookings, reschedules, staff changes, and cancellations sync automatically. Google busy-time blocking is not active yet.')}</small>` : ''}`;
+    configMeta.innerHTML = `<span><strong>${t('Customer calendar')}</strong>${t('Branded email + Google link + .ics')}</span><span><strong>${t('Google scope')}</strong>calendar.events.owned</span>${configured ? `<small>${t('Google Calendar is optional; merchant and staff email notifications work independently.')}</small>` : ''}`;
+  }
+
+  const businessRoot = $('#calendarBusinessCard');
+  if (businessRoot) {
+    businessRoot.innerHTML = calendarConnectionCard({
+      target: 'store', title: t('Business appointment calendar'),
+      subtitle: t('Recommended · one merchant authorization for all appointments'),
+      avatar: '<div class="calendar-provider-mark mini">G</div>',
+      connection: payload.businessConnection || null, connectDisabled: !configured
+    });
   }
 
   const root = $('#calendarStaffList');
@@ -746,25 +783,14 @@ function renderCalendarSync() {
     return;
   }
   root.innerHTML = rows.map(item => {
-    const connection = item.connection;
-    const connected = connection?.status === 'connected';
-    const errored = connection?.status === 'error';
     const active = item.status === 'active';
-    const statusLabel = connected ? 'Connected' : errored ? 'Connection error' : active ? 'Not connected' : 'Inactive staff';
-    const statusClass = connected ? 'enabled' : errored ? 'no_show' : 'disabled';
-    const connectDisabled = !configured || !active;
-    const syncEnabled = connection?.syncAppointments !== false;
-    const invitesEnabled = connection?.sendCustomerInvites !== false;
-    const lastSync = connection?.lastSyncAt ? new Date(connection.lastSyncAt).toLocaleString(state.locale === 'zh-CN' ? 'zh-CN' : 'en') : t('Not synced yet');
-    const action = connection
-      ? `<button type="button" class="secondary small" data-calendar-manage="${item.id}">${t('Change calendar')}</button><button type="button" class="secondary small" data-calendar-connect="${item.id}" ${connectDisabled ? 'disabled' : ''}>${t('Reconnect')}</button><button type="button" class="secondary small" data-calendar-sync-now="${item.id}" ${!connected || !syncEnabled ? 'disabled' : ''}>${t('Sync now')}</button><button type="button" class="text-button calendar-disconnect" data-calendar-disconnect="${item.id}">${t('Disconnect')}</button>`
-      : `<button type="button" class="primary small" data-calendar-connect="${item.id}" ${connectDisabled ? 'disabled' : ''}>${t('Connect Google Calendar')}</button>`;
-    const settings = connection ? `<div class="calendar-sync-options">
-      <label class="calendar-sync-toggle"><input type="checkbox" data-calendar-setting="syncAppointments" data-calendar-staff="${item.id}" ${syncEnabled ? 'checked' : ''}><span><strong>${t('Sync appointments')}</strong><small>${t('Create, update, move, and cancel Google Calendar events automatically.')}</small></span></label>
-      <label class="calendar-sync-toggle"><input type="checkbox" data-calendar-setting="sendCustomerInvites" data-calendar-staff="${item.id}" ${invitesEnabled ? 'checked' : ''}><span><strong>${t('Send customer calendar invitations')}</strong><small>${t('Invite the booking email as a Google Calendar guest.')}</small></span></label>
-      <div class="calendar-sync-state"><span>${t('Last sync')}</span><strong>${escapeHtml(lastSync)}</strong>${connection.lastSyncError ? `<small>${t('Sync error')}: ${escapeHtml(connection.lastSyncError)}</small>` : `<small>${t(syncEnabled ? (invitesEnabled ? 'Customer invitations on' : 'Customer invitations off') : 'Appointment sync paused')}</small>`}</div>
-    </div>` : '';
-    return `<article class="panel calendar-staff-card"><div class="calendar-staff-person">${staffAvatarMarkup(item)}<div><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.email || t('No contact details'))}</span></div></div><span class="status-badge ${statusClass}">${t(statusLabel)}</span><div class="calendar-staff-details"><div><span>${t('Google account')}</span><strong>${escapeHtml(connection?.accountLabel || '—')}</strong></div><div><span>${t('Selected calendar')}</span><strong>${escapeHtml(connection?.calendarName || '—')}</strong>${connection?.calendarTimeZone ? `<small>${escapeHtml(connection.calendarTimeZone)}</small>` : ''}</div></div>${errored && connection?.lastError ? `<p class="calendar-error-copy">${escapeHtml(connection.lastError)}</p>` : ''}<div class="calendar-staff-actions">${action}</div>${settings}</article>`;
+    const emailStatus = item.emailNotificationsEnabled
+      ? `${item.email} · ${t('Assignment emails on')}`
+      : item.email ? `${item.email} · ${t('Assignment emails off')}` : t('Add an email to notify this staff member without any Google account.');
+    return calendarConnectionCard({
+      target: item.id, title: item.name, subtitle: emailStatus, avatar: staffAvatarMarkup(item),
+      connection: item.connection, connectDisabled: !configured || !active, personal: true
+    });
   }).join('');
 }
 
@@ -783,16 +809,13 @@ async function loadCalendarSync({ force = false } = {}) {
   }
 }
 
-async function connectGoogleCalendar(staffId) {
+async function connectGoogleCalendar(target) {
   const popup = window.open('about:blank', 'appointmentLiteGoogleCalendar', 'popup=yes,width=620,height=760,resizable=yes,scrollbars=yes');
-  if (!popup) {
-    toast(t('Allow pop-ups to connect Google Calendar, then try again.'), 'error');
-    return;
-  }
+  if (!popup) return toast(t('Allow pop-ups to connect Google Calendar, then try again.'), 'error');
   state.calendarPopup = popup;
   try {
     popup.document.title = 'Appointment Lite · Google Calendar';
-    const payload = await api(`/calendar/google/${encodeURIComponent(staffId)}/connect`);
+    const payload = await api(calendarEndpoint(target, '/connect'));
     popup.location.href = payload.authorizationUrl;
     popup.focus();
   } catch (error) {
@@ -802,19 +825,20 @@ async function connectGoogleCalendar(staffId) {
   }
 }
 
-async function openCalendarManager(staffId) {
-  state.calendarStaffId = String(staffId || '');
+async function openCalendarManager(target) {
+  state.calendarStaffId = String(target || '');
+  const isStore = state.calendarStaffId === 'store';
   const item = state.calendarSync?.staff?.find(row => String(row.id) === state.calendarStaffId);
   $('#calendarStaffId').value = state.calendarStaffId;
-  $('#calendarDialogTitle').textContent = t('Choose calendar');
-  $('#calendarDialogSubtitle').textContent = item ? `${item.name} · ${t('Owned calendars only')}` : t('Choose the owned calendar Appointment Lite should use for this staff member.');
+  $('#calendarDialogTitle').textContent = t(isStore ? 'Choose business calendar' : 'Choose personal calendar');
+  $('#calendarDialogSubtitle').textContent = isStore ? t('Choose one calendar owned by the merchant’s connected Google account.') : (item ? `${item.name} · ${t('Owned calendars only')}` : t('Choose the owned calendar Appointment Lite should use for this staff member.'));
   $('#calendarAccountNotice').textContent = t('Loading Google calendars…');
   $('#calendarFormError').classList.add('hidden');
   $('#calendarSelect').innerHTML = `<option value="">${t('Loading calendars…')}</option>`;
   $('#saveCalendarSelection').disabled = true;
   $('#calendarDialog').showModal();
   try {
-    const payload = await api(`/calendar/google/${encodeURIComponent(state.calendarStaffId)}/calendars`);
+    const payload = await api(calendarEndpoint(state.calendarStaffId, '/calendars'));
     const calendars = payload.calendars || [];
     if (!calendars.length) {
       $('#calendarSelect').innerHTML = `<option value="">${t('No owned calendars are available for this account.')}</option>`;
@@ -825,74 +849,53 @@ async function openCalendarManager(staffId) {
     $('#calendarAccountNotice').textContent = `${calendars.length} ${t('Owned calendars only').toLowerCase()}`;
     $('#saveCalendarSelection').disabled = false;
   } catch (error) {
-    $('#calendarFormError').textContent = t(error.message);
-    $('#calendarFormError').classList.remove('hidden');
-    $('#calendarAccountNotice').textContent = t('Connection error');
+    $('#calendarFormError').textContent = t(error.message); $('#calendarFormError').classList.remove('hidden'); $('#calendarAccountNotice').textContent = t('Connection error');
   }
 }
 
 async function saveCalendarSelection(event) {
   event.preventDefault();
-  const staffId = $('#calendarStaffId').value;
+  const target = $('#calendarStaffId').value;
   const calendarId = $('#calendarSelect').value;
-  if (!calendarId) {
-    $('#calendarFormError').textContent = t('Choose a Google Calendar.');
-    $('#calendarFormError').classList.remove('hidden');
-    return;
-  }
-  const button = $('#saveCalendarSelection');
-  button.disabled = true;
-  $('#calendarFormError').classList.add('hidden');
+  if (!calendarId) { $('#calendarFormError').textContent = t('Choose a Google Calendar.'); $('#calendarFormError').classList.remove('hidden'); return; }
+  const button = $('#saveCalendarSelection'); button.disabled = true; $('#calendarFormError').classList.add('hidden');
   try {
-    await api(`/calendar/google/${encodeURIComponent(staffId)}`, { method: 'PUT', body: JSON.stringify({ calendarId }) });
-    $('#calendarDialog').close();
-    toast(t('Calendar selection saved.'));
-    await loadCalendarSync({ force: true });
-  } catch (error) {
-    $('#calendarFormError').textContent = t(error.message);
-    $('#calendarFormError').classList.remove('hidden');
-  } finally { button.disabled = false; }
+    await api(calendarEndpoint(target), { method: 'PUT', body: JSON.stringify({ calendarId }) });
+    $('#calendarDialog').close(); toast(t('Calendar selection saved.')); await loadCalendarSync({ force: true });
+  } catch (error) { $('#calendarFormError').textContent = t(error.message); $('#calendarFormError').classList.remove('hidden'); }
+  finally { button.disabled = false; }
 }
 
-async function saveCalendarSyncSetting(staffId, setting, value, input) {
+async function saveCalendarSyncSetting(target, setting, value, input) {
   if (!['syncAppointments', 'sendCustomerInvites'].includes(setting)) return;
   if (input) input.disabled = true;
   try {
-    await api(`/calendar/google/${encodeURIComponent(staffId)}/settings`, {
-      method: 'PATCH',
-      body: JSON.stringify({ [setting]: Boolean(value) })
-    });
-    toast(t('Calendar sync settings saved.'));
-    await loadCalendarSync({ force: true });
-  } catch (error) {
-    if (input) input.checked = !value;
-    showError(error);
-  } finally {
-    if (input) input.disabled = false;
-  }
+    await api(calendarEndpoint(target, '/settings'), { method: 'PATCH', body: JSON.stringify({ [setting]: Boolean(value) }) });
+    toast(t('Calendar sync settings saved.')); await loadCalendarSync({ force: true });
+  } catch (error) { if (input) input.checked = !value; showError(error); }
+  finally { if (input) input.disabled = false; }
 }
 
-async function syncGoogleCalendarNow(staffId, button) {
+async function syncGoogleCalendarNow(target, button) {
   if (button) button.disabled = true;
   try {
-    const payload = await api(`/calendar/google/${encodeURIComponent(staffId)}/sync`, { method: 'POST' });
+    const payload = await api(calendarEndpoint(target, '/sync'), { method: 'POST' });
     const summary = payload.summary || {};
     if (Number(summary.errors || 0) > 0) toast(`${t('Calendar sync completed with errors.')} ${Number(summary.errors)} ${t('Sync error')}`, 'error');
-    else toast(`${t('Calendar sync started.')} ${Number(summary.total || 0)} ${t('appointments')}`);
+    else toast(`${t('Calendar sync completed.')} ${Number(summary.total || 0)} ${t('appointments')}`);
     await loadCalendarSync({ force: true });
-  } catch (error) {
-    showError(error);
-  } finally {
-    if (button) button.disabled = false;
-  }
+  } catch (error) { showError(error); }
+  finally { if (button) button.disabled = false; }
 }
 
-function disconnectGoogleCalendar(staffId) {
-  confirmAction('Disconnect Google Calendar?', 'Appointment Lite will remove the stored Google authorization for this staff member. Existing appointments are not changed.', 'Disconnect calendar', async () => {
-    await api(`/calendar/google/${encodeURIComponent(staffId)}`, { method: 'DELETE' });
-    toast(t('Google Calendar disconnected.'));
-    await loadCalendarSync({ force: true });
-  });
+function disconnectGoogleCalendar(target) {
+  const isStore = String(target) === 'store';
+  confirmAction(
+    isStore ? 'Disconnect business Google Calendar?' : 'Disconnect personal Google Calendar?',
+    isStore ? 'Appointment Lite will remove the merchant Google authorization. Email notifications and staff scheduling keep working.' : 'Appointment Lite will remove this optional personal Google authorization. Staff assignment emails keep working.',
+    'Disconnect calendar',
+    async () => { await api(calendarEndpoint(target), { method: 'DELETE' }); toast(t('Google Calendar disconnected.')); await loadCalendarSync({ force: true }); }
+  );
 }
 
 function staffTimeMinutes(value = '') {
@@ -1778,7 +1781,11 @@ function renderEmailStudio() {
   $('#emailAccentColor').value = state.emailSettings.accentColor;
   $('#emailAccentHex').value = state.emailSettings.accentColor;
   $('#emailReplyTo').value = state.emailSettings.replyToEmail;
-  $('#merchantNotificationEmail').value = state.emailSettings.merchantNotificationEmail;
+  $('#merchantNotificationEmail').value = state.emailSettings.merchantNotificationEmail || '';
+  $('#merchantNotificationAdditional').value = (state.emailSettings.additionalMerchantNotificationEmails || []).join('\n');
+  $('#merchantNotifyNew').checked = state.emailSettings.merchantNotifications?.newBooking !== false;
+  $('#merchantNotifyChanged').checked = state.emailSettings.merchantNotifications?.bookingChanged !== false;
+  $('#merchantNotifyCancelled').checked = state.emailSettings.merchantNotifications?.bookingCancelled !== false;
   selectTemplate(state.activeTemplate);
 }
 
@@ -1790,6 +1797,12 @@ function emailSettingsPayload() {
     accentColor: $('#emailAccentHex').value,
     replyToEmail: $('#emailReplyTo').value,
     merchantNotificationEmail: $('#merchantNotificationEmail').value,
+    additionalMerchantNotificationEmails: $('#merchantNotificationAdditional').value.split(/\n|,|;/).map(value => value.trim()).filter(Boolean),
+    merchantNotifications: {
+      newBooking: $('#merchantNotifyNew').checked,
+      bookingChanged: $('#merchantNotifyChanged').checked,
+      bookingCancelled: $('#merchantNotifyCancelled').checked
+    },
     templates: state.emailSettings.templates
   };
 }
@@ -2049,21 +2062,25 @@ function bind() {
   $('#ruleSearch').addEventListener('input', renderRules);
   $('#newStaffButton')?.addEventListener('click', () => openStaff());
   $('#staffSearch')?.addEventListener('input', renderStaff);
-  $('#calendarStaffList')?.addEventListener('click', event => {
-    const connect = event.target.closest('[data-calendar-connect]');
-    const manage = event.target.closest('[data-calendar-manage]');
-    const syncNow = event.target.closest('[data-calendar-sync-now]');
-    const disconnect = event.target.closest('[data-calendar-disconnect]');
-    if (connect && !connect.disabled) connectGoogleCalendar(connect.dataset.calendarConnect);
-    else if (manage) openCalendarManager(manage.dataset.calendarManage);
-    else if (syncNow && !syncNow.disabled) syncGoogleCalendarNow(syncNow.dataset.calendarSyncNow, syncNow);
-    else if (disconnect) disconnectGoogleCalendar(disconnect.dataset.calendarDisconnect);
-  });
-  $('#calendarStaffList')?.addEventListener('change', event => {
-    const input = event.target.closest('[data-calendar-setting][data-calendar-staff]');
-    if (!input) return;
-    saveCalendarSyncSetting(input.dataset.calendarStaff, input.dataset.calendarSetting, input.checked, input);
-  });
+  const bindCalendarControls = root => {
+    root?.addEventListener('click', event => {
+      const connect = event.target.closest('[data-calendar-connect]');
+      const manage = event.target.closest('[data-calendar-manage]');
+      const syncNow = event.target.closest('[data-calendar-sync-now]');
+      const disconnect = event.target.closest('[data-calendar-disconnect]');
+      if (connect && !connect.disabled) connectGoogleCalendar(connect.dataset.calendarConnect);
+      else if (manage) openCalendarManager(manage.dataset.calendarManage);
+      else if (syncNow && !syncNow.disabled) syncGoogleCalendarNow(syncNow.dataset.calendarSyncNow, syncNow);
+      else if (disconnect) disconnectGoogleCalendar(disconnect.dataset.calendarDisconnect);
+    });
+    root?.addEventListener('change', event => {
+      const input = event.target.closest('[data-calendar-setting][data-calendar-target]');
+      if (!input) return;
+      saveCalendarSyncSetting(input.dataset.calendarTarget, input.dataset.calendarSetting, input.checked, input);
+    });
+  };
+  bindCalendarControls($('#calendarBusinessCard'));
+  bindCalendarControls($('#calendarStaffList'));
   $('#calendarForm')?.addEventListener('submit', saveCalendarSelection);
   $$('[data-close-calendar-dialog]').forEach(button => button.addEventListener('click', () => $('#calendarDialog').close()));
   window.addEventListener('message', event => {

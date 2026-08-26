@@ -8,7 +8,6 @@ import { StaffReservation } from '../models/StaffReservation.js';
 import { CalendarConnection } from '../models/CalendarConnection.js';
 import { validateAdminBookingInput, validateBookingStatus, validateRuleInput, validateStaffInput } from '../lib/validation.js';
 import { requireAdmin, requireCsrf } from '../middleware/auth.js';
-import { limitsFor } from '../services/plans.js';
 import { shoplineGet, syncShopMetadata } from '../services/shopline.js';
 import { syncProductCatalog } from '../services/product-catalog.js';
 import { cancelBookingByMerchant, setBookingStatusByMerchant, updateBookingByMerchant } from '../services/bookings.js';
@@ -17,7 +16,7 @@ import { zonedNow } from '../lib/slots.js';
 import { normalizeEmailSettings, validateEmailSettings, validateTestEmailRecipient } from '../lib/email-settings.js';
 import { buildThemeAppBlockDeepLink } from '../lib/theme-deep-link.js';
 import { accessTokenForConnection, decryptGoogleRefreshToken, googleCalendarAuthorizationUrl, googleCalendarConfigured, listOwnedGoogleCalendars, publicConnection, revokeGoogleRefreshToken } from '../services/google-calendar.js';
-import { queueUpcomingGoogleCalendarBookingsForStaff, syncUpcomingGoogleCalendarBookingsForStaff } from '../services/calendar-sync.js';
+import { queueUpcomingGoogleCalendarBookingsForBusiness, queueUpcomingGoogleCalendarBookingsForStaff, syncUpcomingGoogleCalendarBookingsForBusiness, syncUpcomingGoogleCalendarBookingsForStaff } from '../services/calendar-sync.js';
 
 export const adminRouter = Router();
 adminRouter.use(requireAdmin, requireCsrf);
@@ -122,10 +121,10 @@ adminRouter.get('/bootstrap', async (req, res) => {
     .map(({ booking, occurrence }) => ({ ...booking, date: occurrence.date, time: occurrence.time }));
   const delivery = emailStatus();
   res.json({
-    shop: { handle: req.shop.handle, storeId: req.shop.shoplineStoreId || '', locale: req.shop.locale, adminLocale: req.shop.adminLocale || 'en', timezone: req.shop.timezone, plan: req.shop.plan, email: req.shop.email || '' },
+    shop: { handle: req.shop.handle, storeId: req.shop.shoplineStoreId || '', locale: req.shop.locale, adminLocale: req.shop.adminLocale || 'en', timezone: req.shop.timezone, email: req.shop.email || '' },
     email: { configured: delivery.configured, from: delivery.from || '' }, emailSettings: normalizeEmailSettings(req.shop.emailSettings || {}), nextBookings,
     onboarding: onboardingStatus(req.shop, { ruleCount, activeRuleCount, bookingCount, firstActiveRule }),
-    limits: { ...limitsFor(req.shop.plan), enforced: config.planLimitsEnabled }, csrfToken: req.csrfToken,
+    csrfToken: req.csrfToken,
     stats: { ruleCount, activeRuleCount, bookingCount, upcomingCount }
   });
 });
@@ -292,10 +291,6 @@ adminRouter.post('/rules', async (req, res, next) => {
     if (errors.length) return res.status(422).json({ error: 'VALIDATION_ERROR', message: errors.join(' '), fields: errors });
     const staffError = await validateManagedStaffSelection(req.shop._id, value);
     if (staffError) return res.status(422).json({ error: 'VALIDATION_ERROR', message: staffError });
-    const limits = limitsFor(req.shop.plan);
-    if (config.planLimitsEnabled && value.enabled && await AppointmentRule.countDocuments({ shopId: req.shop._id, enabled: true }) >= limits.activeRules) {
-      return res.status(403).json({ error: 'PLAN_LIMIT', message: `${limits.label} allows ${limits.activeRules} active appointment rule${limits.activeRules === 1 ? '' : 's'}.` });
-    }
     const rule = await AppointmentRule.create({ shopId: req.shop._id, ...value });
     res.status(201).json({ rule });
   } catch (error) {
@@ -312,10 +307,6 @@ adminRouter.put('/rules/:id', async (req, res, next) => {
     if (errors.length) return res.status(422).json({ error: 'VALIDATION_ERROR', message: errors.join(' '), fields: errors });
     const staffError = await validateManagedStaffSelection(req.shop._id, value);
     if (staffError) return res.status(422).json({ error: 'VALIDATION_ERROR', message: staffError });
-    if (config.planLimitsEnabled && !rule.enabled && value.enabled) {
-      const limits = limitsFor(req.shop.plan);
-      if (await AppointmentRule.countDocuments({ shopId: req.shop._id, enabled: true }) >= limits.activeRules) return res.status(403).json({ error: 'PLAN_LIMIT', message: `${limits.label} plan active-rule limit reached.` });
-    }
     Object.assign(rule, value);
     await rule.save();
     res.json({ rule });
@@ -427,29 +418,114 @@ adminRouter.post('/bookings/:id/status', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+function businessCalendarFilter(shopId) {
+  return { shopId, provider: 'google', connectionType: 'business', staffId: null };
+}
+function staffCalendarFilter(shopId, staffId) {
+  return { shopId, provider: 'google', staffId, $or: [{ connectionType: 'staff' }, { connectionType: { $exists: false } }] };
+}
+
 adminRouter.get('/calendar', async (req, res) => {
   const [staff, connections] = await Promise.all([
-    Staff.find({ shopId: req.shop._id }).sort({ status: 1, name: 1 }).select('_id name email avatar status').lean(),
+    Staff.find({ shopId: req.shop._id }).sort({ status: 1, name: 1 }).select('_id name email avatar status notifications').lean(),
     CalendarConnection.find({ shopId: req.shop._id, provider: 'google' }).sort({ updatedAt: -1 }).lean()
   ]);
-  const byStaff = new Map(connections.map(connection => [String(connection.staffId), publicConnection(connection)]));
+  const businessConnection = connections.find(connection => connection.connectionType === 'business' || !connection.staffId) || null;
+  const staffConnections = connections.filter(connection => connection.connectionType !== 'business' && connection.staffId);
+  const byStaff = new Map(staffConnections.map(connection => [String(connection.staffId), publicConnection(connection)]));
   res.set('Cache-Control', 'no-store');
   res.json({
     configured: googleCalendarConfigured(),
     redirectUri: config.googleCalendar.redirectUri,
-    scopes: [
-      'calendar.calendarlist.readonly',
-      'calendar.events.owned'
-    ],
+    scopes: ['calendar.calendarlist.readonly', 'calendar.events.owned'],
+    businessConnection: publicConnection(businessConnection),
+    customerCalendarMode: 'branded_email_links',
     staff: staff.map(item => ({
-      id: String(item._id),
-      name: item.name,
-      email: item.email || '',
-      avatar: item.avatar || { kind: 'initials', value: '' },
-      status: item.status,
+      id: String(item._id), name: item.name, email: item.email || '',
+      emailNotificationsEnabled: Boolean(item.email && item.notifications?.emailEnabled === true),
+      avatar: item.avatar || { kind: 'initials', value: '' }, status: item.status,
       connection: byStaff.get(String(item._id)) || null
     }))
   });
+});
+
+adminRouter.get('/calendar/google/store/connect', async (req, res, next) => {
+  try {
+    const authorizationUrl = googleCalendarAuthorizationUrl({ shopId: req.shop._id, connectionType: 'business' });
+    res.json({ authorizationUrl });
+  } catch (error) { next(error); }
+});
+
+adminRouter.get('/calendar/google/store/calendars', async (req, res, next) => {
+  let connection;
+  try {
+    connection = await CalendarConnection.findOne(businessCalendarFilter(req.shop._id)).select('+refreshTokenEncrypted');
+    if (!connection) return res.status(404).json({ error: 'NOT_CONNECTED', message: 'Connect a business Google Calendar first.' });
+    const accessToken = await accessTokenForConnection(connection);
+    const calendars = await listOwnedGoogleCalendars(accessToken);
+    connection.status = 'connected'; connection.lastError = ''; connection.lastVerifiedAt = new Date();
+    await connection.save();
+    res.set('Cache-Control', 'no-store');
+    res.json({ calendars, selectedCalendarId: connection.calendarId || '' });
+  } catch (error) {
+    if (connection) { connection.status = 'error'; connection.lastError = String(error.message || 'Google Calendar verification failed.').slice(0, 500); await connection.save().catch(() => {}); }
+    next(error);
+  }
+});
+
+adminRouter.put('/calendar/google/store', async (req, res, next) => {
+  let connection;
+  try {
+    const calendarId = String(req.body?.calendarId || '').trim();
+    if (!calendarId) return res.status(422).json({ error: 'VALIDATION_ERROR', message: 'Choose a Google Calendar.' });
+    connection = await CalendarConnection.findOne(businessCalendarFilter(req.shop._id)).select('+refreshTokenEncrypted');
+    if (!connection) return res.status(404).json({ error: 'NOT_CONNECTED', message: 'Connect a business Google Calendar first.' });
+    const accessToken = await accessTokenForConnection(connection);
+    const calendars = await listOwnedGoogleCalendars(accessToken);
+    const selected = calendars.find(item => item.id === calendarId);
+    if (!selected) return res.status(422).json({ error: 'CALENDAR_NOT_AVAILABLE', message: 'Choose a calendar owned by the connected Google account.' });
+    connection.calendarId = selected.id; connection.calendarName = selected.summary; connection.calendarTimeZone = selected.timeZone;
+    connection.status = 'connected'; connection.lastError = ''; connection.lastVerifiedAt = new Date();
+    await connection.save();
+    if (connection.syncAppointments !== false) queueUpcomingGoogleCalendarBookingsForBusiness({ shopId: req.shop._id });
+    res.json({ connection: publicConnection(connection) });
+  } catch (error) {
+    if (connection) { connection.status = 'error'; connection.lastError = String(error.message || 'Google Calendar verification failed.').slice(0, 500); await connection.save().catch(() => {}); }
+    next(error);
+  }
+});
+
+adminRouter.patch('/calendar/google/store/settings', async (req, res, next) => {
+  try {
+    const connection = await CalendarConnection.findOne(businessCalendarFilter(req.shop._id));
+    if (!connection) return res.status(404).json({ error: 'NOT_CONNECTED', message: 'Connect a business Google Calendar first.' });
+    if (typeof req.body?.syncAppointments === 'boolean') connection.syncAppointments = req.body.syncAppointments;
+    if (typeof req.body?.sendCustomerInvites === 'boolean') connection.sendCustomerInvites = req.body.sendCustomerInvites;
+    await connection.save();
+    if (connection.syncAppointments !== false) queueUpcomingGoogleCalendarBookingsForBusiness({ shopId: req.shop._id });
+    res.json({ connection: publicConnection(connection) });
+  } catch (error) { next(error); }
+});
+
+adminRouter.post('/calendar/google/store/sync', async (req, res, next) => {
+  try {
+    const connection = await CalendarConnection.findOne({ ...businessCalendarFilter(req.shop._id), status: 'connected' });
+    if (!connection) return res.status(404).json({ error: 'NOT_CONNECTED', message: 'Connect a business Google Calendar first.' });
+    if (connection.syncAppointments === false) return res.status(409).json({ error: 'CALENDAR_SYNC_PAUSED', message: 'Turn on appointment sync before using Sync now.' });
+    const summary = await syncUpcomingGoogleCalendarBookingsForBusiness({ shopId: req.shop._id });
+    res.json({ summary });
+  } catch (error) { next(error); }
+});
+
+adminRouter.delete('/calendar/google/store', async (req, res, next) => {
+  try {
+    const connection = await CalendarConnection.findOne(businessCalendarFilter(req.shop._id)).select('+refreshTokenEncrypted');
+    if (!connection) return res.json({ disconnected: true });
+    try { await revokeGoogleRefreshToken(decryptGoogleRefreshToken(connection.refreshTokenEncrypted)); }
+    catch (error) { console.warn('Google Calendar token revoke failed; deleting local business connection anyway:', error.message); }
+    await CalendarConnection.deleteOne({ _id: connection._id, shopId: req.shop._id });
+    res.json({ disconnected: true });
+  } catch (error) { next(error); }
 });
 
 adminRouter.get('/calendar/google/:staffId/connect', async (req, res, next) => {
@@ -457,7 +533,7 @@ adminRouter.get('/calendar/google/:staffId/connect', async (req, res, next) => {
     const staff = await Staff.findOne({ _id: req.params.staffId, shopId: req.shop._id }).select('_id status');
     if (!staff) return res.status(404).json({ error: 'NOT_FOUND', message: 'Staff member not found.' });
     if (staff.status !== 'active') return res.status(409).json({ error: 'STAFF_INACTIVE', message: 'Activate this staff member before connecting Google Calendar.' });
-    const authorizationUrl = googleCalendarAuthorizationUrl({ shopId: req.shop._id, staffId: staff._id });
+    const authorizationUrl = googleCalendarAuthorizationUrl({ shopId: req.shop._id, connectionType: 'staff', staffId: staff._id });
     res.json({ authorizationUrl });
   } catch (error) { next(error); }
 });
@@ -465,22 +541,16 @@ adminRouter.get('/calendar/google/:staffId/connect', async (req, res, next) => {
 adminRouter.get('/calendar/google/:staffId/calendars', async (req, res, next) => {
   let connection;
   try {
-    connection = await CalendarConnection.findOne({ shopId: req.shop._id, staffId: req.params.staffId, provider: 'google' }).select('+refreshTokenEncrypted');
+    connection = await CalendarConnection.findOne(staffCalendarFilter(req.shop._id, req.params.staffId)).select('+refreshTokenEncrypted');
     if (!connection) return res.status(404).json({ error: 'NOT_CONNECTED', message: 'Connect Google Calendar for this staff member first.' });
     const accessToken = await accessTokenForConnection(connection);
     const calendars = await listOwnedGoogleCalendars(accessToken);
-    connection.status = 'connected';
-    connection.lastError = '';
-    connection.lastVerifiedAt = new Date();
+    connection.status = 'connected'; connection.lastError = ''; connection.lastVerifiedAt = new Date();
     await connection.save();
     res.set('Cache-Control', 'no-store');
     res.json({ calendars, selectedCalendarId: connection.calendarId || '' });
   } catch (error) {
-    if (connection) {
-      connection.status = 'error';
-      connection.lastError = String(error.message || 'Google Calendar verification failed.').slice(0, 500);
-      await connection.save().catch(() => {});
-    }
+    if (connection) { connection.status = 'error'; connection.lastError = String(error.message || 'Google Calendar verification failed.').slice(0, 500); await connection.save().catch(() => {}); }
     next(error);
   }
 });
@@ -490,48 +560,38 @@ adminRouter.put('/calendar/google/:staffId', async (req, res, next) => {
   try {
     const calendarId = String(req.body?.calendarId || '').trim();
     if (!calendarId) return res.status(422).json({ error: 'VALIDATION_ERROR', message: 'Choose a Google Calendar.' });
-    connection = await CalendarConnection.findOne({ shopId: req.shop._id, staffId: req.params.staffId, provider: 'google' }).select('+refreshTokenEncrypted');
+    connection = await CalendarConnection.findOne(staffCalendarFilter(req.shop._id, req.params.staffId)).select('+refreshTokenEncrypted');
     if (!connection) return res.status(404).json({ error: 'NOT_CONNECTED', message: 'Connect Google Calendar for this staff member first.' });
     const accessToken = await accessTokenForConnection(connection);
     const calendars = await listOwnedGoogleCalendars(accessToken);
     const selected = calendars.find(item => item.id === calendarId);
     if (!selected) return res.status(422).json({ error: 'CALENDAR_NOT_AVAILABLE', message: 'Choose a calendar owned by the connected Google account.' });
-    connection.calendarId = selected.id;
-    connection.calendarName = selected.summary;
-    connection.calendarTimeZone = selected.timeZone;
-    connection.status = 'connected';
-    connection.lastError = '';
-    connection.lastVerifiedAt = new Date();
+    connection.calendarId = selected.id; connection.calendarName = selected.summary; connection.calendarTimeZone = selected.timeZone;
+    connection.status = 'connected'; connection.lastError = ''; connection.lastVerifiedAt = new Date();
     await connection.save();
     if (connection.syncAppointments !== false) queueUpcomingGoogleCalendarBookingsForStaff({ shopId: req.shop._id, staffId: connection.staffId });
     res.json({ connection: publicConnection(connection) });
   } catch (error) {
-    if (connection) {
-      connection.status = 'error';
-      connection.lastError = String(error.message || 'Google Calendar verification failed.').slice(0, 500);
-      await connection.save().catch(() => {});
-    }
+    if (connection) { connection.status = 'error'; connection.lastError = String(error.message || 'Google Calendar verification failed.').slice(0, 500); await connection.save().catch(() => {}); }
     next(error);
   }
 });
 
 adminRouter.patch('/calendar/google/:staffId/settings', async (req, res, next) => {
   try {
-    const connection = await CalendarConnection.findOne({ shopId: req.shop._id, staffId: req.params.staffId, provider: 'google' });
+    const connection = await CalendarConnection.findOne(staffCalendarFilter(req.shop._id, req.params.staffId));
     if (!connection) return res.status(404).json({ error: 'NOT_CONNECTED', message: 'Connect Google Calendar for this staff member first.' });
     if (typeof req.body?.syncAppointments === 'boolean') connection.syncAppointments = req.body.syncAppointments;
     if (typeof req.body?.sendCustomerInvites === 'boolean') connection.sendCustomerInvites = req.body.sendCustomerInvites;
     await connection.save();
-    if (connection.syncAppointments !== false) {
-      queueUpcomingGoogleCalendarBookingsForStaff({ shopId: req.shop._id, staffId: connection.staffId });
-    }
+    if (connection.syncAppointments !== false) queueUpcomingGoogleCalendarBookingsForStaff({ shopId: req.shop._id, staffId: connection.staffId });
     res.json({ connection: publicConnection(connection) });
   } catch (error) { next(error); }
 });
 
 adminRouter.post('/calendar/google/:staffId/sync', async (req, res, next) => {
   try {
-    const connection = await CalendarConnection.findOne({ shopId: req.shop._id, staffId: req.params.staffId, provider: 'google', status: 'connected' });
+    const connection = await CalendarConnection.findOne({ ...staffCalendarFilter(req.shop._id, req.params.staffId), status: 'connected' });
     if (!connection) return res.status(404).json({ error: 'NOT_CONNECTED', message: 'Connect Google Calendar for this staff member first.' });
     if (connection.syncAppointments === false) return res.status(409).json({ error: 'CALENDAR_SYNC_PAUSED', message: 'Turn on appointment sync before using Sync now.' });
     const summary = await syncUpcomingGoogleCalendarBookingsForStaff({ shopId: req.shop._id, staffId: connection.staffId });
@@ -541,14 +601,10 @@ adminRouter.post('/calendar/google/:staffId/sync', async (req, res, next) => {
 
 adminRouter.delete('/calendar/google/:staffId', async (req, res, next) => {
   try {
-    const connection = await CalendarConnection.findOne({ shopId: req.shop._id, staffId: req.params.staffId, provider: 'google' }).select('+refreshTokenEncrypted');
+    const connection = await CalendarConnection.findOne(staffCalendarFilter(req.shop._id, req.params.staffId)).select('+refreshTokenEncrypted');
     if (!connection) return res.json({ disconnected: true });
-    try {
-      const refreshToken = decryptGoogleRefreshToken(connection.refreshTokenEncrypted);
-      await revokeGoogleRefreshToken(refreshToken);
-    } catch (error) {
-      console.warn('Google Calendar token revoke failed; deleting local connection anyway:', error.message);
-    }
+    try { await revokeGoogleRefreshToken(decryptGoogleRefreshToken(connection.refreshTokenEncrypted)); }
+    catch (error) { console.warn('Google Calendar token revoke failed; deleting local connection anyway:', error.message); }
     await CalendarConnection.deleteOne({ _id: connection._id, shopId: req.shop._id });
     res.json({ disconnected: true });
   } catch (error) { next(error); }

@@ -49,9 +49,15 @@ export async function ensureOperationalIndexes() {
   );
   await Booking.updateMany({ serviceType: 'product' }, { $set: { serviceType: 'appointment' } });
 
-  // v0.6.0.1: Google Calendar appointment sync is enabled by default for existing connected staff.
+  // v0.6.0.2: existing per-staff Google connections become optional personal calendars.
+  // Customer invitations are intentionally reset off once so customers use Appointment Lite's
+  // branded confirmation + Add to Calendar flow instead of Google 'unknown sender' invitations.
+  await CalendarConnection.updateMany({ connectionType: { $exists: false } }, { $set: { connectionType: 'staff' } });
   await CalendarConnection.updateMany({ syncAppointments: { $exists: false } }, { $set: { syncAppointments: true } });
-  await CalendarConnection.updateMany({ sendCustomerInvites: { $exists: false } }, { $set: { sendCustomerInvites: true } });
+  await CalendarConnection.updateMany(
+    { architectureVersion: { $ne: 'notification-calendar-v2' } },
+    { $set: { sendCustomerInvites: false, architectureVersion: 'notification-calendar-v2' } }
+  );
   await Booking.updateMany({ calendarSyncStatus: { $exists: false } }, { $set: { calendarSyncStatus: 'pending', calendarEvents: [] } });
 
   // v0.5.0: staff management is opt-in so legacy free-text specialists keep working.

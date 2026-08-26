@@ -30,7 +30,7 @@ export function createApp() {
   app.use('/book/assets', express.static('public/book', { maxAge: config.nodeEnv === 'production' ? '1h' : 0 }));
   app.use('/integration-assets', express.static('public/integrations', { maxAge: config.nodeEnv === 'production' ? '1h' : 0 }));
 
-  app.get('/health', (req, res) => res.json({ ok: true, service: 'appointment-lite', version: '0.6.0-google-sync.1' }));
+  app.get('/health', (req, res) => res.json({ ok: true, service: 'appointment-lite', version: '0.6.0.2' }));
   app.get('/', (req, res) => {
     if (req.query.handle || req.query.appkey) return res.redirect(`/auth/install?${new URLSearchParams(req.query)}`);
     res.type('html').send('<!doctype html><title>Appointment Lite</title><h1>Appointment Lite is running</h1><p>Open this app from SHOPLINE Admin to continue.</p>');

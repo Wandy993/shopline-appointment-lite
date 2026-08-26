@@ -6,7 +6,9 @@ export const EMAIL_TEMPLATE_KEYS = Object.freeze([
   'rescheduled',
   'merchantUpdated',
   'cancelled',
-  'merchantNewBooking'
+  'merchantNewBooking',
+  'merchantBookingUpdated',
+  'merchantBookingCancelled'
 ]);
 
 export const DEFAULT_EMAIL_SETTINGS = Object.freeze({
@@ -15,6 +17,12 @@ export const DEFAULT_EMAIL_SETTINGS = Object.freeze({
   accentColor: '#2F6FED',
   replyToEmail: '',
   merchantNotificationEmail: '',
+  additionalMerchantNotificationEmails: Object.freeze([]),
+  merchantNotifications: Object.freeze({
+    newBooking: true,
+    bookingChanged: true,
+    bookingCancelled: true
+  }),
   templates: Object.freeze({
     confirmation: Object.freeze({
       subject: 'Your appointment is confirmed — {{product_title}}',
@@ -40,6 +48,16 @@ export const DEFAULT_EMAIL_SETTINGS = Object.freeze({
       subject: 'New appointment — {{product_title}} · {{date}} {{time}}',
       heading: 'New appointment received',
       body: '{{customer_name}} booked an appointment. Review the details below and follow up if needed.'
+    }),
+    merchantBookingUpdated: Object.freeze({
+      subject: 'Appointment updated — {{product_title}} · {{date}} {{time}}',
+      heading: 'Appointment updated',
+      body: '{{customer_name}}’s appointment details changed. Review the latest schedule below.'
+    }),
+    merchantBookingCancelled: Object.freeze({
+      subject: 'Appointment cancelled — {{product_title}} · {{date}} {{time}}',
+      heading: 'Appointment cancelled',
+      body: '{{customer_name}}’s appointment was cancelled. The reserved time is no longer active.'
     })
   })
 });
@@ -56,15 +74,28 @@ function templateValue(input, fallback) {
   };
 }
 
+function emailList(value) {
+  const input = Array.isArray(value) ? value : String(value || '').split(/[\n,;]/);
+  return [...new Set(input.map(item => text(item, 254).toLowerCase()).filter(Boolean))].slice(0, 8);
+}
+
 export function normalizeEmailSettings(input = {}) {
   const templates = {};
   for (const key of EMAIL_TEMPLATE_KEYS) templates[key] = templateValue(input.templates?.[key], DEFAULT_EMAIL_SETTINGS.templates[key]);
+  const primary = text(input.merchantNotificationEmail, 254).toLowerCase();
+  const additional = emailList(input.additionalMerchantNotificationEmails).filter(email => email !== primary);
   return {
     brandName: text(input.brandName || DEFAULT_EMAIL_SETTINGS.brandName, 80),
     logoUrl: text(input.logoUrl, 500),
     accentColor: HEX_COLOR_PATTERN.test(String(input.accentColor || '')) ? String(input.accentColor).toUpperCase() : DEFAULT_EMAIL_SETTINGS.accentColor,
     replyToEmail: text(input.replyToEmail, 254).toLowerCase(),
-    merchantNotificationEmail: text(input.merchantNotificationEmail, 254).toLowerCase(),
+    merchantNotificationEmail: primary,
+    additionalMerchantNotificationEmails: additional,
+    merchantNotifications: {
+      newBooking: input.merchantNotifications?.newBooking !== false,
+      bookingChanged: input.merchantNotifications?.bookingChanged !== false,
+      bookingCancelled: input.merchantNotifications?.bookingCancelled !== false
+    },
     templates
   };
 }
@@ -82,6 +113,7 @@ export function validateEmailSettings(input = {}) {
   if (input.accentColor && !HEX_COLOR_PATTERN.test(String(input.accentColor))) errors.push('Accent color must be a six-digit hex color.');
   if (value.replyToEmail && !EMAIL_PATTERN.test(value.replyToEmail)) errors.push('Reply-to email is invalid.');
   if (value.merchantNotificationEmail && !EMAIL_PATTERN.test(value.merchantNotificationEmail)) errors.push('Merchant notification email is invalid.');
+  for (const email of value.additionalMerchantNotificationEmails) if (!EMAIL_PATTERN.test(email)) errors.push(`Additional merchant notification email is invalid: ${email}`);
   for (const key of EMAIL_TEMPLATE_KEYS) {
     if (!value.templates[key].subject) errors.push(`${key} subject is required.`);
     if (!value.templates[key].heading) errors.push(`${key} heading is required.`);
@@ -90,12 +122,20 @@ export function validateEmailSettings(input = {}) {
   return { errors: [...new Set(errors)], value };
 }
 
-
 export function validateTestEmailRecipient(input) {
   const value = text(input, 254);
   if (!value) return { error: 'Enter an email address for the test message.', value: '' };
   if (!EMAIL_PATTERN.test(value)) return { error: 'Enter a valid email address for the test message.', value };
   return { error: '', value };
+}
+
+export function merchantNotificationRecipients(settings, fallbackEmail = '') {
+  const normalized = normalizeEmailSettings(settings || {});
+  return [...new Set([
+    normalized.merchantNotificationEmail,
+    ...normalized.additionalMerchantNotificationEmails,
+    normalized.merchantNotificationEmail ? '' : text(fallbackEmail, 254).toLowerCase()
+  ].filter(email => EMAIL_PATTERN.test(email)))];
 }
 
 export function templateVariables(booking = {}, extras = {}) {

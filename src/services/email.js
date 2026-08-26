@@ -1,6 +1,7 @@
 import { Resend } from 'resend';
 import { config } from '../config.js';
-import { DEFAULT_EMAIL_SETTINGS, interpolateTemplate, normalizeEmailSettings, templateVariables } from '../lib/email-settings.js';
+import { DEFAULT_EMAIL_SETTINGS, interpolateTemplate, merchantNotificationRecipients, normalizeEmailSettings, templateVariables } from '../lib/email-settings.js';
+import { calendarLinksForBooking } from '../lib/calendar-links.js';
 import { Shop } from '../models/Shop.js';
 import { Staff } from '../models/Staff.js';
 
@@ -133,6 +134,27 @@ function manageButton(url, settings) {
   return url ? `<p style="margin:24px 0 0"><a href="${escapeHtml(url)}" style="display:inline-block;padding:12px 18px;border-radius:9px;background:${settings.accentColor};color:#fff;text-decoration:none;font-weight:bold">Manage appointment</a></p><p style="font-size:12px;color:#8A94A6">This private link grants access to your appointment. Do not forward it.</p>` : '';
 }
 
+function calendarButtons(booking, settings, { includeGoogle = true } = {}) {
+  if (!booking?._id || booking.status === 'cancelled') return '';
+  const links = calendarLinksForBooking(booking);
+  const google = includeGoogle && links.google
+    ? `<a href="${escapeHtml(links.google)}" style="display:inline-block;margin:0 8px 8px 0;padding:11px 15px;border-radius:9px;background:${settings.accentColor};color:#fff;text-decoration:none;font-size:13px;font-weight:700">Add to Google Calendar</a>`
+    : '';
+  const ics = links.ics
+    ? `<a href="${escapeHtml(links.ics)}" style="display:inline-block;margin:0 0 8px;padding:11px 15px;border-radius:9px;border:1px solid #C9D5E4;color:#344861;text-decoration:none;font-size:13px;font-weight:700">Apple / Outlook / Other (.ics)</a>`
+    : '';
+  if (!google && !ics) return '';
+  const note = (booking.bookingMode || 'slot') === 'multi_slot'
+    ? '<p style="margin:6px 0 0;color:#8A94A6;font-size:12px">The .ics file contains every session in this booking.</p>'
+    : '<p style="margin:6px 0 0;color:#8A94A6;font-size:12px">Add this appointment to the calendar you already use. A Google account is not required.</p>';
+  return `<div style="margin:22px 0 0;padding:16px;border-radius:12px;background:#F7F9FC;border:1px solid #E3E9F1"><strong style="display:block;margin:0 0 10px;color:#344861;font-size:13px">Add to calendar</strong>${google}${ics}${note}</div>`;
+}
+
+function merchantMessage(booking, settings, key) {
+  const calendar = booking.status === 'confirmed' ? calendarButtons(booking, settings) : '';
+  return messageFor(booking, settings, key, `${staffCustomerSummary(booking)}${calendar}`);
+}
+
 function templateFor(settings, key, booking) {
   const template = settings.templates[key] || DEFAULT_EMAIL_SETTINGS.templates[key];
   const variables = templateVariables(booking, { storeName: settings.brandName });
@@ -172,28 +194,42 @@ async function sendMany(messages) {
 }
 
 export async function sendBookingNotifications(booking, merchantEmail = '', managementToken = '', suppliedSettings = null) {
-  const { settings } = await bookingEmailContext(booking, suppliedSettings);
+  const { settings, shopEmail } = await bookingEmailContext(booking, suppliedSettings);
   const link = managementLinkFor(booking, managementToken);
-  const customer = messageFor(booking, settings, 'confirmation', manageButton(link, settings));
+  const customer = messageFor(booking, settings, 'confirmation', `${manageButton(link, settings)}${calendarButtons(booking, settings)}`);
   const messages = [{ to: booking.customer?.email, ...customer }];
-  const merchantTo = settings.merchantNotificationEmail || merchantEmail || config.email.merchantTo;
-  if (merchantTo) messages.push({ to: merchantTo, ...messageFor(booking, settings, 'merchantNewBooking') });
+  if (settings.merchantNotifications?.newBooking !== false) {
+    const recipients = merchantNotificationRecipients(settings, merchantEmail || shopEmail || config.email.merchantTo);
+    for (const to of recipients) messages.push({ to, ...merchantMessage(booking, settings, 'merchantNewBooking') });
+  }
   return sendMany(messages);
 }
 
 export async function sendBookingChangedNotification(booking, suppliedSettings = null) {
-  const { settings } = await bookingEmailContext(booking, suppliedSettings);
-  return deliverEmail({ to: booking.customer?.email, ...messageFor(booking, settings, 'merchantUpdated') });
+  const { settings, shopEmail } = await bookingEmailContext(booking, suppliedSettings);
+  const messages = [{ to: booking.customer?.email, ...messageFor(booking, settings, 'merchantUpdated', calendarButtons(booking, settings)) }];
+  if (settings.merchantNotifications?.bookingChanged !== false) {
+    for (const to of merchantNotificationRecipients(settings, shopEmail || config.email.merchantTo)) messages.push({ to, ...merchantMessage(booking, settings, 'merchantBookingUpdated') });
+  }
+  return sendMany(messages);
 }
 
 export async function sendCustomerRescheduledNotification(booking, managementToken, suppliedSettings = null) {
-  const { settings } = await bookingEmailContext(booking, suppliedSettings);
-  return deliverEmail({ to: booking.customer?.email, ...messageFor(booking, settings, 'rescheduled', manageButton(managementLinkFor(booking, managementToken), settings)) });
+  const { settings, shopEmail } = await bookingEmailContext(booking, suppliedSettings);
+  const messages = [{ to: booking.customer?.email, ...messageFor(booking, settings, 'rescheduled', `${manageButton(managementLinkFor(booking, managementToken), settings)}${calendarButtons(booking, settings)}`) }];
+  if (settings.merchantNotifications?.bookingChanged !== false) {
+    for (const to of merchantNotificationRecipients(settings, shopEmail || config.email.merchantTo)) messages.push({ to, ...merchantMessage(booking, settings, 'merchantBookingUpdated') });
+  }
+  return sendMany(messages);
 }
 
 export async function sendBookingCancelledNotification(booking, suppliedSettings = null) {
-  const { settings } = await bookingEmailContext(booking, suppliedSettings);
-  return deliverEmail({ to: booking.customer?.email, ...messageFor(booking, settings, 'cancelled') });
+  const { settings, shopEmail } = await bookingEmailContext(booking, suppliedSettings);
+  const messages = [{ to: booking.customer?.email, ...messageFor(booking, settings, 'cancelled') }];
+  if (settings.merchantNotifications?.bookingCancelled !== false) {
+    for (const to of merchantNotificationRecipients(settings, shopEmail || config.email.merchantTo)) messages.push({ to, ...merchantMessage(booking, settings, 'merchantBookingCancelled') });
+  }
+  return sendMany(messages);
 }
 
 
@@ -246,7 +282,7 @@ async function deliverStaffNotification(booking, staff, kind, suppliedSettings =
   const { settings } = await bookingEmailContext(booking, suppliedSettings);
   const copy = staffNotificationCopy(kind, booking, staff.name || '');
   const intro = `<p style="margin:0 0 20px;color:#475467;line-height:1.65">${escapeHtml(copy.body)}</p>`;
-  const html = emailDocument(copy.heading, `${intro}${appointmentCard(booking, settings)}${staffCustomerSummary(booking)}`, settings);
+  const html = emailDocument(copy.heading, `${intro}${appointmentCard(booking, settings)}${staffCustomerSummary(booking)}${booking.status === 'confirmed' ? calendarButtons(booking, settings) : ''}`, settings);
   return deliverEmail({ to: staff.email, subject: copy.subject, html, fromName: settings.brandName, replyTo: settings.replyToEmail || '' });
 }
 

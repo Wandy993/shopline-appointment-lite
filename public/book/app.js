@@ -147,7 +147,7 @@ function setupTimezonePicker() {
 
 const staffPresetClasses = new Set(['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose']);
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp' };
-function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="/assets/staff/${file}?v=0.6.0-google-sync.1" alt="" loading="lazy" decoding="async">`;}
+function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="/assets/staff/${file}?v=0.6.0.2" alt="" loading="lazy" decoding="async">`;}
 
 function staffAvatarMarkup(item, className = '') {
   const avatar = item?.avatar || {};
@@ -495,6 +495,10 @@ $('#bookingForm').addEventListener('submit', async event => {
     $('#successWhen').textContent = formatBookingWhen(payload.booking);
     $('#successDetails').innerHTML = [payload.booking.staff ? `<span><b>Staff</b>${escapeHtml(payload.booking.staff)}</span>` : '', payload.booking.location ? `<span><b>Location</b>${escapeHtml(payload.booking.location)}</span>` : '', `<span><b>Service time zone</b>${escapeHtml(payload.booking.timezone || serviceTimezone)}</span>`].filter(Boolean).join('');
     $('#manageBooking').href = `/manage?booking=${encodeURIComponent(payload.booking.id)}#token=${encodeURIComponent(payload.booking.managementToken)}`;
+    const googleCalendar = $('#addGoogleCalendar');
+    const calendarIcs = $('#downloadCalendarIcs');
+    if (payload.booking.calendar?.google) { googleCalendar.href = payload.booking.calendar.google; googleCalendar.classList.remove('hidden'); } else googleCalendar.classList.add('hidden');
+    if (payload.booking.calendar?.ics) { calendarIcs.href = payload.booking.calendar.ics; calendarIcs.classList.remove('hidden'); } else calendarIcs.classList.add('hidden');
     $('#successView').classList.remove('hidden');
   } catch (error) {
     errorBox.textContent = error.status === 409 ? 'One of those selections was just booked. Please choose again.' : error.message;

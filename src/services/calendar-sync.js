@@ -9,15 +9,12 @@ import {
 } from './google-calendar.js';
 
 const PROVIDER = 'google';
-const MAX_BOOKING_MAPPINGS = 50;
+const MAX_BOOKING_MAPPINGS = 100;
 
-function asString(value) {
-  return value == null ? '' : String(value);
-}
-
-function validEmail(value) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(asString(value).trim());
-}
+function asString(value) { return value == null ? '' : String(value); }
+function validEmail(value) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(asString(value).trim()); }
+function connectionType(connection) { return connection?.connectionType === 'business' || !connection?.staffId ? 'business' : 'staff'; }
+function occurrenceKeyFor(occurrence) { return asString(occurrence.slotKey || `${occurrence.date}T${occurrence.time || ''}`); }
 
 function occurrenceList(booking) {
   const mode = booking.bookingMode || 'slot';
@@ -28,11 +25,7 @@ function occurrenceList(booking) {
       slotKey: item.slotKey || `${item.date}T${item.time || ''}`
     }));
   }
-  return [{
-    date: booking.date,
-    time: mode === 'all_day' ? '' : booking.time,
-    slotKey: booking.slotKey || `${booking.date}T${booking.time || ''}`
-  }];
+  return [{ date: booking.date, time: mode === 'all_day' ? '' : booking.time, slotKey: booking.slotKey || `${booking.date}T${booking.time || ''}` }];
 }
 
 function addDays(date, amount = 1) {
@@ -48,9 +41,9 @@ function addMinutes(date, time, minutes) {
   return { date: iso.slice(0, 10), time: iso.slice(11, 16) };
 }
 
-export function deterministicGoogleEventId({ bookingId, occurrenceKey, staffId }) {
+export function deterministicGoogleEventId({ bookingId, occurrenceKey, staffId = '', connectionId = '' }) {
   return createHash('sha256')
-    .update(`${asString(bookingId)}:${asString(occurrenceKey)}:${asString(staffId)}`)
+    .update(`${asString(bookingId)}:${asString(occurrenceKey)}:${asString(staffId)}:${asString(connectionId)}`)
     .digest('hex')
     .slice(0, 40);
 }
@@ -64,14 +57,14 @@ export function buildGoogleCalendarEvent({ booking, occurrence, connection }) {
   const serviceTitle = asString(booking.productTitle || 'Appointment').trim() || 'Appointment';
   const staffName = asString(booking.staff).trim();
   const bookingId = asString(booking._id);
-  const occurrenceKey = asString(occurrence.slotKey || `${occurrence.date}T${occurrence.time || ''}`);
-  const inviteCustomer = connection.sendCustomerInvites !== false && validEmail(customerEmail);
+  const type = connectionType(connection);
+  const occurrenceKey = occurrenceKeyFor(occurrence);
+  const inviteCustomer = connection.sendCustomerInvites === true && validEmail(customerEmail);
   const eventIdentity = mode === 'slot' ? 'primary' : occurrenceKey;
-  const eventId = deterministicGoogleEventId({ bookingId, occurrenceKey: eventIdentity, staffId: booking.staffId });
+  const eventId = deterministicGoogleEventId({ bookingId, occurrenceKey: eventIdentity, staffId: type === 'staff' ? booking.staffId : '', connectionId: connection._id });
 
   const description = [
-    'Appointment Lite booking',
-    '',
+    'Appointment Lite booking', '',
     `Customer: ${customerName || 'Customer'}`,
     customerEmail ? `Email: ${customerEmail}` : '',
     customerPhone ? `Phone: ${customerPhone}` : '',
@@ -92,11 +85,10 @@ export function buildGoogleCalendarEvent({ booking, occurrence, connection }) {
     guestsCanSeeOtherGuests: false,
     extendedProperties: {
       private: {
-        appointmentLite: '1',
-        bookingId,
-        occurrenceKey,
+        appointmentLite: '1', bookingId, occurrenceKey,
         staffId: asString(booking.staffId),
-        calendarConnectionId: asString(connection._id)
+        calendarConnectionId: asString(connection._id),
+        calendarConnectionType: type
       }
     }
   };
@@ -109,11 +101,7 @@ export function buildGoogleCalendarEvent({ booking, occurrence, connection }) {
     event.start = { dateTime: `${occurrence.date}T${occurrence.time}:00`, timeZone: timezone };
     event.end = { dateTime: `${end.date}T${end.time}:00`, timeZone: timezone };
   }
-
-  if (inviteCustomer) {
-    event.attendees = [{ email: customerEmail, displayName: customerName || undefined }];
-  }
-
+  if (inviteCustomer) event.attendees = [{ email: customerEmail, displayName: customerName || undefined }];
   return { eventId, event, inviteCustomer };
 }
 
@@ -123,6 +111,7 @@ function mappingObject(mapping) {
   return {
     provider: value.provider || PROVIDER,
     connectionId: value.connectionId || null,
+    connectionType: value.connectionType || 'staff',
     staffId: value.staffId || null,
     calendarId: value.calendarId || '',
     occurrenceKey: value.occurrenceKey || '',
@@ -144,17 +133,10 @@ async function removeMappedEvent(mapping) {
   const existing = mappingObject(mapping);
   if (!existing?.eventId || !existing?.calendarId) return { ...existing, status: 'deleted', lastError: '', lastSyncedAt: new Date() };
   const connection = await connectionForMapping(existing);
-  if (!connection) {
-    return { ...existing, status: 'orphaned', lastError: 'Google Calendar connection is no longer available.', lastSyncedAt: new Date() };
-  }
+  if (!connection) return { ...existing, status: 'orphaned', lastError: 'Google Calendar connection is no longer available.', lastSyncedAt: new Date() };
   try {
     const accessToken = await accessTokenForConnection(connection);
-    await deleteGoogleCalendarEvent({
-      accessToken,
-      calendarId: existing.calendarId,
-      eventId: existing.eventId,
-      sendUpdates: existing.customerInvited ? 'all' : ''
-    });
+    await deleteGoogleCalendarEvent({ accessToken, calendarId: existing.calendarId, eventId: existing.eventId, sendUpdates: existing.customerInvited ? 'all' : '' });
     return { ...existing, status: 'deleted', lastError: '', lastSyncedAt: new Date() };
   } catch (error) {
     return { ...existing, status: 'error', lastError: asString(error.message).slice(0, 500), lastSyncedAt: new Date() };
@@ -162,243 +144,182 @@ async function removeMappedEvent(mapping) {
 }
 
 function isCurrentMapping(mapping, connection, booking, occurrenceKey) {
-  return asString(mapping.staffId) === asString(booking.staffId)
-    && asString(mapping.connectionId) === asString(connection._id)
+  const type = connectionType(connection);
+  return asString(mapping.connectionId) === asString(connection._id)
     && asString(mapping.calendarId) === asString(connection.calendarId)
     && asString(mapping.occurrenceKey) === asString(occurrenceKey)
+    && (type === 'business' || asString(mapping.staffId) === asString(booking.staffId))
     && mapping.status !== 'deleted';
 }
 
 async function upsertMappedEvent({ booking, occurrence, connection, accessToken, existing }) {
   const { eventId, event, inviteCustomer } = buildGoogleCalendarEvent({ booking, occurrence, connection });
+  const removingExistingGuest = Boolean(existing?.customerInvited && !inviteCustomer);
   const sendUpdates = existing?.customerInvited || inviteCustomer ? 'all' : '';
   const patch = { ...event };
   delete patch.id;
-
-  // Do not reset an attendee's Google response on ordinary appointment updates.
-  // Add attendees only when the connection has just enabled customer invitations
-  // or when this is a brand-new Google event.
-  if (existing?.customerInvited) delete patch.attendees;
+  if (existing?.customerInvited && inviteCustomer) delete patch.attendees;
+  if (removingExistingGuest) patch.attendees = [];
 
   let result;
   if (existing?.eventId) {
     try {
-      result = await patchGoogleCalendarEvent({
-        accessToken,
-        calendarId: connection.calendarId,
-        eventId: existing.eventId,
-        event: patch,
-        sendUpdates
-      });
+      result = await patchGoogleCalendarEvent({ accessToken, calendarId: connection.calendarId, eventId: existing.eventId, event: patch, sendUpdates });
     } catch (error) {
       if (![404, 410].includes(Number(error?.providerStatus))) throw error;
     }
   }
-
   if (!result) {
     try {
-      result = await createGoogleCalendarEvent({
-        accessToken,
-        calendarId: connection.calendarId,
-        event,
-        sendUpdates: inviteCustomer ? 'all' : ''
-      });
+      result = await createGoogleCalendarEvent({ accessToken, calendarId: connection.calendarId, event, sendUpdates: inviteCustomer ? 'all' : '' });
     } catch (error) {
       if (Number(error?.providerStatus) !== 409) throw error;
-      result = await patchGoogleCalendarEvent({
-        accessToken,
-        calendarId: connection.calendarId,
-        eventId,
-        event: patch,
-        sendUpdates
-      });
+      result = await patchGoogleCalendarEvent({ accessToken, calendarId: connection.calendarId, eventId, event: patch, sendUpdates });
     }
   }
 
   return {
     provider: PROVIDER,
     connectionId: connection._id,
-    staffId: booking.staffId,
+    connectionType: connectionType(connection),
+    staffId: booking.staffId || null,
     calendarId: connection.calendarId,
-    occurrenceKey: occurrence.slotKey || `${occurrence.date}T${occurrence.time || ''}`,
+    occurrenceKey: occurrenceKeyFor(occurrence),
     eventId: result?.id || existing?.eventId || eventId,
     htmlLink: result?.htmlLink || existing?.htmlLink || '',
-    customerInvited: Boolean(existing?.customerInvited || inviteCustomer),
-    status: 'synced',
-    lastError: '',
-    lastSyncedAt: new Date()
+    customerInvited: Boolean(inviteCustomer),
+    status: 'synced', lastError: '', lastSyncedAt: new Date()
   };
 }
 
 async function markConnectionSync(connection, error = null) {
   if (!connection?._id) return;
-  await CalendarConnection.updateOne(
-    { _id: connection._id },
-    {
-      $set: {
-        lastSyncAt: new Date(),
-        lastSyncError: error ? asString(error.message || error).slice(0, 500) : ''
-      }
-    }
-  ).catch(() => {});
+  await CalendarConnection.updateOne({ _id: connection._id }, { $set: { lastSyncAt: new Date(), lastSyncError: error ? asString(error.message || error).slice(0, 500) : '' } }).catch(() => {});
+}
+
+function desiredConnectionsForBooking(booking, connections) {
+  if (booking.status !== 'confirmed') return [];
+  const active = connections.filter(connection => connection.status === 'connected' && connection.calendarId && connection.syncAppointments !== false);
+  const business = active.filter(connection => connectionType(connection) === 'business');
+  const businessCalendarKeys = new Set(business.map(connection => `${asString(connection.accountLabel)}|${asString(connection.calendarId)}`));
+  const staff = active.filter(connection => connectionType(connection) === 'staff'
+    && booking.staffId
+    && asString(connection.staffId) === asString(booking.staffId)
+    && !businessCalendarKeys.has(`${asString(connection.accountLabel)}|${asString(connection.calendarId)}`));
+  return [...business, ...staff];
 }
 
 export async function reconcileBookingGoogleCalendar(bookingId) {
   const booking = await Booking.findById(bookingId);
   if (!booking) return { bookingId: asString(bookingId), skipped: true, reason: 'BOOKING_NOT_FOUND' };
 
+  const connections = await CalendarConnection.find({ shopId: booking.shopId, provider: PROVIDER }).select('+refreshTokenEncrypted');
+  const desiredConnections = desiredConnectionsForBooking(booking, connections);
+  const desiredIds = new Set(desiredConnections.map(connection => asString(connection._id)));
+  const connectionById = new Map(connections.map(connection => [asString(connection._id), connection]));
+  const desiredOccurrences = booking.status === 'confirmed' ? occurrenceList(booking) : [];
+  const currentKeys = new Set(desiredOccurrences.map(occurrenceKeyFor));
   const mappings = (booking.calendarEvents || []).map(mappingObject).filter(Boolean);
-  const staffId = booking.staffId ? asString(booking.staffId) : '';
-  let connection = null;
-
-  if (booking.status === 'confirmed' && staffId) {
-    connection = await CalendarConnection.findOne({
-      shopId: booking.shopId,
-      staffId: booking.staffId,
-      provider: PROVIDER,
-      status: 'connected'
-    }).select('+refreshTokenEncrypted');
-  }
-
-  const syncEnabled = Boolean(connection && connection.calendarId && connection.syncAppointments !== false);
-  const desiredOccurrences = syncEnabled ? occurrenceList(booking) : [];
-  const currentKeys = new Set(desiredOccurrences.map(item => asString(item.slotKey || `${item.date}T${item.time || ''}`)));
   const retained = [];
   const stale = [];
 
   for (const mapping of mappings) {
-    const sameStaff = asString(mapping.staffId) === staffId;
-    const sameConnection = connection && asString(mapping.connectionId) === asString(connection._id);
-    const sameCalendar = connection && asString(mapping.calendarId) === asString(connection.calendarId);
-    const currentOccurrence = currentKeys.has(asString(mapping.occurrenceKey));
-    const occurrenceStillDesired = (booking.bookingMode || 'slot') === 'slot' ? true : currentOccurrence;
-
-    if (booking.status !== 'confirmed') stale.push(mapping);
-    else if (!sameStaff) stale.push(mapping);
-    else if (syncEnabled && (!sameConnection || !sameCalendar || !occurrenceStillDesired)) stale.push(mapping);
-    else retained.push(mapping);
+    const connection = connectionById.get(asString(mapping.connectionId));
+    if (booking.status !== 'confirmed' || !connection) { stale.push(mapping); continue; }
+    const type = connectionType(connection);
+    if (type === 'staff' && asString(connection.staffId) !== asString(booking.staffId)) { stale.push(mapping); continue; }
+    if (asString(mapping.calendarId) !== asString(connection.calendarId)) { stale.push(mapping); continue; }
+    if (connection.status === 'connected' && connection.syncAppointments === false) { retained.push(mapping); continue; }
+    if (!desiredIds.has(asString(connection._id))) { retained.push(mapping); continue; }
+    if ((booking.bookingMode || 'slot') !== 'slot' && !currentKeys.has(asString(mapping.occurrenceKey))) { stale.push(mapping); continue; }
+    retained.push(mapping);
   }
 
   const deleted = [];
   for (const mapping of stale) deleted.push(await removeMappedEvent(mapping));
 
-  // If the staff connection is absent/paused, preserve same-staff mappings as-is.
-  if (!syncEnabled) {
-    const nextMappings = [...retained, ...deleted].slice(-MAX_BOOKING_MAPPINGS);
-    const hasError = deleted.some(item => ['error', 'orphaned'].includes(item.status));
-    await Booking.updateOne({ _id: booking._id }, {
-      $set: {
-        calendarEvents: nextMappings,
-        calendarSyncStatus: hasError ? 'error' : (mappings.length ? 'paused' : 'not_connected'),
-        calendarSyncError: hasError ? deleted.find(item => item.lastError)?.lastError || '' : '',
-        lastCalendarSyncAt: new Date()
-      }
-    });
-    return { bookingId: asString(booking._id), skipped: true, reason: connection ? 'SYNC_PAUSED' : 'NO_CONNECTED_CALENDAR', deleted: deleted.length };
-  }
-
-  let accessToken;
-  try {
-    accessToken = await accessTokenForConnection(connection);
-  } catch (error) {
-    await markConnectionSync(connection, error);
-    await Booking.updateOne({ _id: booking._id }, {
-      $set: { calendarSyncStatus: 'error', calendarSyncError: asString(error.message).slice(0, 500), lastCalendarSyncAt: new Date() }
-    });
-    throw error;
-  }
-
   const synced = [];
   const errors = [];
-  for (const occurrence of desiredOccurrences) {
-    const key = asString(occurrence.slotKey || `${occurrence.date}T${occurrence.time || ''}`);
-    const existing = (booking.bookingMode || 'slot') === 'slot'
-      ? retained.find(mapping => asString(mapping.staffId) === asString(booking.staffId) && asString(mapping.connectionId) === asString(connection._id) && asString(mapping.calendarId) === asString(connection.calendarId) && mapping.status !== 'deleted')
-      : retained.find(mapping => isCurrentMapping(mapping, connection, booking, key));
-    try {
-      synced.push(await upsertMappedEvent({ booking, occurrence, connection, accessToken, existing }));
-    } catch (error) {
-      const failure = {
-        provider: PROVIDER,
-        connectionId: connection._id,
-        staffId: booking.staffId,
-        calendarId: connection.calendarId,
-        occurrenceKey: key,
-        eventId: existing?.eventId || deterministicGoogleEventId({ bookingId: booking._id, occurrenceKey: (booking.bookingMode || 'slot') === 'slot' ? 'primary' : key, staffId: booking.staffId }),
-        htmlLink: existing?.htmlLink || '',
-        customerInvited: Boolean(existing?.customerInvited),
-        status: 'error',
-        lastError: asString(error.message).slice(0, 500),
-        lastSyncedAt: new Date()
-      };
-      synced.push(failure);
+  for (const connection of desiredConnections) {
+    let accessToken;
+    let connectionError = null;
+    try { accessToken = await accessTokenForConnection(connection); }
+    catch (error) {
+      connectionError = error;
       errors.push(error);
+      await markConnectionSync(connection, error);
+      continue;
     }
+    for (const occurrence of desiredOccurrences) {
+      const key = occurrenceKeyFor(occurrence);
+      const existing = (booking.bookingMode || 'slot') === 'slot'
+        ? retained.find(mapping => asString(mapping.connectionId) === asString(connection._id) && mapping.status !== 'deleted')
+        : retained.find(mapping => isCurrentMapping(mapping, connection, booking, key));
+      try { synced.push(await upsertMappedEvent({ booking, occurrence, connection, accessToken, existing })); }
+      catch (error) {
+        connectionError = connectionError || error;
+        const failure = {
+          provider: PROVIDER, connectionId: connection._id, connectionType: connectionType(connection), staffId: booking.staffId || null,
+          calendarId: connection.calendarId, occurrenceKey: key,
+          eventId: existing?.eventId || deterministicGoogleEventId({ bookingId: booking._id, occurrenceKey: (booking.bookingMode || 'slot') === 'slot' ? 'primary' : key, staffId: connectionType(connection) === 'staff' ? booking.staffId : '', connectionId: connection._id }),
+          htmlLink: existing?.htmlLink || '', customerInvited: Boolean(existing?.customerInvited),
+          status: 'error', lastError: asString(error.message).slice(0, 500), lastSyncedAt: new Date()
+        };
+        synced.push(failure);
+        errors.push(error);
+      }
+    }
+    await markConnectionSync(connection, connectionError);
   }
 
-  const nextMappings = [...deleted, ...synced].slice(-MAX_BOOKING_MAPPINGS);
-  const firstError = synced.find(item => item.status === 'error')?.lastError || deleted.find(item => ['error', 'orphaned'].includes(item.status))?.lastError || '';
-  await Booking.updateOne({ _id: booking._id }, {
-    $set: {
-      calendarEvents: nextMappings,
-      calendarSyncStatus: firstError ? 'error' : 'synced',
-      calendarSyncError: firstError,
-      lastCalendarSyncAt: new Date()
-    }
-  });
-  await markConnectionSync(connection, firstError || null);
+  const activeKeys = new Set(synced.map(item => `${asString(item.connectionId)}:${asString(item.occurrenceKey)}`));
+  const preserved = retained.filter(item => !activeKeys.has(`${asString(item.connectionId)}:${asString(item.occurrenceKey)}`));
+  const nextMappings = [...preserved, ...deleted, ...synced].slice(-MAX_BOOKING_MAPPINGS);
+  const firstError = synced.find(item => item.status === 'error')?.lastError || deleted.find(item => ['error', 'orphaned'].includes(item.status))?.lastError || (errors[0] ? asString(errors[0].message).slice(0, 500) : '');
+  const hasPaused = connections.some(connection => connection.status === 'connected' && connection.syncAppointments === false && (connectionType(connection) === 'business' || asString(connection.staffId) === asString(booking.staffId)));
+  const status = firstError ? 'error' : desiredConnections.length ? 'synced' : hasPaused || mappings.length ? 'paused' : 'not_connected';
+  await Booking.updateOne({ _id: booking._id }, { $set: { calendarEvents: nextMappings, calendarSyncStatus: status, calendarSyncError: firstError, lastCalendarSyncAt: new Date() } });
 
-  return {
-    bookingId: asString(booking._id),
-    synced: synced.filter(item => item.status === 'synced').length,
-    deleted: deleted.filter(item => item.status === 'deleted').length,
-    errors: errors.length + deleted.filter(item => ['error', 'orphaned'].includes(item.status)).length
-  };
+  return { bookingId: asString(booking._id), synced: synced.filter(item => item.status === 'synced').length, deleted: deleted.filter(item => item.status === 'deleted').length, errors: errors.length + deleted.filter(item => ['error', 'orphaned'].includes(item.status)).length, skipped: desiredConnections.length === 0 && booking.status === 'confirmed' };
 }
 
 export function queueBookingGoogleCalendarSync(bookingId, reason = 'booking_changed') {
   if (!bookingId) return;
-  setImmediate(() => {
-    reconcileBookingGoogleCalendar(bookingId).catch(error => {
-      console.error(`Google Calendar booking sync failed (${reason})`, asString(error.message || error));
-    });
-  });
+  setImmediate(() => reconcileBookingGoogleCalendar(bookingId).catch(error => console.error(`Google Calendar booking sync failed (${reason})`, asString(error.message || error))));
 }
 
-export async function syncUpcomingGoogleCalendarBookingsForStaff({ shopId, staffId, limit = 200 }) {
-  const today = new Date().toISOString().slice(0, 10);
-  const bookings = await Booking.find({
-    shopId,
-    staffId,
-    status: 'confirmed',
-    date: { $gte: today }
-  }).sort({ date: 1, time: 1 }).limit(Math.max(1, Math.min(500, Number(limit || 200)))).select('_id').lean();
-
+async function syncBookingIds(bookings) {
   const summary = { total: bookings.length, synced: 0, deleted: 0, errors: 0, skipped: 0 };
   for (const booking of bookings) {
     try {
       const result = await reconcileBookingGoogleCalendar(booking._id);
-      summary.synced += Number(result.synced || 0);
-      summary.deleted += Number(result.deleted || 0);
-      summary.errors += Number(result.errors || 0);
+      summary.synced += Number(result.synced || 0); summary.deleted += Number(result.deleted || 0); summary.errors += Number(result.errors || 0);
       if (result.skipped) summary.skipped += 1;
-    } catch (error) {
-      summary.errors += 1;
-    }
-  }
-  if (summary.errors === 0) {
-    await CalendarConnection.updateOne(
-      { shopId, staffId, provider: PROVIDER },
-      { $set: { lastSyncAt: new Date(), lastSyncError: '' } }
-    ).catch(() => {});
+    } catch { summary.errors += 1; }
   }
   return summary;
 }
 
+export async function syncUpcomingGoogleCalendarBookingsForStaff({ shopId, staffId, limit = 200 }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const bookings = await Booking.find({ shopId, staffId, status: 'confirmed', date: { $gte: today } }).sort({ date: 1, time: 1 }).limit(Math.max(1, Math.min(500, Number(limit || 200)))).select('_id').lean();
+  const summary = await syncBookingIds(bookings);
+  if (summary.errors === 0) await CalendarConnection.updateMany({ shopId, staffId, provider: PROVIDER }, { $set: { lastSyncAt: new Date(), lastSyncError: '' } }).catch(() => {});
+  return summary;
+}
+
+export async function syncUpcomingGoogleCalendarBookingsForBusiness({ shopId, limit = 500 }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const bookings = await Booking.find({ shopId, status: 'confirmed', date: { $gte: today } }).sort({ date: 1, time: 1 }).limit(Math.max(1, Math.min(1000, Number(limit || 500)))).select('_id').lean();
+  const summary = await syncBookingIds(bookings);
+  if (summary.errors === 0) await CalendarConnection.updateMany({ shopId, connectionType: 'business', provider: PROVIDER }, { $set: { lastSyncAt: new Date(), lastSyncError: '' } }).catch(() => {});
+  return summary;
+}
+
 export function queueUpcomingGoogleCalendarBookingsForStaff(values) {
-  setImmediate(() => {
-    syncUpcomingGoogleCalendarBookingsForStaff(values).catch(error => {
-      console.error('Google Calendar staff sync failed', asString(error.message || error));
-    });
-  });
+  setImmediate(() => syncUpcomingGoogleCalendarBookingsForStaff(values).catch(error => console.error('Google Calendar staff sync failed', asString(error.message || error))));
+}
+
+export function queueUpcomingGoogleCalendarBookingsForBusiness(values) {
+  setImmediate(() => syncUpcomingGoogleCalendarBookingsForBusiness(values).catch(error => console.error('Google Calendar business sync failed', asString(error.message || error))));
 }

@@ -118,7 +118,7 @@ test('Booking and CalendarConnection persist live sync state without exposing Go
   assert.ok(Booking.schema.path('calendarSyncStatus'));
   assert.ok(Booking.schema.path('lastCalendarSyncAt'));
   assert.equal(CalendarConnection.schema.path('syncAppointments').options.default, true);
-  assert.equal(CalendarConnection.schema.path('sendCustomerInvites').options.default, true);
+  assert.equal(CalendarConnection.schema.path('sendCustomerInvites').options.default, false);
   assert.ok(CalendarConnection.schema.path('lastSyncAt'));
   assert.equal(CalendarConnection.schema.path('refreshTokenEncrypted').options.select, false);
 });
@@ -143,7 +143,8 @@ test('booking lifecycle, admin routes, and Calendar Sync UI are wired to Google 
   assert.match(adminAsset, /data-calendar-setting="syncAppointments"/);
   assert.match(adminAsset, /data-calendar-setting="sendCustomerInvites"/);
   assert.match(adminAsset, /data-calendar-sync-now/);
-  assert.match(adminView, /Live sync/);
+  assert.match(adminView, /BUSINESS CALENDAR/);
+  assert.match(adminView, /PERSONAL STAFF CALENDARS/);
   assert.match(calendarService, /extendedProperties/);
   assert.match(calendarService, /sendCustomerInvites/);
 });

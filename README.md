@@ -1,6 +1,6 @@
 # Appointment Lite for SHOPLINE
 
-Release `v0.6.0.1` (internal package version `0.6.0-google-sync.1`) activates Appointment → Google Calendar synchronization: connected staff calendars receive new bookings, reschedules, merchant edits, staff reassignments, and cancellations; customer calendar invitations are configurable and enabled by default. The storefront Theme App Extension remains unchanged at `0.5.4-hotfix.3`.
+Release `v0.6.0.2` introduces the **Notification & Calendar Architecture**: merchant and staff email notifications work with any normal email address, customers get branded Add-to-Calendar actions, one store-wide Google Calendar can sync all appointments, and personal staff Google calendars remain optional. Appointment Lite does not split these capabilities into Free/Pro feature tiers.
 
 Appointment Lite now supports two booking entry models:
 
@@ -15,6 +15,20 @@ Typical scenarios include furniture installation and measurements, showroom visi
 
 
 
+
+## v0.6.0.2 Notification & Calendar Architecture
+
+- Adds a **Primary merchant inbox** plus up to eight additional notification recipients for new bookings, changes, and cancellations. Gmail, QQ, 163, Outlook, and normal enterprise addresses are treated the same.
+- Keeps staff notifications independent from Google. A staff member only needs an email address plus **Email appointment updates** to receive assignment, update, reassignment, and cancellation messages.
+- Adds customer **Add to Google Calendar** and **Apple / Outlook / Other (.ics)** actions to confirmation email, hosted booking success, and the SHOPLINE Theme App Block success state.
+- Changes Google customer guest invitations to **off by default**. Merchants may enable them, but the UI warns about Google first-contact / unknown-sender behavior.
+- Adds a recommended **Business Google Calendar** connection: one merchant authorization can receive every confirmed store appointment, including bookings assigned to staff who never sign in to SHOPLINE.
+- Keeps **Personal staff Google Calendars** as optional secondary copies. They are no longer required for staff notifications or staff scheduling.
+- Migrates existing v0.6.0/v0.6.0.1 staff Google connections into the optional personal-calendar model and switches customer Google guest invitations off once during the architecture migration.
+- Removes runtime feature-tier limits and plan gating from Appointment Lite. Notification and calendar capabilities are built-in product behavior rather than paid feature flags.
+- Updates the Theme App Extension to `0.6.0.2`, so this release requires `sl extension push`.
+
+See [Google Calendar architecture](docs/GOOGLE_CALENDAR.md) and [Email notifications](docs/EMAIL.md).
 
 ## v0.6.0.1 Appointment → Google Calendar Sync
 
@@ -211,7 +225,7 @@ Implemented:
 - Product services keep the zero-configuration SHOPLINE Theme App Block. Standalone services do not require theme editing.
 - The first-install Quickstart still presents the App Block first for product appointments, but standalone-service merchants can continue directly to service creation.
 - Responsive English/Simplified Chinese merchant workspace, Arctic Blue visual system, per-store Email Studio, Quickstart/Setup, secure customer management links, and server-authoritative store-time-zone validation are retained.
-- Free/Pro plan boundaries remain reserved without a billing dependency; rule-count enforcement stays disabled by default during the MVP.
+- Appointment Lite does not gate service-count or notification/calendar capabilities behind Free/Pro feature tiers.
 
 For home/onsite services, merchants can use the existing required custom-question field to collect a service address or access instructions. A structured address/resource-routing model remains intentionally deferred so the Lite product does not inherit full field-service-management complexity yet.
 
@@ -247,7 +261,7 @@ src/
   middleware/          stateless admin session, CSRF, errors
   models/              Shop, AppointmentRule, Booking, BookingReservation
   routes/              OAuth, admin API, public booking API
-  services/            SHOPLINE, booking, email, plan boundaries
+  services/            SHOPLINE, booking, email, calendar synchronization
   views/                admin shell + hosted standalone booking page
 public/admin/           merchant admin workspace
 public/manage/          cross-device customer management page
@@ -291,7 +305,6 @@ Important settings:
 - `SHOPLINE_THEME_EXTENSION_UUID` comes from the CLI-created Theme App Extension `.env`; it enables the one-click product-template editor link. `SHOPLINE_THEME_BLOCK_HANDLE` defaults to `appointment-lite`.
 - `COOKIE_SAME_SITE=lax` is appropriate for redirect mode. Embedded iframe mode may require `none` with HTTPS and SHOPLINE App Bridge work.
 - `PUBLIC_ALLOWED_ORIGINS` should remain empty for a multi-merchant public app because every merchant has different storefront domains. CORS is not authentication; use dynamic installed-shop origin validation in a later hardening release if required.
-- `PLAN_LIMITS_ENABLED=false` gives every installed store unlimited appointment rules during the MVP. Set it to `true` later to restore the reserved Free/Pro active-rule limits.
 - `GOOGLE_CALENDAR_CLIENT_ID` and `GOOGLE_CALENDAR_CLIENT_SECRET` come from a Google Cloud OAuth **Web application** client. `GOOGLE_CALENDAR_REDIRECT_URI` must exactly match an authorized redirect URI in that client.
 - `GOOGLE_TOKEN_ENCRYPTION_KEY` must be a dedicated 32-byte secret (64 hex characters or base64) used to encrypt stored Google refresh tokens with AES-256-GCM. Keep it stable across deploys; rotating it requires a migration or reconnecting calendars.
 - `EMAIL_PROVIDER=auto` prefers a complete Aliyun DirectMail configuration, then Resend. Use `aliyun`, `resend`, or `none` to force a mode.

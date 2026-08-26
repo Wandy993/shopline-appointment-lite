@@ -35,7 +35,7 @@ export function adminPage() {
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light">
   <title>Appointment Lite</title>
-  <link rel="stylesheet" href="/admin/styles.css?v=0.6.0-google-sync.1">
+  <link rel="stylesheet" href="/admin/styles.css?v=0.6.0.2">
 </head>
 <body>
   <div class="app-shell">
@@ -120,10 +120,12 @@ export function adminPage() {
 
 
         <section id="calendarView" class="view hidden">
-          <div class="page-heading"><div><span class="eyebrow">CALENDAR INTEGRATIONS</span><h1>Calendar Sync</h1><p>Connect each staff member to an owned Google Calendar. Appointment Lite will create and maintain appointment events automatically.</p></div><span id="calendarFoundationBadge" class="status-badge enabled">Live sync</span></div>
+          <div class="page-heading"><div><span class="eyebrow">CALENDAR INTEGRATIONS</span><h1>Calendar Sync</h1><p>Use one business Google Calendar for the store, while staff email notifications work with any email provider. Personal staff calendars stay optional.</p></div><span id="calendarFoundationBadge" class="status-badge enabled">Built-in</span></div>
           <article class="panel calendar-foundation-panel"><div class="calendar-provider-mark">G</div><div class="calendar-foundation-copy"><div class="panel-head"><div><span class="eyebrow">GOOGLE CALENDAR</span><h2 id="calendarConfigTitle">Checking Google Calendar setup…</h2></div><span id="calendarConfigBadge" class="status-badge disabled">Checking</span></div><p id="calendarConfigText">Appointment Lite is checking whether Google OAuth credentials are configured.</p><div id="calendarConfigMeta" class="calendar-config-meta"></div></div></article>
-          <div class="calendar-section-head"><div><span class="eyebrow">STAFF CALENDARS</span><h2>Connect staff calendars</h2><p>Each active staff member can connect a separate Google account and choose one owned calendar.</p></div></div>
-          <div id="calendarStaffList" class="calendar-staff-list"><div class="panel loading">Loading calendar connections…</div></div>
+          <div class="calendar-section-head"><div><span class="eyebrow">BUSINESS CALENDAR</span><h2>Store-wide calendar</h2><p>Recommended: the merchant connects one Google account and all confirmed appointments can sync into one owned calendar.</p></div></div>
+          <div id="calendarBusinessCard" class="calendar-staff-list"><div class="panel loading">Loading business calendar…</div></div>
+          <div class="calendar-section-head"><div><span class="eyebrow">PERSONAL STAFF CALENDARS</span><h2>Optional staff connections</h2><p>Staff do not need Google to receive appointments. Add their email in Staff for assignment notifications; connect a personal Google Calendar only when you want that extra calendar copy.</p></div></div>
+          <div id="calendarStaffList" class="calendar-staff-list"><div class="panel loading">Loading staff calendar connections…</div></div>
         </section>
 
         <section id="emailView" class="view hidden">
@@ -132,7 +134,7 @@ export function adminPage() {
           <div class="email-studio-grid">
             <div class="email-controls">
               <article class="panel form-section"><div class="section-title"><span class="section-number">01</span><div><h2>Brand identity</h2><p>Choose how your store appears inside appointment emails.</p></div></div><div class="field-row"><div class="field"><label for="emailBrandName">Brand name</label><input id="emailBrandName" maxlength="80" placeholder="Your store name"></div><div class="field color-field"><label for="emailAccentColor">Accent color</label><div><input id="emailAccentColor" type="color" value="#2F6FED"><input id="emailAccentHex" maxlength="7" value="#2F6FED" aria-label="Accent color hex"></div></div></div><div class="field"><label for="emailLogoUrl">Email logo URL <span>optional</span></label><input id="emailLogoUrl" type="url" maxlength="500" placeholder="https://cdn.example.com/logo.png"><p class="hint">Use a square HTTPS image, ideally 160 × 160 px. If empty, your brand initial is shown.</p></div></article>
-              <article class="panel form-section"><div class="section-title"><span class="section-number">02</span><div><h2>Notification recipients</h2><p>Choose where customers can reply and where your team receives new-booking alerts.</p></div></div><div class="field-row"><div class="field"><label for="emailReplyTo">Customer reply-to</label><input id="emailReplyTo" type="email" maxlength="254" placeholder="support@yourstore.com"></div><div class="field"><label for="merchantNotificationEmail">New booking notifications</label><input id="merchantNotificationEmail" type="email" maxlength="254" placeholder="appointments@yourstore.com"></div></div></article>
+              <article class="panel form-section"><div class="section-title"><span class="section-number">02</span><div><h2>Notification recipients</h2><p>The merchant inbox receives store-wide appointment activity. It can be Gmail, QQ, 163, Outlook, or any normal email address. Staff notifications are configured separately in Staff.</p></div></div><div class="field-row"><div class="field"><label for="emailReplyTo">Customer reply-to</label><input id="emailReplyTo" type="email" maxlength="254" placeholder="support@yourstore.com"></div><div class="field"><label for="merchantNotificationEmail">Primary merchant inbox</label><input id="merchantNotificationEmail" type="email" maxlength="254" placeholder="appointments@yourstore.com"></div></div><div class="field"><label for="merchantNotificationAdditional">Additional merchant inboxes <span>optional</span></label><textarea id="merchantNotificationAdditional" rows="3" placeholder="owner@qq.com&#10;ops@163.com"></textarea><p class="hint">One address per line, up to 8 addresses in total.</p></div><div class="notification-toggle-grid"><label class="calendar-sync-toggle"><input id="merchantNotifyNew" type="checkbox"><span><strong>New bookings</strong><small>Notify the merchant inbox when a customer books.</small></span></label><label class="calendar-sync-toggle"><input id="merchantNotifyChanged" type="checkbox"><span><strong>Changes & reschedules</strong><small>Notify the merchant inbox when appointment details change.</small></span></label><label class="calendar-sync-toggle"><input id="merchantNotifyCancelled" type="checkbox"><span><strong>Cancellations</strong><small>Notify the merchant inbox when an appointment is cancelled.</small></span></label></div></article>
               <article class="panel form-section template-editor"><div class="section-title"><span class="section-number">03</span><div><h2>Message templates</h2><p>Customize the message while core appointment details remain protected and consistent.</p></div></div><div id="templateTabs" class="template-tabs" role="tablist"></div><div class="field"><label for="templateSubject">Email subject</label><input id="templateSubject" maxlength="180"></div><div class="field"><label for="templateHeading">Email heading</label><input id="templateHeading" maxlength="120"></div><div class="field"><label for="templateBody">Intro message</label><textarea id="templateBody" rows="7" maxlength="3000"></textarea></div><div><span class="field-label">Insert a variable</span><div id="variableChips" class="variable-chips"></div></div></article>
             </div>
             <aside class="email-preview-wrap"><div class="preview-sticky"><div class="preview-toolbar"><div><span class="eyebrow">INBOX PREVIEW</span><strong id="previewTemplateLabel">Confirmation</strong></div><span class="desktop-chip">Desktop</span></div><div class="email-preview-canvas"><div id="emailPreview" class="email-preview"></div></div><p class="preview-footnote">Preview content uses sample appointment data. Customer details are never stored in this editor.</p></div></aside>
@@ -249,7 +251,7 @@ export function adminPage() {
   </dialog>
 
   <dialog id="confirmDialog" class="confirm-modal"><div class="confirm-icon">!</div><div class="confirm-copy"><h2 id="confirmTitle">Please confirm</h2><p id="confirmMessage"></p></div><div class="modal-actions"><button id="confirmNo" class="secondary">Keep it</button><button id="confirmYes" class="danger">Confirm</button></div></dialog>
-  <script type="module" src="/admin/app.js?v=0.6.0-google-sync.1"></script>
+  <script type="module" src="/admin/app.js?v=0.6.0.2"></script>
 </body>
 </html>`;
 }

@@ -9,7 +9,7 @@ import {
   listOwnedGoogleCalendars,
   readGoogleCalendarState
 } from '../services/google-calendar.js';
-import { queueUpcomingGoogleCalendarBookingsForStaff } from '../services/calendar-sync.js';
+import { queueUpcomingGoogleCalendarBookingsForBusiness, queueUpcomingGoogleCalendarBookingsForStaff } from '../services/calendar-sync.js';
 
 export const integrationsRouter = Router();
 
@@ -21,23 +21,27 @@ function completeUrl(status, values = {}) {
 integrationsRouter.get('/google/callback', async (req, res) => {
   const state = readGoogleCalendarState(req.query.state);
   if (!state) return res.redirect(completeUrl('error', { message: 'Google Calendar connection expired. Reopen Appointment Lite and try again.' }));
-  if (req.query.error) return res.redirect(completeUrl('error', { staffId: state.staffId, message: 'Google Calendar permission was not granted.' }));
-  if (!req.query.code) return res.redirect(completeUrl('error', { staffId: state.staffId, message: 'Google did not return an authorization code.' }));
+  if (req.query.error) return res.redirect(completeUrl('error', { connectionType: state.connectionType, staffId: state.staffId || '', message: 'Google Calendar permission was not granted.' }));
+  if (!req.query.code) return res.redirect(completeUrl('error', { connectionType: state.connectionType, staffId: state.staffId || '', message: 'Google did not return an authorization code.' }));
 
   try {
-    const [shop, staff] = await Promise.all([
-      Shop.findOne({ _id: state.shopId, uninstalledAt: null }).select('_id'),
-      Staff.findOne({ _id: state.staffId, shopId: state.shopId }).select('_id name email')
-    ]);
-    if (!shop || !staff) return res.redirect(completeUrl('error', { message: 'The Appointment Lite staff connection is no longer available.' }));
+    const shop = await Shop.findOne({ _id: state.shopId, uninstalledAt: null }).select('_id');
+    if (!shop) return res.redirect(completeUrl('error', { message: 'The Appointment Lite store connection is no longer available.' }));
+
+    let staff = null;
+    if (state.connectionType === 'staff') {
+      staff = await Staff.findOne({ _id: state.staffId, shopId: state.shopId }).select('_id name email');
+      if (!staff) return res.redirect(completeUrl('error', { message: 'The Appointment Lite staff connection is no longer available.' }));
+    }
 
     const tokens = await exchangeGoogleAuthorizationCode(req.query.code);
     if (!tokens.access_token) throw new Error('Google did not return an access token.');
 
-    const existing = await CalendarConnection.findOne({ shopId: shop._id, staffId: staff._id, provider: 'google' }).select('+refreshTokenEncrypted');
-    const encryptedRefreshToken = tokens.refresh_token
-      ? encryptGoogleRefreshToken(tokens.refresh_token)
-      : existing?.refreshTokenEncrypted;
+    const filter = state.connectionType === 'business'
+      ? { shopId: shop._id, provider: 'google', connectionType: 'business', staffId: null }
+      : { shopId: shop._id, provider: 'google', staffId: staff._id, $or: [{ connectionType: 'staff' }, { connectionType: { $exists: false } }] };
+    const existing = await CalendarConnection.findOne(filter).select('+refreshTokenEncrypted');
+    const encryptedRefreshToken = tokens.refresh_token ? encryptGoogleRefreshToken(tokens.refresh_token) : existing?.refreshTokenEncrypted;
     if (!encryptedRefreshToken) throw new Error('Google did not return an offline refresh token. Please connect again and approve access.');
 
     const calendars = await listOwnedGoogleCalendars(tokens.access_token);
@@ -47,9 +51,11 @@ integrationsRouter.get('/google/callback', async (req, res) => {
     const scopes = String(tokens.scope || '').split(/\s+/).filter(Boolean);
 
     const connection = await CalendarConnection.findOneAndUpdate(
-      { shopId: shop._id, staffId: staff._id, provider: 'google' },
+      filter,
       {
         $set: {
+          connectionType: state.connectionType,
+          staffId: state.connectionType === 'staff' ? staff._id : null,
           accountLabel: primary?.id || primary?.summary || selected.id,
           calendarId: selected.id,
           calendarName: selected.summary,
@@ -57,7 +63,8 @@ integrationsRouter.get('/google/callback', async (req, res) => {
           refreshTokenEncrypted: encryptedRefreshToken,
           scopes: scopes.length ? scopes : GOOGLE_CALENDAR_SCOPES,
           syncAppointments: existing?.syncAppointments !== false,
-          sendCustomerInvites: existing?.sendCustomerInvites !== false,
+          sendCustomerInvites: existing?.sendCustomerInvites === true,
+          architectureVersion: 'notification-calendar-v2',
           status: 'connected',
           lastError: '',
           connectedAt: existing?.connectedAt || new Date(),
@@ -67,24 +74,31 @@ integrationsRouter.get('/google/callback', async (req, res) => {
       { upsert: true, new: true }
     );
 
-    if (connection.syncAppointments !== false) queueUpcomingGoogleCalendarBookingsForStaff({ shopId: shop._id, staffId: staff._id });
-    res.redirect(completeUrl('connected', { staffId: staff._id, staffName: staff.name, calendar: selected.summary }));
+    if (connection.syncAppointments !== false) {
+      if (state.connectionType === 'business') queueUpcomingGoogleCalendarBookingsForBusiness({ shopId: shop._id });
+      else queueUpcomingGoogleCalendarBookingsForStaff({ shopId: shop._id, staffId: staff._id });
+    }
+    res.redirect(completeUrl('connected', {
+      connectionType: state.connectionType,
+      staffId: staff?._id || '',
+      staffName: staff?.name || '',
+      calendar: selected.summary
+    }));
   } catch (error) {
     console.warn('Google Calendar OAuth callback failed:', error.message);
-    res.redirect(completeUrl('error', { staffId: state.staffId, message: 'Could not connect Google Calendar. Please try again.' }));
+    res.redirect(completeUrl('error', { connectionType: state.connectionType, staffId: state.staffId || '', message: 'Could not connect Google Calendar. Please try again.' }));
   }
 });
 
 integrationsRouter.get('/google/complete', (req, res) => {
   const status = req.query.status === 'connected' ? 'connected' : 'error';
+  const connectionType = req.query.connectionType === 'business' ? 'business' : 'staff';
   const message = status === 'connected'
-    ? `Google Calendar connected${req.query.calendar ? `: ${req.query.calendar}` : ''}. You can close this window.`
+    ? `${connectionType === 'business' ? 'Business Google Calendar' : 'Google Calendar'} connected${req.query.calendar ? `: ${req.query.calendar}` : ''}. You can close this window.`
     : String(req.query.message || 'Could not connect Google Calendar.');
   const payload = JSON.stringify({
-    type: 'appointment-lite:google-calendar',
-    status,
-    staffId: String(req.query.staffId || ''),
-    message
+    type: 'appointment-lite:google-calendar', status, connectionType,
+    staffId: String(req.query.staffId || ''), message
   }).replace(/</g, '\\u003c');
   res.set('Cache-Control', 'no-store').type('html').send(`<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Google Calendar · Appointment Lite</title><link rel="stylesheet" href="/integration-assets/google-complete.css"></head>

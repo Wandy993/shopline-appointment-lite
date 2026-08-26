@@ -50,9 +50,7 @@ export const config = Object.freeze({
       regionId: process.env.ALIYUN_DIRECTMAIL_REGION_ID || 'cn-hangzhou',
       tagName: process.env.ALIYUN_DIRECTMAIL_TAG_NAME || ''
     }
-  },
-  defaultPlan: process.env.DEFAULT_PLAN || 'free',
-  planLimitsEnabled: process.env.PLAN_LIMITS_ENABLED === 'true'
+  }
 });
 
 export function assertProductionConfig() {

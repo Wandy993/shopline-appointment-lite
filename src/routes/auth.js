@@ -33,7 +33,7 @@ authRouter.get('/callback', async (req, res, next) => {
       {
         $set: {
           accessToken: token.accessToken, tokenExpiresAt: token.expireTime ? new Date(token.expireTime) : undefined,
-          scopes: String(token.scope || config.shopline.scopes).split(',').filter(Boolean), locale: lang, uninstalledAt: null, plan: config.defaultPlan
+          scopes: String(token.scope || config.shopline.scopes).split(',').filter(Boolean), locale: lang, uninstalledAt: null
         },
         $setOnInsert: { installedAt: new Date(), adminLocale: 'en' }
       },

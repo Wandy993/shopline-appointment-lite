@@ -50,11 +50,13 @@ export function buildGoogleAuthorizationUrl({ clientId, redirectUri, scopes = GO
   return target.toString();
 }
 
-export function createGoogleCalendarState({ shopId, staffId }) {
+export function createGoogleCalendarState({ shopId, connectionType = 'staff', staffId = '' }) {
+  const type = connectionType === 'business' ? 'business' : 'staff';
   return signPayload({
     type: 'google_calendar',
     shopId: String(shopId),
-    staffId: String(staffId),
+    connectionType: type,
+    staffId: type === 'staff' ? String(staffId || '') : '',
     nonce: crypto.randomUUID(),
     exp: Date.now() + 10 * 60 * 1000
   }, config.sessionSecret);
@@ -62,17 +64,19 @@ export function createGoogleCalendarState({ shopId, staffId }) {
 
 export function readGoogleCalendarState(value) {
   const payload = readSignedPayload(value, config.sessionSecret);
-  if (!payload || payload.type !== 'google_calendar' || payload.exp < Date.now() || !payload.shopId || !payload.staffId) return null;
-  return payload;
+  if (!payload || payload.type !== 'google_calendar' || payload.exp < Date.now() || !payload.shopId) return null;
+  const connectionType = payload.connectionType === 'business' ? 'business' : 'staff';
+  if (connectionType === 'staff' && !payload.staffId) return null;
+  return { ...payload, connectionType };
 }
 
-export function googleCalendarAuthorizationUrl({ shopId, staffId }) {
+export function googleCalendarAuthorizationUrl({ shopId, connectionType = 'staff', staffId = '' }) {
   if (!googleCalendarConfigured()) throw providerError('Google Calendar is not configured for this Appointment Lite deployment.', 503, 'GOOGLE_CALENDAR_NOT_CONFIGURED');
   return buildGoogleAuthorizationUrl({
     clientId: config.googleCalendar.clientId,
     redirectUri: config.googleCalendar.redirectUri,
     scopes: GOOGLE_CALENDAR_SCOPES,
-    state: createGoogleCalendarState({ shopId, staffId })
+    state: createGoogleCalendarState({ shopId, connectionType, staffId })
   });
 }
 
@@ -213,7 +217,8 @@ export function publicConnection(connection) {
   if (!connection) return null;
   return {
     id: String(connection._id),
-    staffId: String(connection.staffId),
+    connectionType: connection.connectionType || 'staff',
+    staffId: connection.staffId ? String(connection.staffId) : '',
     provider: connection.provider,
     accountLabel: connection.accountLabel || '',
     calendarId: connection.calendarId || '',
@@ -221,7 +226,7 @@ export function publicConnection(connection) {
     calendarTimeZone: connection.calendarTimeZone || '',
     status: connection.status || 'connected',
     syncAppointments: connection.syncAppointments !== false,
-    sendCustomerInvites: connection.sendCustomerInvites !== false,
+    sendCustomerInvites: connection.sendCustomerInvites === true,
     connectedAt: connection.connectedAt || connection.createdAt || null,
     lastVerifiedAt: connection.lastVerifiedAt || null,
     lastSyncAt: connection.lastSyncAt || null,
