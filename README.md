@@ -1,6 +1,6 @@
 # Appointment Lite for SHOPLINE
 
-Version `0.5.1-hotfix.1` — fixes editing existing services when inactive booking-mode fields contain values that fail native browser constraint validation. Hidden mode fields are disabled, the service wizard uses application-level validation, and existing Staff Management / Notifications behavior is unchanged.
+Version `0.5.1-hotfix.2` — keeps the hidden-field service editor fix and adds clear staff/service availability diagnostics. Staff special working hours are honored at the employee layer, while storefronts now explain when the appointment service itself is closed on that date.
 
 Appointment Lite now supports two booking entry models:
 
@@ -13,7 +13,7 @@ Typical scenarios include furniture installation and measurements, showroom visi
 
 
 
-## v0.5.1-hotfix.1 Service Editor hidden-field fix
+## v0.5.1-hotfix.2 Service Editor hidden-field fix
 
 - Prevents hidden `sessionsRequired` / all-day-only controls from blocking Save with browser `not focusable` validation errors.
 - Disables inactive Booking Mode controls and re-enables only the controls for the selected mode.
@@ -328,3 +328,8 @@ Tests cover query/session signing, weekday/date bounds, store-time-zone past-slo
 ## License
 
 Private MVP. Add the desired license before public distribution.
+
+
+## v0.5.1-hotfix.2 — Staff exception availability clarity
+
+Staff schedule exceptions now explicitly explain that they only change the employee schedule. A service date must also be open in the service availability configuration. Public availability responses include reason codes so storefronts can distinguish a closed service date, policy restriction, full capacity, missing staff selection, and staff unavailability instead of showing one generic empty state.

@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = '0.5.1-hotfix.1';
+  const VERSION = '0.5.1-hotfix.2';
   const API_BASE = 'https://appointment.toolkit.fans';
   const CACHE_TTL = 5 * 60 * 1000;
   const SELECTOR = '[data-appointment-lite]:not([data-al-ready])';
@@ -73,6 +73,16 @@
     }
     info(`${label}: request succeeded.`, { status: response.status, url: target.toString() });
     return payload;
+  }
+
+  function emptyAvailabilityMessage(payload = {}) {
+    const reason = String(payload.reason || '');
+    if (reason === 'SERVICE_CLOSED') return 'This service is not available on this date. Staff special hours do not open a closed service date.';
+    if (reason === 'POLICY_BLOCKED') return 'This date is outside the service booking notice or booking window.';
+    if (reason === 'CAPACITY_FULL') return 'This date is fully booked.';
+    if (reason === 'STAFF_UNAVAILABLE') return "The selected staff member is not available during this service's bookable times on this date.";
+    if (reason === 'STAFF_SELECTION_REQUIRED') return 'Choose a staff member to see availability.';
+    return 'No times available on this date.';
   }
 
   function contextFor(widget) {
@@ -415,7 +425,7 @@
       times.innerHTML = '<span class="al-muted">Loading times…</span>';
       try {
         const payload = await requestJson(apiUrl('/api/public/availability', { ...context, date: dateInput.value }), {}, 'reschedule availability');
-        times.innerHTML = payload.slots.length ? payload.slots.map(time => `<button type="button" class="al-time" data-time="${time}" aria-pressed="false">${time}</button>`).join('') : '<span class="al-muted">No times available on this date.</span>';
+        times.innerHTML = payload.slots.length ? payload.slots.map(time => `<button type="button" class="al-time" data-time="${time}" aria-pressed="false">${time}</button>`).join('') : `<span class="al-muted">${text(emptyAvailabilityMessage(payload))}</span>`;
         times.querySelectorAll('.al-time').forEach(button => button.addEventListener('click', async () => {
           selectedTime = button.dataset.time;
           times.querySelectorAll('.al-time').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
@@ -541,10 +551,10 @@
         if (payload.requiresStaffSelection) { times.innerHTML = '<span class="al-muted">Choose a staff member first.</span>'; return; }
         if (mode === 'all_day') {
           selectedAllDayDate = payload.available ? dateInput.value : '';
-          times.innerHTML = payload.available ? `<div class="al-all-day"><strong>Available all day</strong><span>${payload.remaining > 1 ? `${payload.remaining} bookings remaining` : 'This date can be booked'}</span></div>` : '<span class="al-muted">This date is unavailable.</span>';
+          times.innerHTML = payload.available ? `<div class="al-all-day"><strong>Available all day</strong><span>${payload.remaining > 1 ? `${payload.remaining} bookings remaining` : 'This date can be booked'}</span></div>` : `<span class="al-muted">${text(emptyAvailabilityMessage(payload))}</span>`;
           return;
         }
-        times.innerHTML = payload.slots.length ? payload.slots.map(time => `<button type="button" class="al-time" data-time="${time}" aria-pressed="false">${time}</button>`).join('') : '<span class="al-muted">No times available on this date.</span>';
+        times.innerHTML = payload.slots.length ? payload.slots.map(time => `<button type="button" class="al-time" data-time="${time}" aria-pressed="false">${time}</button>`).join('') : `<span class="al-muted">${text(emptyAvailabilityMessage(payload))}</span>`;
         times.querySelectorAll('.al-time').forEach(button => button.addEventListener('click', async () => {
           if (mode === 'multi_slot') {
             const item = { date: dateInput.value, time: button.dataset.time };

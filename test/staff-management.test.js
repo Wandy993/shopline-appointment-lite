@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 import { readFile } from 'node:fs/promises';
 import { validateRuleInput, validateStaffInput } from '../src/lib/validation.js';
 import { StaffReservation } from '../src/models/StaffReservation.js';
+import { slotsForDate } from '../src/lib/slots.js';
 import {
   StaffConflictError,
   normalizedStaffAssignment,
@@ -114,6 +115,33 @@ test('service rule validation keeps staff assignment independent from service an
   assert.deepEqual(result.errors, []);
   assert.deepEqual(result.value.staffAssignment, { mode: 'fixed', staffIds: [staffId] });
   assert.deepEqual(normalizedStaffAssignment(result.value), { mode: 'fixed', staffIds: [staffId] });
+});
+
+test('staff special hours open the employee schedule but still intersect with the service schedule', async () => {
+  const staffId = oid();
+  const sunday = '2026-08-30';
+  const member = staff(staffId, 'Timy');
+  member.availabilityExceptions = [{ date: sunday, closed: false, windows: [{ start: '13:00', end: '16:00' }] }];
+  const closedService = rule({
+    weeklyAvailability: monday,
+    availabilityExceptions: [],
+    duration: 60, buffer: 0,
+    staffAssignment: { mode: 'customer_choice', staffIds: [staffId] }
+  });
+  assert.equal(staffScheduleAllowsOccurrence(member, closedService, { date: sunday, time: '13:00' }), true);
+  assert.deepEqual(slotsForDate(closedService, sunday), []);
+
+  const openService = {
+    ...closedService,
+    availabilityExceptions: [{ date: sunday, closed: false, windows: [{ start: '13:00', end: '16:00' }] }]
+  };
+  const baseSlots = slotsForDate(openService, sunday);
+  assert.deepEqual(baseSlots, ['13:00', '14:00', '15:00']);
+  const result = await staffAvailabilityForDate({
+    shopId, rule: openService, date: sunday, baseSlots, requestedStaffId: String(staffId),
+    StaffModel: staffModel([member]), StaffReservationModel: reservationModel()
+  });
+  assert.deepEqual(result.slots, ['13:00', '14:00', '15:00']);
 });
 
 test('staff work windows include service buffer when deciding availability', () => {

@@ -5,7 +5,7 @@ import { AppointmentRule } from '../models/AppointmentRule.js';
 import { Booking } from '../models/Booking.js';
 import { BookingReservation } from '../models/BookingReservation.js';
 import { publicStaffOptions, staffAvailabilityForDate } from '../services/staffing.js';
-import { addDays, bookingModeFor, filterSlotsByCapacity, futureSlotsForDate, isAllDayBookableDate, zonedNow } from '../lib/slots.js';
+import { addDays, bookingModeFor, filterSlotsByCapacity, futureSlotsForDate, isAllDayBookableDate, isDateAllowed, slotsForDate, zonedNow } from '../lib/slots.js';
 import { validateBookingInput, validateDateInput, validateSlotInput } from '../lib/validation.js';
 import { cancelManagedBooking, createBookingForStore, getLegacyBookingStatus, getManagedAvailability, getManagedBooking, rescheduleManagedBooking } from '../services/bookings.js';
 import { findInstalledShop, validShopHandle, validShoplineStoreId } from '../services/shops.js';
@@ -119,23 +119,41 @@ publicRouter.get('/availability', async (req, res) => {
   res.set('Cache-Control', 'no-store');
   if (mode === 'all_day') {
     const count = reservations.length + legacyBookings.length;
-    const baseAvailable = isAllDayBookableDate(result.rule, date, timezone) && count < capacity;
+    const serviceOpen = isDateAllowed(result.rule, date);
+    const withinPolicy = serviceOpen && isAllDayBookableDate(result.rule, date, timezone);
+    const hasCapacity = count < capacity;
+    const baseAvailable = withinPolicy && hasCapacity;
     const staffing = baseAvailable
       ? await staffAvailabilityForDate({ shopId: result.shop._id, rule: result.rule, date, requestedStaffId, selectedOccurrences })
       : { managed: false, requiresStaffSelection: false, availableAllDay: false };
+    const available = baseAvailable && staffing.availableAllDay;
+    let reason = '';
+    if (!serviceOpen) reason = 'SERVICE_CLOSED';
+    else if (!withinPolicy) reason = 'POLICY_BLOCKED';
+    else if (!hasCapacity) reason = 'CAPACITY_FULL';
+    else if (staffing.requiresStaffSelection) reason = 'STAFF_SELECTION_REQUIRED';
+    else if (staffing.managed && !staffing.availableAllDay) reason = 'STAFF_UNAVAILABLE';
     return res.json({
       date, timezone, storeDate: zonedNow(timezone).date, bookingMode: mode,
-      available: baseAvailable && staffing.availableAllDay, remaining: Math.max(0, capacity - count), capacity, slots: [],
+      available, remaining: Math.max(0, capacity - count), capacity, slots: [], reason,
       requiresStaffSelection: staffing.requiresStaffSelection || false
     });
   }
+  const serviceSlots = slotsForDate(result.rule, date);
   const allSlots = futureSlotsForDate(result.rule, date, timezone);
   const booked = [...reservations.map(item => ({ time: item.time })), ...legacyBookings];
   const capacitySlots = filterSlotsByCapacity(allSlots, booked, capacity);
   const staffing = await staffAvailabilityForDate({ shopId: result.shop._id, rule: result.rule, date, baseSlots: capacitySlots, requestedStaffId, selectedOccurrences });
+  const finalSlots = staffing.managed ? staffing.slots : capacitySlots;
+  let reason = '';
+  if (!serviceSlots.length) reason = 'SERVICE_CLOSED';
+  else if (!allSlots.length) reason = 'POLICY_BLOCKED';
+  else if (!capacitySlots.length) reason = 'CAPACITY_FULL';
+  else if (staffing.requiresStaffSelection) reason = 'STAFF_SELECTION_REQUIRED';
+  else if (staffing.managed && !finalSlots.length) reason = 'STAFF_UNAVAILABLE';
   res.json({
     date, timezone, storeDate: zonedNow(timezone).date, bookingMode: mode,
-    slots: staffing.managed ? staffing.slots : capacitySlots, capacity,
+    slots: finalSlots, capacity, reason,
     requiresStaffSelection: staffing.requiresStaffSelection || false
   });
 });

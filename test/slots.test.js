@@ -39,6 +39,19 @@ test('60-minute service plus 15-minute buffer explains the 09:00-17:00 storefron
   assert.deepEqual(slotsForDate(fullDayRule, '2026-08-28'), ['09:00', '10:15', '11:30', '12:45', '14:00', '15:15']);
 });
 
+
+test('one-off open exception can open a normally closed weekday', () => {
+  const exceptionSchedule = {
+    duration: 60,
+    buffer: 0,
+    weeklyAvailability: [{ weekday: 1, enabled: true, windows: [{ start: '09:00', end: '17:00' }] }],
+    availabilityExceptions: [{ date: '2026-08-30', closed: false, windows: [{ start: '13:00', end: '16:00' }] }]
+  };
+  assert.equal(weekdayForDate('2026-08-30'), 0);
+  assert.equal(isDateAllowed(exceptionSchedule, '2026-08-30'), true);
+  assert.deepEqual(slotsForDate(exceptionSchedule, '2026-08-30'), ['13:00', '14:00', '15:00']);
+});
+
 test('past slots are filtered using the store time zone rather than the customer device time zone', () => {
   const now = new Date('2026-08-24T10:30:00.000Z');
   const sameDayRule = {

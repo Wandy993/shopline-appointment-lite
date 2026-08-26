@@ -79,6 +79,16 @@ function renderStaffPicker(options = []) {
   }));
 }
 
+function emptyAvailabilityMessage(payload = {}) {
+  const reason = String(payload.reason || '');
+  if (reason === 'SERVICE_CLOSED') return 'This service is not available on this date. Staff special hours do not open a closed service date.';
+  if (reason === 'POLICY_BLOCKED') return 'This date is outside the service booking notice or booking window.';
+  if (reason === 'CAPACITY_FULL') return 'This date is fully booked.';
+  if (reason === 'STAFF_UNAVAILABLE') return "The selected staff member is not available during this service's bookable times on this date.";
+  if (reason === 'STAFF_SELECTION_REQUIRED') return 'Choose a staff member to see availability.';
+  return 'No times available on this date.';
+}
+
 function bookingMode() { return ['slot', 'all_day', 'multi_slot'].includes(rule?.bookingMode) ? rule.bookingMode : 'slot'; }
 function occurrenceKey(item) { return `${item.date}T${item.time}`; }
 
@@ -171,10 +181,10 @@ async function loadAvailability(date) {
       selectedAllDayDate = payload.available ? date : '';
       root.innerHTML = payload.available
         ? `<div class="all-day-available"><strong>Available all day</strong><span>${payload.remaining > 1 ? `${payload.remaining} bookings remaining` : 'This date can be booked'}</span></div>`
-        : '<span class="muted">This date is unavailable.</span>';
+        : `<span class="muted">${escapeHtml(emptyAvailabilityMessage(payload))}</span>`;
       return;
     }
-    root.innerHTML = payload.slots.length ? payload.slots.map(time => `<button type="button" class="time-slot" data-time="${time}" aria-pressed="false">${time}</button>`).join('') : '<span class="muted">No times available on this date.</span>';
+    root.innerHTML = payload.slots.length ? payload.slots.map(time => `<button type="button" class="time-slot" data-time="${time}" aria-pressed="false">${time}</button>`).join('') : `<span class="muted">${escapeHtml(emptyAvailabilityMessage(payload))}</span>`;
     root.querySelectorAll('.time-slot').forEach(button => button.addEventListener('click', async () => {
       if (bookingMode() === 'multi_slot') {
         const item = { date, time: button.dataset.time };
