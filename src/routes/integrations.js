@@ -9,6 +9,7 @@ import {
   listOwnedGoogleCalendars,
   readGoogleCalendarState
 } from '../services/google-calendar.js';
+import { queueUpcomingGoogleCalendarBookingsForStaff } from '../services/calendar-sync.js';
 
 export const integrationsRouter = Router();
 
@@ -45,7 +46,7 @@ integrationsRouter.get('/google/callback', async (req, res) => {
     const primary = calendars.find(item => item.primary);
     const scopes = String(tokens.scope || '').split(/\s+/).filter(Boolean);
 
-    await CalendarConnection.findOneAndUpdate(
+    const connection = await CalendarConnection.findOneAndUpdate(
       { shopId: shop._id, staffId: staff._id, provider: 'google' },
       {
         $set: {
@@ -55,6 +56,8 @@ integrationsRouter.get('/google/callback', async (req, res) => {
           calendarTimeZone: selected.timeZone,
           refreshTokenEncrypted: encryptedRefreshToken,
           scopes: scopes.length ? scopes : GOOGLE_CALENDAR_SCOPES,
+          syncAppointments: existing?.syncAppointments !== false,
+          sendCustomerInvites: existing?.sendCustomerInvites !== false,
           status: 'connected',
           lastError: '',
           connectedAt: existing?.connectedAt || new Date(),
@@ -64,6 +67,7 @@ integrationsRouter.get('/google/callback', async (req, res) => {
       { upsert: true, new: true }
     );
 
+    if (connection.syncAppointments !== false) queueUpcomingGoogleCalendarBookingsForStaff({ shopId: shop._id, staffId: staff._id });
     res.redirect(completeUrl('connected', { staffId: staff._id, staffName: staff.name, calendar: selected.summary }));
   } catch (error) {
     console.warn('Google Calendar OAuth callback failed:', error.message);

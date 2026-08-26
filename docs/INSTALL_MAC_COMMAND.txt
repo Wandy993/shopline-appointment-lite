@@ -1,3 +1,3 @@
-# Use the one-click Mac command delivered alongside the v0.6.0 Google Calendar Foundation release ZIP.
-# The command verifies the final ZIP SHA-256 before overlaying the existing Appointment Lite Git repository.
-# v0.6.0 does not change the Theme App Extension, so sl extension push is intentionally skipped.
+# Use the one-click Mac release command delivered alongside the Appointment Lite v0.6.0.1 ZIP.
+# The command performs the safe overlay, tests, Git push, and Railway deployment.
+# Theme Extension push is skipped because this release contains no storefront extension changes.

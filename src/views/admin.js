@@ -35,7 +35,7 @@ export function adminPage() {
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light">
   <title>Appointment Lite</title>
-  <link rel="stylesheet" href="/admin/styles.css?v=0.6.0">
+  <link rel="stylesheet" href="/admin/styles.css?v=0.6.0-google-sync.1">
 </head>
 <body>
   <div class="app-shell">
@@ -120,7 +120,7 @@ export function adminPage() {
 
 
         <section id="calendarView" class="view hidden">
-          <div class="page-heading"><div><span class="eyebrow">CALENDAR INTEGRATIONS</span><h1>Calendar Sync</h1><p>Connect each staff member to an owned Google Calendar and choose the calendar Appointment Lite will use.</p></div><span id="calendarFoundationBadge" class="status-badge enabled">Foundation</span></div>
+          <div class="page-heading"><div><span class="eyebrow">CALENDAR INTEGRATIONS</span><h1>Calendar Sync</h1><p>Connect each staff member to an owned Google Calendar. Appointment Lite will create and maintain appointment events automatically.</p></div><span id="calendarFoundationBadge" class="status-badge enabled">Live sync</span></div>
           <article class="panel calendar-foundation-panel"><div class="calendar-provider-mark">G</div><div class="calendar-foundation-copy"><div class="panel-head"><div><span class="eyebrow">GOOGLE CALENDAR</span><h2 id="calendarConfigTitle">Checking Google Calendar setup…</h2></div><span id="calendarConfigBadge" class="status-badge disabled">Checking</span></div><p id="calendarConfigText">Appointment Lite is checking whether Google OAuth credentials are configured.</p><div id="calendarConfigMeta" class="calendar-config-meta"></div></div></article>
           <div class="calendar-section-head"><div><span class="eyebrow">STAFF CALENDARS</span><h2>Connect staff calendars</h2><p>Each active staff member can connect a separate Google account and choose one owned calendar.</p></div></div>
           <div id="calendarStaffList" class="calendar-staff-list"><div class="panel loading">Loading calendar connections…</div></div>
@@ -222,7 +222,7 @@ export function adminPage() {
   <dialog id="calendarDialog" class="modal compact-modal calendar-modal">
     <form id="calendarForm">
       <div class="modal-head"><div><span class="eyebrow">GOOGLE CALENDAR</span><h2 id="calendarDialogTitle">Choose calendar</h2><p id="calendarDialogSubtitle">Choose the owned calendar Appointment Lite should use for this staff member.</p></div><button type="button" class="icon-button" data-close-calendar-dialog aria-label="Close">${icons.close}</button></div>
-      <div class="modal-body"><input id="calendarStaffId" type="hidden"><div id="calendarAccountNotice" class="inline-notice">Loading Google calendars…</div><div class="field"><label for="calendarSelect">Calendar</label><select id="calendarSelect"><option value="">Loading calendars…</option></select><p class="hint">v0.6.0 connects and selects the calendar. Appointment event sync and busy-time blocking are enabled in the next calendar-sync milestone.</p></div><div id="calendarFormError" class="form-error hidden" role="alert"></div></div>
+      <div class="modal-body"><input id="calendarStaffId" type="hidden"><div id="calendarAccountNotice" class="inline-notice">Loading Google calendars…</div><div class="field"><label for="calendarSelect">Calendar</label><select id="calendarSelect"><option value="">Loading calendars…</option></select><p class="hint">Appointment events now sync automatically. Google busy-time conflict blocking is planned for the next calendar milestone.</p></div><div id="calendarFormError" class="form-error hidden" role="alert"></div></div>
       <div class="modal-actions"><button type="button" class="secondary" data-close-calendar-dialog>Cancel</button><button id="saveCalendarSelection" type="submit" class="primary">Save calendar</button></div>
     </form>
   </dialog>
@@ -249,7 +249,7 @@ export function adminPage() {
   </dialog>
 
   <dialog id="confirmDialog" class="confirm-modal"><div class="confirm-icon">!</div><div class="confirm-copy"><h2 id="confirmTitle">Please confirm</h2><p id="confirmMessage"></p></div><div class="modal-actions"><button id="confirmNo" class="secondary">Keep it</button><button id="confirmYes" class="danger">Confirm</button></div></dialog>
-  <script type="module" src="/admin/app.js?v=0.6.0"></script>
+  <script type="module" src="/admin/app.js?v=0.6.0-google-sync.1"></script>
 </body>
 </html>`;
 }

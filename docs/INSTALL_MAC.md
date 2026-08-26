@@ -1,7 +1,17 @@
-# Appointment Lite v0.6.0 Google Calendar Foundation
+# Appointment Lite v0.6.0.1 Appointment → Google Calendar Sync
 
-Use the v0.6.0 release ZIP together with its one-click Mac release command. The command backs up interrupted local work, restores the Git baseline, overlays the release, installs locked dependencies, runs the full test suite and JavaScript checks, commits/pushes Git, and queues the Railway deployment.
+Use the release ZIP together with the one-click Mac command delivered alongside it.
 
-This release does **not** modify the storefront Theme App Extension, so the command intentionally skips `sl extension push`.
+The command:
 
-After deployment, configure the four Google Calendar variables in Railway and redeploy/restart the app if those variables were not already present. See [GOOGLE_CALENDAR.md](GOOGLE_CALENDAR.md).
+1. verifies the release ZIP;
+2. preserves any interrupted local work;
+3. syncs Git and creates a backup tag;
+4. overlays the release while preserving `.env`, `.shopline-cli.yml`, and the generated Theme App Extension directory;
+5. runs `npm ci`, the complete test suite, and JavaScript checks;
+6. commits and pushes Git;
+7. queues the Railway deployment.
+
+v0.6.0.1 does not modify `theme-extension-source`, so `sl extension push` is intentionally skipped.
+
+After Railway deploys, open **Calendar Sync**. Existing v0.6.0 staff connections can use **Sync now** to backfill upcoming appointments; new bookings sync automatically.

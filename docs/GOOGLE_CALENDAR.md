@@ -1,34 +1,90 @@
-# Google Calendar Foundation
+# Google Calendar Sync
 
-Appointment Lite v0.6.0 introduces the connection and credential foundation for per-staff Google Calendar synchronization. It intentionally stops before appointment event writes or Google busy-time conflict blocking.
+Appointment Lite v0.6.0.1 activates **Appointment → Google Calendar** synchronization on top of the per-staff OAuth foundation introduced in v0.6.0.
 
-## What v0.6.0 does
+Appointment Lite remains the booking source of truth. Google Calendar is a staff calendar projection plus an optional customer invitation channel.
 
-For each active managed staff member, the merchant can:
+## What v0.6.0.1 does
 
-1. Open **Calendar Sync** in Appointment Lite Admin.
-2. Connect a Google account through OAuth 2.0.
-3. Choose one Google Calendar owned by that account.
-4. Reconnect the account, change the selected calendar, or disconnect it.
-5. See connection health and the selected calendar/time zone.
+For every active staff member with a connected Google Calendar and **Sync appointments** enabled:
 
-The OAuth callback is public but protected by a short-lived signed state containing the Appointment Lite store/staff identity. The merchant-admin endpoints remain behind the existing signed Appointment Lite admin session and CSRF protection.
+- New confirmed Appointment Lite bookings create Google Calendar events.
+- Customer online reschedules update the existing Google event instead of creating a replacement event.
+- Merchant date/time/location updates update the Google event.
+- Staff reassignment removes the old staff event and creates the event on the newly assigned staff member's connected calendar when available.
+- Customer or merchant cancellation deletes the Google event.
+- Multi-session bookings create one Google event per occurrence.
+- All-day bookings create Google all-day events with an exclusive end date.
+- Event mappings are stored on the Appointment Lite booking so retries are idempotent and lifecycle changes can reconcile the correct Google event.
+
+The Calendar Sync workspace also adds **Sync now**, which backfills/upserts upcoming confirmed bookings for that staff member. This is especially useful for connections created before v0.6.0.1.
+
+## Customer invitations
+
+Each Google connection has a **Send customer calendar invitations** switch. It is enabled by default in v0.6.0.1.
+
+When enabled:
+
+- the booking email is added to the Google event as an attendee;
+- event creation uses `sendUpdates=all` so Google can deliver an invitation;
+- reschedules/merchant updates propagate calendar updates to already-invited customers;
+- cancellations use `sendUpdates=all` so Google can deliver cancellation updates.
+
+A customer does not need a Gmail address to be added as an attendee. Delivery and automatic calendar insertion still depend on the recipient's mail/calendar provider and Google/Workspace policies.
+
+Turning customer invitations off prevents new Appointment Lite-created Google events from adding the customer as a guest. It does not silently remove a customer who was already invited to an existing Google event.
+
+## Event identity and retry safety
+
+Single-slot bookings use a deterministic Google event ID based on the Appointment Lite booking and assigned staff member. A reschedule therefore updates the same event identity.
+
+Multi-session/all-day occurrences use occurrence-aware deterministic event IDs. If a create request is retried and Google reports that the deterministic ID already exists, Appointment Lite patches the existing event instead of creating a duplicate.
+
+Every event also receives private extended properties:
+
+- `appointmentLite=1`
+- `bookingId`
+- `occurrenceKey`
+- `staffId`
+- `calendarConnectionId`
+
+These identifiers are reserved for Appointment Lite reconciliation and future busy-time filtering.
+
+## Stored sync state
+
+`CalendarConnection` stores:
+
+- `syncAppointments`
+- `sendCustomerInvites`
+- `lastSyncAt`
+- `lastSyncError`
+
+`Booking` stores Google event mappings and high-level sync health:
+
+- `calendarEvents[]`
+- `calendarSyncStatus`
+- `calendarSyncError`
+- `lastCalendarSyncAt`
+
+The encrypted refresh token remains `select:false` and is decrypted only for server-side Google API calls.
+
+## Existing v0.6.0 connections
+
+On deployment, the database compatibility pass enables `syncAppointments` and `sendCustomerInvites` for existing Google connections that predate these fields.
+
+After upgrading from v0.6.0, open **Calendar Sync** and click **Sync now** for an already-connected staff member to sync existing upcoming bookings immediately. New bookings sync automatically.
 
 ## Google Cloud setup
 
-1. Create or select a Google Cloud project.
-2. Enable **Google Calendar API**.
-3. Configure the OAuth consent screen. During development/testing, add the Google accounts that should be allowed as test users when the consent configuration requires them.
-4. Create an OAuth Client ID of type **Web application**.
-5. Add this authorized redirect URI exactly:
+The v0.6.0 configuration remains valid. No new scope is required.
+
+Enable **Google Calendar API**, create a Web application OAuth client, and keep this redirect URI aligned with Railway:
 
 ```text
 https://appointment.toolkit.fans/integrations/google/callback
 ```
 
-If `APP_URL` changes, use `<APP_URL>/integrations/google/callback` instead and keep the Railway variable and Google Cloud authorized redirect URI identical.
-
-## Railway variables
+Railway variables:
 
 ```dotenv
 GOOGLE_CALENDAR_CLIENT_ID=YOUR_WEB_CLIENT_ID.apps.googleusercontent.com
@@ -43,47 +99,23 @@ Generate the encryption key on macOS:
 openssl rand -hex 32
 ```
 
-Do not put Google credentials or the token-encryption key into Theme App Extension files or browser JavaScript.
-
 ## OAuth scopes
 
-v0.6.0 requests only:
+v0.6.0.1 continues to request only:
 
 ```text
 https://www.googleapis.com/auth/calendar.calendarlist.readonly
 https://www.googleapis.com/auth/calendar.events.owned
 ```
 
-Calendar selection is therefore restricted to calendars where Google reports `accessRole=owner`. This keeps the future event-write permission aligned with the calendars that Appointment Lite allows the merchant to select.
+Calendar selection remains restricted to calendars where Google reports `accessRole=owner`.
 
-The authorization request uses offline access so the backend can obtain a refresh token for future booking lifecycle synchronization. Google access tokens are refreshed server-side when Calendar Sync needs to verify/list calendars.
+## Disconnect and pause behavior
 
-## Stored data
+- Turning **Sync appointments** off pauses future Google changes; existing Google events remain in place.
+- Disconnecting revokes/deletes the stored Google authorization on a best-effort basis; existing Google events are not removed automatically.
+- Reassigning a booking to another staff member still attempts to remove the old staff event before syncing to the new staff calendar.
 
-A `CalendarConnection` document stores:
+## Not included yet
 
-- Appointment Lite `shopId` and `staffId`
-- provider (`google`)
-- selected Google calendar ID, display name, and time zone
-- non-secret account label
-- granted scope list
-- connection status/error timestamps
-- AES-256-GCM encrypted refresh token
-
-The schema marks the refresh-token field `select:false`, so ordinary queries do not return it. A unique index allows one Google connection per store/staff/provider combination.
-
-## Disconnect behavior
-
-Disconnect attempts to revoke the stored Google refresh token. A Google revocation/network failure does not trap the merchant in a connected state: Appointment Lite logs the warning and still deletes the local credential record.
-
-## Explicitly not included yet
-
-Foundation does not yet:
-
-- create Google Calendar events after a booking
-- update/delete Google events on reschedule/cancel
-- read Google events as staff busy time
-- use push notifications or incremental sync tokens
-- send Google invitations to customers
-
-Those behaviors should be added after the connection foundation is proven stable. Appointment Lite remains the source of truth for booking, capacity, staff-reservation, and customer-notification rules.
+v0.6.0.1 does **not** read Google Calendar events as staff busy time. Google → Appointment Lite conflict blocking, incremental sync, and push notifications remain the next calendar milestone.

@@ -12,6 +12,7 @@ import {
 } from './email.js';
 import { findInstalledShop } from './shops.js';
 import { normalizedStaffAssignment, releaseStaffReservations, reserveStaffForBooking, staffAvailabilityForDate } from './staffing.js';
+import { queueBookingGoogleCalendarSync } from './calendar-sync.js';
 
 export class SlotConflictError extends Error { constructor() { super('This time is at capacity. Please choose another slot.'); this.code = 'SLOT_CONFLICT'; } }
 
@@ -243,6 +244,7 @@ export async function createBookingAtomic({ shop, rule, input, BookingModel = Bo
   }
   Promise.resolve(notify(booking, shop.email, managementToken, shop.emailSettings || null)).catch(error => console.error('Email notification failed', error.message));
   if (BookingModel === Booking && booking.staffId) Promise.resolve(sendStaffAssignedNotification(booking, shop.emailSettings || null)).catch(error => console.error('Staff assignment email failed', error.message));
+  if (BookingModel === Booking) queueBookingGoogleCalendarSync(booking._id, 'created');
   return { booking, managementToken };
 }
 
@@ -310,6 +312,7 @@ export async function cancelManagedBooking({ bookingId, token, BookingModel = Bo
   if (activeStaffReservationModel) await releaseStaffReservations({ bookingId: booking._id, StaffReservationModel: activeStaffReservationModel });
   Promise.resolve(notify(booking)).catch(error => console.error('Cancellation email notification failed', error.message));
   if (BookingModel === Booking && booking.staffId) Promise.resolve(sendStaffCancelledNotification(booking)).catch(error => console.error('Staff cancellation email failed', error.message));
+  if (BookingModel === Booking) queueBookingGoogleCalendarSync(booking._id, 'customer_cancelled');
   return booking;
 }
 
@@ -370,6 +373,7 @@ export async function rescheduleManagedBooking({ bookingId, token, date, time, B
   await syncSingleReservation({ ReservationModel: reservationModelFor(BookingModel, ReservationModel), booking: updated, rule });
   Promise.resolve(notify(updated, token)).catch(error => console.error('Reschedule email notification failed', error.message));
   if (BookingModel === Booking && (updated.staffId || booking.staffId)) Promise.resolve(sendStaffBookingUpdatedNotification(updated, booking)).catch(error => console.error('Staff reschedule email failed', error.message));
+  if (BookingModel === Booking) queueBookingGoogleCalendarSync(updated._id, 'customer_rescheduled');
   return updated;
 }
 
@@ -414,6 +418,7 @@ export async function updateBookingByMerchant({ shopObjectId, bookingId, input, 
   await syncSingleReservation({ ReservationModel: reservationModelFor(BookingModel, ReservationModel), booking: updated, rule });
   const notification = await Promise.resolve(notify(updated)).catch(error => ({ skipped: false, attempted: 1, failed: 1, reason: error.message }));
   if (BookingModel === Booking && (updated.staffId || booking.staffId)) Promise.resolve(sendStaffBookingUpdatedNotification(updated, booking)).catch(error => console.error('Staff update email failed', error.message));
+  if (BookingModel === Booking) queueBookingGoogleCalendarSync(updated._id, 'merchant_updated');
   return { booking: updated, notification };
 }
 
@@ -434,6 +439,7 @@ export async function cancelBookingByMerchant({ shopObjectId, bookingId, Booking
   if (activeStaffReservationModel) await releaseStaffReservations({ bookingId: booking._id, StaffReservationModel: activeStaffReservationModel });
   const notification = await Promise.resolve(notify(booking)).catch(error => ({ skipped: false, attempted: 1, failed: 1, reason: error.message }));
   if (BookingModel === Booking && booking.staffId) Promise.resolve(sendStaffCancelledNotification(booking)).catch(error => console.error('Staff cancellation email failed', error.message));
+  if (BookingModel === Booking) queueBookingGoogleCalendarSync(booking._id, 'merchant_cancelled');
   return { booking, notification };
 }
 

@@ -127,6 +127,63 @@ export async function listOwnedGoogleCalendars(accessToken) {
     .sort((a, b) => Number(b.primary) - Number(a.primary) || a.summary.localeCompare(b.summary));
 }
 
+
+function calendarEventUrl(calendarId, eventId = '') {
+  const base = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(String(calendarId || ''))}/events`;
+  return eventId ? `${base}/${encodeURIComponent(String(eventId))}` : base;
+}
+
+async function googleEventJson({ accessToken, target, method, event, message }) {
+  const response = await fetch(target, {
+    method,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: event === undefined ? undefined : JSON.stringify(event)
+  });
+  return readJson(response, message);
+}
+
+export async function createGoogleCalendarEvent({ accessToken, calendarId, event, sendUpdates = '' }) {
+  const target = new URL(calendarEventUrl(calendarId));
+  if (sendUpdates) target.searchParams.set('sendUpdates', sendUpdates);
+  return googleEventJson({
+    accessToken,
+    target,
+    method: 'POST',
+    event,
+    message: 'Could not create Google Calendar event'
+  });
+}
+
+export async function patchGoogleCalendarEvent({ accessToken, calendarId, eventId, event, sendUpdates = '' }) {
+  const target = new URL(calendarEventUrl(calendarId, eventId));
+  if (sendUpdates) target.searchParams.set('sendUpdates', sendUpdates);
+  return googleEventJson({
+    accessToken,
+    target,
+    method: 'PATCH',
+    event,
+    message: 'Could not update Google Calendar event'
+  });
+}
+
+export async function deleteGoogleCalendarEvent({ accessToken, calendarId, eventId, sendUpdates = '' }) {
+  const target = new URL(calendarEventUrl(calendarId, eventId));
+  if (sendUpdates) target.searchParams.set('sendUpdates', sendUpdates);
+  const response = await fetch(target, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+  if (response.ok || response.status === 404 || response.status === 410) return true;
+  const payload = await response.json().catch(() => ({}));
+  const detail = payload.error_description || payload.error?.message || payload.error || '';
+  const error = providerError(detail ? `Could not delete Google Calendar event: ${detail}` : 'Could not delete Google Calendar event', 502);
+  error.providerStatus = response.status;
+  throw error;
+}
+
 export function encryptGoogleRefreshToken(refreshToken) {
   return encryptSecret(refreshToken, config.googleCalendar.tokenEncryptionKey);
 }
@@ -163,8 +220,12 @@ export function publicConnection(connection) {
     calendarName: connection.calendarName || '',
     calendarTimeZone: connection.calendarTimeZone || '',
     status: connection.status || 'connected',
+    syncAppointments: connection.syncAppointments !== false,
+    sendCustomerInvites: connection.sendCustomerInvites !== false,
     connectedAt: connection.connectedAt || connection.createdAt || null,
     lastVerifiedAt: connection.lastVerifiedAt || null,
+    lastSyncAt: connection.lastSyncAt || null,
+    lastSyncError: connection.lastSyncError || '',
     lastError: connection.lastError || ''
   };
 }

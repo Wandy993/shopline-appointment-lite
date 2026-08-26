@@ -1,6 +1,6 @@
 # Appointment Lite for SHOPLINE
 
-Version `0.6.0` — adds the Google Calendar Foundation: each managed staff member can connect a Google account, choose an owned calendar, and keep an encrypted offline OAuth grant ready for appointment synchronization in the next release. The existing storefront Theme App Extension remains unchanged at `0.5.4-hotfix.3`.
+Release `v0.6.0.1` (internal package version `0.6.0-google-sync.1`) activates Appointment → Google Calendar synchronization: connected staff calendars receive new bookings, reschedules, merchant edits, staff reassignments, and cancellations; customer calendar invitations are configurable and enabled by default. The storefront Theme App Extension remains unchanged at `0.5.4-hotfix.3`.
 
 Appointment Lite now supports two booking entry models:
 
@@ -15,6 +15,21 @@ Typical scenarios include furniture installation and measurements, showroom visi
 
 
 
+
+## v0.6.0.1 Appointment → Google Calendar Sync
+
+- Activates live Google event creation for new confirmed bookings assigned to staff with connected calendars.
+- Keeps single-slot reschedules on the same Google event identity so customers receive an update instead of a cancellation/new-invite pair.
+- Syncs merchant date/time/location edits, staff reassignment, and customer/merchant cancellation.
+- Supports multi-session and all-day Google event projections.
+- Adds deterministic event IDs plus private Appointment Lite extended properties for retry-safe reconciliation.
+- Adds per-staff **Sync appointments** and **Send customer calendar invitations** controls. Customer invitations are enabled by default and use Google `sendUpdates=all`.
+- Adds **Sync now** so staff connections created on v0.6.0 can backfill existing upcoming bookings immediately.
+- Persists Google event mappings and sync health on bookings while keeping refresh tokens encrypted and excluded from normal queries.
+- Keeps Google busy-time blocking out of this milestone; Appointment Lite remains the source of truth for availability and capacity.
+- Does **not** change `theme-extension-source`; no SHOPLINE Theme Extension push is required.
+
+See [Google Calendar sync](docs/GOOGLE_CALENDAR.md).
 
 ## v0.6.0 Google Calendar Foundation
 

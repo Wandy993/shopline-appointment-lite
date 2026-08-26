@@ -37,6 +37,21 @@ const bookingEventSchema = new mongoose.Schema({
   to: { type: bookingSnapshotSchema, default: undefined }
 }, { _id: true });
 
+
+const calendarEventSchema = new mongoose.Schema({
+  provider: { type: String, enum: ['google'], default: 'google' },
+  connectionId: { type: mongoose.Schema.Types.ObjectId, ref: 'CalendarConnection', default: null },
+  staffId: { type: mongoose.Schema.Types.ObjectId, ref: 'Staff', default: null },
+  calendarId: { type: String, default: '', maxlength: 1024 },
+  occurrenceKey: { type: String, default: '', maxlength: 300 },
+  eventId: { type: String, default: '', maxlength: 1024 },
+  htmlLink: { type: String, default: '', maxlength: 2000 },
+  customerInvited: { type: Boolean, default: false },
+  status: { type: String, enum: ['synced', 'error', 'deleted', 'orphaned'], default: 'synced' },
+  lastError: { type: String, default: '', maxlength: 500 },
+  lastSyncedAt: Date
+}, { _id: false });
+
 const bookingSchema = new mongoose.Schema({
   shopId: { type: mongoose.Schema.Types.ObjectId, ref: 'Shop', required: true, index: true },
   ruleId: { type: mongoose.Schema.Types.ObjectId, ref: 'AppointmentRule', required: true, index: true },
@@ -68,6 +83,10 @@ const bookingSchema = new mongoose.Schema({
   note: { type: String, default: '', maxlength: 2000 },
   answers: { type: [answerSchema], default: [] },
   events: { type: [bookingEventSchema], default: [] },
+  calendarEvents: { type: [calendarEventSchema], default: [] },
+  calendarSyncStatus: { type: String, enum: ['pending', 'synced', 'error', 'paused', 'not_connected'], default: 'pending' },
+  calendarSyncError: { type: String, default: '', maxlength: 500 },
+  lastCalendarSyncAt: Date,
   status: { type: String, enum: ['confirmed', 'cancelled', 'completed', 'no_show'], default: 'confirmed', index: true },
   cancelledAt: Date,
   completedAt: Date,

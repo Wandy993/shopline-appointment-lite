@@ -311,7 +311,18 @@ Object.assign(zh, {
   'Appointment Lite will remove the stored Google authorization for this staff member. Existing appointments are not changed.': 'Appointment Lite 会删除该员工已保存的 Google 授权；现有预约不会发生变化。',
   'Disconnect calendar': '断开日历', 'Allow pop-ups to connect Google Calendar, then try again.': '请允许浏览器弹窗后重新连接 Google 日历。',
   'Choose a Google Calendar.': '请选择一个 Google 日历。', 'No owned calendars are available for this account.': '该 Google 账号没有可用的本人日历。',
-  'Connection foundation ready': '日历连接基础能力已就绪', 'Appointment event sync and busy-time blocking are not active in v0.6.0 yet.': 'v0.6.0 暂不启用预约事件写入和 Google 忙碌时间拦截。'
+  'Connection foundation ready': '日历连接基础能力已就绪', 'Appointment event sync and busy-time blocking are not active in v0.6.0 yet.': 'v0.6.0 暂不启用预约事件写入和 Google 忙碌时间拦截。',
+  'Live appointment sync': '预约同步已启用', 'Google Calendar sync is active.': 'Google 日历预约同步已启用。',
+  'New bookings, reschedules, staff changes, and cancellations sync automatically. Google busy-time blocking is not active yet.': '新预约、改期、员工变更和取消会自动同步到 Google 日历；Google 忙碌时间拦截将在后续版本启用。',
+  'Sync appointments': '同步预约', 'Create, update, move, and cancel Google Calendar events automatically.': '自动创建、更新、转移和取消 Google 日历事件。',
+  'Send customer calendar invitations': '向客户发送日历邀请', 'Invite the booking email as a Google Calendar guest.': '将预约邮箱作为 Google 日历参与者并发送邀请。',
+  'Sync now': '立即同步', 'Calendar sync started.': '日历同步已完成。', 'Calendar sync settings saved.': '日历同步设置已保存。',
+  'Last sync': '最近同步', 'Not synced yet': '尚未同步', 'Sync error': '同步异常', 'Appointment sync paused': '预约同步已暂停',
+  'Customer invitations on': '客户邀请开启', 'Customer invitations off': '客户邀请关闭',
+  'Turn on appointment sync before using Sync now.': '请先开启预约同步，再执行立即同步。', 'Calendar sync completed with errors.': '日历同步完成，但存在错误。',
+  'Live sync': '实时同步',
+  'Connect each staff member to an owned Google Calendar. Appointment Lite will create and maintain appointment events automatically.': '为每位员工连接其拥有的 Google 日历，Appointment Lite 会自动创建并维护预约事件。',
+  'Appointment events now sync automatically. Google busy-time conflict blocking is planned for the next calendar milestone.': '预约事件现已自动同步；Google 忙碌时间冲突拦截将在下一阶段加入。'
 });
 
 const enByZh = new Map(Object.entries(zh).map(([english, chinese]) => [chinese, english]));
@@ -365,7 +376,7 @@ const staffAvatarPresets = ['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunse
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp' };
 function staffPresetImage(preset) {
   const file = staffAvatarFiles[preset] || staffAvatarFiles.aurora;
-  return `<img src="/assets/staff/${file}?v=0.6.0" alt="" loading="lazy" decoding="async">`;
+  return `<img src="/assets/staff/${file}?v=0.6.0-google-sync.1" alt="" loading="lazy" decoding="async">`;
 }
 let staffAvatarDraft = { kind: 'preset', value: 'aurora' };
 
@@ -717,14 +728,14 @@ function renderCalendarSync() {
   const configText = $('#calendarConfigText');
   const configBadge = $('#calendarConfigBadge');
   const configMeta = $('#calendarConfigMeta');
-  if (configTitle) configTitle.textContent = t(configured ? 'Google Calendar is ready to connect.' : 'Google Calendar is not configured yet.');
-  if (configText) configText.textContent = t(configured ? 'Connection foundation ready' : 'Add the Google Calendar Railway variables before connecting staff accounts.');
+  if (configTitle) configTitle.textContent = t(configured ? 'Google Calendar sync is active.' : 'Google Calendar is not configured yet.');
+  if (configText) configText.textContent = t(configured ? 'Live appointment sync' : 'Add the Google Calendar Railway variables before connecting staff accounts.');
   if (configBadge) {
-    configBadge.textContent = t(configured ? 'OAuth credentials configured' : 'Not connected');
+    configBadge.textContent = t(configured ? 'Live appointment sync' : 'Not connected');
     configBadge.className = `status-badge ${configured ? 'enabled' : 'disabled'}`;
   }
   if (configMeta) {
-    configMeta.innerHTML = `<span><strong>${t('Redirect URI')}</strong>${escapeHtml(payload.redirectUri || '')}</span><span><strong>${t('Owned calendars only')}</strong>calendar.events.owned</span>${configured ? `<small>${t('Appointment event sync and busy-time blocking are not active in v0.6.0 yet.')}</small>` : ''}`;
+    configMeta.innerHTML = `<span><strong>${t('Redirect URI')}</strong>${escapeHtml(payload.redirectUri || '')}</span><span><strong>${t('Owned calendars only')}</strong>calendar.events.owned</span>${configured ? `<small>${t('New bookings, reschedules, staff changes, and cancellations sync automatically. Google busy-time blocking is not active yet.')}</small>` : ''}`;
   }
 
   const root = $('#calendarStaffList');
@@ -742,10 +753,18 @@ function renderCalendarSync() {
     const statusLabel = connected ? 'Connected' : errored ? 'Connection error' : active ? 'Not connected' : 'Inactive staff';
     const statusClass = connected ? 'enabled' : errored ? 'no_show' : 'disabled';
     const connectDisabled = !configured || !active;
+    const syncEnabled = connection?.syncAppointments !== false;
+    const invitesEnabled = connection?.sendCustomerInvites !== false;
+    const lastSync = connection?.lastSyncAt ? new Date(connection.lastSyncAt).toLocaleString(state.locale === 'zh-CN' ? 'zh-CN' : 'en') : t('Not synced yet');
     const action = connection
-      ? `<button type="button" class="secondary small" data-calendar-manage="${item.id}">${t('Change calendar')}</button><button type="button" class="secondary small" data-calendar-connect="${item.id}" ${connectDisabled ? 'disabled' : ''}>${t('Reconnect')}</button><button type="button" class="text-button calendar-disconnect" data-calendar-disconnect="${item.id}">${t('Disconnect')}</button>`
+      ? `<button type="button" class="secondary small" data-calendar-manage="${item.id}">${t('Change calendar')}</button><button type="button" class="secondary small" data-calendar-connect="${item.id}" ${connectDisabled ? 'disabled' : ''}>${t('Reconnect')}</button><button type="button" class="secondary small" data-calendar-sync-now="${item.id}" ${!connected || !syncEnabled ? 'disabled' : ''}>${t('Sync now')}</button><button type="button" class="text-button calendar-disconnect" data-calendar-disconnect="${item.id}">${t('Disconnect')}</button>`
       : `<button type="button" class="primary small" data-calendar-connect="${item.id}" ${connectDisabled ? 'disabled' : ''}>${t('Connect Google Calendar')}</button>`;
-    return `<article class="panel calendar-staff-card"><div class="calendar-staff-person">${staffAvatarMarkup(item)}<div><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.email || t('No contact details'))}</span></div></div><span class="status-badge ${statusClass}">${t(statusLabel)}</span><div class="calendar-staff-details"><div><span>${t('Google account')}</span><strong>${escapeHtml(connection?.accountLabel || '—')}</strong></div><div><span>${t('Selected calendar')}</span><strong>${escapeHtml(connection?.calendarName || '—')}</strong>${connection?.calendarTimeZone ? `<small>${escapeHtml(connection.calendarTimeZone)}</small>` : ''}</div></div>${errored && connection?.lastError ? `<p class="calendar-error-copy">${escapeHtml(connection.lastError)}</p>` : ''}<div class="calendar-staff-actions">${action}</div></article>`;
+    const settings = connection ? `<div class="calendar-sync-options">
+      <label class="calendar-sync-toggle"><input type="checkbox" data-calendar-setting="syncAppointments" data-calendar-staff="${item.id}" ${syncEnabled ? 'checked' : ''}><span><strong>${t('Sync appointments')}</strong><small>${t('Create, update, move, and cancel Google Calendar events automatically.')}</small></span></label>
+      <label class="calendar-sync-toggle"><input type="checkbox" data-calendar-setting="sendCustomerInvites" data-calendar-staff="${item.id}" ${invitesEnabled ? 'checked' : ''}><span><strong>${t('Send customer calendar invitations')}</strong><small>${t('Invite the booking email as a Google Calendar guest.')}</small></span></label>
+      <div class="calendar-sync-state"><span>${t('Last sync')}</span><strong>${escapeHtml(lastSync)}</strong>${connection.lastSyncError ? `<small>${t('Sync error')}: ${escapeHtml(connection.lastSyncError)}</small>` : `<small>${t(syncEnabled ? (invitesEnabled ? 'Customer invitations on' : 'Customer invitations off') : 'Appointment sync paused')}</small>`}</div>
+    </div>` : '';
+    return `<article class="panel calendar-staff-card"><div class="calendar-staff-person">${staffAvatarMarkup(item)}<div><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.email || t('No contact details'))}</span></div></div><span class="status-badge ${statusClass}">${t(statusLabel)}</span><div class="calendar-staff-details"><div><span>${t('Google account')}</span><strong>${escapeHtml(connection?.accountLabel || '—')}</strong></div><div><span>${t('Selected calendar')}</span><strong>${escapeHtml(connection?.calendarName || '—')}</strong>${connection?.calendarTimeZone ? `<small>${escapeHtml(connection.calendarTimeZone)}</small>` : ''}</div></div>${errored && connection?.lastError ? `<p class="calendar-error-copy">${escapeHtml(connection.lastError)}</p>` : ''}<div class="calendar-staff-actions">${action}</div>${settings}</article>`;
   }).join('');
 }
 
@@ -833,6 +852,39 @@ async function saveCalendarSelection(event) {
     $('#calendarFormError').textContent = t(error.message);
     $('#calendarFormError').classList.remove('hidden');
   } finally { button.disabled = false; }
+}
+
+async function saveCalendarSyncSetting(staffId, setting, value, input) {
+  if (!['syncAppointments', 'sendCustomerInvites'].includes(setting)) return;
+  if (input) input.disabled = true;
+  try {
+    await api(`/calendar/google/${encodeURIComponent(staffId)}/settings`, {
+      method: 'PATCH',
+      body: JSON.stringify({ [setting]: Boolean(value) })
+    });
+    toast(t('Calendar sync settings saved.'));
+    await loadCalendarSync({ force: true });
+  } catch (error) {
+    if (input) input.checked = !value;
+    showError(error);
+  } finally {
+    if (input) input.disabled = false;
+  }
+}
+
+async function syncGoogleCalendarNow(staffId, button) {
+  if (button) button.disabled = true;
+  try {
+    const payload = await api(`/calendar/google/${encodeURIComponent(staffId)}/sync`, { method: 'POST' });
+    const summary = payload.summary || {};
+    if (Number(summary.errors || 0) > 0) toast(`${t('Calendar sync completed with errors.')} ${Number(summary.errors)} ${t('Sync error')}`, 'error');
+    else toast(`${t('Calendar sync started.')} ${Number(summary.total || 0)} ${t('appointments')}`);
+    await loadCalendarSync({ force: true });
+  } catch (error) {
+    showError(error);
+  } finally {
+    if (button) button.disabled = false;
+  }
 }
 
 function disconnectGoogleCalendar(staffId) {
@@ -2000,10 +2052,17 @@ function bind() {
   $('#calendarStaffList')?.addEventListener('click', event => {
     const connect = event.target.closest('[data-calendar-connect]');
     const manage = event.target.closest('[data-calendar-manage]');
+    const syncNow = event.target.closest('[data-calendar-sync-now]');
     const disconnect = event.target.closest('[data-calendar-disconnect]');
     if (connect && !connect.disabled) connectGoogleCalendar(connect.dataset.calendarConnect);
     else if (manage) openCalendarManager(manage.dataset.calendarManage);
+    else if (syncNow && !syncNow.disabled) syncGoogleCalendarNow(syncNow.dataset.calendarSyncNow, syncNow);
     else if (disconnect) disconnectGoogleCalendar(disconnect.dataset.calendarDisconnect);
+  });
+  $('#calendarStaffList')?.addEventListener('change', event => {
+    const input = event.target.closest('[data-calendar-setting][data-calendar-staff]');
+    if (!input) return;
+    saveCalendarSyncSetting(input.dataset.calendarStaff, input.dataset.calendarSetting, input.checked, input);
   });
   $('#calendarForm')?.addEventListener('submit', saveCalendarSelection);
   $$('[data-close-calendar-dialog]').forEach(button => button.addEventListener('click', () => $('#calendarDialog').close()));

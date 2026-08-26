@@ -49,6 +49,11 @@ export async function ensureOperationalIndexes() {
   );
   await Booking.updateMany({ serviceType: 'product' }, { $set: { serviceType: 'appointment' } });
 
+  // v0.6.0.1: Google Calendar appointment sync is enabled by default for existing connected staff.
+  await CalendarConnection.updateMany({ syncAppointments: { $exists: false } }, { $set: { syncAppointments: true } });
+  await CalendarConnection.updateMany({ sendCustomerInvites: { $exists: false } }, { $set: { sendCustomerInvites: true } });
+  await Booking.updateMany({ calendarSyncStatus: { $exists: false } }, { $set: { calendarSyncStatus: 'pending', calendarEvents: [] } });
+
   // v0.5.0: staff management is opt-in so legacy free-text specialists keep working.
   await AppointmentRule.updateMany({ staffAssignment: { $exists: false } }, { $set: { staffAssignment: { mode: 'none', staffIds: [] } } });
 
