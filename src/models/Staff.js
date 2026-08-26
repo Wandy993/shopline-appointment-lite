@@ -17,11 +17,22 @@ const exceptionSchema = new mongoose.Schema({
   windows: { type: [windowSchema], default: [] }
 }, { _id: true });
 
+const avatarSchema = new mongoose.Schema({
+  kind: { type: String, enum: ['preset', 'custom', 'initials'], default: 'preset' },
+  value: { type: String, default: 'aurora', maxlength: 50000 }
+}, { _id: false });
+
+const notificationSchema = new mongoose.Schema({
+  emailEnabled: { type: Boolean, default: false }
+}, { _id: false });
+
 const staffSchema = new mongoose.Schema({
   shopId: { type: mongoose.Schema.Types.ObjectId, ref: 'Shop', required: true, index: true },
   name: { type: String, required: true, trim: true, maxlength: 120 },
   email: { type: String, default: '', trim: true, lowercase: true, maxlength: 254 },
   phone: { type: String, default: '', trim: true, maxlength: 40 },
+  avatar: { type: avatarSchema, default: () => ({ kind: 'preset', value: 'aurora' }) },
+  notifications: { type: notificationSchema, default: () => ({ emailEnabled: false }) },
   status: { type: String, enum: ['active', 'inactive'], default: 'active', index: true },
   weeklyAvailability: { type: [weeklySchema], default: [] },
   availabilityExceptions: { type: [exceptionSchema], default: [] }

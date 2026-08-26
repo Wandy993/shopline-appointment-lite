@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -u
 
-VERSION="0.5.0"
-RELEASE_SLUG="appointment-lite-v0.5.0-staff-management-foundation"
+VERSION="0.5.1"
+RELEASE_SLUG="appointment-lite-v0.5.1-staff-notifications-operations"
 ZIP_NAME="${RELEASE_SLUG}.zip"
 ZIP_PATH="${ZIP_PATH:-$HOME/Downloads/$ZIP_NAME}"
 TARGET_DIR="${TARGET_DIR:-$PWD}"
@@ -23,7 +23,7 @@ fail() {
 TARGET_DIR="$(cd "$TARGET_DIR" && pwd -P)" || fail "Cannot resolve project directory."
 [ -d "$TARGET_DIR/.git" ] || fail "Existing Appointment Lite Git repository not found at $TARGET_DIR"
 
-say "1/13 Check ZIP integrity"
+say "1/13 Verify release ZIP"
 unzip -t "$ZIP_PATH" >/dev/null || fail "ZIP integrity check failed."
 
 say "2/13 Check Git and sync remote before overlay"
@@ -31,7 +31,7 @@ CURRENT_BRANCH="$(git -C "$TARGET_DIR" branch --show-current)"
 [ -n "$CURRENT_BRANCH" ] || fail "Detached Git HEAD detected."
 if [ -n "$(git -C "$TARGET_DIR" status --porcelain 2>/dev/null)" ]; then
   git -C "$TARGET_DIR" status
-  fail "Working tree has uncommitted changes. Commit or stash them before applying v0.5.0."
+  fail "Working tree has uncommitted changes. Commit or stash them before applying v0.5.1."
 fi
 if git -C "$TARGET_DIR" remote get-url origin >/dev/null 2>&1; then
   git -C "$TARGET_DIR" fetch origin "$CURRENT_BRANCH" || fail "git fetch failed."
@@ -45,17 +45,17 @@ if git -C "$TARGET_DIR" remote get-url origin >/dev/null 2>&1; then
 fi
 
 say "3/13 Create upgrade backup tag"
-BACKUP_TAG="appointment-lite-pre-v0.5.0-$(date +%Y%m%d-%H%M%S)"
+BACKUP_TAG="appointment-lite-pre-v0.5.1-$(date +%Y%m%d-%H%M%S)"
 git -C "$TARGET_DIR" tag "$BACKUP_TAG" HEAD || fail "Git backup tag failed."
 printf 'Backup tag: %s\n' "$BACKUP_TAG"
 
 say "4/13 Extract release"
-TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/appointment-lite-v050.XXXXXX")" || fail "Could not create temp directory."
+TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/appointment-lite-v051.XXXXXX")" || fail "Could not create temp directory."
 unzip -q "$ZIP_PATH" -d "$TEMP_DIR" || fail "ZIP extraction failed."
 SOURCE_DIR="$TEMP_DIR/$RELEASE_SLUG"
 [ -f "$SOURCE_DIR/package.json" ] && [ -f "$SOURCE_DIR/src/server.js" ] || fail "Release root is invalid."
 
-say "5/13 Overlay v0.5.0 source"
+say "5/13 Overlay v0.5.1 source"
 rsync -a \
   --exclude='.git/' \
   --exclude='.env' \
@@ -74,16 +74,17 @@ say "7/13 Run full tests"
 say "8/13 Run JavaScript checks"
 (cd "$TARGET_DIR" && npm run check) || fail "npm run check failed."
 
-say "9/13 Verify v0.5.0 Staff Management Foundation"
+say "9/13 Verify Staff Notifications + Staff Operations"
 ACTUAL_VERSION="$(cd "$TARGET_DIR" && node -p "require('./package.json').version")" || fail "Cannot read package version."
-[ "$ACTUAL_VERSION" = "0.5.0" ] || fail "Expected package version 0.5.0, got $ACTUAL_VERSION."
-[ -f "$TARGET_DIR/src/models/Staff.js" ] || fail "Staff model is missing."
-[ -f "$TARGET_DIR/src/models/StaffReservation.js" ] || fail "Staff reservation model is missing."
-grep -q "staffAssignment" "$TARGET_DIR/src/models/AppointmentRule.js" || fail "Service staff assignment is missing."
-grep -q "StaffConflictError" "$TARGET_DIR/src/services/staffing.js" || fail "Staff conflict engine is missing."
-grep -q "Customer chooses" "$TARGET_DIR/src/views/admin.js" || fail "Staff assignment UI is missing."
-grep -q "selectedStaffId" "$TARGET_DIR/theme-extension-source/public/appointment-lite.js" || fail "Theme staff selection is missing."
-grep -q "selectedStaffId" "$TARGET_DIR/public/book/app.js" || fail "Hosted booking staff selection is missing."
+[ "$ACTUAL_VERSION" = "$VERSION" ] || fail "Expected package version $VERSION, got $ACTUAL_VERSION."
+grep -q "avatar: { type: avatarSchema" "$TARGET_DIR/src/models/Staff.js" || fail "Staff avatar schema is missing."
+grep -q "emailEnabled: { type: Boolean, default: false }" "$TARGET_DIR/src/models/Staff.js" || fail "Staff email opt-in schema is missing."
+grep -q "adminRouter.get('/staff/operations'" "$TARGET_DIR/src/routes/admin.js" || fail "Staff Operations API is missing."
+grep -q "sendStaffAssignedNotification" "$TARGET_DIR/src/services/email.js" || fail "Staff assignment notifications are missing."
+grep -q 'class="al-staff-picker"' "$TARGET_DIR/theme-extension-source/public/appointment-lite.js" || fail "Custom Theme staff picker is missing."
+if grep -Eq '<select[^>]+al-staff' "$TARGET_DIR/theme-extension-source/public/appointment-lite.js"; then
+  fail "Native Theme staff select is still present."
+fi
 
 say "10/13 Sync Theme App Extension source"
 if [ -d "$TARGET_DIR/theme-app-extension" ]; then
@@ -96,11 +97,11 @@ else
   PUSH_THEME=0
 fi
 
-say "11/13 Commit and push v0.5.0"
+say "11/13 Commit and push v0.5.1"
 git -C "$TARGET_DIR" add -A -- . ':!theme-app-extension' 2>/dev/null || git -C "$TARGET_DIR" add -A -- . || fail "git add failed."
 git -C "$TARGET_DIR" reset -- theme-app-extension >/dev/null 2>&1 || true
 if ! git -C "$TARGET_DIR" diff --cached --quiet; then
-  git -C "$TARGET_DIR" commit -m "feat: Appointment Lite v0.5.0 staff management foundation" || fail "Release commit failed."
+  git -C "$TARGET_DIR" commit -m "feat: Appointment Lite v0.5.1 staff notifications and operations" || fail "Release commit failed."
 fi
 if git -C "$TARGET_DIR" remote get-url origin >/dev/null 2>&1; then
   git -C "$TARGET_DIR" push origin "$CURRENT_BRANCH" || fail "git push failed."
@@ -114,7 +115,7 @@ if [ "$DEPLOY_RAILWAY" = "1" ]; then
     (cd "$TARGET_DIR" && railway up --detach) || fail "Railway upload/queue failed."
     printf 'Railway build queued. Continuing immediately to Theme Extension push.\n'
   else
-    fail "This Railway CLI does not support --detach. Run 'railway upgrade' once, then rerun this release command."
+    fail "This Railway CLI does not support --detach. Run 'railway upgrade' once, then rerun this command."
   fi
 else
   printf 'Railway deployment skipped because DEPLOY_RAILWAY=%s.\n' "$DEPLOY_RAILWAY"
@@ -129,7 +130,7 @@ else
 fi
 
 printf '\n========================================\n'
-printf 'Appointment Lite v0.5.0 Staff Management Foundation complete\n'
+printf 'Appointment Lite v0.5.1 complete\n'
 printf '========================================\n'
 printf 'Backup tag: %s\n' "$BACKUP_TAG"
 git -C "$TARGET_DIR" status

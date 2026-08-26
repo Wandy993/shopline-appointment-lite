@@ -74,7 +74,11 @@ export async function publicStaffOptions(rule, options = {}) {
   const staff = await assignedActiveStaff(rule, options);
   return {
     mode: assignment.mode,
-    options: staff.map(item => ({ id: String(item._id), name: item.name }))
+    options: staff.map(item => ({
+      id: String(item._id),
+      name: item.name,
+      avatar: item.avatar?.kind ? { kind: item.avatar.kind, value: item.avatar.value || '' } : { kind: 'preset', value: 'aurora' }
+    }))
   };
 }
 

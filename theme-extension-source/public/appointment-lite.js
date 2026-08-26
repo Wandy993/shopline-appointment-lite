@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = '0.5.0-hotfix.1';
+  const VERSION = '0.5.1';
   const API_BASE = 'https://appointment.toolkit.fans';
   const CACHE_TTL = 5 * 60 * 1000;
   const SELECTOR = '[data-appointment-lite]:not([data-al-ready])';
@@ -32,6 +32,21 @@
 
   function text(value) {
     return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char]);
+  }
+
+  const staffPresetClasses = new Set(['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose']);
+  const staffAvatarPalettes = { aurora:['#edf3ff','#5a8dff','#3e4a67','#ffd7bf'],ocean:['#e9f8ff','#25a6d9','#23455d','#f1c8ad'],mint:['#ecfbf5','#3bb89b','#385a4d','#f0c6aa'],peach:['#fff2ed','#ed7e66','#6a4038','#f4c7aa'],violet:['#f5efff','#8d73ef','#4c3d62','#e9c1ad'],sunset:['#fff4e9','#e98a45','#5d4535','#efc6a8'],sky:['#edf8ff','#57b8ef','#36536b','#f0c7ae'],rose:['#fff0f5','#ed6f91','#5b3c4d','#efc4ac'] };
+  function staffPresetSvg(preset){const [bg,shirt,hair,skin]=staffAvatarPalettes[preset]||staffAvatarPalettes.aurora;return `<svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="18" fill="${bg}"/><path d="M12 64c2-15 10-23 20-23s18 8 20 23" fill="${shirt}"/><circle cx="32" cy="27" r="13" fill="${skin}"/><path d="M19 27c0-10 5-17 14-17 7 0 13 5 13 14-5-1-9-4-12-8-3 5-8 8-15 8z" fill="${hair}"/><circle cx="27" cy="28" r="1.2" fill="#43505f"/><circle cx="37" cy="28" r="1.2" fill="#43505f"/><path d="M28 34c2.5 2 5.5 2 8 0" stroke="#a36c5b" stroke-width="1.4" stroke-linecap="round" fill="none"/></svg>`;}
+
+  function staffAvatar(item, className = '') {
+    const avatar = item?.avatar || {};
+    const initial = text(String(item?.name || '?').trim().slice(0, 1).toUpperCase() || '?');
+    if (avatar.kind === 'custom' && /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(String(avatar.value || ''))) {
+      return `<span class="al-staff-avatar ${className}"><img src="${text(avatar.value)}" alt=""></span>`;
+    }
+    if (avatar.kind === 'initials') return `<span class="al-staff-avatar al-staff-initials ${className}">${initial}</span>`;
+    const preset = staffPresetClasses.has(avatar.value) ? avatar.value : 'aurora';
+    return `<span class="al-staff-avatar al-staff-preset-${preset} ${className}">${staffPresetSvg(preset)}</span>`;
   }
 
   function apiUrl(path, params = {}) {
@@ -451,7 +466,7 @@
     const timeLabel = mode === 'all_day' ? 'Availability' : 'Time';
     const staffMode = rule.staffAssignment?.mode || 'none';
     const staffOptions = Array.isArray(rule.staffOptions) ? rule.staffOptions : [];
-    const staffSelector = staffMode === 'customer_choice' ? `<div class="al-field al-staff-choice"><label for="al-staff">Staff</label><select id="al-staff" name="staffId" required><option value="">Choose staff</option>${staffOptions.map(item => `<option value="${text(item.id)}">${text(item.name)}</option>`).join('')}</select><small>Availability updates for the selected staff member.</small></div>` : '';
+    const staffSelector = staffMode === 'customer_choice' ? `<div class="al-field al-staff-choice"><label>Staff</label><div class="al-staff-picker"><button type="button" class="al-staff-trigger" aria-haspopup="listbox" aria-expanded="false"><span class="al-staff-value"><span class="al-staff-avatar al-staff-initials al-staff-small">?</span><span><strong>Choose staff</strong><small>Select a team member</small></span></span><span class="al-staff-chevron">⌄</span></button><div class="al-staff-menu" role="listbox" hidden>${staffOptions.map(item => `<button type="button" class="al-staff-option" data-staff-id="${text(item.id)}">${staffAvatar(item, 'al-staff-small')}<span><strong>${text(item.name)}</strong><small>View availability</small></span><i>✓</i></button>`).join('')}</div><input type="hidden" name="staffId" value=""></div><small>Availability updates for the selected staff member.</small></div>` : '';
     const managedStaffMeta = staffMode === 'fixed' && staffOptions[0] ? staffOptions[0].name : staffMode === 'any' ? 'Staff assigned automatically' : rule.staff;
     dialog.innerHTML = `<div class="al-head"><div><h2>Book an appointment</h2><p>${text(rule.serviceTitle || rule.productTitle)}</p></div><button class="al-close" type="button" aria-label="Close">×</button></div><form class="al-form"><div class="al-form-body"><div class="al-meta">${text(modeMeta)}${rule.location ? ` · ${text(rule.location)}` : ''}${managedStaffMeta ? ` · ${text(managedStaffMeta)}` : ''}</div><p class="al-muted">${mode === 'all_day' ? 'Dates' : 'All times'} are shown in the store time zone: ${text(rule.timezone || 'UTC')}.</p>${staffSelector}<div class="al-mode-title"><strong>${text(scheduleTitle)}</strong></div><div class="al-grid"><div class="al-field"><label for="al-date">Date</label><input id="al-date" name="date" type="date" min="${minDate}" ${maxDateAttribute(rule)} required></div><div><span class="al-legend">${timeLabel}</span><div class="al-times"><span class="al-muted">Choose a date first.</span></div></div></div><div class="al-selected-sessions" hidden></div><div class="al-grid"><div class="al-field"><label for="al-name">Name</label><input id="al-name" name="name" autocomplete="name" maxlength="120" required></div><div class="al-field"><label for="al-email">Email</label><input id="al-email" name="email" type="email" autocomplete="email" maxlength="254" required></div></div><div class="al-field"><label for="al-phone">Phone (optional)</label><input id="al-phone" name="phone" type="tel" autocomplete="tel" maxlength="40"></div><div class="al-field"><label for="al-note">${text(rule.questionLabel || 'Anything we should know?')}</label><textarea id="al-note" name="note" maxlength="2000"></textarea></div><div class="al-questions"></div></div><div class="al-actions"><div class="al-error" hidden role="alert"></div><button class="al-submit" type="submit">Confirm booking</button></div></form>`;
     const questions = dialog.querySelector('.al-questions');
@@ -463,6 +478,9 @@
     const times = dialog.querySelector('.al-times');
     const selectedRoot = dialog.querySelector('.al-selected-sessions');
     const staffSelect = dialog.querySelector('[name=staffId]');
+    const staffPicker = dialog.querySelector('.al-staff-picker');
+    const staffTrigger = dialog.querySelector('.al-staff-trigger');
+    const staffMenu = dialog.querySelector('.al-staff-menu');
     let selectedStaffId = staffSelect?.value || '';
     let selectedTime = '';
     let selectedAllDayDate = '';
@@ -488,7 +506,30 @@
     };
     if (mode === 'multi_slot') renderSelected();
 
-    staffSelect?.addEventListener('change', () => { selectedStaffId = staffSelect.value; selectedTime = ''; selectedAllDayDate = ''; selectedOccurrences = []; renderSelected(); if (dateInput.value) dateInput.dispatchEvent(new Event('change')); });
+    if (staffPicker && staffTrigger && staffMenu) {
+      staffTrigger.addEventListener('click', () => {
+        staffMenu.hidden = !staffMenu.hidden;
+        staffTrigger.setAttribute('aria-expanded', String(!staffMenu.hidden));
+      });
+      staffMenu.querySelectorAll('[data-staff-id]').forEach(button => button.addEventListener('click', () => {
+        const item = staffOptions.find(option => String(option.id) === button.dataset.staffId);
+        selectedStaffId = item?.id || '';
+        staffSelect.value = selectedStaffId;
+        selectedTime = '';
+        selectedAllDayDate = '';
+        selectedOccurrences = [];
+        renderSelected();
+        const value = staffTrigger.querySelector('.al-staff-value');
+        value.innerHTML = item ? `${staffAvatar(item, 'al-staff-small')}<span><strong>${text(item.name)}</strong><small>Selected staff member</small></span>` : '<span class="al-staff-avatar al-staff-initials al-staff-small">?</span><span><strong>Choose staff</strong><small>Select a team member</small></span>';
+        staffMenu.querySelectorAll('[data-staff-id]').forEach(option => option.classList.toggle('selected', option.dataset.staffId === selectedStaffId));
+        staffMenu.hidden = true;
+        staffTrigger.setAttribute('aria-expanded', 'false');
+        if (dateInput.value) dateInput.dispatchEvent(new Event('change'));
+      }));
+      dialog.addEventListener('click', event => {
+        if (!staffPicker.contains(event.target)) { staffMenu.hidden = true; staffTrigger.setAttribute('aria-expanded', 'false'); }
+      });
+    }
 
     dateInput.addEventListener('change', async () => {
       selectedTime = '';
@@ -531,6 +572,7 @@
       event.preventDefault();
       const errorBox = dialog.querySelector('.al-error');
       errorBox.hidden = true;
+      if (staffMode === 'customer_choice' && !selectedStaffId) { errorBox.textContent = 'Please choose a staff member.'; errorBox.hidden = false; return; }
       if (mode === 'slot' && !selectedTime) { errorBox.textContent = 'Please select a time.'; errorBox.hidden = false; return; }
       if (mode === 'all_day' && !selectedAllDayDate) { errorBox.textContent = 'Please choose an available date.'; errorBox.hidden = false; return; }
       if (mode === 'multi_slot' && selectedOccurrences.length !== Number(rule.sessionsRequired || 3)) { errorBox.textContent = `Please select exactly ${Number(rule.sessionsRequired || 3)} sessions.`; errorBox.hidden = false; return; }

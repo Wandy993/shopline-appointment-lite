@@ -1,5 +1,5 @@
 const state = {
-  csrf: '', shop: null, email: null, emailSettings: null, rules: [], bookings: [], products: [], staff: [],
+  csrf: '', shop: null, email: null, emailSettings: null, rules: [], bookings: [], products: [], staff: [], staffOperations: { date: '', timezone: '', staff: [], unassigned: [] },
   ruleStep: 0, activeTemplate: 'confirmation', emailEditorReady: false, bookingView: 'list', calendarMonth: '',
   locale: 'en', currentView: 'dashboard', themeLinkLoaded: false, bootstrap: null, onboarding: null, lastTestEmail: '', ruleModeTouched: false, editingRule: false
 };
@@ -261,6 +261,18 @@ Object.assign(zh, {
   'Recommended mode': '推荐预约方式', 'For this service type, {mode} is a good starting point. You can still choose another mode.': '根据当前服务类型，建议优先使用「{mode}」，你仍然可以选择其他预约方式。'
 });
 
+Object.assign(zh, {
+  'STAFF OPERATIONS': '员工运营', 'Team schedule': '员工排期', 'Review who is assigned today or jump to another date.': '查看当天员工预约安排，也可以切换到其他日期。',
+  'Loading team schedule…': '正在加载员工排期…', 'No team appointments on this date': '这一天没有员工预约', 'Confirmed staff assignments will appear here.': '已确认并分配员工的预约会显示在这里。',
+  'Could not load team schedule': '无法加载员工排期', 'Open booking': '打开预约', 'No bookings assigned': '暂无预约', 'Unassigned': '未分配员工',
+  'appointment': '条预约', 'appointments': '条预约', 'Avatar': '头像', 'Preset or custom image': '预设或自定义图片', 'Upload image': '上传图片', 'Use initials': '使用姓名首字母',
+  'Custom images are resized in your browser before saving, so no separate file storage is required.': '自定义图片会在浏览器中自动压缩后保存，不需要额外的图片存储服务。',
+  'Email appointment updates': '邮件通知员工', 'Send this staff member new assignment, reschedule, reassignment, and cancellation emails.': '向该员工发送新预约、改期、改派和取消通知邮件。',
+  'Email on': '邮件通知开启', 'Email off': '邮件通知关闭', 'Set the team member profile, notifications, and store-local working schedule.': '设置员工头像、通知方式以及店铺本地时区下的工作时间。',
+  'Choose a PNG, JPG, or WebP image.': '请选择 PNG、JPG 或 WebP 图片。', 'Choose an image smaller than 5 MB.': '请选择小于 5 MB 的图片。',
+  'Could not read that image.': '无法读取这张图片。', 'Could not decode that image.': '无法解析这张图片。', 'The processed avatar is still too large. Try a simpler image.': '处理后的头像仍然过大，请尝试更简单的图片。'
+});
+
 function t(value, variables = {}) {
   let result = state.locale === 'zh-CN' ? (zh[value] || value) : value;
   for (const [key, replacement] of Object.entries(variables)) result = result.replaceAll(`{${key}}`, replacement);
@@ -298,6 +310,87 @@ function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char]);
 }
 
+const staffAvatarPresets = ['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose'];
+const staffAvatarPalettes = {
+  aurora: ['#edf3ff','#5a8dff','#3e4a67','#ffd7bf'], ocean: ['#e9f8ff','#25a6d9','#23455d','#f1c8ad'],
+  mint: ['#ecfbf5','#3bb89b','#385a4d','#f0c6aa'], peach: ['#fff2ed','#ed7e66','#6a4038','#f4c7aa'],
+  violet: ['#f5efff','#8d73ef','#4c3d62','#e9c1ad'], sunset: ['#fff4e9','#e98a45','#5d4535','#efc6a8'],
+  sky: ['#edf8ff','#57b8ef','#36536b','#f0c7ae'], rose: ['#fff0f5','#ed6f91','#5b3c4d','#efc4ac']
+};
+function staffPresetSvg(preset) {
+  const [bg, shirt, hair, skin] = staffAvatarPalettes[preset] || staffAvatarPalettes.aurora;
+  return `<svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="18" fill="${bg}"/><path d="M12 64c2-15 10-23 20-23s18 8 20 23" fill="${shirt}"/><circle cx="32" cy="27" r="13" fill="${skin}"/><path d="M19 27c0-10 5-17 14-17 7 0 13 5 13 14-5-1-9-4-12-8-3 5-8 8-15 8z" fill="${hair}"/><circle cx="27" cy="28" r="1.2" fill="#43505f"/><circle cx="37" cy="28" r="1.2" fill="#43505f"/><path d="M28 34c2.5 2 5.5 2 8 0" stroke="#a36c5b" stroke-width="1.4" stroke-linecap="round" fill="none"/></svg>`;
+}
+let staffAvatarDraft = { kind: 'preset', value: 'aurora' };
+
+function normalizedStaffAvatar(staff = {}) {
+  const avatar = staff.avatar || {};
+  if (avatar.kind === 'custom' && /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(String(avatar.value || ''))) return { kind: 'custom', value: avatar.value };
+  if (avatar.kind === 'initials') return { kind: 'initials', value: '' };
+  return { kind: 'preset', value: staffAvatarPresets.includes(avatar.value) ? avatar.value : 'aurora' };
+}
+
+function staffAvatarMarkup(staff = {}, className = '') {
+  const avatar = normalizedStaffAvatar(staff);
+  const initial = escapeHtml(String(staff.name || 'S').trim().slice(0, 1).toUpperCase() || 'S');
+  if (avatar.kind === 'custom') return `<span class="staff-avatar ${className}"><img src="${escapeHtml(avatar.value)}" alt=""></span>`;
+  if (avatar.kind === 'initials') return `<span class="staff-avatar initials ${className}">${initial}</span>`;
+  return `<span class="staff-avatar preset-${avatar.value} ${className}">${staffPresetSvg(avatar.value)}</span>`;
+}
+
+function setStaffAvatarDraft(avatar, name = '') {
+  staffAvatarDraft = normalizedStaffAvatar({ avatar, name });
+  $('#staffAvatarKind').value = staffAvatarDraft.kind;
+  $('#staffAvatarValue').value = staffAvatarDraft.value;
+  const preview = $('#staffAvatarPreview');
+  if (preview) preview.outerHTML = staffAvatarMarkup({ avatar: staffAvatarDraft, name: name || $('#staffName')?.value || 'S' }, 'preview').replace('<span ', '<span id="staffAvatarPreview" ');
+  $$('#staffAvatarPresets [data-avatar-preset]').forEach(button => button.classList.toggle('selected', staffAvatarDraft.kind === 'preset' && button.dataset.avatarPreset === staffAvatarDraft.value));
+}
+
+function renderStaffAvatarPresets() {
+  const root = $('#staffAvatarPresets');
+  if (!root) return;
+  const name = $('#staffName')?.value || 'Staff';
+  root.innerHTML = staffAvatarPresets.map(preset => `<button type="button" class="staff-avatar-preset" data-avatar-preset="${preset}" aria-label="${preset}">${staffAvatarMarkup({ name, avatar: { kind: 'preset', value: preset } }, 'preset-button')}</button>`).join('');
+  root.querySelectorAll('[data-avatar-preset]').forEach(button => button.addEventListener('click', () => setStaffAvatarDraft({ kind: 'preset', value: button.dataset.avatarPreset }, name)));
+  setStaffAvatarDraft(staffAvatarDraft, name);
+}
+
+async function processStaffAvatarFile(file) {
+  if (!file || !/^image\/(?:png|jpeg|webp)$/.test(file.type)) throw new Error('Choose a PNG, JPG, or WebP image.');
+  if (file.size > 5 * 1024 * 1024) throw new Error('Choose an image smaller than 5 MB.');
+  const dataUrl = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('Could not read that image.'));
+    reader.readAsDataURL(file);
+  });
+  const image = await new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('Could not decode that image.'));
+    img.src = dataUrl;
+  });
+  const side = Math.min(image.naturalWidth, image.naturalHeight);
+  const sx = (image.naturalWidth - side) / 2;
+  const sy = (image.naturalHeight - side) / 2;
+  let smallest = '';
+  for (const size of [192, 160, 128, 112]) {
+    const canvas = document.createElement('canvas');
+    canvas.width = size; canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(image, sx, sy, side, side, 0, 0, size, size);
+    for (const quality of [.72, .62, .52]) {
+      let output = canvas.toDataURL('image/webp', quality);
+      if (!output.startsWith('data:image/webp')) output = canvas.toDataURL('image/jpeg', quality);
+      if (!smallest || output.length < smallest.length) smallest = output;
+      if (output.length <= 36000) return output;
+    }
+  }
+  if (smallest && smallest.length <= 45000) return smallest;
+  throw new Error('The processed avatar is still too large. Try a simpler image.');
+}
+
 function toast(message, type = 'success') {
   const item = document.createElement('div');
   item.className = `toast ${type}`;
@@ -317,7 +410,7 @@ function switchView(name) {
   $('#pageTitle').textContent = t(viewLabels[name]?.[1] || 'Appointment Lite');
   if (name === 'rules') loadRules();
   if (name === 'bookings') Promise.all([ensureStaff(), loadRules(), loadBookings()]);
-  if (name === 'staff') loadStaff();
+  if (name === 'staff') Promise.all([loadStaff(), loadStaffOperations($('#staffOperationsDate')?.value || '')]);
   if (name === 'email') renderEmailStudio();
   if (name === 'setup') loadThemeEditorLink();
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -504,6 +597,8 @@ function staffPayload() {
     name: $('#staffName').value,
     email: $('#staffEmail').value,
     phone: $('#staffPhone').value,
+    avatar: { kind: $('#staffAvatarKind').value || 'preset', value: $('#staffAvatarValue').value || '' },
+    notifications: { emailEnabled: Boolean($('#staffEmail').value.trim() && $('#staffEmailNotifications').checked) },
     status: $('#staffStatus').value,
     weeklyAvailability: $$('#staffWeeklySchedule .staff-schedule-row').map(row => ({
       weekday: Number(row.dataset.weekday),
@@ -538,13 +633,14 @@ function renderStaff() {
   }
   root.innerHTML = rows.map(item => {
     const services = item.assignedServices || [];
-    return `<article class="panel staff-row"><div class="staff-main"><span class="staff-avatar">${escapeHtml((item.name || 'S').slice(0,1).toUpperCase())}</span><div><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.email || item.phone || t('No contact details'))}</span></div></div><div class="staff-services"><span>${t('Services')}</span><strong>${services.length}</strong><small>${services.slice(0,2).map(service => escapeHtml(service.title)).join(', ') || t('Not assigned')}</small></div><div class="staff-hours"><span>${t('Working hours')}</span><strong>${escapeHtml(staffWorkSummary(item))}</strong></div><span class="status-badge ${item.status === 'active' ? 'enabled' : 'disabled'}">${t(item.status === 'active' ? 'Active' : 'Inactive')}</span><div class="row-actions"><button class="secondary small" data-edit-staff="${item._id}">${t('Edit')}</button><button class="secondary small" data-delete-staff="${item._id}">${t('Delete')}</button></div></article>`;
+    const notification = item.email && item.notifications?.emailEnabled === true ? t('Email on') : t('Email off');
+    return `<article class="panel staff-row"><div class="staff-main">${staffAvatarMarkup(item)}<div><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.email || item.phone || t('No contact details'))}</span><small class="staff-notification-state">${escapeHtml(notification)}</small></div></div><div class="staff-services"><span>${t('Services')}</span><strong>${services.length}</strong><small>${services.slice(0,2).map(service => escapeHtml(service.title)).join(', ') || t('Not assigned')}</small></div><div class="staff-hours"><span>${t('Working hours')}</span><strong>${escapeHtml(staffWorkSummary(item))}</strong></div><span class="status-badge ${item.status === 'active' ? 'enabled' : 'disabled'}">${t(item.status === 'active' ? 'Active' : 'Inactive')}</span><div class="row-actions"><button class="secondary small" data-edit-staff="${item._id}">${t('Edit')}</button><button class="secondary small" data-delete-staff="${item._id}">${t('Delete')}</button></div></article>`;
   }).join('');
   $$('[data-edit-staff]').forEach(button => button.addEventListener('click', () => openStaff(state.staff.find(item => item._id === button.dataset.editStaff))));
   $$('[data-delete-staff]').forEach(button => button.addEventListener('click', () => confirmAction('Delete this staff member?', 'Historical bookings keep the staff snapshot, but active confirmed bookings must be reassigned first.', 'Delete staff', async () => {
     await api(`/staff/${button.dataset.deleteStaff}`, { method: 'DELETE' });
     toast(t('Staff member deleted.'));
-    await Promise.all([loadStaff(), loadRules(), loadBookings()]);
+    await Promise.all([loadStaff(), loadRules(), loadBookings(), loadStaffOperations($('#staffOperationsDate')?.value || '')]);
   })));
 }
 
@@ -566,6 +662,47 @@ async function ensureStaff() {
   return state.staff;
 }
 
+function renderStaffOperations() {
+  const root = $('#staffOperationsList');
+  if (!root) return;
+  const payload = state.staffOperations || { staff: [], unassigned: [] };
+  const groups = payload.staff || [];
+  const hasAny = groups.some(group => (group.assignments || []).length) || (payload.unassigned || []).length;
+  if (!hasAny) {
+    root.innerHTML = `<div class="staff-operations-empty"><strong>${t('No team appointments on this date')}</strong><span>${t('Confirmed staff assignments will appear here.')}</span></div>`;
+    return;
+  }
+  const cards = groups.map(group => {
+    const member = state.staff.find(item => String(item._id) === String(group.id)) || { name: group.name, avatar: group.avatar };
+    const appointments = group.assignments || [];
+    return `<article class="staff-ops-card"><div class="staff-ops-card-head">${staffAvatarMarkup(member, 'small')}<div><strong>${escapeHtml(group.name)}</strong><span>${appointments.length} ${t(appointments.length === 1 ? 'appointment' : 'appointments')}</span></div></div><div class="staff-ops-items">${appointments.length ? appointments.map(item => `<div class="staff-ops-item"><time>${escapeHtml(item.bookingMode === 'all_day' ? t('All day') : item.time)}</time><div><strong>${escapeHtml(item.serviceTitle)}</strong><span>${escapeHtml(item.customerName)}${item.location ? ` · ${escapeHtml(item.location)}` : ''}</span></div><button type="button" class="text-button" data-open-staff-booking="${item.bookingId}">${t('Open booking')}</button></div>`).join('') : `<div class="staff-ops-none">${t('No bookings assigned')}</div>`}</div></article>`;
+  });
+  if ((payload.unassigned || []).length) {
+    cards.push(`<article class="staff-ops-card unassigned"><div class="staff-ops-card-head"><span class="staff-avatar initials small">?</span><div><strong>${t('Unassigned')}</strong><span>${payload.unassigned.length} ${t(payload.unassigned.length === 1 ? 'appointment' : 'appointments')}</span></div></div><div class="staff-ops-items">${payload.unassigned.map(item => `<div class="staff-ops-item"><time>${escapeHtml(item.bookingMode === 'all_day' ? t('All day') : item.time)}</time><div><strong>${escapeHtml(item.serviceTitle)}</strong><span>${escapeHtml(item.customerName)}${item.location ? ` · ${escapeHtml(item.location)}` : ''}</span></div><button type="button" class="text-button" data-open-staff-booking="${item.bookingId}">${t('Open booking')}</button></div>`).join('')}</div></article>`);
+  }
+  root.innerHTML = cards.join('');
+  $$('[data-open-staff-booking]').forEach(button => button.addEventListener('click', async () => {
+    switchView('bookings');
+    await loadBookings();
+    const booking = state.bookings.find(item => String(item._id) === String(button.dataset.openStaffBooking));
+    if (booking) openBookingFlow(booking);
+  }));
+}
+
+async function loadStaffOperations(date = '') {
+  try {
+    const query = date ? `?date=${encodeURIComponent(date)}` : '';
+    state.staffOperations = await api(`/staff/operations${query}`);
+    if ($('#staffOperationsDate')) $('#staffOperationsDate').value = state.staffOperations.date || date;
+    renderStaffOperations();
+    return state.staffOperations;
+  } catch (error) {
+    const root = $('#staffOperationsList');
+    if (root) root.innerHTML = `<div class="staff-operations-empty"><strong>${t('Could not load team schedule')}</strong><span>${escapeHtml(error.message)}</span></div>`;
+    return null;
+  }
+}
+
 function openStaff(staff = null) {
   $('#staffForm').reset();
   $('#staffId').value = staff?._id || '';
@@ -574,6 +711,11 @@ function openStaff(staff = null) {
   $('#staffEmail').value = staff?.email || '';
   $('#staffPhone').value = staff?.phone || '';
   $('#staffStatus').value = staff?.status || 'active';
+  $('#staffEmailNotifications').checked = Boolean(staff?.email && staff?.notifications?.emailEnabled === true);
+  $('#staffEmailNotifications').disabled = !Boolean(staff?.email);
+  staffAvatarDraft = normalizedStaffAvatar(staff || { name: '', avatar: { kind: 'preset', value: 'aurora' } });
+  renderStaffAvatarPresets();
+  setStaffAvatarDraft(staffAvatarDraft, staff?.name || 'Staff');
   renderStaffSchedule(staff?.weeklyAvailability || [1,2,3,4,5].map(weekday => ({ weekday, enabled: true, windows: [{ start: '09:00', end: '17:00' }] })));
   renderStaffExceptions(staff?.availabilityExceptions || []);
   $('#staffFormError').classList.add('hidden');
@@ -590,7 +732,7 @@ async function saveStaff(event) {
     await api(id ? `/staff/${id}` : '/staff', { method: id ? 'PUT' : 'POST', body: JSON.stringify(staffPayload()) });
     $('#staffDialog').close();
     toast(t(id ? 'Staff member updated.' : 'Staff member created.'));
-    await loadStaff({ force: true });
+    await Promise.all([loadStaff({ force: true }), loadStaffOperations($('#staffOperationsDate')?.value || '')]);
   } catch (error) {
     $('#staffFormError').textContent = t(error.message);
     $('#staffFormError').classList.remove('hidden');
@@ -615,7 +757,7 @@ function renderRuleStaffOptions(selectedIds = null) {
   const current = selectedIds || $$('#ruleStaffOptions input[type=checkbox]:checked').map(input => input.value);
   const selected = new Set(current.map(String));
   const active = state.staff.filter(item => item.status === 'active');
-  root.innerHTML = active.length ? active.map(item => `<label class="staff-check"><input type="checkbox" value="${item._id}" ${selected.has(String(item._id)) ? 'checked' : ''}><span class="staff-avatar small">${escapeHtml(item.name.slice(0,1).toUpperCase())}</span><span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.email || staffWorkSummary(item))}</small></span></label>`).join('') : `<div class="empty-compact">${t('No active staff yet. Add staff from the Staff page first.')}</div>`;
+  root.innerHTML = active.length ? active.map(item => `<label class="staff-check"><input type="checkbox" value="${item._id}" ${selected.has(String(item._id)) ? 'checked' : ''}>${staffAvatarMarkup(item, 'small')}<span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.email || staffWorkSummary(item))}</small></span></label>`).join('') : `<div class="empty-compact">${t('No active staff yet. Add staff from the Staff page first.')}</div>`;
   root.querySelectorAll('input[type=checkbox]').forEach(input => input.addEventListener('change', () => {
     if ($('#staffAssignmentGrid').dataset.mode === 'fixed' && input.checked) root.querySelectorAll('input[type=checkbox]').forEach(other => { if (other !== input) other.checked = false; });
   }));
@@ -1623,6 +1765,32 @@ function bind() {
   $('#staffForm')?.addEventListener('submit', saveStaff);
   $$('[data-close-staff-dialog]').forEach(button => button.addEventListener('click', () => $('#staffDialog').close()));
   $('#addStaffException')?.addEventListener('click', () => addStaffException());
+  $('#staffOperationsDate')?.addEventListener('change', event => loadStaffOperations(event.target.value));
+  $('#uploadStaffAvatar')?.addEventListener('click', () => $('#staffAvatarFile').click());
+  $('#useStaffInitials')?.addEventListener('click', () => setStaffAvatarDraft({ kind: 'initials', value: '' }, $('#staffName').value || 'Staff'));
+  $('#staffName')?.addEventListener('input', () => {
+    const preview = $('#staffAvatarPreview');
+    if (preview && staffAvatarDraft.kind !== 'custom') setStaffAvatarDraft(staffAvatarDraft, $('#staffName').value || 'Staff');
+  });
+  $('#staffEmail')?.addEventListener('input', () => {
+    const checkbox = $('#staffEmailNotifications');
+    const enabled = Boolean($('#staffEmail').value.trim());
+    const wasDisabled = checkbox.disabled;
+    checkbox.disabled = !enabled;
+    if (!enabled) checkbox.checked = false;
+    else if (wasDisabled) checkbox.checked = true;
+  });
+  $('#staffAvatarFile')?.addEventListener('change', async event => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const value = await processStaffAvatarFile(file);
+      setStaffAvatarDraft({ kind: 'custom', value }, $('#staffName').value || 'Staff');
+    } catch (error) {
+      $('#staffFormError').textContent = t(error.message);
+      $('#staffFormError').classList.remove('hidden');
+    } finally { event.target.value = ''; }
+  });
   $$('#staffAssignmentGrid [data-staff-mode]').forEach(button => button.addEventListener('click', () => setStaffAssignmentMode(button.dataset.staffMode)));
   $('#bookingSearch').addEventListener('input', renderBookings);
   ['bookingServiceFilter', 'bookingStaffFilter', 'bookingStatusFilter', 'bookingFrom', 'bookingTo'].forEach(id => $(`#${id}`)?.addEventListener('change', renderBookings));

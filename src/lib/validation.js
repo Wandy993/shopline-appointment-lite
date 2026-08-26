@@ -173,6 +173,21 @@ export function validateStaffInput(body) {
   if (!name) errors.push('Staff name is required.');
   if (email && !EMAIL_PATTERN.test(email)) errors.push('Enter a valid staff email address.');
 
+  const presetIds = new Set(['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose']);
+  const requestedAvatar = body.avatar && typeof body.avatar === 'object' ? body.avatar : {};
+  const avatarKind = ['preset', 'custom', 'initials'].includes(requestedAvatar.kind) ? requestedAvatar.kind : 'preset';
+  let avatarValue = text(requestedAvatar.value, 50000);
+  if (avatarKind === 'preset') {
+    if (!presetIds.has(avatarValue)) avatarValue = 'aurora';
+  } else if (avatarKind === 'custom') {
+    if (!/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(avatarValue) || avatarValue.length > 45000) {
+      errors.push('Upload a PNG, JPG, or WebP staff avatar under 32 KB after processing.');
+      avatarValue = '';
+    }
+  } else avatarValue = '';
+  const avatar = { kind: avatarKind, value: avatarValue };
+  const notifications = { emailEnabled: Boolean(email && body.notifications?.emailEnabled === true) };
+
   const weeklyAvailability = Array.isArray(body.weeklyAvailability) ? body.weeklyAvailability.map(day => ({
     weekday: Number(day.weekday), enabled: Boolean(day.enabled), windows: normalizeWindows(day.windows)
   })) : [];
@@ -195,7 +210,7 @@ export function validateStaffInput(body) {
   }
   if (!weeklyAvailability.some(day => day.enabled) && !availabilityExceptions.some(item => !item.closed)) errors.push('Enable at least one staff workday or add an open exception.');
 
-  return { errors: [...new Set(errors)], value: { name, email, phone, status, weeklyAvailability, availabilityExceptions } };
+  return { errors: [...new Set(errors)], value: { name, email, phone, avatar, notifications, status, weeklyAvailability, availabilityExceptions } };
 }
 
 export function validateBookingStatus(value) {

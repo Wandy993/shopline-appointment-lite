@@ -247,3 +247,87 @@ test('editing one booking does not ignore a shared staff reservation that still 
   });
   assert.deepEqual(candidates.slots, []);
 });
+
+test('staff profiles accept lightweight avatars and opt-in assignment emails', () => {
+  const preset = validateStaffInput({
+    name: 'Sarah', email: 'sarah@example.com', avatar: { kind: 'preset', value: 'mint' },
+    notifications: { emailEnabled: true }, weeklyAvailability: monday
+  });
+  assert.deepEqual(preset.errors, []);
+  assert.deepEqual(preset.value.avatar, { kind: 'preset', value: 'mint' });
+  assert.equal(preset.value.notifications.emailEnabled, true);
+
+  const custom = validateStaffInput({
+    name: 'Tim', email: 'tim@example.com', avatar: { kind: 'custom', value: `data:image/webp;base64,${'A'.repeat(2000)}` },
+    notifications: { emailEnabled: false }, weeklyAvailability: monday
+  });
+  assert.deepEqual(custom.errors, []);
+  assert.equal(custom.value.avatar.kind, 'custom');
+  assert.equal(custom.value.notifications.emailEnabled, false);
+
+  const tooLarge = validateStaffInput({
+    name: 'Alex', avatar: { kind: 'custom', value: `data:image/jpeg;base64,${'A'.repeat(46000)}` }, weeklyAvailability: monday
+  });
+  assert.match(tooLarge.errors.join(' '), /avatar/i);
+});
+
+test('public staff options expose avatar metadata without leaking contact details', async () => {
+  const { publicStaffOptions } = await import('../src/services/staffing.js');
+  const staffId = oid();
+  const service = rule({ staffAssignment: { mode: 'customer_choice', staffIds: [staffId] } });
+  const StaffModel = staffModel([{ ...staff(staffId, 'Sarah'), avatar: { kind: 'preset', value: 'ocean' }, phone: 'secret', notifications: { emailEnabled: true } }]);
+  const result = await publicStaffOptions(service, { StaffModel });
+  assert.equal(result.mode, 'customer_choice');
+  assert.deepEqual(result.options, [{ id: String(staffId), name: 'Sarah', avatar: { kind: 'preset', value: 'ocean' } }]);
+  assert.equal('email' in result.options[0], false);
+  assert.equal('phone' in result.options[0], false);
+});
+
+test('staff operations and avatar controls are exposed in the merchant admin', async () => {
+  const [view, admin, routes, styles] = await Promise.all([
+    readFile(new URL('../src/views/admin.js', import.meta.url), 'utf8'),
+    readFile(new URL('../public/admin/app.js', import.meta.url), 'utf8'),
+    readFile(new URL('../src/routes/admin.js', import.meta.url), 'utf8'),
+    readFile(new URL('../public/admin/styles.css', import.meta.url), 'utf8')
+  ]);
+  assert.match(view, /staffAvatarPresets/);
+  assert.match(view, /Upload image/);
+  assert.match(view, /staffEmailNotifications/);
+  assert.match(view, /staffOperationsList/);
+  assert.match(admin, /function processStaffAvatarFile/);
+  assert.match(admin, /function loadStaffOperations/);
+  assert.match(routes, /adminRouter\.get\('\/staff\/operations'/);
+  assert.match(styles, /Staff Notifications \+ Staff Operations/);
+});
+
+test('storefront staff choice uses Appointment Lite picker instead of native select', async () => {
+  const [hostedView, hostedApp, hostedStyles, theme, themeStyles] = await Promise.all([
+    readFile(new URL('../src/views/book.js', import.meta.url), 'utf8'),
+    readFile(new URL('../public/book/app.js', import.meta.url), 'utf8'),
+    readFile(new URL('../public/book/styles.css', import.meta.url), 'utf8'),
+    readFile(new URL('../theme-extension-source/public/appointment-lite.js', import.meta.url), 'utf8'),
+    readFile(new URL('../theme-extension-source/public/appointment-lite.css', import.meta.url), 'utf8')
+  ]);
+  assert.match(hostedView, /class="staff-picker"/);
+  assert.match(hostedView, /type="hidden"/);
+  assert.doesNotMatch(hostedView, /<select[^>]+staff/i);
+  assert.match(hostedApp, /function renderStaffPicker/);
+  assert.match(hostedStyles, /\.staff-picker-menu/);
+  assert.match(theme, /class="al-staff-picker"/);
+  assert.doesNotMatch(theme, /<select[^>]+al-staff/i);
+  assert.match(themeStyles, /\.al-staff-menu/);
+});
+
+test('booking lifecycle wires assignment, update, reassignment, and cancellation emails for staff', async () => {
+  const [emailSource, bookingSource] = await Promise.all([
+    readFile(new URL('../src/services/email.js', import.meta.url), 'utf8'),
+    readFile(new URL('../src/services/bookings.js', import.meta.url), 'utf8')
+  ]);
+  assert.match(emailSource, /sendStaffAssignedNotification/);
+  assert.match(emailSource, /sendStaffBookingUpdatedNotification/);
+  assert.match(emailSource, /sendStaffCancelledNotification/);
+  assert.match(emailSource, /notifications\?\.emailEnabled !== true/);
+  assert.match(bookingSource, /sendStaffAssignedNotification\(booking/);
+  assert.match(bookingSource, /sendStaffBookingUpdatedNotification\(updated, booking\)/);
+  assert.match(bookingSource, /sendStaffCancelledNotification\(booking\)/);
+});

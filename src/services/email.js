@@ -2,6 +2,7 @@ import { Resend } from 'resend';
 import { config } from '../config.js';
 import { DEFAULT_EMAIL_SETTINGS, interpolateTemplate, normalizeEmailSettings, templateVariables } from '../lib/email-settings.js';
 import { Shop } from '../models/Shop.js';
+import { Staff } from '../models/Staff.js';
 
 let aliyunSdk;
 let aliyunClient;
@@ -193,6 +194,89 @@ export async function sendCustomerRescheduledNotification(booking, managementTok
 export async function sendBookingCancelledNotification(booking, suppliedSettings = null) {
   const { settings } = await bookingEmailContext(booking, suppliedSettings);
   return deliverEmail({ to: booking.customer?.email, ...messageFor(booking, settings, 'cancelled') });
+}
+
+
+
+async function staffNotificationRecipient(staffId, shopId = null) {
+  if (!staffId) return null;
+  const filter = { _id: staffId, ...(shopId ? { shopId } : {}) };
+  const staff = await Staff.findOne(filter).select('name email notifications status').lean();
+  if (!staff?.email || staff.status !== 'active' || staff.notifications?.emailEnabled !== true) return null;
+  return staff;
+}
+
+function staffCustomerSummary(booking) {
+  const customer = booking.customer || {};
+  const rows = [
+    customer.name ? `<tr><td style="padding:8px 0;color:#8A98AA;font-size:12px;width:110px">Customer</td><td style="padding:8px 0;color:#344861;font-size:13px;font-weight:600">${escapeHtml(customer.name)}</td></tr>` : '',
+    customer.email ? `<tr><td style="padding:8px 0;color:#8A98AA;font-size:12px;width:110px">Email</td><td style="padding:8px 0;color:#344861;font-size:13px">${escapeHtml(customer.email)}</td></tr>` : '',
+    customer.phone ? `<tr><td style="padding:8px 0;color:#8A98AA;font-size:12px;width:110px">Phone</td><td style="padding:8px 0;color:#344861;font-size:13px">${escapeHtml(customer.phone)}</td></tr>` : ''
+  ].filter(Boolean).join('');
+  return rows ? `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:14px;border-collapse:collapse">${rows}</table>` : '';
+}
+
+function staffNotificationCopy(kind, booking, recipientName = '') {
+  const service = booking.productTitle || 'Appointment';
+  const hello = recipientName ? `Hi ${recipientName},` : 'Hello,';
+  if (kind === 'cancelled') return {
+    subject: `Appointment cancelled: ${service}`,
+    heading: 'Appointment cancelled',
+    body: `${hello} this appointment has been cancelled and is no longer on your schedule.`
+  };
+  if (kind === 'reassigned') return {
+    subject: `Appointment reassigned: ${service}`,
+    heading: 'Appointment reassigned',
+    body: `${hello} this appointment has been reassigned and is no longer assigned to you.`
+  };
+  if (kind === 'updated') return {
+    subject: `Appointment updated: ${service}`,
+    heading: 'Appointment updated',
+    body: `${hello} an appointment assigned to you has changed. Review the latest schedule below.`
+  };
+  return {
+    subject: `New appointment assigned: ${service}`,
+    heading: 'New appointment assigned',
+    body: `${hello} a new appointment has been assigned to you.`
+  };
+}
+
+async function deliverStaffNotification(booking, staff, kind, suppliedSettings = null) {
+  if (!staff?.email) return { skipped: true, reason: 'Staff notification recipient is missing' };
+  const { settings } = await bookingEmailContext(booking, suppliedSettings);
+  const copy = staffNotificationCopy(kind, booking, staff.name || '');
+  const intro = `<p style="margin:0 0 20px;color:#475467;line-height:1.65">${escapeHtml(copy.body)}</p>`;
+  const html = emailDocument(copy.heading, `${intro}${appointmentCard(booking, settings)}${staffCustomerSummary(booking)}`, settings);
+  return deliverEmail({ to: staff.email, subject: copy.subject, html, fromName: settings.brandName, replyTo: settings.replyToEmail || '' });
+}
+
+export async function sendStaffAssignedNotification(booking, suppliedSettings = null) {
+  const staff = await staffNotificationRecipient(booking.staffId, booking.shopId);
+  if (!staff) return { skipped: true, reason: 'Assigned staff email notifications are disabled or unavailable' };
+  return deliverStaffNotification(booking, staff, 'assigned', suppliedSettings);
+}
+
+export async function sendStaffBookingUpdatedNotification(booking, previousBooking = null, suppliedSettings = null) {
+  const previousId = previousBooking?.staffId ? String(previousBooking.staffId) : '';
+  const nextId = booking?.staffId ? String(booking.staffId) : '';
+  const messages = [];
+  if (previousId && previousId !== nextId) {
+    const previousStaff = await staffNotificationRecipient(previousId, booking?.shopId || previousBooking?.shopId);
+    if (previousStaff) messages.push(deliverStaffNotification(previousBooking || booking, previousStaff, 'reassigned', suppliedSettings));
+  }
+  if (nextId) {
+    const nextStaff = await staffNotificationRecipient(nextId, booking?.shopId || previousBooking?.shopId);
+    if (nextStaff) messages.push(deliverStaffNotification(booking, nextStaff, previousId && previousId !== nextId ? 'assigned' : 'updated', suppliedSettings));
+  }
+  if (!messages.length) return { skipped: true, reason: 'No staff notification recipient available' };
+  const results = await Promise.all(messages);
+  return { skipped: results.every(result => result.skipped), attempted: results.filter(result => !result.skipped).length, failed: results.filter(result => result.failed).length, results };
+}
+
+export async function sendStaffCancelledNotification(booking, suppliedSettings = null) {
+  const staff = await staffNotificationRecipient(booking.staffId, booking.shopId);
+  if (!staff) return { skipped: true, reason: 'Assigned staff email notifications are disabled or unavailable' };
+  return deliverStaffNotification(booking, staff, 'cancelled', suppliedSettings);
 }
 
 export async function sendTestEmail(to, suppliedSettings = null) {

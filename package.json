@@ -1,7 +1,7 @@
 {
   "name": "appointment-lite",
-  "version": "0.5.0-hotfix.1",
-  "description": "SHOPLINE service appointments with booking modes, staff scheduling, product/direct booking channels, capacity, and scheduling operations",
+  "version": "0.5.1",
+  "description": "SHOPLINE service appointments with booking modes, staff scheduling, team notifications, staff operations, product/direct booking channels, and capacity controls",
   "type": "module",
   "engines": {
     "node": ">=20"
@@ -10,7 +10,7 @@
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
     "test": "node --test",
-    "check": "node --check src/server.js && node --check src/routes/admin.js && node --check src/routes/public.js && node --check src/services/staffing.js && node --check public/admin/app.js && node --check public/manage/app.js && node --check public/book/app.js && node --check theme-extension-source/public/appointment-lite.js",
+    "check": "node --check src/server.js && node --check src/routes/admin.js && node --check src/routes/public.js && node --check src/services/staffing.js && node --check src/services/bookings.js && node --check src/services/email.js && node --check src/models/Staff.js && node --check src/lib/validation.js && node --check public/admin/app.js && node --check public/manage/app.js && node --check public/book/app.js && node --check theme-extension-source/public/appointment-lite.js",
     "release:zip": "bash scripts/build-release.sh"
   },
   "dependencies": {

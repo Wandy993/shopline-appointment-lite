@@ -6,7 +6,10 @@ import { BookingReservation } from '../models/BookingReservation.js';
 import { Staff } from '../models/Staff.js';
 import { StaffReservation } from '../models/StaffReservation.js';
 import { bookingModeFor, filterSlotsByCapacity, futureSlotsForDate, isAllDayBookableDate, occurrenceSlotKey, slotKey } from '../lib/slots.js';
-import { sendBookingCancelledNotification, sendBookingChangedNotification, sendBookingNotifications, sendCustomerRescheduledNotification } from './email.js';
+import {
+  sendBookingCancelledNotification, sendBookingChangedNotification, sendBookingNotifications, sendCustomerRescheduledNotification,
+  sendStaffAssignedNotification, sendStaffBookingUpdatedNotification, sendStaffCancelledNotification
+} from './email.js';
 import { findInstalledShop } from './shops.js';
 import { normalizedStaffAssignment, releaseStaffReservations, reserveStaffForBooking, staffAvailabilityForDate } from './staffing.js';
 
@@ -239,6 +242,7 @@ export async function createBookingAtomic({ shop, rule, input, BookingModel = Bo
     throw error;
   }
   Promise.resolve(notify(booking, shop.email, managementToken, shop.emailSettings || null)).catch(error => console.error('Email notification failed', error.message));
+  if (BookingModel === Booking && booking.staffId) Promise.resolve(sendStaffAssignedNotification(booking, shop.emailSettings || null)).catch(error => console.error('Staff assignment email failed', error.message));
   return { booking, managementToken };
 }
 
@@ -305,6 +309,7 @@ export async function cancelManagedBooking({ bookingId, token, BookingModel = Bo
   const activeStaffReservationModel = staffReservationModelFor(BookingModel, StaffReservationModel);
   if (activeStaffReservationModel) await releaseStaffReservations({ bookingId: booking._id, StaffReservationModel: activeStaffReservationModel });
   Promise.resolve(notify(booking)).catch(error => console.error('Cancellation email notification failed', error.message));
+  if (BookingModel === Booking && booking.staffId) Promise.resolve(sendStaffCancelledNotification(booking)).catch(error => console.error('Staff cancellation email failed', error.message));
   return booking;
 }
 
@@ -364,6 +369,7 @@ export async function rescheduleManagedBooking({ bookingId, token, date, time, B
   }
   await syncSingleReservation({ ReservationModel: reservationModelFor(BookingModel, ReservationModel), booking: updated, rule });
   Promise.resolve(notify(updated, token)).catch(error => console.error('Reschedule email notification failed', error.message));
+  if (BookingModel === Booking && (updated.staffId || booking.staffId)) Promise.resolve(sendStaffBookingUpdatedNotification(updated, booking)).catch(error => console.error('Staff reschedule email failed', error.message));
   return updated;
 }
 
@@ -407,6 +413,7 @@ export async function updateBookingByMerchant({ shopObjectId, bookingId, input, 
   }
   await syncSingleReservation({ ReservationModel: reservationModelFor(BookingModel, ReservationModel), booking: updated, rule });
   const notification = await Promise.resolve(notify(updated)).catch(error => ({ skipped: false, attempted: 1, failed: 1, reason: error.message }));
+  if (BookingModel === Booking && (updated.staffId || booking.staffId)) Promise.resolve(sendStaffBookingUpdatedNotification(updated, booking)).catch(error => console.error('Staff update email failed', error.message));
   return { booking: updated, notification };
 }
 
@@ -426,6 +433,7 @@ export async function cancelBookingByMerchant({ shopObjectId, bookingId, Booking
   const activeStaffReservationModel = staffReservationModelFor(BookingModel, StaffReservationModel);
   if (activeStaffReservationModel) await releaseStaffReservations({ bookingId: booking._id, StaffReservationModel: activeStaffReservationModel });
   const notification = await Promise.resolve(notify(booking)).catch(error => ({ skipped: false, attempted: 1, failed: 1, reason: error.message }));
+  if (BookingModel === Booking && booking.staffId) Promise.resolve(sendStaffCancelledNotification(booking)).catch(error => console.error('Staff cancellation email failed', error.message));
   return { booking, notification };
 }
 

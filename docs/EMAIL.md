@@ -75,6 +75,7 @@ With `EMAIL_PROVIDER=auto`, Appointment Lite chooses a fully configured Aliyun D
 - Customer changes date/time: customer confirmation and a reminder that the single online change was used.
 - Customer or merchant cancels: customer cancellation email.
 - Merchant edits: customer update email.
+- Managed staff (v0.5.1, per-employee opt-in): new assignment, customer/merchant schedule update, reassignment, and cancellation email. Staff notification delivery is best-effort and never rolls back a booking change.
 
 The private email link is built as `/manage?booking=BOOKING_ID&access=SECRET`. Query delivery is used because some email clients and copy/open flows discard URL fragments. The management response disables caching and referrers; JavaScript immediately stores the token in session storage and replaces the visible URL with `/manage?booking=BOOKING_ID`. Legacy `#token=SECRET` links remain supported. MongoDB stores only the token's SHA-256 hash.
 
@@ -85,3 +86,10 @@ The private email link is built as `/manage?booking=BOOKING_ID&access=SECRET`. Q
 - Never expose AccessKeys, Resend keys, or the management token in storefront source or diagnostics.
 - Monitor rejected and bounced mail in the provider console.
 - A successful booking response is authoritative even when email delivery reports a failure.
+
+
+## Staff notifications (v0.5.1)
+
+Managed staff can enable **Email appointment updates** on their staff profile. This setting is opt-in and requires a valid staff email. Existing staff are not automatically enrolled when upgrading.
+
+The staff message includes the current service/date/time, location, and customer contact summary. When a merchant reassigns a booking, the previous staff member receives a reassignment notice and the newly assigned staff member receives an assignment notice. Staff emails do not include customer management tokens or merchant-admin authentication.

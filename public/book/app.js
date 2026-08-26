@@ -36,6 +36,49 @@ function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char]);
 }
 
+const staffPresetClasses = new Set(['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose']);
+const staffAvatarPalettes = { aurora:['#edf3ff','#5a8dff','#3e4a67','#ffd7bf'],ocean:['#e9f8ff','#25a6d9','#23455d','#f1c8ad'],mint:['#ecfbf5','#3bb89b','#385a4d','#f0c6aa'],peach:['#fff2ed','#ed7e66','#6a4038','#f4c7aa'],violet:['#f5efff','#8d73ef','#4c3d62','#e9c1ad'],sunset:['#fff4e9','#e98a45','#5d4535','#efc6a8'],sky:['#edf8ff','#57b8ef','#36536b','#f0c7ae'],rose:['#fff0f5','#ed6f91','#5b3c4d','#efc4ac'] };
+function staffPresetSvg(preset){const [bg,shirt,hair,skin]=staffAvatarPalettes[preset]||staffAvatarPalettes.aurora;return `<svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="18" fill="${bg}"/><path d="M12 64c2-15 10-23 20-23s18 8 20 23" fill="${shirt}"/><circle cx="32" cy="27" r="13" fill="${skin}"/><path d="M19 27c0-10 5-17 14-17 7 0 13 5 13 14-5-1-9-4-12-8-3 5-8 8-15 8z" fill="${hair}"/><circle cx="27" cy="28" r="1.2" fill="#43505f"/><circle cx="37" cy="28" r="1.2" fill="#43505f"/><path d="M28 34c2.5 2 5.5 2 8 0" stroke="#a36c5b" stroke-width="1.4" stroke-linecap="round" fill="none"/></svg>`;}
+
+function staffAvatarMarkup(item, className = '') {
+  const avatar = item?.avatar || {};
+  const initial = escapeHtml(String(item?.name || '?').trim().slice(0, 1).toUpperCase() || '?');
+  if (avatar.kind === 'custom' && /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(String(avatar.value || ''))) {
+    return `<span class="staff-avatar customer ${className}"><img src="${escapeHtml(avatar.value)}" alt=""></span>`;
+  }
+  if (avatar.kind === 'initials') return `<span class="staff-avatar customer initials ${className}">${initial}</span>`;
+  const preset = staffPresetClasses.has(avatar.value) ? avatar.value : 'aurora';
+  return `<span class="staff-avatar customer preset-${preset} ${className}">${staffPresetSvg(preset)}</span>`;
+}
+
+function setStaffPickerValue(item = null) {
+  const value = $('#staffPickerValue');
+  if (!value) return;
+  value.innerHTML = item
+    ? `${staffAvatarMarkup(item, 'small')}<span><strong>${escapeHtml(item.name)}</strong><small>Selected staff member</small></span>`
+    : `<span class="staff-avatar customer small initials">?</span><span><strong>Choose staff</strong><small>Select a team member</small></span>`;
+}
+
+function renderStaffPicker(options = []) {
+  const menu = $('#staffPickerMenu');
+  if (!menu) return;
+  menu.innerHTML = options.length ? options.map(item => `<button type="button" class="staff-picker-option" role="option" data-staff-id="${escapeHtml(item.id)}">${staffAvatarMarkup(item, 'small')}<span><strong>${escapeHtml(item.name)}</strong><small>View this staff member's availability</small></span><i>✓</i></button>`).join('') : '<div class="staff-picker-empty">No staff available for this service.</div>';
+  menu.querySelectorAll('[data-staff-id]').forEach(button => button.addEventListener('click', async () => {
+    const item = options.find(option => String(option.id) === button.dataset.staffId);
+    selectedStaffId = item?.id || '';
+    $('#staffSelect').value = selectedStaffId;
+    selectedTime = '';
+    selectedAllDayDate = '';
+    selectedOccurrences = [];
+    renderSelectedSessions();
+    setStaffPickerValue(item || null);
+    menu.classList.add('hidden');
+    $('#staffPickerButton').setAttribute('aria-expanded', 'false');
+    menu.querySelectorAll('[data-staff-id]').forEach(option => option.classList.toggle('selected', option.dataset.staffId === selectedStaffId));
+    if ($('#bookingDate').value) await loadAvailability($('#bookingDate').value);
+  }));
+}
+
 function bookingMode() { return ['slot', 'all_day', 'multi_slot'].includes(rule?.bookingMode) ? rule.bookingMode : 'slot'; }
 function occurrenceKey(item) { return `${item.date}T${item.time}`; }
 
@@ -97,9 +140,10 @@ function renderService(payload) {
   const staffField = $('#staffField');
   const staffSelect = $('#staffSelect');
   staffField.classList.toggle('hidden', staffMode !== 'customer_choice');
-  staffSelect.required = staffMode === 'customer_choice';
-  staffSelect.innerHTML = `<option value="">Choose staff</option>${staffOptions.map(item => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}</option>`).join('')}`;
   selectedStaffId = '';
+  staffSelect.value = '';
+  setStaffPickerValue(null);
+  renderStaffPicker(staffOptions);
 
   if (mode === 'all_day') {
     $('#scheduleHeading').textContent = 'Choose a day';
@@ -151,9 +195,18 @@ async function loadAvailability(date) {
   } catch (error) { root.innerHTML = `<span class="muted">${escapeHtml(error.message)}</span>`; }
 }
 
-$('#staffSelect').addEventListener('change', async event => {
-  selectedStaffId = event.target.value; selectedTime = ''; selectedAllDayDate = ''; selectedOccurrences = []; renderSelectedSessions();
-  if ($('#bookingDate').value) await loadAvailability($('#bookingDate').value);
+$('#staffPickerButton').addEventListener('click', () => {
+  const menu = $('#staffPickerMenu');
+  const open = menu.classList.toggle('hidden') === false;
+  $('#staffPickerButton').setAttribute('aria-expanded', String(open));
+});
+
+document.addEventListener('click', event => {
+  const picker = $('#staffPicker');
+  if (picker && !picker.contains(event.target)) {
+    $('#staffPickerMenu').classList.add('hidden');
+    $('#staffPickerButton').setAttribute('aria-expanded', 'false');
+  }
 });
 
 $('#bookingDate').addEventListener('change', async event => {
@@ -166,6 +219,7 @@ $('#bookingForm').addEventListener('submit', async event => {
   event.preventDefault();
   const errorBox = $('#formError');
   const mode = bookingMode();
+  if ((rule.staffAssignment?.mode || 'none') === 'customer_choice' && !selectedStaffId) { errorBox.textContent = 'Please choose a staff member.'; errorBox.classList.remove('hidden'); return; }
   if (mode === 'slot' && !selectedTime) { errorBox.textContent = 'Please select a time.'; errorBox.classList.remove('hidden'); return; }
   if (mode === 'all_day' && !selectedAllDayDate) { errorBox.textContent = 'Please choose an available date.'; errorBox.classList.remove('hidden'); return; }
   if (mode === 'multi_slot' && selectedOccurrences.length !== Number(rule.sessionsRequired || 3)) { errorBox.textContent = `Please select exactly ${rule.sessionsRequired || 3} sessions.`; errorBox.classList.remove('hidden'); return; }

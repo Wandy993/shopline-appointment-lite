@@ -1,6 +1,6 @@
 # Appointment Lite for SHOPLINE
 
-Version `0.5.0-hotfix.1` — adds first-class staff scheduling: team management, per-staff working hours, service assignments, customer/staff selection modes, conflict-safe booking allocation, merchant reassignment, and staff-aware booking filters across all booking modes.
+Version `0.5.1` — expands managed staff with profile avatars, custom storefront staff selection, opt-in staff appointment emails, and a daily Staff Operations workspace while retaining conflict-safe scheduling across all booking modes.
 
 Appointment Lite now supports two booking entry models:
 
@@ -11,6 +11,14 @@ Typical scenarios include furniture installation and measurements, showroom visi
 
 
 
+
+## v0.5.1 Staff Notifications + Staff Operations
+
+- Staff profiles now support eight built-in illustrated avatar presets, initials, or a merchant-uploaded PNG/JPG/WebP image. Custom images are center-cropped and compressed in the browser before the lightweight data URI is stored, so no separate object-storage service is required.
+- Customer-facing **Customer chooses** staffing no longer uses the browser-native select. The Theme App Block and hosted booking page use the same Appointment Lite listbox with staff avatar, name, selected state, and automatic availability refresh.
+- Staff email notifications are explicit opt-in per employee. When enabled and an email is present, Appointment Lite sends assignment, reschedule/update, reassignment, and cancellation notices without blocking the booking transaction if email delivery fails. Existing employees are not silently opted in.
+- The Staff workspace adds **Team schedule**, a date-based operations view showing each active employee's confirmed assignments and unassigned appointments, with direct navigation to the booking record.
+- Avatar metadata exposed to storefronts contains only the public avatar/name/id fields; employee email and phone remain admin-only.
 
 ## v0.5.0-hotfix.1 Service Save Fix
 

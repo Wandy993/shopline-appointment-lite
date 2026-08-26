@@ -1,5 +1,7 @@
-# Appointment Lite v0.5.0-hotfix.1 Service Save Fix
+# Appointment Lite v0.5.1 Staff Notifications + Staff Operations
 
-This hotfix fixes the Mongoose schema mismatch that prevented normal minute/hour and all-day services from being saved after v0.5.0.
+This release upgrades the v0.5.0 staff foundation with employee avatars, a custom storefront staff picker, opt-in staff email notifications, and a daily Staff Operations schedule.
 
-Download the release ZIP and external Mac one-click command to `~/Downloads`, then run from the existing project root. The command validates Git state, creates a backup tag, overlays the hotfix, runs `npm ci`, the full test suite and JavaScript checks, pushes Git, queues Railway with `railway up --detach`, and immediately pushes the SHOPLINE Theme App Extension.
+Use the generated one-click command delivered with the release ZIP. The command verifies the exact ZIP, syncs Git safely, installs locked dependencies, runs the full test suite and JavaScript checks, commits/pushes the release, queues Railway with `railway up --detach`, and then immediately pushes the SHOPLINE Theme App Extension with `sl extension push`.
+
+Custom staff images are compressed in the browser so the normal 100 KB JSON request limit remains sufficient; the release does not add object storage or new infrastructure.

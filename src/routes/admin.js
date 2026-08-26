@@ -160,6 +160,53 @@ adminRouter.get('/staff', async (req, res) => {
   res.json({ staff: staff.map(item => ({ ...item, assignedServices: servicesByStaff.get(String(item._id)) || [] })) });
 });
 
+adminRouter.get('/staff/operations', async (req, res, next) => {
+  try {
+    const timezone = req.shop.timezone || 'UTC';
+    const requestedDate = String(req.query.date || '').trim();
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(requestedDate) ? requestedDate : zonedNow(timezone).date;
+    const [staff, managedRules] = await Promise.all([
+      Staff.find({ shopId: req.shop._id, status: 'active' }).sort({ name: 1 }).lean(),
+      AppointmentRule.find({ shopId: req.shop._id, 'staffAssignment.mode': { $in: ['any', 'customer_choice', 'fixed'] } }).select('_id').lean()
+    ]);
+    const managedRuleIds = managedRules.map(rule => rule._id);
+    const bookings = managedRuleIds.length ? await Booking.find({
+      shopId: req.shop._id,
+      ruleId: { $in: managedRuleIds },
+      status: 'confirmed',
+      $or: [{ date }, { 'occurrences.date': date }]
+    }).sort({ date: 1, time: 1 }).select('ruleId productTitle customer.name date time bookingMode occurrences location staff staffId').lean() : [];
+    const assignments = [];
+    for (const booking of bookings) {
+      const mode = booking.bookingMode || 'slot';
+      const occurrences = Array.isArray(booking.occurrences) && booking.occurrences.length
+        ? booking.occurrences.filter(item => item.date === date)
+        : booking.date === date ? [{ date: booking.date, time: mode === 'all_day' ? '' : booking.time, staffId: booking.staffId, staffName: booking.staff }] : [];
+      for (const occurrence of occurrences) {
+        assignments.push({
+          bookingId: String(booking._id),
+          staffId: occurrence.staffId ? String(occurrence.staffId) : (booking.staffId ? String(booking.staffId) : ''),
+          staffName: occurrence.staffName || booking.staff || '',
+          serviceTitle: booking.productTitle || 'Service',
+          customerName: booking.customer?.name || 'Customer',
+          time: mode === 'all_day' ? '' : (occurrence.time || booking.time || ''),
+          bookingMode: mode,
+          location: booking.location || ''
+        });
+      }
+    }
+    res.set('Cache-Control', 'no-store');
+    res.json({
+      date, timezone,
+      staff: staff.map(item => ({
+        id: String(item._id), name: item.name, avatar: item.avatar || { kind: 'preset', value: 'aurora' },
+        assignments: assignments.filter(row => row.staffId === String(item._id)).sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'))
+      })),
+      unassigned: assignments.filter(row => !row.staffId)
+    });
+  } catch (error) { next(error); }
+});
+
 adminRouter.post('/staff', async (req, res, next) => {
   try {
     const { errors, value } = validateStaffInput(req.body);

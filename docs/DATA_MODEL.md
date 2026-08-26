@@ -63,11 +63,13 @@ Important fields:
 
 - `shopId`
 - `name`, optional `email`, optional `phone`
+- `avatar { kind: preset | custom | initials, value }` — public-facing profile presentation; custom images are compressed before storage
+- `notifications { emailEnabled }` — explicit opt-in for assignment/update/reassignment/cancellation emails
 - `status`: `active | inactive`
 - `weeklyAvailability[{ weekday, enabled, windows[{ start, end }] }]`
 - `availabilityExceptions[{ date, closed, windows[] }]`
 
-Staff availability is independent from service availability. A customer-facing occurrence is bookable only when the service schedule, service capacity, and the chosen/assigned staff schedule all allow it. Staff records are tenant-scoped and can be assigned to multiple services.
+Staff availability is independent from service availability. A customer-facing occurrence is bookable only when the service schedule, service capacity, and the chosen/assigned staff schedule all allow it. Staff records are tenant-scoped and can be assigned to multiple services. Public staff-choice responses expose only `id`, `name`, and `avatar`; contact data and notification settings stay admin-only.
 
 ## StaffReservation
 
@@ -131,3 +133,8 @@ This migration does not convert existing services to all-day or multi-session au
 ## Merchant onboarding state
 
 `Shop.onboarding` stores only setup progress timestamps. The App Block is required when a service uses the product-page booking source. Direct-only services can continue without theme editing. Services configured with `both` retain the App Block setup requirement because their product-page channel is active.
+
+
+## v0.5.1 staff profile compatibility
+
+Staff records created before v0.5.1 continue to work without migration. Missing avatar data renders with the default `aurora` preset. Missing `notifications.emailEnabled` is treated as disabled so an upgrade cannot unexpectedly start sending employee emails.
