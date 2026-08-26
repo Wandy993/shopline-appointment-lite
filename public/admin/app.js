@@ -29,6 +29,10 @@ const productStatusLabels = { active: 'Published', draft: 'Draft' };
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
 
+function googleGMark(className = '') {
+  return `<span class="google-g ${className}" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill="#4285F4" d="M21.6 12.23c0-.71-.06-1.24-.2-1.8H12v3.28h5.52a4.72 4.72 0 0 1-2.05 3.01l-.02.11 2.98 2.31.21.02c1.93-1.78 3.04-4.4 3.04-6.93Z"/><path fill="#34A853" d="M12 22c2.76 0 5.08-.91 6.78-2.48l-3.23-2.5c-.86.6-2.04 1.01-3.55 1.01a6.17 6.17 0 0 1-5.83-4.26l-.1.01-3.1 2.4-.04.1A10.24 10.24 0 0 0 12 22Z"/><path fill="#FBBC05" d="M6.17 13.77A6.3 6.3 0 0 1 5.83 12c0-.62.12-1.22.33-1.78l-.01-.12-3.14-2.44-.1.05A10 10 0 0 0 1.82 12c0 1.55.38 3.02 1.08 4.29l3.27-2.52Z"/><path fill="#EA4335" d="M12 5.97c1.92 0 3.22.83 3.97 1.52l2.88-2.81C17.08 3.03 14.76 2 12 2a10.24 10.24 0 0 0-9.08 5.71l3.24 2.51A6.19 6.19 0 0 1 12 5.97Z"/></svg></span>`;
+}
+
 function browserTimeZones() {
   const common = ['UTC','Asia/Shanghai','Asia/Singapore','Asia/Tokyo','Europe/London','Europe/Paris','America/New_York','America/Chicago','America/Denver','America/Los_Angeles','Australia/Sydney'];
   let values = [];
@@ -295,36 +299,37 @@ Object.assign(zh, {
 });
 
 Object.assign(zh, {
-  'Calendar Sync': '日历同步', 'Calendar integrations': '日历集成', 'CALENDAR INTEGRATIONS': '日历集成', 'Foundation': '基础连接',
-  'Connect each staff member to an owned Google Calendar and choose the calendar Appointment Lite will use.': '为每位员工连接其拥有的 Google 日历，并选择 Appointment Lite 后续使用的日历。',
-  'GOOGLE CALENDAR': 'Google 日历', 'Checking Google Calendar setup…': '正在检查 Google 日历配置…', 'Checking': '检查中',
-  'Appointment Lite is checking whether Google OAuth credentials are configured.': 'Appointment Lite 正在检查 Google OAuth 配置。',
-  'STAFF CALENDARS': '员工日历', 'Connect staff calendars': '连接员工日历',
-  'Each active staff member can connect a separate Google account and choose one owned calendar.': '每位启用中的员工都可以连接独立 Google 账号，并选择一个本人拥有的日历。',
-  'Google Calendar is ready to connect.': 'Google 日历已可以连接。', 'OAuth credentials configured': 'OAuth 配置已完成',
-  'Google Calendar is not configured yet.': 'Google 日历尚未配置。', 'Add the Google Calendar Railway variables before connecting staff accounts.': '请先在 Railway 添加 Google Calendar 环境变量，再连接员工账号。',
-  'Redirect URI': '回调地址', 'Connect Google Calendar': '连接 Google 日历', 'Reconnect': '重新连接', 'Change calendar': '更换日历', 'Disconnect': '断开连接',
-  'Connected': '已连接', 'Connection error': '连接异常', 'Not connected': '未连接', 'Inactive staff': '员工已停用',
-  'Google account': 'Google 账号', 'Selected calendar': '当前日历', 'Owned calendars only': '仅支持本人拥有的日历',
-  'Choose calendar': '选择日历', 'Choose the owned calendar Appointment Lite should use for this staff member.': '选择 Appointment Lite 后续为该员工使用的本人拥有的 Google 日历。',
-  'Loading Google calendars…': '正在加载 Google 日历…', 'Calendar': '日历', 'Loading calendars…': '正在加载日历…',
-  'Save calendar': '保存日历', 'Google Calendar connected.': 'Google 日历已连接。', 'Calendar selection saved.': '日历选择已保存。',
-  'Google Calendar disconnected.': 'Google 日历已断开。', 'Disconnect Google Calendar?': '断开 Google 日历连接？',
-  'Appointment Lite will remove the stored Google authorization for this staff member. Existing appointments are not changed.': 'Appointment Lite 会删除该员工已保存的 Google 授权；现有预约不会发生变化。',
-  'Disconnect calendar': '断开日历', 'Allow pop-ups to connect Google Calendar, then try again.': '请允许浏览器弹窗后重新连接 Google 日历。',
-  'Choose a Google Calendar.': '请选择一个 Google 日历。', 'No owned calendars are available for this account.': '该 Google 账号没有可用的本人日历。',
-  'Connection foundation ready': '日历连接基础能力已就绪', 'Appointment event sync and busy-time blocking are not active in v0.6.0 yet.': 'v0.6.0 暂不启用预约事件写入和 Google 忙碌时间拦截。',
-  'Live appointment sync': '预约同步已启用', 'Google Calendar sync is active.': 'Google 日历预约同步已启用。',
-  'New bookings, reschedules, staff changes, and cancellations sync automatically. Google busy-time blocking is not active yet.': '新预约、改期、员工变更和取消会自动同步到 Google 日历；Google 忙碌时间拦截将在后续版本启用。',
-  'Sync appointments': '同步预约', 'Create, update, move, and cancel Google Calendar events automatically.': '自动创建、更新、转移和取消 Google 日历事件。',
-  'Send customer calendar invitations': '向客户发送日历邀请', 'Invite the booking email as a Google Calendar guest.': '将预约邮箱作为 Google 日历参与者并发送邀请。',
-  'Sync now': '立即同步', 'Calendar sync started.': '日历同步已完成。', 'Calendar sync settings saved.': '日历同步设置已保存。',
-  'Last sync': '最近同步', 'Not synced yet': '尚未同步', 'Sync error': '同步异常', 'Appointment sync paused': '预约同步已暂停',
-  'Customer invitations on': '客户邀请开启', 'Customer invitations off': '客户邀请关闭',
-  'Turn on appointment sync before using Sync now.': '请先开启预约同步，再执行立即同步。', 'Calendar sync completed with errors.': '日历同步完成，但存在错误。',
-  'Live sync': '实时同步',
-  'Connect each staff member to an owned Google Calendar. Appointment Lite will create and maintain appointment events automatically.': '为每位员工连接其拥有的 Google 日历，Appointment Lite 会自动创建并维护预约事件。',
-  'Appointment events now sync automatically. Google busy-time conflict blocking is planned for the next calendar milestone.': '预约事件现已自动同步；Google 忙碌时间冲突拦截将在下一阶段加入。'
+  'Calendar Sync': '日历同步', 'Calendar integrations': '日历集成', 'CALENDAR SYNC': '日历同步',
+  'Google Calendar': 'Google 日历', 'GOOGLE CALENDAR': 'Google 日历',
+  'Checking Google Calendar…': '正在检查 Google 日历…', 'Checking': '检查中',
+  'Google Calendar is available.': 'Google 日历已可使用。', 'Ready': '已就绪',
+  'Google Calendar needs setup.': 'Google 日历暂不可用。', 'Unavailable': '暂不可用',
+  'Connect one business Google Calendar to keep your store appointments together. Staff can receive assignment updates by email and do not need a Google account.': '连接一个商家 Google 日历，统一管理店铺预约。员工可通过邮箱接收分配通知，无需 Google 账号。',
+  'Connect your store calendar once and Appointment Lite will keep confirmed appointments in sync.': '商家只需连接一次 Google 日历，Appointment Lite 会自动同步已确认预约。',
+  'Google Calendar is ready. Connect your business calendar when you want appointments to appear there.': 'Google 日历已就绪。连接商家日历后，预约会自动同步到该日历。',
+  'Google Calendar is temporarily unavailable. Your appointment and email features are not affected.': 'Google 日历暂不可用，预约和邮件通知功能不受影响。',
+  'BUSINESS CALENDAR': '商家日历', 'Business appointment calendar': '商家预约日历',
+  'Use one Google account for the store. New bookings, changes, and cancellations will sync automatically.': '整个店铺只需连接一个 Google 账号，新预约、改期和取消都会自动同步。',
+  'One store calendar for all appointments': '一个店铺日历同步全部预约',
+  'Connect Google Calendar': '连接 Google 日历', 'Change calendar': '更换日历', 'Reconnect': '重新连接', 'Sync now': '立即同步', 'Disconnect': '断开连接',
+  'Connected': '已连接', 'Connection error': '连接异常', 'Not connected': '未连接',
+  'Google account': 'Google 账号', 'Selected calendar': '当前日历', 'Last synced': '最近同步', 'Not synced yet': '尚未同步',
+  'Choose business calendar': '选择商家日历', 'Choose the Google Calendar your store will use for appointments.': '选择店铺用于同步预约的 Google 日历。',
+  'Choose the calendar where you want store appointments to appear.': '请选择预约需要同步到的 Google 日历。',
+  'Loading Google calendars…': '正在加载 Google 日历…', 'Loading calendars…': '正在加载日历…', 'Choose calendar': '选择日历',
+  'Save calendar': '保存日历', 'Primary': '主日历', 'Owned calendars': '个可用日历',
+  'No owned calendars are available for this account.': '该 Google 账号没有可用日历。', 'Choose a Google Calendar.': '请选择一个 Google 日历。',
+  'Google Calendar connected.': 'Google 日历已连接。', 'Calendar selection saved.': '日历选择已保存。', 'Google Calendar disconnected.': 'Google 日历已断开。',
+  'Allow pop-ups to connect Google Calendar, then try again.': '请允许浏览器弹窗后重新连接 Google 日历。',
+  'Could not load Google Calendar.': '无法加载 Google 日历，请稍后重试。', 'Could not connect Google Calendar.': '无法连接 Google 日历，请重试。',
+  'Could not load calendars.': '无法加载日历，请重试。', 'Could not save calendar.': '无法保存日历，请重试。', 'Could not sync calendar.': '日历同步失败，请稍后重试。',
+  'Calendar sync completed.': '日历同步完成。', 'Calendar sync completed with errors.': '日历同步完成，但部分预约未能同步。', 'appointments': '条预约',
+  'Disconnect business Google Calendar?': '断开商家 Google 日历？',
+  'Appointment Lite will stop syncing store appointments to this Google Calendar. Email notifications will keep working.': '断开后将停止同步预约到该 Google 日历，邮件通知仍会正常工作。', 'Disconnect calendar': '断开日历',
+  'STAFF NOTIFICATIONS': '员工通知', 'Staff do not need to connect Google': '员工无需连接 Google',
+  'Add an email address to each staff member and Appointment Lite will send their assigned booking updates automatically.': '为员工填写邮箱后，Appointment Lite 会自动发送分配给他们的预约、改期和取消通知。',
+  'Manage staff emails': '管理员工邮箱', 'Loading calendar…': '正在加载日历…',
+  'New bookings and appointment changes sync automatically after you save.': '保存后，新预约和预约变更会自动同步。'
 });
 
 const enByZh = new Map(Object.entries(zh).map(([english, chinese]) => [chinese, english]));
@@ -378,7 +383,7 @@ const staffAvatarPresets = ['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunse
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp' };
 function staffPresetImage(preset) {
   const file = staffAvatarFiles[preset] || staffAvatarFiles.aurora;
-  return `<img src="/assets/staff/${file}?v=0.6.0.2" alt="" loading="lazy" decoding="async">`;
+  return `<img src="/assets/staff/${file}?v=0.6.0.3" alt="" loading="lazy" decoding="async">`;
 }
 let staffAvatarDraft = { kind: 'preset', value: 'aurora' };
 
@@ -722,29 +727,20 @@ async function ensureStaff() {
   return state.staff;
 }
 
-function calendarEndpoint(target, suffix = '') {
-  const key = String(target || '');
-  if (key === 'store') return `/calendar/google/store${suffix}`;
-  return `/calendar/google/${encodeURIComponent(key)}${suffix}`;
+function calendarEndpoint(suffix = '') {
+  return `/calendar/google/store${suffix}`;
 }
 
-function calendarConnectionCard({ target, title, subtitle, avatar = '', connection, connectedLabel = 'Connected', connectDisabled = false, personal = false }) {
+function businessCalendarCard(connection, configured) {
   const connected = connection?.status === 'connected';
   const errored = connection?.status === 'error';
-  const statusLabel = connected ? connectedLabel : errored ? 'Connection error' : 'Not connected';
+  const statusLabel = connected ? 'Connected' : errored ? 'Connection error' : 'Not connected';
   const statusClass = connected ? 'enabled' : errored ? 'no_show' : 'disabled';
-  const syncEnabled = connection?.syncAppointments !== false;
-  const invitesEnabled = connection?.sendCustomerInvites === true;
   const lastSync = connection?.lastSyncAt ? new Date(connection.lastSyncAt).toLocaleString(state.locale === 'zh-CN' ? 'zh-CN' : 'en') : t('Not synced yet');
   const actions = connection
-    ? `<button type="button" class="secondary small" data-calendar-manage="${target}">${t('Change calendar')}</button><button type="button" class="secondary small" data-calendar-connect="${target}" ${connectDisabled ? 'disabled' : ''}>${t('Reconnect')}</button><button type="button" class="secondary small" data-calendar-sync-now="${target}" ${!connected || !syncEnabled ? 'disabled' : ''}>${t('Sync now')}</button><button type="button" class="text-button calendar-disconnect" data-calendar-disconnect="${target}">${t('Disconnect')}</button>`
-    : `<button type="button" class="primary small" data-calendar-connect="${target}" ${connectDisabled ? 'disabled' : ''}>${t(target === 'store' ? 'Connect business Google Calendar' : 'Connect personal Google Calendar')}</button>`;
-  const options = connection ? `<div class="calendar-sync-options">
-    <label class="calendar-sync-toggle"><input type="checkbox" data-calendar-setting="syncAppointments" data-calendar-target="${target}" ${syncEnabled ? 'checked' : ''}><span><strong>${t('Sync appointments')}</strong><small>${t(personal ? 'Optional: keep a second copy in this staff member’s personal Google Calendar.' : 'Create, update, move, and cancel all store appointments in this business calendar.')}</small></span></label>
-    <label class="calendar-sync-toggle"><input type="checkbox" data-calendar-setting="sendCustomerInvites" data-calendar-target="${target}" ${invitesEnabled ? 'checked' : ''}><span><strong>${t('Send Google invitations to customers')}</strong><small>${t('Optional and off by default. First-time customers may see an unknown-sender warning. Appointment Lite email links are recommended instead.')}</small></span></label>
-    <div class="calendar-sync-state"><span>${t('Last sync')}</span><strong>${escapeHtml(lastSync)}</strong>${connection.lastSyncError ? `<small>${t('Sync error')}: ${escapeHtml(connection.lastSyncError)}</small>` : `<small>${t(syncEnabled ? (invitesEnabled ? 'Google guest invitations on' : 'Customer uses email Add to Calendar') : 'Appointment sync paused')}</small>`}</div>
-  </div>` : '';
-  return `<article class="panel calendar-staff-card ${target === 'store' ? 'calendar-business-card' : ''}"><div class="calendar-staff-person">${avatar}<div><strong>${escapeHtml(title)}</strong><span>${escapeHtml(subtitle || '')}</span></div></div><span class="status-badge ${statusClass}">${t(statusLabel)}</span><div class="calendar-staff-details"><div><span>${t('Google account')}</span><strong>${escapeHtml(connection?.accountLabel || '—')}</strong></div><div><span>${t('Selected calendar')}</span><strong>${escapeHtml(connection?.calendarName || '—')}</strong>${connection?.calendarTimeZone ? `<small>${escapeHtml(connection.calendarTimeZone)}</small>` : ''}</div></div>${errored && connection?.lastError ? `<p class="calendar-error-copy">${escapeHtml(connection.lastError)}</p>` : ''}<div class="calendar-staff-actions">${actions}</div>${options}</article>`;
+    ? `<button type="button" class="secondary small" data-calendar-manage>${t('Change calendar')}</button><button type="button" class="secondary small" data-calendar-connect ${!configured ? 'disabled' : ''}>${t('Reconnect')}</button><button type="button" class="secondary small" data-calendar-sync-now ${!connected ? 'disabled' : ''}>${t('Sync now')}</button><button type="button" class="text-button calendar-disconnect" data-calendar-disconnect>${t('Disconnect')}</button>`
+    : `<button type="button" class="google-connect-button" data-calendar-connect ${!configured ? 'disabled' : ''}>${googleGMark('small')}<span>${t('Connect Google Calendar')}</span></button>`;
+  return `<article class="panel calendar-business-card"><div class="calendar-business-head"><div class="calendar-business-identity">${googleGMark()}<div><strong>${t('Business appointment calendar')}</strong><span>${t('One store calendar for all appointments')}</span></div></div><span class="status-badge ${statusClass}">${t(statusLabel)}</span></div><div class="calendar-business-details"><div><span>${t('Google account')}</span><strong>${escapeHtml(connection?.accountLabel || '—')}</strong></div><div><span>${t('Selected calendar')}</span><strong>${escapeHtml(connection?.calendarName || '—')}</strong>${connection?.calendarTimeZone ? `<small>${escapeHtml(connection.calendarTimeZone)}</small>` : ''}</div><div><span>${t('Last synced')}</span><strong>${escapeHtml(lastSync)}</strong></div></div><div class="calendar-business-actions">${actions}</div></article>`;
 }
 
 function renderCalendarSync() {
@@ -754,147 +750,111 @@ function renderCalendarSync() {
   const configTitle = $('#calendarConfigTitle');
   const configText = $('#calendarConfigText');
   const configBadge = $('#calendarConfigBadge');
-  const configMeta = $('#calendarConfigMeta');
-  if (configTitle) configTitle.textContent = t(configured ? 'Google Calendar integration is ready.' : 'Google Calendar is not configured yet.');
-  if (configText) configText.textContent = t(configured ? 'Business calendar sync is optional. Email notifications work independently with Gmail, QQ, 163, Outlook, and other providers.' : 'Add the Google Calendar Railway variables only if the merchant wants Google Calendar sync.');
+  if (configTitle) configTitle.textContent = t(configured ? 'Google Calendar is available.' : 'Google Calendar needs setup.');
+  if (configText) configText.textContent = t(configured ? 'Google Calendar is ready. Connect your business calendar when you want appointments to appear there.' : 'Google Calendar is temporarily unavailable. Your appointment and email features are not affected.');
   if (configBadge) {
-    configBadge.textContent = t(configured ? 'OAuth ready' : 'Optional integration');
+    configBadge.textContent = t(configured ? 'Ready' : 'Unavailable');
     configBadge.className = `status-badge ${configured ? 'enabled' : 'disabled'}`;
   }
-  if (configMeta) {
-    configMeta.innerHTML = `<span><strong>${t('Customer calendar')}</strong>${t('Branded email + Google link + .ics')}</span><span><strong>${t('Google scope')}</strong>calendar.events.owned</span>${configured ? `<small>${t('Google Calendar is optional; merchant and staff email notifications work independently.')}</small>` : ''}`;
-  }
-
-  const businessRoot = $('#calendarBusinessCard');
-  if (businessRoot) {
-    businessRoot.innerHTML = calendarConnectionCard({
-      target: 'store', title: t('Business appointment calendar'),
-      subtitle: t('Recommended · one merchant authorization for all appointments'),
-      avatar: '<div class="calendar-provider-mark mini">G</div>',
-      connection: payload.businessConnection || null, connectDisabled: !configured
-    });
-  }
-
-  const root = $('#calendarStaffList');
-  if (!root) return;
-  const rows = payload.staff || [];
-  if (!rows.length) {
-    root.innerHTML = `<div class="panel empty"><strong>${t('No staff yet')}</strong><span>${t('Add your first team member to start staff-aware scheduling.')}</span></div>`;
-    return;
-  }
-  root.innerHTML = rows.map(item => {
-    const active = item.status === 'active';
-    const emailStatus = item.emailNotificationsEnabled
-      ? `${item.email} · ${t('Assignment emails on')}`
-      : item.email ? `${item.email} · ${t('Assignment emails off')}` : t('Add an email to notify this staff member without any Google account.');
-    return calendarConnectionCard({
-      target: item.id, title: item.name, subtitle: emailStatus, avatar: staffAvatarMarkup(item),
-      connection: item.connection, connectDisabled: !configured || !active, personal: true
-    });
-  }).join('');
+  const root = $('#calendarBusinessCard');
+  if (root) root.innerHTML = businessCalendarCard(payload.businessConnection || null, configured);
 }
 
 async function loadCalendarSync({ force = false } = {}) {
   if (!force && state.calendarSync && state.currentView !== 'calendar') return state.calendarSync;
-  const root = $('#calendarStaffList');
-  if (root && !state.calendarSync) root.innerHTML = '<div class="panel loading">Loading calendar connections…</div>';
+  const root = $('#calendarBusinessCard');
+  if (root && !state.calendarSync) root.innerHTML = '<div class="panel loading">Loading calendar…</div>';
   try {
     state.calendarSync = await api('/calendar');
     renderCalendarSync();
     return state.calendarSync;
   } catch (error) {
-    showError(error);
-    if (root) root.innerHTML = `<div class="panel empty"><strong>${t('Could not load Google Calendar connections')}</strong><span>${escapeHtml(error.message)}</span></div>`;
+    console.warn('Calendar load failed:', error);
+    if (root) root.innerHTML = `<div class="panel empty"><strong>${t('Could not load Google Calendar.')}</strong></div>`;
     return null;
   }
 }
 
-async function connectGoogleCalendar(target) {
+async function connectGoogleCalendar() {
   const popup = window.open('about:blank', 'appointmentLiteGoogleCalendar', 'popup=yes,width=620,height=760,resizable=yes,scrollbars=yes');
   if (!popup) return toast(t('Allow pop-ups to connect Google Calendar, then try again.'), 'error');
   state.calendarPopup = popup;
   try {
     popup.document.title = 'Appointment Lite · Google Calendar';
-    const payload = await api(calendarEndpoint(target, '/connect'));
+    const payload = await api(calendarEndpoint('/connect'));
     popup.location.href = payload.authorizationUrl;
     popup.focus();
   } catch (error) {
     try { popup.close(); } catch {}
     state.calendarPopup = null;
-    showError(error);
+    console.warn('Calendar connect failed:', error);
+    toast(t('Could not connect Google Calendar.'), 'error');
   }
 }
 
-async function openCalendarManager(target) {
-  state.calendarStaffId = String(target || '');
-  const isStore = state.calendarStaffId === 'store';
-  const item = state.calendarSync?.staff?.find(row => String(row.id) === state.calendarStaffId);
-  $('#calendarStaffId').value = state.calendarStaffId;
-  $('#calendarDialogTitle').textContent = t(isStore ? 'Choose business calendar' : 'Choose personal calendar');
-  $('#calendarDialogSubtitle').textContent = isStore ? t('Choose one calendar owned by the merchant’s connected Google account.') : (item ? `${item.name} · ${t('Owned calendars only')}` : t('Choose the owned calendar Appointment Lite should use for this staff member.'));
+async function openCalendarManager() {
+  $('#calendarStaffId').value = 'store';
+  $('#calendarDialogTitle').textContent = t('Choose business calendar');
+  $('#calendarDialogSubtitle').textContent = t('Choose the Google Calendar your store will use for appointments.');
   $('#calendarAccountNotice').textContent = t('Loading Google calendars…');
   $('#calendarFormError').classList.add('hidden');
   $('#calendarSelect').innerHTML = `<option value="">${t('Loading calendars…')}</option>`;
   $('#saveCalendarSelection').disabled = true;
   $('#calendarDialog').showModal();
   try {
-    const payload = await api(calendarEndpoint(state.calendarStaffId, '/calendars'));
+    const payload = await api(calendarEndpoint('/calendars'));
     const calendars = payload.calendars || [];
     if (!calendars.length) {
       $('#calendarSelect').innerHTML = `<option value="">${t('No owned calendars are available for this account.')}</option>`;
       $('#calendarAccountNotice').textContent = t('No owned calendars are available for this account.');
       return;
     }
-    $('#calendarSelect').innerHTML = calendars.map(calendar => `<option value="${escapeHtml(calendar.id)}" ${calendar.id === payload.selectedCalendarId ? 'selected' : ''}>${escapeHtml(calendar.summary)}${calendar.primary ? ' · Primary' : ''}${calendar.timeZone ? ` · ${escapeHtml(calendar.timeZone)}` : ''}</option>`).join('');
-    $('#calendarAccountNotice').textContent = `${calendars.length} ${t('Owned calendars only').toLowerCase()}`;
+    $('#calendarSelect').innerHTML = calendars.map(calendar => `<option value="${escapeHtml(calendar.id)}" ${calendar.id === payload.selectedCalendarId ? 'selected' : ''}>${escapeHtml(calendar.summary)}${calendar.primary ? ` · ${t('Primary')}` : ''}${calendar.timeZone ? ` · ${escapeHtml(calendar.timeZone)}` : ''}</option>`).join('');
+    $('#calendarAccountNotice').textContent = `${calendars.length} ${t('Owned calendars')}`;
     $('#saveCalendarSelection').disabled = false;
   } catch (error) {
-    $('#calendarFormError').textContent = t(error.message); $('#calendarFormError').classList.remove('hidden'); $('#calendarAccountNotice').textContent = t('Connection error');
+    console.warn('Calendar list failed:', error);
+    $('#calendarFormError').textContent = t('Could not load calendars.');
+    $('#calendarFormError').classList.remove('hidden');
+    $('#calendarAccountNotice').textContent = t('Connection error');
   }
 }
 
 async function saveCalendarSelection(event) {
   event.preventDefault();
-  const target = $('#calendarStaffId').value;
   const calendarId = $('#calendarSelect').value;
   if (!calendarId) { $('#calendarFormError').textContent = t('Choose a Google Calendar.'); $('#calendarFormError').classList.remove('hidden'); return; }
   const button = $('#saveCalendarSelection'); button.disabled = true; $('#calendarFormError').classList.add('hidden');
   try {
-    await api(calendarEndpoint(target), { method: 'PUT', body: JSON.stringify({ calendarId }) });
+    await api(calendarEndpoint(), { method: 'PUT', body: JSON.stringify({ calendarId }) });
     $('#calendarDialog').close(); toast(t('Calendar selection saved.')); await loadCalendarSync({ force: true });
-  } catch (error) { $('#calendarFormError').textContent = t(error.message); $('#calendarFormError').classList.remove('hidden'); }
-  finally { button.disabled = false; }
+  } catch (error) {
+    console.warn('Calendar save failed:', error);
+    $('#calendarFormError').textContent = t('Could not save calendar.');
+    $('#calendarFormError').classList.remove('hidden');
+  } finally { button.disabled = false; }
 }
 
-async function saveCalendarSyncSetting(target, setting, value, input) {
-  if (!['syncAppointments', 'sendCustomerInvites'].includes(setting)) return;
-  if (input) input.disabled = true;
-  try {
-    await api(calendarEndpoint(target, '/settings'), { method: 'PATCH', body: JSON.stringify({ [setting]: Boolean(value) }) });
-    toast(t('Calendar sync settings saved.')); await loadCalendarSync({ force: true });
-  } catch (error) { if (input) input.checked = !value; showError(error); }
-  finally { if (input) input.disabled = false; }
-}
-
-async function syncGoogleCalendarNow(target, button) {
+async function syncGoogleCalendarNow(button) {
   if (button) button.disabled = true;
   try {
-    const payload = await api(calendarEndpoint(target, '/sync'), { method: 'POST' });
+    const payload = await api(calendarEndpoint('/sync'), { method: 'POST' });
     const summary = payload.summary || {};
-    if (Number(summary.errors || 0) > 0) toast(`${t('Calendar sync completed with errors.')} ${Number(summary.errors)} ${t('Sync error')}`, 'error');
+    if (Number(summary.errors || 0) > 0) toast(t('Calendar sync completed with errors.'), 'error');
     else toast(`${t('Calendar sync completed.')} ${Number(summary.total || 0)} ${t('appointments')}`);
     await loadCalendarSync({ force: true });
-  } catch (error) { showError(error); }
-  finally { if (button) button.disabled = false; }
+  } catch (error) {
+    console.warn('Calendar sync failed:', error);
+    toast(t('Could not sync calendar.'), 'error');
+  } finally { if (button) button.disabled = false; }
 }
 
-function disconnectGoogleCalendar(target) {
-  const isStore = String(target) === 'store';
+function disconnectGoogleCalendar() {
   confirmAction(
-    isStore ? 'Disconnect business Google Calendar?' : 'Disconnect personal Google Calendar?',
-    isStore ? 'Appointment Lite will remove the merchant Google authorization. Email notifications and staff scheduling keep working.' : 'Appointment Lite will remove this optional personal Google authorization. Staff assignment emails keep working.',
+    'Disconnect business Google Calendar?',
+    'Appointment Lite will stop syncing store appointments to this Google Calendar. Email notifications will keep working.',
     'Disconnect calendar',
-    async () => { await api(calendarEndpoint(target), { method: 'DELETE' }); toast(t('Google Calendar disconnected.')); await loadCalendarSync({ force: true }); }
+    async () => { await api(calendarEndpoint(), { method: 'DELETE' }); toast(t('Google Calendar disconnected.')); await loadCalendarSync({ force: true }); }
   );
 }
 
@@ -2062,25 +2022,16 @@ function bind() {
   $('#ruleSearch').addEventListener('input', renderRules);
   $('#newStaffButton')?.addEventListener('click', () => openStaff());
   $('#staffSearch')?.addEventListener('input', renderStaff);
-  const bindCalendarControls = root => {
-    root?.addEventListener('click', event => {
-      const connect = event.target.closest('[data-calendar-connect]');
-      const manage = event.target.closest('[data-calendar-manage]');
-      const syncNow = event.target.closest('[data-calendar-sync-now]');
-      const disconnect = event.target.closest('[data-calendar-disconnect]');
-      if (connect && !connect.disabled) connectGoogleCalendar(connect.dataset.calendarConnect);
-      else if (manage) openCalendarManager(manage.dataset.calendarManage);
-      else if (syncNow && !syncNow.disabled) syncGoogleCalendarNow(syncNow.dataset.calendarSyncNow, syncNow);
-      else if (disconnect) disconnectGoogleCalendar(disconnect.dataset.calendarDisconnect);
-    });
-    root?.addEventListener('change', event => {
-      const input = event.target.closest('[data-calendar-setting][data-calendar-target]');
-      if (!input) return;
-      saveCalendarSyncSetting(input.dataset.calendarTarget, input.dataset.calendarSetting, input.checked, input);
-    });
-  };
-  bindCalendarControls($('#calendarBusinessCard'));
-  bindCalendarControls($('#calendarStaffList'));
+  $('#calendarBusinessCard')?.addEventListener('click', event => {
+    const connect = event.target.closest('[data-calendar-connect]');
+    const manage = event.target.closest('[data-calendar-manage]');
+    const syncNow = event.target.closest('[data-calendar-sync-now]');
+    const disconnect = event.target.closest('[data-calendar-disconnect]');
+    if (connect && !connect.disabled) connectGoogleCalendar();
+    else if (manage) openCalendarManager();
+    else if (syncNow && !syncNow.disabled) syncGoogleCalendarNow(syncNow);
+    else if (disconnect) disconnectGoogleCalendar();
+  });
   $('#calendarForm')?.addEventListener('submit', saveCalendarSelection);
   $$('[data-close-calendar-dialog]').forEach(button => button.addEventListener('click', () => $('#calendarDialog').close()));
   window.addEventListener('message', event => {

@@ -140,7 +140,7 @@ This migration does not convert existing services to all-day or multi-session au
 Staff records created before v0.5.1 continue to work without migration. Missing avatar data renders with the default `aurora` preset. Missing `notifications.emailEnabled` is treated as disabled so an upgrade cannot unexpectedly start sending employee emails.
 
 
-## v0.6.0.2 notification and calendar records
+## v0.6.0.3 notification and calendar records
 
 ### Merchant email recipients
 
@@ -152,15 +152,12 @@ Staff records created before v0.5.1 continue to work without migration. Missing 
 
 ### CalendarConnection
 
-Google connections are optional and use `connectionType`:
+The merchant-facing calendar model uses one `connectionType=business` Google connection per store. It has `staffId=null` and receives confirmed appointments across all staff. `calendarId`, `calendarName`, `calendarTimeZone`, and encrypted `refreshTokenEncrypted` are stored server-side; refresh tokens remain `select:false`.
 
-- `business`: one store-wide merchant-owned Google Calendar; `staffId=null`; all confirmed store bookings can be projected into it.
-- `staff`: an optional personal staff calendar; only bookings assigned to that staff member are projected into it.
+Legacy `connectionType=staff` records from v0.6.0/v0.6.0.1 remain schema-compatible but are no longer offered by the merchant UI and are ignored by booking reconciliation. New staff OAuth connection routes return `410 STAFF_GOOGLE_CALENDAR_RETIRED`.
 
-Important fields include `calendarId`, `calendarName`, `calendarTimeZone`, encrypted `refreshTokenEncrypted`, `syncAppointments`, `sendCustomerInvites`, health timestamps, and `architectureVersion`. `sendCustomerInvites` defaults to `false`. Refresh tokens remain `select:false`.
-
-`Booking.calendarEvents[]` can contain both business-calendar and personal-staff-calendar mappings. Each mapping records the connection ID/type, calendar ID, occurrence key, Google event ID, invite state, and sync status.
+Customer guest invitations are disabled by live synchronization. `Booking.calendarEvents[]` maps the business connection to Google event IDs and occurrence keys so retries, reschedules, and cancellations are idempotent.
 
 ### Customer calendar links
 
-Customer-facing Google Add-to-Calendar URLs are generated from the canonical booking snapshot. A signed one-year token protects the `.ics` download endpoint; the endpoint is no-store and does not require a Google account. Multi-session bookings use `.ics` because a single Google template URL cannot represent multiple independent occurrences cleanly.
+Customer-facing confirmation surfaces expose one **Add to Google Calendar** link generated from the canonical booking snapshot. The signed `.ics` route remains available internally for backward compatibility, but v0.6.0.3 no longer presents it as a customer download button.

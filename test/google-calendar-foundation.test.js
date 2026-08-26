@@ -40,27 +40,23 @@ test('CalendarConnection keeps one Google connection per staff member and hides 
   assert.equal(CalendarConnection.schema.path('refreshTokenEncrypted').options.select, false);
 });
 
-test('admin exposes Calendar Sync UI and Google connection management endpoints', async () => {
+test('admin exposes merchant Business Calendar UI and Google connection management endpoints', async () => {
   const [view, asset, routes, integrationRoutes, styles, config, env] = await Promise.all([
-    read('../src/views/admin.js'),
-    read('../public/admin/app.js'),
-    read('../src/routes/admin.js'),
-    read('../src/routes/integrations.js'),
-    read('../public/admin/styles.css'),
-    read('../src/config.js'),
-    read('../.env.example')
+    read('../src/views/admin.js'), read('../public/admin/app.js'), read('../src/routes/admin.js'), read('../src/routes/integrations.js'), read('../public/admin/styles.css'), read('../src/config.js'), read('../.env.example')
   ]);
   assert.match(view, /navButton\('calendar', 'Calendar Sync'/);
   assert.match(view, /id="calendarView"/);
   assert.match(view, /id="calendarDialog"/);
+  assert.match(view, /Business appointment calendar/);
+  assert.doesNotMatch(view, /PERSONAL STAFF CALENDARS/);
   assert.match(asset, /function connectGoogleCalendar/);
   assert.match(asset, /appointment-lite:google-calendar/);
-  assert.match(routes, /\/calendar\/google\/:staffId\/connect/);
-  assert.match(routes, /\/calendar\/google\/:staffId\/calendars/);
+  assert.match(routes, /\/calendar\/google\/store\/connect/);
+  assert.match(routes, /STAFF_GOOGLE_CALENDAR_RETIRED/);
   assert.match(routes, /decryptGoogleRefreshToken/);
   assert.match(integrationRoutes, /\/google\/callback/);
   assert.match(integrationRoutes, /exchangeGoogleAuthorizationCode/);
-  assert.match(styles, /\.calendar-staff-card\{/);
+  assert.match(styles, /\.calendar-business-card\{/);
   assert.match(config, /GOOGLE_CALENDAR_CLIENT_ID/);
   assert.match(env, /GOOGLE_TOKEN_ENCRYPTION_KEY/);
 });

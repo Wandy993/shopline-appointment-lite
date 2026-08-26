@@ -137,17 +137,9 @@ function manageButton(url, settings) {
 function calendarButtons(booking, settings, { includeGoogle = true } = {}) {
   if (!booking?._id || booking.status === 'cancelled') return '';
   const links = calendarLinksForBooking(booking);
-  const google = includeGoogle && links.google
-    ? `<a href="${escapeHtml(links.google)}" style="display:inline-block;margin:0 8px 8px 0;padding:11px 15px;border-radius:9px;background:${settings.accentColor};color:#fff;text-decoration:none;font-size:13px;font-weight:700">Add to Google Calendar</a>`
-    : '';
-  const ics = links.ics
-    ? `<a href="${escapeHtml(links.ics)}" style="display:inline-block;margin:0 0 8px;padding:11px 15px;border-radius:9px;border:1px solid #C9D5E4;color:#344861;text-decoration:none;font-size:13px;font-weight:700">Apple / Outlook / Other (.ics)</a>`
-    : '';
-  if (!google && !ics) return '';
-  const note = (booking.bookingMode || 'slot') === 'multi_slot'
-    ? '<p style="margin:6px 0 0;color:#8A94A6;font-size:12px">The .ics file contains every session in this booking.</p>'
-    : '<p style="margin:6px 0 0;color:#8A94A6;font-size:12px">Add this appointment to the calendar you already use. A Google account is not required.</p>';
-  return `<div style="margin:22px 0 0;padding:16px;border-radius:12px;background:#F7F9FC;border:1px solid #E3E9F1"><strong style="display:block;margin:0 0 10px;color:#344861;font-size:13px">Add to calendar</strong>${google}${ics}${note}</div>`;
+  if (!includeGoogle || !links.google) return '';
+  const google = `<a href="${escapeHtml(links.google)}" style="display:inline-block;padding:11px 15px;border-radius:9px;background:${settings.accentColor};color:#fff;text-decoration:none;font-size:13px;font-weight:700">Add to Google Calendar</a>`;
+  return `<div style="margin:22px 0 0;padding:16px;border-radius:12px;background:#F7F9FC;border:1px solid #E3E9F1"><strong style="display:block;margin:0 0 10px;color:#344861;font-size:13px">Add to calendar</strong>${google}</div>`;
 }
 
 function merchantMessage(booking, settings, key) {

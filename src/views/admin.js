@@ -23,6 +23,10 @@ function brand() {
   return `<span class="brand-symbol"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M9 8.5h14a3 3 0 0 1 3 3v11a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3v-11a3 3 0 0 1 3-3Z"/><path d="M11 5v7M21 5v7M6 14h20"/><circle cx="16" cy="19" r="3"/></svg></span>`;
 }
 
+function googleG(className = '') {
+  return `<span class="google-g ${className}" aria-hidden="true"><svg viewBox="0 0 24 24" role="img"><path fill="#4285F4" d="M21.6 12.23c0-.71-.06-1.24-.2-1.8H12v3.28h5.52a4.72 4.72 0 0 1-2.05 3.01l-.02.11 2.98 2.31.21.02c1.93-1.78 3.04-4.4 3.04-6.93Z"/><path fill="#34A853" d="M12 22c2.76 0 5.08-.91 6.78-2.48l-3.23-2.5c-.86.6-2.04 1.01-3.55 1.01a6.17 6.17 0 0 1-5.83-4.26l-.1.01-3.1 2.4-.04.1A10.24 10.24 0 0 0 12 22Z"/><path fill="#FBBC05" d="M6.17 13.77A6.3 6.3 0 0 1 5.83 12c0-.62.12-1.22.33-1.78l-.01-.12-3.14-2.44-.1.05A10 10 0 0 0 1.82 12c0 1.55.38 3.02 1.08 4.29l3.27-2.52Z"/><path fill="#EA4335" d="M12 5.97c1.92 0 3.22.83 3.97 1.52l2.88-2.81C17.08 3.03 14.76 2 12 2a10.24 10.24 0 0 0-9.08 5.71l3.24 2.51A6.19 6.19 0 0 1 12 5.97Z"/></svg></span>`;
+}
+
 function navButton(view, label, glyph, active = false) {
   return `<button class="nav-item${active ? ' active' : ''}" data-view="${view}">${glyph}<span>${label}</span></button>`;
 }
@@ -35,7 +39,7 @@ export function adminPage() {
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light">
   <title>Appointment Lite</title>
-  <link rel="stylesheet" href="/admin/styles.css?v=0.6.0.2">
+  <link rel="stylesheet" href="/admin/styles.css?v=0.6.0.3">
 </head>
 <body>
   <div class="app-shell">
@@ -120,12 +124,11 @@ export function adminPage() {
 
 
         <section id="calendarView" class="view hidden">
-          <div class="page-heading"><div><span class="eyebrow">CALENDAR INTEGRATIONS</span><h1>Calendar Sync</h1><p>Use one business Google Calendar for the store, while staff email notifications work with any email provider. Personal staff calendars stay optional.</p></div><span id="calendarFoundationBadge" class="status-badge enabled">Built-in</span></div>
-          <article class="panel calendar-foundation-panel"><div class="calendar-provider-mark">G</div><div class="calendar-foundation-copy"><div class="panel-head"><div><span class="eyebrow">GOOGLE CALENDAR</span><h2 id="calendarConfigTitle">Checking Google Calendar setup…</h2></div><span id="calendarConfigBadge" class="status-badge disabled">Checking</span></div><p id="calendarConfigText">Appointment Lite is checking whether Google OAuth credentials are configured.</p><div id="calendarConfigMeta" class="calendar-config-meta"></div></div></article>
-          <div class="calendar-section-head"><div><span class="eyebrow">BUSINESS CALENDAR</span><h2>Store-wide calendar</h2><p>Recommended: the merchant connects one Google account and all confirmed appointments can sync into one owned calendar.</p></div></div>
-          <div id="calendarBusinessCard" class="calendar-staff-list"><div class="panel loading">Loading business calendar…</div></div>
-          <div class="calendar-section-head"><div><span class="eyebrow">PERSONAL STAFF CALENDARS</span><h2>Optional staff connections</h2><p>Staff do not need Google to receive appointments. Add their email in Staff for assignment notifications; connect a personal Google Calendar only when you want that extra calendar copy.</p></div></div>
-          <div id="calendarStaffList" class="calendar-staff-list"><div class="panel loading">Loading staff calendar connections…</div></div>
+          <div class="page-heading"><div><span class="eyebrow">CALENDAR SYNC</span><h1>Google Calendar</h1><p>Connect one business Google Calendar to keep your store appointments together. Staff can receive assignment updates by email and do not need a Google account.</p></div></div>
+          <article class="panel calendar-provider-panel"><div class="calendar-provider-mark">${googleG()}</div><div class="calendar-provider-copy"><div class="panel-head"><div><span class="eyebrow">GOOGLE CALENDAR</span><h2 id="calendarConfigTitle">Checking Google Calendar…</h2></div><span id="calendarConfigBadge" class="status-badge disabled">Checking</span></div><p id="calendarConfigText">Connect your store calendar once and Appointment Lite will keep confirmed appointments in sync.</p></div></article>
+          <div class="calendar-section-head"><div><span class="eyebrow">BUSINESS CALENDAR</span><h2>Business appointment calendar</h2><p>Use one Google account for the store. New bookings, changes, and cancellations will sync automatically.</p></div></div>
+          <div id="calendarBusinessCard" class="calendar-business-root"><div class="panel loading">Loading calendar…</div></div>
+          <article class="panel calendar-staff-email-note"><div><span class="eyebrow">STAFF NOTIFICATIONS</span><h2>Staff do not need to connect Google</h2><p>Add an email address to each staff member and Appointment Lite will send their assigned booking updates automatically.</p></div><button type="button" class="secondary" data-go-view="staff">Manage staff emails</button></article>
         </section>
 
         <section id="emailView" class="view hidden">
@@ -223,8 +226,8 @@ export function adminPage() {
 
   <dialog id="calendarDialog" class="modal compact-modal calendar-modal">
     <form id="calendarForm">
-      <div class="modal-head"><div><span class="eyebrow">GOOGLE CALENDAR</span><h2 id="calendarDialogTitle">Choose calendar</h2><p id="calendarDialogSubtitle">Choose the owned calendar Appointment Lite should use for this staff member.</p></div><button type="button" class="icon-button" data-close-calendar-dialog aria-label="Close">${icons.close}</button></div>
-      <div class="modal-body"><input id="calendarStaffId" type="hidden"><div id="calendarAccountNotice" class="inline-notice">Loading Google calendars…</div><div class="field"><label for="calendarSelect">Calendar</label><select id="calendarSelect"><option value="">Loading calendars…</option></select><p class="hint">Appointment events now sync automatically. Google busy-time conflict blocking is planned for the next calendar milestone.</p></div><div id="calendarFormError" class="form-error hidden" role="alert"></div></div>
+      <div class="modal-head"><div><span class="eyebrow">GOOGLE CALENDAR</span><h2 id="calendarDialogTitle">Choose business calendar</h2><p id="calendarDialogSubtitle">Choose the Google Calendar your store will use for appointments.</p></div><button type="button" class="icon-button" data-close-calendar-dialog aria-label="Close">${icons.close}</button></div>
+      <div class="modal-body"><input id="calendarStaffId" type="hidden"><div id="calendarAccountNotice" class="inline-notice">Loading Google calendars…</div><div class="field"><label for="calendarSelect">Calendar</label><select id="calendarSelect"><option value="">Loading calendars…</option></select><p class="hint">New bookings and appointment changes sync automatically after you save.</p></div><div id="calendarFormError" class="form-error hidden" role="alert"></div></div>
       <div class="modal-actions"><button type="button" class="secondary" data-close-calendar-dialog>Cancel</button><button id="saveCalendarSelection" type="submit" class="primary">Save calendar</button></div>
     </form>
   </dialog>
@@ -251,7 +254,7 @@ export function adminPage() {
   </dialog>
 
   <dialog id="confirmDialog" class="confirm-modal"><div class="confirm-icon">!</div><div class="confirm-copy"><h2 id="confirmTitle">Please confirm</h2><p id="confirmMessage"></p></div><div class="modal-actions"><button id="confirmNo" class="secondary">Keep it</button><button id="confirmYes" class="danger">Confirm</button></div></dialog>
-  <script type="module" src="/admin/app.js?v=0.6.0.2"></script>
+  <script type="module" src="/admin/app.js?v=0.6.0.3"></script>
 </body>
 </html>`;
 }

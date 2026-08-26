@@ -1,6 +1,10 @@
-# Appointment Lite for SHOPLINE
+# Appointment Lite
 
-Release `v0.6.0.2` introduces the **Notification & Calendar Architecture**: merchant and staff email notifications work with any normal email address, customers get branded Add-to-Calendar actions, one store-wide Google Calendar can sync all appointments, and personal staff Google calendars remain optional. Appointment Lite does not split these capabilities into Free/Pro feature tiers.
+> v0.6.0.3 — Business Calendar UX Cleanup
+
+Appointment Lite uses one optional **Business Google Calendar** per store. Staff do not need Google access: merchants add staff email addresses for assignment notifications. Customer confirmation surfaces provide one clean **Add to Google Calendar** action; Google guest invitations are disabled by default architecture to avoid unknown-sender invitation warnings.
+
+Release `v0.6.0.3` finalizes the **Business Calendar UX**: merchant and staff email notifications work with any normal email address, customers get one clean Google Calendar action, and one store-wide Google Calendar can sync all appointments. Staff no longer connect personal Google accounts from the merchant admin. Appointment Lite does not split these capabilities into Free/Pro feature tiers.
 
 Appointment Lite now supports two booking entry models:
 
@@ -16,17 +20,17 @@ Typical scenarios include furniture installation and measurements, showroom visi
 
 
 
-## v0.6.0.2 Notification & Calendar Architecture
+## v0.6.0.3 Business Calendar UX Cleanup
 
-- Adds a **Primary merchant inbox** plus up to eight additional notification recipients for new bookings, changes, and cancellations. Gmail, QQ, 163, Outlook, and normal enterprise addresses are treated the same.
-- Keeps staff notifications independent from Google. A staff member only needs an email address plus **Email appointment updates** to receive assignment, update, reassignment, and cancellation messages.
-- Adds customer **Add to Google Calendar** and **Apple / Outlook / Other (.ics)** actions to confirmation email, hosted booking success, and the SHOPLINE Theme App Block success state.
-- Changes Google customer guest invitations to **off by default**. Merchants may enable them, but the UI warns about Google first-contact / unknown-sender behavior.
-- Adds a recommended **Business Google Calendar** connection: one merchant authorization can receive every confirmed store appointment, including bookings assigned to staff who never sign in to SHOPLINE.
-- Keeps **Personal staff Google Calendars** as optional secondary copies. They are no longer required for staff notifications or staff scheduling.
-- Migrates existing v0.6.0/v0.6.0.1 staff Google connections into the optional personal-calendar model and switches customer Google guest invitations off once during the architecture migration.
-- Removes runtime feature-tier limits and plan gating from Appointment Lite. Notification and calendar capabilities are built-in product behavior rather than paid feature flags.
-- Updates the Theme App Extension to `0.6.0.2`, so this release requires `sl extension push`.
+- Keeps **Primary merchant inbox** and staff assignment emails independent from Google. Gmail, QQ, 163, Outlook, and normal enterprise addresses are treated the same.
+- Makes **Business Google Calendar** the only merchant-facing Google connection: one store authorization receives every confirmed appointment.
+- Removes personal staff Google authorization from the merchant UI. Staff and technicians do not need a SHOPLINE admin login or Google account; add their email in **Staff** to notify them.
+- Removes customer Google guest invitations from live sync to avoid first-contact **Unknown sender** invitation warnings.
+- Simplifies customer confirmation surfaces to one **Add to Google Calendar** action. The signed ICS endpoint remains only for backward compatibility and is no longer exposed as a browser download button.
+- Replaces the generic Google tile with the standard multicolor Google **G** treatment and completes Chinese Calendar Sync translations.
+- Removes OAuth scope, redirect URI, Railway, future-milestone, and other implementation details from merchant-facing Calendar Sync UI.
+- Keeps runtime feature-tier limits and plan gating removed. Notification and calendar capabilities are built-in product behavior rather than paid feature flags.
+- Updates the Theme App Extension to `0.6.0.3`, so this release requires `sl extension push`.
 
 See [Google Calendar architecture](docs/GOOGLE_CALENDAR.md) and [Email notifications](docs/EMAIL.md).
 

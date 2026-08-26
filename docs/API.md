@@ -35,11 +35,13 @@ Requires the signed `al_session` HTTP-only cookie. Mutations also require `X-CSR
 - `PUT /api/admin/onboarding` — Quickstart progress
 - `POST /api/admin/email/test` — sends to the merchant-supplied test recipient only
 - `PUT /api/admin/email/settings` — per-store email branding, routing, and message templates
-- `GET /api/admin/calendar` — Google Calendar Foundation status plus per-staff public connection metadata
-- `GET /api/admin/calendar/google/:staffId/connect` — returns a short-lived Google OAuth authorization URL for an active staff member
-- `GET /api/admin/calendar/google/:staffId/calendars` — verifies the encrypted offline credential and lists calendars owned by the connected account
-- `PUT /api/admin/calendar/google/:staffId` — selects one owned Google calendar
-- `DELETE /api/admin/calendar/google/:staffId` — best-effort revokes Google authorization and deletes the local connection
+- `GET /api/admin/calendar` — merchant-facing Business Google Calendar status only
+- `GET /api/admin/calendar/google/store/connect` — returns a short-lived OAuth URL for the store Business Calendar
+- `GET /api/admin/calendar/google/store/calendars` — lists calendars owned by the connected merchant account
+- `PUT /api/admin/calendar/google/store` — selects the store calendar
+- `POST /api/admin/calendar/google/store/sync` — reconciles upcoming confirmed appointments into the Business Calendar
+- `DELETE /api/admin/calendar/google/store` — revokes/deletes the Business Calendar connection
+- `/api/admin/calendar/google/:staffId/*` — retired compatibility routes; return `410 STAFF_GOOGLE_CALENDAR_RETIRED`
 
 ## Public booking API
 

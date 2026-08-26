@@ -10,7 +10,7 @@ test('v0.5.4-hotfix.3 compacts the outer confirmation dialog shell', () => {
   assert.match(css, /height:\s*auto\s*!important/);
   assert.match(css, /min-height:\s*0\s*!important/);
   assert.match(css, /max-height:\s*calc\(100dvh - 28px\)\s*!important/);
-  assert.match(js, /const VERSION = '0\.6\.0\.2'/);
+  assert.match(js, /const VERSION = '0\.6\.0\.3'/);
   assert.match(js, /dialog\.classList\.add\('al-confirmation-dialog-compact'\)/);
   assert.match(css, /v0\.5\.4-hotfix\.3b — deterministic confirmed dialog shrink/);
   assert.match(css, /display:\s*block\s*!important/);

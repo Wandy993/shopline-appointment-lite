@@ -1,14 +1,14 @@
 # Email delivery and notification architecture
 
-Appointment Lite v0.6.0.2 keeps email independent from Google Calendar. A merchant or staff notification recipient can use Gmail, QQ, 163, Outlook, or a normal enterprise mailbox; the recipient does not need a Google account or SHOPLINE Admin access.
+Appointment Lite v0.6.0.3 keeps email independent from Google Calendar. A merchant or staff notification recipient can use Gmail, QQ, 163, Outlook, or a normal enterprise mailbox; the recipient does not need a Google account or SHOPLINE Admin access.
 
 ## Notification routing
 
-- **Customer** — receives Appointment Lite confirmation/change/cancellation email. Confirmed appointments include **Add to Google Calendar** and **Apple / Outlook / Other (.ics)** actions.
+- **Customer** — receives Appointment Lite confirmation/change/cancellation email. Confirmed appointments include one **Add to Google Calendar** action.
 - **Merchant** — `Primary merchant inbox` plus optional additional inboxes receive store-wide new-booking/change/cancellation notifications according to Email Studio switches. If no primary inbox is configured, Appointment Lite can fall back to the SHOPLINE store email / deployment fallback address.
 - **Staff** — `Staff.email` plus **Email appointment updates** sends assignment, update, reassignment, and cancellation messages only for that employee. Google authorization is not required.
 
-Google guest invitations are a separate optional Calendar Sync setting and are off by default.
+Google guest invitations are not sent by the Business Calendar sync. Customers add the appointment from the Appointment Lite confirmation link instead, avoiding first-contact unknown-sender warnings.
 
 ## Recommended production path: Aliyun DirectMail
 

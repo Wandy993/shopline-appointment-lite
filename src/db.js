@@ -49,7 +49,7 @@ export async function ensureOperationalIndexes() {
   );
   await Booking.updateMany({ serviceType: 'product' }, { $set: { serviceType: 'appointment' } });
 
-  // v0.6.0.2: existing per-staff Google connections become optional personal calendars.
+  // v0.6.0.3: existing per-staff Google connections become optional personal calendars.
   // Customer invitations are intentionally reset off once so customers use Appointment Lite's
   // branded confirmation + Add to Calendar flow instead of Google 'unknown sender' invitations.
   await CalendarConnection.updateMany({ connectionType: { $exists: false } }, { $set: { connectionType: 'staff' } });
