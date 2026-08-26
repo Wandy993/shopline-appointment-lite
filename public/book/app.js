@@ -114,12 +114,22 @@ function renderTimezoneOptions(query = '') {
     customerTimezone = button.dataset.timezone;
     $('#timezonePickerMenu').classList.add('hidden');
     $('#timezonePickerButton').setAttribute('aria-expanded', 'false');
+    clearTimezonePosition();
     renderTimezoneCopy();
     renderTimezoneOptions();
     renderSelectedSessions();
     if (selectedDate && availabilityCache.has(availabilityKey(selectedDate))) renderAvailability(availabilityCache.get(availabilityKey(selectedDate)), selectedDate);
   }));
 }
+
+function positionTimezoneMenu() {
+  const button = $('#timezonePickerButton'); const menu = $('#timezonePickerMenu');
+  if (!button || !menu || menu.classList.contains('hidden') || window.matchMedia('(max-width:620px)').matches) return;
+  const rect = button.getBoundingClientRect(); const width = Math.max(260, rect.width); const height = Math.min(286, Math.max(180, menu.scrollHeight || 240));
+  const below = window.innerHeight - rect.bottom; const top = below >= height + 18 ? rect.bottom + 6 : Math.max(12, rect.top - height - 6);
+  menu.style.left = `${Math.max(12, Math.min(window.innerWidth - width - 12, rect.left))}px`; menu.style.top = `${top}px`; menu.style.width = `${Math.min(width, window.innerWidth - 24)}px`;
+}
+function clearTimezonePosition(){const menu=$('#timezonePickerMenu');if(menu){menu.style.left='';menu.style.top='';menu.style.width='';}}
 
 function setupTimezonePicker() {
   const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -130,14 +140,14 @@ function setupTimezonePicker() {
     const menu = $('#timezonePickerMenu');
     const open = menu.classList.toggle('hidden') === false;
     $('#timezonePickerButton').setAttribute('aria-expanded', String(open));
-    if (open) { $('#timezoneSearch').value = ''; renderTimezoneOptions(); setTimeout(() => $('#timezoneSearch').focus(), 0); }
+    if (open) { $('#timezoneSearch').value = ''; renderTimezoneOptions(); requestAnimationFrame(positionTimezoneMenu); setTimeout(() => $('#timezoneSearch').focus(), 0); } else clearTimezonePosition();
   });
   $('#timezoneSearch')?.addEventListener('input', event => renderTimezoneOptions(event.target.value));
 }
 
 const staffPresetClasses = new Set(['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose']);
-const staffAvatarPalettes = { aurora:['#edf3ff','#5a8dff','#3e4a67','#ffd7bf'],ocean:['#e9f8ff','#25a6d9','#23455d','#f1c8ad'],mint:['#ecfbf5','#3bb89b','#385a4d','#f0c6aa'],peach:['#fff2ed','#ed7e66','#6a4038','#f4c7aa'],violet:['#f5efff','#8d73ef','#4c3d62','#e9c1ad'],sunset:['#fff4e9','#e98a45','#5d4535','#efc6a8'],sky:['#edf8ff','#57b8ef','#36536b','#f0c7ae'],rose:['#fff0f5','#ed6f91','#5b3c4d','#efc4ac'] };
-function staffPresetSvg(preset){const [bg,shirt,hair,skin]=staffAvatarPalettes[preset]||staffAvatarPalettes.aurora;return `<svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="18" fill="${bg}"/><path d="M12 64c2-15 10-23 20-23s18 8 20 23" fill="${shirt}"/><circle cx="32" cy="27" r="13" fill="${skin}"/><path d="M19 27c0-10 5-17 14-17 7 0 13 5 13 14-5-1-9-4-12-8-3 5-8 8-15 8z" fill="${hair}"/><circle cx="27" cy="28" r="1.2" fill="#43505f"/><circle cx="37" cy="28" r="1.2" fill="#43505f"/><path d="M28 34c2.5 2 5.5 2 8 0" stroke="#a36c5b" stroke-width="1.4" stroke-linecap="round" fill="none"/></svg>`;}
+const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp' };
+function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="/assets/staff/${file}" alt="" loading="lazy">`;}
 
 function staffAvatarMarkup(item, className = '') {
   const avatar = item?.avatar || {};
@@ -147,7 +157,7 @@ function staffAvatarMarkup(item, className = '') {
   }
   if (avatar.kind === 'initials') return `<span class="staff-avatar customer initials ${className}">${initial}</span>`;
   const preset = staffPresetClasses.has(avatar.value) ? avatar.value : 'aurora';
-  return `<span class="staff-avatar customer preset-${preset} ${className}">${staffPresetSvg(preset)}</span>`;
+  return `<span class="staff-avatar customer preset-${preset} ${className}">${staffPresetImage(preset)}</span>`;
 }
 
 function setStaffPickerValue(item = null) {
@@ -451,7 +461,7 @@ document.addEventListener('click', event => {
     $('#staffPickerButton').setAttribute('aria-expanded', 'false');
   }
   const timezonePicker = $('#timezonePicker');
-  if (timezonePicker && !timezonePicker.contains(event.target)) { $('#timezonePickerMenu').classList.add('hidden'); $('#timezonePickerButton').setAttribute('aria-expanded', 'false'); }
+  if (timezonePicker && !timezonePicker.contains(event.target)) { $('#timezonePickerMenu').classList.add('hidden'); $('#timezonePickerButton').setAttribute('aria-expanded', 'false'); clearTimezonePosition(); }
 });
 
 $('#bookingForm').addEventListener('submit', async event => {
@@ -483,7 +493,7 @@ $('#bookingForm').addEventListener('submit', async event => {
     $('#bookingView').classList.add('hidden');
     $('#successTitle').textContent = `${rule.serviceTitle} is confirmed.`;
     $('#successWhen').textContent = formatBookingWhen(payload.booking);
-    $('#successDetails').textContent = [payload.booking.location, payload.booking.staff, payload.booking.timezone].filter(Boolean).join(' · ');
+    $('#successDetails').innerHTML = [payload.booking.staff ? `<span><b>Staff</b>${escapeHtml(payload.booking.staff)}</span>` : '', payload.booking.location ? `<span><b>Location</b>${escapeHtml(payload.booking.location)}</span>` : '', `<span><b>Service time zone</b>${escapeHtml(payload.booking.timezone || serviceTimezone)}</span>`].filter(Boolean).join('');
     $('#manageBooking').href = `/manage?booking=${encodeURIComponent(payload.booking.id)}#token=${encodeURIComponent(payload.booking.managementToken)}`;
     $('#successView').classList.remove('hidden');
   } catch (error) {

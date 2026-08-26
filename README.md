@@ -1,6 +1,6 @@
 # Appointment Lite for SHOPLINE
 
-Version `0.5.3` — keeps the calendar-first storefront compact and stable, adds per-service scheduling time zones, and lets customers view time slots in their own selectable display time zone without changing the canonical service schedule.
+Version `0.5.4` — adds staff schedule list/calendar views, realistic AI-generated staff portrait presets, and a more resilient responsive storefront booking modal.
 
 Appointment Lite now supports two booking entry models:
 
@@ -13,6 +13,15 @@ Typical scenarios include furniture installation and measurements, showroom visi
 
 
 
+
+## v0.5.4 Staff Schedule Views + Storefront Modal Polish
+
+- Staff Operations now switches between a compact appointment list and a daily calendar/timeline view, using the same selected date. The timeline shows staff rows, time-axis booking blocks, all-day assignments, and direct navigation to the booking record.
+- The eight built-in staff presets are now bundled AI-generated portrait-style headshots rather than illustrated avatars. Existing preset IDs remain compatible, while merchant uploads and initials continue to work unchanged.
+- Storefront time-zone menus float above the booking layout instead of being clipped by the calendar/form container. On mobile, staff and time-zone pickers become fixed bottom sheets so they stay usable above the CTA and browser chrome.
+- Selected time slots force high-contrast white text on the Arctic Blue selected state, including nested slot labels that may otherwise inherit theme colors.
+- The Theme App Block booking-confirmed state now collapses to a compact confirmation card with structured date/time, staff, location, and service-time-zone details instead of retaining the full booking-dialog height.
+- Mobile Theme booking becomes a consistent viewport-filling flow for active booking and a compact modal for confirmation, with tightened calendar/form spacing and fixed-overlay pickers.
 
 ## v0.5.3 Storefront Booking UX + Time Zones
 

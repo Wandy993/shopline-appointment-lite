@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = '0.5.3';
+  const VERSION = '0.5.4';
   const API_BASE = 'https://appointment.toolkit.fans';
   const CACHE_TTL = 5 * 60 * 1000;
   const SELECTOR = '[data-appointment-lite]:not([data-al-ready])';
@@ -46,6 +46,23 @@
     return [...new Set([primary, secondary, ...common, ...values].filter(validTimeZone))];
   }
 
+  function positionTimezoneMenu(trigger, menu) {
+    if (!trigger || !menu || menu.hidden || window.matchMedia('(max-width: 540px)').matches) return;
+    const rect = trigger.getBoundingClientRect();
+    const width = Math.max(260, rect.width);
+    const estimatedHeight = Math.min(286, Math.max(180, menu.scrollHeight || 240));
+    const below = window.innerHeight - rect.bottom;
+    const top = below >= estimatedHeight + 18 ? rect.bottom + 6 : Math.max(12, rect.top - estimatedHeight - 6);
+    menu.style.left = `${Math.max(12, Math.min(window.innerWidth - width - 12, rect.left))}px`;
+    menu.style.top = `${top}px`;
+    menu.style.width = `${Math.min(width, window.innerWidth - 24)}px`;
+  }
+
+  function clearFloatingTimezoneMenu(menu) {
+    if (!menu) return;
+    menu.style.left = ''; menu.style.top = ''; menu.style.width = '';
+  }
+
   function zonedParts(instant, timezone) {
     const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(instant).map(part => [part.type, part.value]));
     return { date: `${parts.year}-${parts.month}-${parts.day}`, time: `${parts.hour}:${parts.minute}` };
@@ -69,8 +86,8 @@
   }
 
   const staffPresetClasses = new Set(['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose']);
-  const staffAvatarPalettes = { aurora:['#edf3ff','#5a8dff','#3e4a67','#ffd7bf'],ocean:['#e9f8ff','#25a6d9','#23455d','#f1c8ad'],mint:['#ecfbf5','#3bb89b','#385a4d','#f0c6aa'],peach:['#fff2ed','#ed7e66','#6a4038','#f4c7aa'],violet:['#f5efff','#8d73ef','#4c3d62','#e9c1ad'],sunset:['#fff4e9','#e98a45','#5d4535','#efc6a8'],sky:['#edf8ff','#57b8ef','#36536b','#f0c7ae'],rose:['#fff0f5','#ed6f91','#5b3c4d','#efc4ac'] };
-  function staffPresetSvg(preset){const [bg,shirt,hair,skin]=staffAvatarPalettes[preset]||staffAvatarPalettes.aurora;return `<svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="18" fill="${bg}"/><path d="M12 64c2-15 10-23 20-23s18 8 20 23" fill="${shirt}"/><circle cx="32" cy="27" r="13" fill="${skin}"/><path d="M19 27c0-10 5-17 14-17 7 0 13 5 13 14-5-1-9-4-12-8-3 5-8 8-15 8z" fill="${hair}"/><circle cx="27" cy="28" r="1.2" fill="#43505f"/><circle cx="37" cy="28" r="1.2" fill="#43505f"/><path d="M28 34c2.5 2 5.5 2 8 0" stroke="#a36c5b" stroke-width="1.4" stroke-linecap="round" fill="none"/></svg>`;}
+  const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp' };
+  function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="${API_BASE}/assets/staff/${file}" alt="" loading="lazy">`;}
 
   function staffAvatar(item, className = '') {
     const avatar = item?.avatar || {};
@@ -80,7 +97,7 @@
     }
     if (avatar.kind === 'initials') return `<span class="al-staff-avatar al-staff-initials ${className}">${initial}</span>`;
     const preset = staffPresetClasses.has(avatar.value) ? avatar.value : 'aurora';
-    return `<span class="al-staff-avatar al-staff-preset-${preset} ${className}">${staffPresetSvg(preset)}</span>`;
+    return `<span class="al-staff-avatar al-staff-preset-${preset} ${className}">${staffPresetImage(preset)}</span>`;
   }
 
   function apiUrl(path, params = {}) {
@@ -744,7 +761,7 @@
     renderTimezoneCopy();
     if (timezonePicker && timezoneTrigger && timezoneMenu) {
       renderTimezoneOptions();
-      timezoneTrigger.addEventListener('click', () => { timezoneMenu.hidden = !timezoneMenu.hidden; timezoneTrigger.setAttribute('aria-expanded', String(!timezoneMenu.hidden)); if (!timezoneMenu.hidden) { timezoneSearch.value = ''; renderTimezoneOptions(); setTimeout(() => timezoneSearch.focus(), 0); } });
+      timezoneTrigger.addEventListener('click', () => { timezoneMenu.hidden = !timezoneMenu.hidden; timezoneTrigger.setAttribute('aria-expanded', String(!timezoneMenu.hidden)); if (!timezoneMenu.hidden) { timezoneSearch.value = ''; renderTimezoneOptions(); requestAnimationFrame(() => positionTimezoneMenu(timezoneTrigger, timezoneMenu)); setTimeout(() => timezoneSearch.focus(), 0); } else clearFloatingTimezoneMenu(timezoneMenu); });
       timezoneSearch.addEventListener('input', event => renderTimezoneOptions(event.target.value));
     }
     if (mode === 'multi_slot') renderSelected();
@@ -778,7 +795,7 @@
       });
     }
 
-    dialog.addEventListener('click', event => { if (timezonePicker && timezoneMenu && !timezonePicker.contains(event.target)) { timezoneMenu.hidden = true; timezoneTrigger.setAttribute('aria-expanded', 'false'); } });
+    dialog.addEventListener('click', event => { if (timezonePicker && timezoneMenu && !timezonePicker.contains(event.target)) { timezoneMenu.hidden = true; timezoneTrigger.setAttribute('aria-expanded', 'false'); clearFloatingTimezoneMenu(timezoneMenu); } });
 
     const initialDate = findInitialDate(minDate);
     calendarCursor = calendarMonthKey(initialDate);
@@ -813,7 +830,7 @@
         const payload = await requestJson(apiUrl('/api/public/bookings'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }, 'booking');
         const receipt = saveBookingReceipt(context, payload.booking);
         renderBookingState(widget, rule, context, receipt);
-        dialog.querySelector('.al-form').innerHTML = `<div class="al-success"><h3>Appointment confirmed</h3><p>${text(bookingWhenText(payload.booking))}</p><p>Service time zone: ${text(payload.booking.timezone || rule.timezone || 'UTC')}</p>${payload.booking.location ? `<p>${text(payload.booking.location)}</p>` : ''}${payload.booking.staff ? `<p>${text(payload.booking.staff)}</p>` : ''}<button class="al-submit" type="button">Done</button></div>`;
+        dialog.classList.add('al-confirmed'); dialog.querySelector('.al-form').innerHTML = `<div class="al-success"><div class="al-success-mark">✓</div><span class="al-success-kicker">Appointment confirmed</span><h3>${text(rule.serviceTitle || rule.productTitle || 'Appointment')}</h3><div class="al-success-summary"><div><span>Date & time</span><strong>${text(bookingWhenText(payload.booking))}</strong></div>${payload.booking.staff ? `<div><span>Staff</span><strong>${text(payload.booking.staff)}</strong></div>` : ''}${payload.booking.location ? `<div><span>Location</span><strong>${text(payload.booking.location)}</strong></div>` : ''}<div><span>Service time zone</span><strong>${text(payload.booking.timezone || rule.timezone || 'UTC')}</strong></div></div><p class="al-success-note">A confirmation has been sent to your email. You can manage this appointment later.</p><button class="al-submit" type="button">Done</button></div>`;
         dialog.querySelector('.al-submit').addEventListener('click', () => dialog.close());
         info('Booking confirmed.', { ...context, bookingId: payload.booking.id, bookingMode: mode });
       } catch (error) {

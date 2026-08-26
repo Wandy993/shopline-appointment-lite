@@ -1,5 +1,5 @@
 const state = {
-  csrf: '', shop: null, email: null, emailSettings: null, rules: [], bookings: [], products: [], staff: [], staffOperations: { date: '', timezone: '', staff: [], unassigned: [] },
+  csrf: '', shop: null, email: null, emailSettings: null, rules: [], bookings: [], products: [], staff: [], staffOperations: { date: '', timezone: '', staff: [], unassigned: [] }, staffOperationsView: 'list',
   ruleStep: 0, activeTemplate: 'confirmation', emailEditorReady: false, bookingView: 'list', calendarMonth: '',
   locale: 'en', currentView: 'dashboard', themeLinkLoaded: false, bootstrap: null, onboarding: null, lastTestEmail: '', ruleModeTouched: false, editingRule: false
 };
@@ -287,6 +287,7 @@ Object.assign(zh, {
   'Email appointment updates': '邮件通知员工', 'Send this staff member new assignment, reschedule, reassignment, and cancellation emails.': '向该员工发送新预约、改期、改派和取消通知邮件。',
   'Email on': '邮件通知开启', 'Email off': '邮件通知关闭', 'Set the team member profile, notifications, and store-local working schedule.': '设置员工头像、通知方式以及店铺本地时区下的工作时间。',
   'Choose a PNG, JPG, or WebP image.': '请选择 PNG、JPG 或 WebP 图片。', 'Choose an image smaller than 5 MB.': '请选择小于 5 MB 的图片。',
+  'List':'列表','Calendar':'日历','Daily calendar':'日历排期','Review staff appointments in a compact list or daily calendar.':'通过列表或日历查看员工当天的预约安排。','All-day':'全天','No scheduled bookings':'暂无预约','AI portrait or custom image':'AI 真人头像或自定义图片','Customer':'客户',
   'Could not read that image.': '无法读取这张图片。', 'Could not decode that image.': '无法解析这张图片。', 'The processed avatar is still too large. Try a simpler image.': '处理后的头像仍然过大，请尝试更简单的图片。'
 });
 
@@ -328,15 +329,10 @@ function escapeHtml(value) {
 }
 
 const staffAvatarPresets = ['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose'];
-const staffAvatarPalettes = {
-  aurora: ['#edf3ff','#5a8dff','#3e4a67','#ffd7bf'], ocean: ['#e9f8ff','#25a6d9','#23455d','#f1c8ad'],
-  mint: ['#ecfbf5','#3bb89b','#385a4d','#f0c6aa'], peach: ['#fff2ed','#ed7e66','#6a4038','#f4c7aa'],
-  violet: ['#f5efff','#8d73ef','#4c3d62','#e9c1ad'], sunset: ['#fff4e9','#e98a45','#5d4535','#efc6a8'],
-  sky: ['#edf8ff','#57b8ef','#36536b','#f0c7ae'], rose: ['#fff0f5','#ed6f91','#5b3c4d','#efc4ac']
-};
-function staffPresetSvg(preset) {
-  const [bg, shirt, hair, skin] = staffAvatarPalettes[preset] || staffAvatarPalettes.aurora;
-  return `<svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="18" fill="${bg}"/><path d="M12 64c2-15 10-23 20-23s18 8 20 23" fill="${shirt}"/><circle cx="32" cy="27" r="13" fill="${skin}"/><path d="M19 27c0-10 5-17 14-17 7 0 13 5 13 14-5-1-9-4-12-8-3 5-8 8-15 8z" fill="${hair}"/><circle cx="27" cy="28" r="1.2" fill="#43505f"/><circle cx="37" cy="28" r="1.2" fill="#43505f"/><path d="M28 34c2.5 2 5.5 2 8 0" stroke="#a36c5b" stroke-width="1.4" stroke-linecap="round" fill="none"/></svg>`;
+const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp' };
+function staffPresetImage(preset) {
+  const file = staffAvatarFiles[preset] || staffAvatarFiles.aurora;
+  return `<img src="/assets/staff/${file}" alt="" loading="lazy">`;
 }
 let staffAvatarDraft = { kind: 'preset', value: 'aurora' };
 
@@ -352,7 +348,7 @@ function staffAvatarMarkup(staff = {}, className = '') {
   const initial = escapeHtml(String(staff.name || 'S').trim().slice(0, 1).toUpperCase() || 'S');
   if (avatar.kind === 'custom') return `<span class="staff-avatar ${className}"><img src="${escapeHtml(avatar.value)}" alt=""></span>`;
   if (avatar.kind === 'initials') return `<span class="staff-avatar initials ${className}">${initial}</span>`;
-  return `<span class="staff-avatar preset-${avatar.value} ${className}">${staffPresetSvg(avatar.value)}</span>`;
+  return `<span class="staff-avatar preset-${avatar.value} ${className}">${staffPresetImage(avatar.value)}</span>`;
 }
 
 function setStaffAvatarDraft(avatar, name = '') {
@@ -679,25 +675,62 @@ async function ensureStaff() {
   return state.staff;
 }
 
+function staffTimeMinutes(value = '') {
+  const match = String(value).match(/^(\d{2}):(\d{2})$/);
+  return match ? (Number(match[1]) * 60) + Number(match[2]) : null;
+}
+
+function renderStaffOperationsList(payload) {
+  const rows = [];
+  for (const group of payload.staff || []) {
+    const member = state.staff.find(item => String(item._id) === String(group.id)) || { name: group.name, avatar: group.avatar };
+    for (const item of group.assignments || []) rows.push({ ...item, staffName: group.name, staffMember: member, unassigned: false });
+  }
+  for (const item of payload.unassigned || []) rows.push({ ...item, staffName: t('Unassigned'), staffMember: { name: t('Unassigned'), avatar: { kind:'initials', value:'' } }, unassigned: true });
+  rows.sort((a,b) => String(a.time || '99:99').localeCompare(String(b.time || '99:99')) || String(a.staffName).localeCompare(String(b.staffName)));
+  return `<div class="staff-schedule-list"><div class="staff-schedule-list-head"><span>${t('Staff')}</span><span>${t('Time')}</span><span>${t('Services')}</span><span>${t('Customer')}</span><span>${t('Status')}</span><span></span></div>${rows.map(item => `<div class="staff-schedule-list-row"><div class="staff-schedule-list-person">${item.unassigned ? '<span class="staff-avatar initials small">?</span>' : staffAvatarMarkup(item.staffMember,'small')}<strong>${escapeHtml(item.staffName)}</strong></div><time>${escapeHtml(item.bookingMode === 'all_day' ? t('All day') : item.time)}</time><div><strong>${escapeHtml(item.serviceTitle)}</strong>${item.location ? `<small>${escapeHtml(item.location)}</small>` : ''}</div><span>${escapeHtml(item.customerName)}</span><span class="status-badge enabled">${t('Confirmed')}</span><button type="button" class="text-button" data-open-staff-booking="${item.bookingId}">${t('Open booking')}</button></div>`).join('')}</div>`;
+}
+
+function renderStaffOperationsCalendar(payload) {
+  const groups = [...(payload.staff || [])];
+  if ((payload.unassigned || []).length) groups.push({ id:'', name:t('Unassigned'), avatar:{kind:'initials',value:''}, assignments:payload.unassigned, unassigned:true });
+  const timed = groups.flatMap(group => group.assignments || []).filter(item => item.bookingMode !== 'all_day' && staffTimeMinutes(item.time) !== null);
+  const minMinute = timed.length ? Math.min(...timed.map(item => staffTimeMinutes(item.time))) : 9 * 60;
+  const maxMinute = timed.length ? Math.max(...timed.map(item => staffTimeMinutes(item.time) + Math.max(30, Number(item.duration || 60)))) : 17 * 60;
+  const startHour = Math.max(0, Math.min(22, Math.floor(minMinute / 60) - 1));
+  const endHour = Math.min(24, Math.max(startHour + 6, Math.ceil(maxMinute / 60) + 1));
+  const rangeStart = startHour * 60;
+  const rangeMinutes = Math.max(60, (endHour - startHour) * 60);
+  const hours = Array.from({ length: endHour - startHour + 1 }, (_, index) => startHour + index);
+  const axis = hours.map((hour, index) => `<span style="left:${(index / (hours.length - 1 || 1)) * 100}%">${String(hour).padStart(2,'0')}:00</span>`).join('');
+  const rows = groups.map(group => {
+    const member = state.staff.find(item => String(item._id) === String(group.id)) || { name: group.name, avatar: group.avatar };
+    const blocks = (group.assignments || []).map(item => {
+      if (item.bookingMode === 'all_day') return `<button type="button" class="staff-calendar-block all-day" data-open-staff-booking="${item.bookingId}"><strong>${t('All day')}</strong><span>${escapeHtml(item.serviceTitle)}</span></button>`;
+      const start = staffTimeMinutes(item.time) ?? rangeStart;
+      const duration = Math.max(30, Number(item.duration || 60));
+      const left = Math.max(0, Math.min(100, ((start - rangeStart) / rangeMinutes) * 100));
+      const width = Math.max(8, Math.min(100 - left, (duration / rangeMinutes) * 100));
+      return `<button type="button" class="staff-calendar-block" style="left:${left}%;width:${width}%" data-open-staff-booking="${item.bookingId}" title="${escapeHtml(`${item.time} · ${item.serviceTitle} · ${item.customerName}`)}"><strong>${escapeHtml(item.time)}</strong><span>${escapeHtml(item.serviceTitle)}</span><small>${escapeHtml(item.customerName)}</small></button>`;
+    }).join('');
+    return `<div class="staff-calendar-row"><div class="staff-calendar-person">${group.unassigned ? '<span class="staff-avatar initials small">?</span>' : staffAvatarMarkup(member,'small')}<span><strong>${escapeHtml(group.name)}</strong><small>${(group.assignments || []).length} ${t((group.assignments || []).length === 1 ? 'appointment' : 'appointments')}</small></span></div><div class="staff-calendar-track"><div class="staff-calendar-grid">${hours.slice(0,-1).map(() => '<i></i>').join('')}</div>${blocks || `<span class="staff-calendar-empty">${t('No scheduled bookings')}</span>`}</div></div>`;
+  }).join('');
+  return `<div class="staff-calendar"><div class="staff-calendar-axis"><span>${t('Staff')}</span><div>${axis}</div></div>${rows}</div>`;
+}
+
 function renderStaffOperations() {
   const root = $('#staffOperationsList');
   if (!root) return;
   const payload = state.staffOperations || { staff: [], unassigned: [] };
   const groups = payload.staff || [];
   const hasAny = groups.some(group => (group.assignments || []).length) || (payload.unassigned || []).length;
+  $$('[data-staff-ops-view]').forEach(button => button.classList.toggle('active', button.dataset.staffOpsView === state.staffOperationsView));
+  root.className = state.staffOperationsView === 'calendar' ? 'staff-operations-calendar-wrap' : '';
   if (!hasAny) {
     root.innerHTML = `<div class="staff-operations-empty"><strong>${t('No team appointments on this date')}</strong><span>${t('Confirmed staff assignments will appear here.')}</span></div>`;
     return;
   }
-  const cards = groups.map(group => {
-    const member = state.staff.find(item => String(item._id) === String(group.id)) || { name: group.name, avatar: group.avatar };
-    const appointments = group.assignments || [];
-    return `<article class="staff-ops-card"><div class="staff-ops-card-head">${staffAvatarMarkup(member, 'small')}<div><strong>${escapeHtml(group.name)}</strong><span>${appointments.length} ${t(appointments.length === 1 ? 'appointment' : 'appointments')}</span></div></div><div class="staff-ops-items">${appointments.length ? appointments.map(item => `<div class="staff-ops-item"><time>${escapeHtml(item.bookingMode === 'all_day' ? t('All day') : item.time)}</time><div><strong>${escapeHtml(item.serviceTitle)}</strong><span>${escapeHtml(item.customerName)}${item.location ? ` · ${escapeHtml(item.location)}` : ''}</span></div><button type="button" class="text-button" data-open-staff-booking="${item.bookingId}">${t('Open booking')}</button></div>`).join('') : `<div class="staff-ops-none">${t('No bookings assigned')}</div>`}</div></article>`;
-  });
-  if ((payload.unassigned || []).length) {
-    cards.push(`<article class="staff-ops-card unassigned"><div class="staff-ops-card-head"><span class="staff-avatar initials small">?</span><div><strong>${t('Unassigned')}</strong><span>${payload.unassigned.length} ${t(payload.unassigned.length === 1 ? 'appointment' : 'appointments')}</span></div></div><div class="staff-ops-items">${payload.unassigned.map(item => `<div class="staff-ops-item"><time>${escapeHtml(item.bookingMode === 'all_day' ? t('All day') : item.time)}</time><div><strong>${escapeHtml(item.serviceTitle)}</strong><span>${escapeHtml(item.customerName)}${item.location ? ` · ${escapeHtml(item.location)}` : ''}</span></div><button type="button" class="text-button" data-open-staff-booking="${item.bookingId}">${t('Open booking')}</button></div>`).join('')}</div></article>`);
-  }
-  root.innerHTML = cards.join('');
+  root.innerHTML = state.staffOperationsView === 'calendar' ? renderStaffOperationsCalendar(payload) : renderStaffOperationsList(payload);
   $$('[data-open-staff-booking]').forEach(button => button.addEventListener('click', async () => {
     switchView('bookings');
     await loadBookings();
@@ -1798,6 +1831,7 @@ function bind() {
   $$('[data-close-staff-dialog]').forEach(button => button.addEventListener('click', () => $('#staffDialog').close()));
   $('#addStaffException')?.addEventListener('click', () => addStaffException());
   $('#staffOperationsDate')?.addEventListener('change', event => loadStaffOperations(event.target.value));
+  $$('[data-staff-ops-view]').forEach(button => button.addEventListener('click', () => { state.staffOperationsView = button.dataset.staffOpsView === 'calendar' ? 'calendar' : 'list'; renderStaffOperations(); }));
   $('#uploadStaffAvatar')?.addEventListener('click', () => $('#staffAvatarFile').click());
   $('#useStaffInitials')?.addEventListener('click', () => setStaffAvatarDraft({ kind: 'initials', value: '' }, $('#staffName').value || 'Staff'));
   $('#staffName')?.addEventListener('input', () => {

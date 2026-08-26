@@ -175,7 +175,7 @@ adminRouter.get('/staff/operations', async (req, res, next) => {
       ruleId: { $in: managedRuleIds },
       status: 'confirmed',
       $or: [{ date }, { 'occurrences.date': date }]
-    }).sort({ date: 1, time: 1 }).select('ruleId productTitle customer.name date time bookingMode occurrences location staff staffId').lean() : [];
+    }).sort({ date: 1, time: 1 }).select('ruleId productTitle customer.name date time bookingMode occurrences duration buffer location staff staffId').lean() : [];
     const assignments = [];
     for (const booking of bookings) {
       const mode = booking.bookingMode || 'slot';
@@ -191,6 +191,8 @@ adminRouter.get('/staff/operations', async (req, res, next) => {
           customerName: booking.customer?.name || 'Customer',
           time: mode === 'all_day' ? '' : (occurrence.time || booking.time || ''),
           bookingMode: mode,
+          duration: Number(booking.duration || 60),
+          buffer: Number(booking.buffer || 0),
           location: booking.location || ''
         });
       }

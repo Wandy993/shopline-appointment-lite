@@ -1,5 +1,5 @@
-# Appointment Lite v0.5.3 Storefront Booking UX + Time Zones
+# Appointment Lite v0.5.4 Staff Schedule Views + Storefront Modal Polish
 
-This release keeps the calendar-first customer booking surface inside a compact viewport, removes date-switch layout flicker with cached/prefetched availability and in-place skeleton loading, and adds service/customer time-zone support.
+Use the release ZIP and one-click command in this release. The command verifies Git state, installs locked dependencies, runs the full test suite and JavaScript checks, syncs the local SHOPLINE Theme App Extension, pushes Git, queues Railway with `railway up --detach`, and immediately continues to `sl extension push`.
 
-Use `docs/INSTALL_MAC_COMMAND.txt` or the separately delivered one-click command. The release command verifies Git state, overlays the clean ZIP, runs `npm ci`, the full `npm test`, and `npm run check`, syncs the locally bound SHOPLINE Theme App Extension, pushes Git, queues Railway with `railway up --detach`, and immediately runs `sl extension push`.
+The release adds Staff Operations list/calendar views, bundled AI-generated staff portrait presets, fixed-layer time-zone/staff pickers, accessible selected-slot colors, compact booking confirmation, and mobile storefront modal polish.

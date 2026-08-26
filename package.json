@@ -1,7 +1,7 @@
 {
   "name": "appointment-lite",
-  "version": "0.5.3",
-  "description": "SHOPLINE service appointments with staff scheduling, booking modes, a compact calendar-first storefront, stable slot loading, and service/customer time zones.",
+  "version": "0.5.4",
+  "description": "SHOPLINE service appointments with staff schedule list/calendar views, realistic AI staff portraits, and polished responsive storefront booking modals.",
   "type": "module",
   "engines": {
     "node": ">=20"
