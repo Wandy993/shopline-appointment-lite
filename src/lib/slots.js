@@ -1,6 +1,20 @@
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
+
+export function isValidTimeZone(timezone) {
+  const value = String(timezone || '').trim();
+  if (!value) return false;
+  try { new Intl.DateTimeFormat('en', { timeZone: value }).format(new Date()); return true; } catch { return false; }
+}
+
+export function resolveRuleTimezone(rule = {}, fallback = 'UTC') {
+  const configured = String(rule?.timezone || '').trim();
+  if (isValidTimeZone(configured)) return configured;
+  const inherited = String(fallback || '').trim();
+  return isValidTimeZone(inherited) ? inherited : 'UTC';
+}
+
 export function bookingModeFor(rule = {}) {
   return ['slot', 'all_day', 'multi_slot'].includes(rule.bookingMode) ? rule.bookingMode : 'slot';
 }

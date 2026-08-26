@@ -26,6 +26,20 @@ const productStatusLabels = { active: 'Published', draft: 'Draft' };
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
 
+function browserTimeZones() {
+  const common = ['UTC','Asia/Shanghai','Asia/Singapore','Asia/Tokyo','Europe/London','Europe/Paris','America/New_York','America/Chicago','America/Denver','America/Los_Angeles','Australia/Sydney'];
+  let values = [];
+  try { values = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : []; } catch {}
+  return [...new Set([...common, ...values])];
+}
+
+function populateServiceTimeZones() {
+  const list = $('#serviceTimezoneOptions');
+  if (!list) return;
+  const storeTimezone = state.shop?.timezone || 'UTC';
+  list.innerHTML = [...new Set([storeTimezone, ...browserTimeZones()])].map(value => `<option value="${escapeHtml(value)}"></option>`).join('');
+}
+
 const zh = {
   'Appointment management': '预约管理', 'Workspace': '工作台', 'Overview': '概览', 'Services & rules': '预约服务', 'Bookings': '预约记录',
   'Configuration': '配置', 'Email Studio': '邮件设计', 'Storefront setup': '店铺前台设置', 'Store connected': '店铺已连接',
@@ -84,7 +98,10 @@ const zh = {
   'SHOPLINE products synced.': 'SHOPLINE 商品已同步。', 'Could not sync SHOPLINE products. Try again.': 'SHOPLINE 商品同步失败，请重试。',
   'Catalog sources reconciled': '已合并 SHOPLINE 商品数据源', 'Historical bookings will be kept': '历史预约记录会继续保留',
   'Published': '已发布', 'Draft': '草稿', 'products synced just now': '个商品 · 刚刚同步', 'Your store name': '你的店铺名称', 'e.g. Main showroom': '例如：主展厅', 'e.g. Sarah': '例如：Sarah',
-  'Anything we should know?': '还有什么需要我们了解？'
+  'Anything we should know?': '还有什么需要我们了解？',
+  'Set regular hours, booking policies, and date-specific exceptions in the service time zone.': '按照服务默认时区设置常规开放时间、预约策略和特殊日期。',
+  'Service time zone': '服务默认时区', 'Leave blank to inherit the SHOPLINE store time zone.': '留空则继承 SHOPLINE 店铺时区。',
+  'Set the service-local schedule customers can choose from.': '设置客户可选择的服务本地时间。'
 };
 
 Object.assign(zh, {
@@ -101,7 +118,7 @@ Object.assign(zh, {
   'SHOPLINE store connected': 'SHOPLINE 店铺已连接', 'At least one active service rule': '至少启用一条服务规则',
   'Email notifications ready': '邮件通知已就绪', 'Email notifications need setup': '邮件通知待设置', 'Email design customized': '已自定义邮件设计',
   'Question shown to customers': '向客户展示的问题', Required: '必填', Remove: '移除', 'No matching products': '没有匹配的商品',
-  'Could not load products': '无法加载商品', 'Set the store-local schedule customers can choose from.': '设置客户可选择的店铺本地时间。',
+  'Could not load products': '无法加载商品', 'Set the service-local schedule customers can choose from.': '设置客户可选择的店铺本地时间。',
   'Finish the customer-facing details and activate the service.': '完善客户看到的服务信息并启用预约。', 'Edit service rule': '编辑预约服务',
   'Service rule updated.': '预约服务已更新。', 'Service rule created.': '预约服务已创建。',
   'No services match your search': '没有匹配的预约服务', 'No service rules yet': '还没有预约服务', 'Try a different keyword.': '请尝试其他关键词。',
@@ -188,7 +205,7 @@ Object.assign(zh, {
   'Other service': '其他服务', 'Create a flexible standalone appointment service.': '创建灵活的独立预约服务。',
   'Each product can have one active appointment service.': '每个商品可配置一项预约服务。', 'Service name': '服务名称',
   'A shareable booking link is created automatically after you save.': '保存后会自动生成可分享的预约链接。', 'Duration': '服务时长', 'Buffer': '缓冲时间', 'Capacity': '单时段容量', 'min': '分钟', 'spots': '名额',
-  'Set your regular hours, booking policies, and date-specific exceptions. All times use the store time zone.': '设置常规营业时间、预约策略和特殊日期，所有时间均以店铺时区为准。',
+  'Set regular hours, booking policies, and date-specific exceptions in the service time zone.': '按照服务默认时区设置常规开放时间、预约策略和特殊日期。',
   'Minimum notice': '最短提前预约', 'No minimum': '无限制', '1 hour': '1 小时', '2 hours': '2 小时', '4 hours': '4 小时', '12 hours': '12 小时', '1 day': '1 天', '2 days': '2 天', '7 days': '7 天',
   'Booking window': '可提前预约范围', 'days ahead': '天内', 'Enable the days customers can normally book.': '启用客户通常可以预约的星期。',
   'Availability exceptions': '特殊日期', 'Add exception': '添加特殊日期', 'Close a holiday or override one date with special opening hours.': '可关闭节假日，或为某一天设置特殊营业时间。',
@@ -254,7 +271,7 @@ Object.assign(zh, {
   'Daily capacity': '每日容量', 'bookings / day': '笔 / 天', 'No time selection': '无需选择具体时间',
   'Customers choose a date only. Duration and buffer do not apply to all-day bookings.': '客户只选择日期；全天预约不使用服务时长和缓冲时间。',
   'Sessions per booking': '每次预约时段数', 'sessions': '个时段', 'Customers must select exactly this many available sessions before confirming.': '客户确认预约前必须选择指定数量的可预约时段。',
-  'Open all day': '全天开放', 'Dates and capacity use the store time zone. Customers choose a date without a start time.': '日期和每日容量以店铺时区为准，客户只选择日期，不选择开始时间。',
+  'Open all day': '全天开放', 'Dates and capacity use the service time zone. Customers choose a date without a start time.': '日期和每日容量以服务默认时区为准，客户只选择日期，不选择开始时间。',
   'Enable the days customers can book all day.': '启用客户可以进行全天预约的星期。',
   'Close a holiday or open a normally closed date for all-day booking.': '可关闭节假日，或临时开放一个原本关闭的全天预约日期。',
   'Booking modes': '预约方式', 'All-day': '全天', 'Multi-session': '多时段', 'per day': '每天',
@@ -884,8 +901,8 @@ function setBookingMode(mode = 'slot', { touched = true } = {}) {
   $('#slotLogicNotice').classList.toggle('hidden', normalized === 'all_day');
   $('#weeklySchedule').classList.toggle('all-day-mode', normalized === 'all_day');
   $('#availabilityIntro').textContent = t(normalized === 'all_day'
-    ? 'Dates and capacity use the store time zone. Customers choose a date without a start time.'
-    : 'Set your regular hours, booking policies, and date-specific exceptions. All times use the store time zone.');
+    ? 'Dates and capacity use the service time zone. Customers choose a date without a start time.'
+    : 'Set regular hours, booking policies, and date-specific exceptions in the service time zone.');
   $('#weeklyScheduleHint').textContent = t(normalized === 'all_day' ? 'Enable the days customers can book all day.' : 'Enable the days customers can normally book.');
   $('#exceptionHint').textContent = t(normalized === 'all_day' ? 'Close a holiday or open a normally closed date for all-day booking.' : 'Close a holiday or override one date with special opening hours.');
   $('#capacitySuffix').textContent = t(normalized === 'all_day' ? 'bookings / day' : 'spots');
@@ -934,7 +951,7 @@ function setRuleStep(step) {
   $('#ruleBack').classList.toggle('hidden', state.ruleStep === 0);
   $('#ruleNext').classList.toggle('hidden', state.ruleStep === 3);
   $('#saveRule').classList.toggle('hidden', state.ruleStep !== 3);
-  const subtitles = ['Choose how customers will book this service.', 'Choose how customers select time for this service.', 'Set the store-local schedule customers can choose from.', 'Finish the customer-facing details and activate the service.'];
+  const subtitles = ['Choose how customers will book this service.', 'Choose how customers select time for this service.', 'Set the service-local schedule customers can choose from.', 'Finish the customer-facing details and activate the service.'];
   $('#ruleDialogSubtitle').textContent = t(subtitles[state.ruleStep]);
   $('#formError').classList.add('hidden');
   const body = $('#ruleDialog .modal-body');
@@ -985,6 +1002,11 @@ async function openRule(rule = null) {
   $('#sessionsRequired').value = rule?.sessionsRequired || 3;
   $('#minimumNoticeMinutes').value = String(rule?.minimumNoticeMinutes ?? 0);
   $('#bookingWindowDays').value = rule?.bookingWindowDays || 90;
+  populateServiceTimeZones();
+  $('#serviceTimezone').value = rule?.timezone || '';
+  const inheritedTimezone = state.shop?.timezone || 'UTC';
+  $('#serviceTimezone').placeholder = `Store default · ${inheritedTimezone}`;
+  $('#serviceTimezoneHint').textContent = state.locale === 'zh-CN' ? `留空则继承 SHOPLINE 店铺时区：${inheritedTimezone}。同一员工关联多个服务时，建议这些服务使用相同的服务时区。` : `Leave blank to inherit the SHOPLINE store time zone: ${inheritedTimezone}. If the same staff member works across multiple services, keep those services on the same service time zone.`;
   $('#serviceDescription').value = rule?.serviceDescription || '';
   $('#questionLabel').value = rule?.questionLabel || t('Anything we should know?');
   $('#enabled').checked = rule?.enabled !== false;
@@ -1033,6 +1055,7 @@ function rulePayload() {
     productHandle: usesProduct ? (product?.handle || '') : '',
     serviceDescription: $('#serviceDescription').value,
     duration: allDay ? 60 : Number($('#duration').value), buffer: allDay ? 0 : Number($('#buffer').value), capacity,
+    timezone: $('#serviceTimezone').value.trim(),
     minimumNoticeMinutes: Number($('#minimumNoticeMinutes').value), bookingWindowDays: Number($('#bookingWindowDays').value),
     dateFrom: $('#dateFrom').value, dateUntil: $('#dateUntil').value,
     weeklyAvailability: $$('.schedule-row').map(row => ({ weekday: Number(row.dataset.weekday), enabled: row.querySelector('input[type=checkbox]').checked, windows: allDay ? [] : [{ start: row.querySelectorAll('input[type=time]')[0].value, end: row.querySelectorAll('input[type=time]')[1].value }] })),

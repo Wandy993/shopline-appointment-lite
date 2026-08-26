@@ -7,6 +7,12 @@ const BOOKING_MODES = new Set(['slot', 'all_day', 'multi_slot']);
 const STAFF_ASSIGNMENT_MODES = new Set(['none', 'any', 'customer_choice', 'fixed']);
 const OBJECT_ID_PATTERN = /^[a-f\d]{24}$/i;
 
+function validTimeZone(value) {
+  const timezone = String(value || '').trim();
+  if (!timezone) return true;
+  try { new Intl.DateTimeFormat('en', { timeZone: timezone }).format(new Date()); return true; } catch { return false; }
+}
+
 function text(value, max = 255) { return String(value ?? '').trim().slice(0, max); }
 
 function normalizeWindows(value) {
@@ -40,6 +46,7 @@ export function validateRuleInput(body) {
   const sessionsRequired = bookingMode === 'multi_slot' ? sessionsRequiredRaw : 1;
   const minimumNoticeMinutes = Number(body.minimumNoticeMinutes ?? 0);
   const bookingWindowDays = Number(body.bookingWindowDays ?? 90);
+  const timezone = text(body.timezone, 80);
   const usesProductPage = bookingSource === 'product' || bookingSource === 'both';
   const productId = usesProductPage ? text(body.productId, 100) : '';
   const productTitle = usesProductPage ? text(body.productTitle, 255) : '';
@@ -51,6 +58,7 @@ export function validateRuleInput(body) {
   if (['any', 'customer_choice'].includes(staffAssignmentMode) && staffIds.length < 1) errors.push('Choose at least one staff member for this assignment mode.');
 
   if (!serviceTitle) errors.push('Service name is required.');
+  if (!validTimeZone(timezone)) errors.push('Choose a valid IANA service time zone.');
   if (usesProductPage && !productId) errors.push('Product is required for product-page booking.');
   if (usesProductPage && !productTitle) errors.push('Product title is required for product-page booking.');
   if (bookingMode !== 'all_day' && (!Number.isInteger(duration) || duration < 5 || duration > 480)) errors.push('Duration must be 5–480 minutes.');
@@ -95,7 +103,7 @@ export function validateRuleInput(body) {
   })).filter(question => question.label);
 
   return { errors: [...new Set(errors)], value: {
-    bookingSource, sourceType, serviceType, bookingMode, sessionsRequired, serviceTitle,
+    bookingSource, sourceType, serviceType, bookingMode, sessionsRequired, serviceTitle, timezone,
     productId, productTitle,
     productHandle: usesProductPage ? text(body.productHandle, 255) : '',
     serviceDescription: text(body.serviceDescription, 500),

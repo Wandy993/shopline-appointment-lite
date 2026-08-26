@@ -18,7 +18,7 @@ test('theme asset exposes diagnostics and handles editor re-renders', async () =
   assert.match(asset, /shopline:section:load/);
   assert.match(asset, /MutationObserver/);
   assert.doesNotMatch(asset, /data\.customer|customer\.email/);
-  assert.match(asset, /store time zone/i);
+  assert.match(asset, /service time zone/i);
   assert.match(asset, /payload\.storeDate/);
 });
 

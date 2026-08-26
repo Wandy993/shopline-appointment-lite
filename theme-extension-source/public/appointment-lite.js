@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = '0.5.2';
+  const VERSION = '0.5.3';
   const API_BASE = 'https://appointment.toolkit.fans';
   const CACHE_TTL = 5 * 60 * 1000;
   const SELECTOR = '[data-appointment-lite]:not([data-al-ready])';
@@ -32,6 +32,40 @@
 
   function text(value) {
     return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char]);
+  }
+
+
+  function validTimeZone(value) {
+    try { new Intl.DateTimeFormat('en', { timeZone: value }).format(new Date()); return true; } catch { return false; }
+  }
+
+  function supportedTimeZones(primary = 'UTC', secondary = 'UTC') {
+    const common = ['UTC','Asia/Shanghai','Asia/Singapore','Asia/Tokyo','Europe/London','Europe/Paris','America/New_York','America/Chicago','America/Denver','America/Los_Angeles','Australia/Sydney'];
+    let values = [];
+    try { values = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : []; } catch {}
+    return [...new Set([primary, secondary, ...common, ...values].filter(validTimeZone))];
+  }
+
+  function zonedParts(instant, timezone) {
+    const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(instant).map(part => [part.type, part.value]));
+    return { date: `${parts.year}-${parts.month}-${parts.day}`, time: `${parts.hour}:${parts.minute}` };
+  }
+
+  function wallTimeToInstant(date, time, timezone) {
+    const [year, month, day] = String(date).split('-').map(Number);
+    const [hour, minute] = String(time).split(':').map(Number);
+    let instant = new Date(Date.UTC(year, month - 1, day, hour, minute));
+    for (let i = 0; i < 3; i += 1) {
+      const seen = zonedParts(instant, timezone);
+      const wanted = Date.UTC(year, month - 1, day, hour, minute);
+      const [seenYear, seenMonth, seenDay] = seen.date.split('-').map(Number);
+      const [seenHour, seenMinute] = seen.time.split(':').map(Number);
+      const seenWall = Date.UTC(seenYear, seenMonth - 1, seenDay, seenHour, seenMinute);
+      const delta = wanted - seenWall;
+      if (!delta) break;
+      instant = new Date(instant.getTime() + delta);
+    }
+    return instant;
   }
 
   const staffPresetClasses = new Set(['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose']);
@@ -127,7 +161,7 @@
   }
 
   function cachedRule(context) {
-    const key = `al-rule:${context.shopId}:${context.productId}`;
+    const key = `al-rule:${VERSION}:${context.shopId}:${context.productId}`;
     try {
       const hit = JSON.parse(localStorage.getItem(key));
       if (hit && Date.now() - hit.at < CACHE_TTL) {
@@ -202,7 +236,7 @@
   function bookingWhenHtml(booking) {
     const mode = booking.bookingMode || 'slot';
     const occurrences = Array.isArray(booking.occurrences) ? booking.occurrences : [];
-    if (mode === 'multi_slot' && occurrences.length) return `<div class="al-session-summary">${occurrences.map(item => `<span>${text(item.date)} · ${text(item.time)}</span>`).join('')}</div>`;
+    if (mode === 'multi_slot' && occurrences.length) return `<div class="al-session-summary">${occurrences.map(item => `<span>${text(displayOccurrence(item))}</span>`).join('')}</div>`;
     return `<strong>${text(bookingWhenText(booking))}</strong>`;
   }
 
@@ -220,7 +254,7 @@
     const status = document.createElement('section');
     status.className = 'al-booked';
     status.setAttribute('aria-label', 'Appointment booked');
-    status.innerHTML = `<div class="al-booked-copy"><span class="al-booked-label">Appointment booked</span>${bookingWhenHtml(receipt)}${details ? `<span>${details}</span>` : ''}<span>Store time zone: ${text(timezone)}</span><small>${receipt.managementToken ? 'Manage this appointment from this device' : 'Contact the store to change this appointment'}</small></div>${receipt.managementToken ? '<button type="button" class="al-secondary">Manage appointment</button>' : ''}`;
+    status.innerHTML = `<div class="al-booked-copy"><span class="al-booked-label">Appointment booked</span>${bookingWhenHtml(receipt)}${details ? `<span>${details}</span>` : ''}<span>Service time zone: ${text(timezone)}</span><small>${receipt.managementToken ? 'Manage this appointment from this device' : 'Contact the store to change this appointment'}</small></div>${receipt.managementToken ? '<button type="button" class="al-secondary">Manage appointment</button>' : ''}`;
     status.querySelector('.al-secondary')?.addEventListener('click', () => openManage(widget, rule, context, receipt));
     trigger.insertAdjacentElement('afterend', status);
     info('Stored booking status rendered.', { ...context, bookingId: receipt.id, date: receipt.date, time: receipt.time });
@@ -380,7 +414,7 @@
 
   function appointmentDetails(receipt) {
     const details = [receipt.location, receipt.staff].filter(Boolean).map(text).join(' · ');
-    return `<div class="al-manage-summary"><span>Current appointment</span>${bookingWhenHtml(receipt)}${details ? `<p>${details}</p>` : ''}${receipt.timezone ? `<p>Store time zone: ${text(receipt.timezone)}</p>` : ''}</div>`;
+    return `<div class="al-manage-summary"><span>Current appointment</span>${bookingWhenHtml(receipt)}${details ? `<p>${details}</p>` : ''}${receipt.timezone ? `<p>Service time zone: ${text(receipt.timezone)}</p>` : ''}</div>`;
   }
 
   function openManage(widget, rule, context, receipt) {
@@ -445,7 +479,7 @@
     const dialog = document.createElement('dialog');
     const today = rule.storeDate || new Date().toISOString().slice(0, 10);
     const minDate = rule.dateFrom && rule.dateFrom > today ? rule.dateFrom : today;
-    dialog.innerHTML = `<div class="al-head"><div><button type="button" class="al-back">← Back</button><h2>Change date or time</h2><p>${text(rule.serviceTitle || rule.productTitle)}</p></div><button class="al-close" type="button" aria-label="Close">×</button></div><form class="al-form"><div class="al-form-body">${appointmentDetails(receipt)}<div class="al-notice"><strong>This is your only online change</strong><span>After you save, contact the store if you need another change.</span></div><div class="al-grid"><div class="al-field"><label for="al-reschedule-date">New date</label><input id="al-reschedule-date" name="date" type="date" min="${minDate}" ${maxDateAttribute(rule)} required></div><div><span class="al-legend">New time</span><div class="al-times"><span class="al-muted">Choose a date first.</span></div></div></div><p class="al-muted">All times are shown in the store time zone: ${text(rule.timezone || 'UTC')}.</p></div><div class="al-actions"><div class="al-error" hidden role="alert"></div><button class="al-submit" type="submit">Save changes</button></div></form>`;
+    dialog.innerHTML = `<div class="al-head"><div><button type="button" class="al-back">← Back</button><h2>Change date or time</h2><p>${text(rule.serviceTitle || rule.productTitle)}</p></div><button class="al-close" type="button" aria-label="Close">×</button></div><form class="al-form"><div class="al-form-body">${appointmentDetails(receipt)}<div class="al-notice"><strong>This is your only online change</strong><span>After you save, contact the store if you need another change.</span></div><div class="al-grid"><div class="al-field"><label for="al-reschedule-date">New date</label><input id="al-reschedule-date" name="date" type="date" min="${minDate}" ${maxDateAttribute(rule)} required></div><div><span class="al-legend">New time</span><div class="al-times"><span class="al-muted">Choose a date first.</span></div></div></div><p class="al-muted">All times are shown in the service time zone: ${text(rule.timezone || 'UTC')}.</p></div><div class="al-actions"><div class="al-error" hidden role="alert"></div><button class="al-submit" type="submit">Save changes</button></div></form>`;
     mountDialog(dialog);
     dialog.querySelector('.al-back').addEventListener('click', () => {
       dialog.close();
@@ -486,7 +520,7 @@
         }, 'booking reschedule');
         const refreshed = saveBookingReceipt(context, payload.booking, receipt.managementToken);
         renderBookingState(widget, rule, context, refreshed);
-        dialog.querySelector('.al-form').innerHTML = `<div class="al-success"><h3>Appointment updated</h3><p>${text(payload.booking.date)} at ${text(payload.booking.time)}</p><p>Store time zone: ${text(payload.booking.timezone || rule.timezone || 'UTC')}</p><button class="al-submit" type="button">Done</button></div>`;
+        dialog.querySelector('.al-form').innerHTML = `<div class="al-success"><h3>Appointment updated</h3><p>${text(payload.booking.date)} at ${text(payload.booking.time)}</p><p>Service time zone: ${text(payload.booking.timezone || rule.timezone || 'UTC')}</p><button class="al-submit" type="button">Done</button></div>`;
         dialog.querySelector('.al-submit').addEventListener('click', () => dialog.close());
         info('Booking rescheduled by customer.', { ...context, bookingId: receipt.id, date: payload.booking.date, time: payload.booking.time });
       } catch (error) {
@@ -503,6 +537,10 @@
     info('Booking dialog opened.', { ...context, ruleId: rule.id, bookingMode: rule.bookingMode || 'slot' });
     const dialog = document.createElement('dialog');
     const mode = ['slot', 'all_day', 'multi_slot'].includes(rule.bookingMode) ? rule.bookingMode : 'slot';
+    const serviceTimezone = validTimeZone(rule.timezone) ? rule.timezone : 'UTC';
+    let customerTimezone = validTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone) ? Intl.DateTimeFormat().resolvedOptions().timeZone : serviceTimezone;
+    const availabilityCache = new Map();
+    let availabilityRequestId = 0;
     const today = rule.storeDate || new Date().toISOString().slice(0, 10);
     const minDate = rule.dateFrom && rule.dateFrom > today ? rule.dateFrom : today;
     const maxDate = bookingMaxDate(rule);
@@ -512,7 +550,7 @@
     const staffSelector = staffMode === 'customer_choice' ? `<div class="al-field al-staff-choice"><label>Staff</label><div class="al-staff-picker"><button type="button" class="al-staff-trigger" aria-haspopup="listbox" aria-expanded="false"><span class="al-staff-value"><span class="al-staff-avatar al-staff-initials al-staff-small">?</span><span><strong>Choose staff</strong><small>Select a team member</small></span></span><span class="al-staff-chevron">⌄</span></button><div class="al-staff-menu" role="listbox" hidden>${staffOptions.map(item => `<button type="button" class="al-staff-option" data-staff-id="${text(item.id)}">${staffAvatar(item, 'al-staff-small')}<span><strong>${text(item.name)}</strong><small>View availability</small></span><i>✓</i></button>`).join('')}</div><input type="hidden" name="staffId" value=""></div><small>Availability updates for the selected staff member.</small></div>` : '';
     const managedStaffMeta = staffMode === 'fixed' && staffOptions[0] ? staffOptions[0].name : staffMode === 'any' ? 'Staff assigned automatically' : rule.staff;
     const metaParts = [modeMeta, rule.location, managedStaffMeta].filter(Boolean);
-    dialog.innerHTML = `<div class="al-head"><div><h2>Book an appointment</h2><p>${text(rule.serviceTitle || rule.productTitle)}</p></div><button class="al-close" type="button" aria-label="Close">×</button></div><form class="al-form"><div class="al-form-body"><div class="al-service-summary">${metaParts.map((value, index) => `<span>${index === 0 ? '◷' : index === 1 ? '⌂' : '◎'} ${text(value)}</span>`).join('<i>·</i>')}<span>◉ ${text(rule.timezone || 'UTC')}</span></div><div class="al-booking-layout"><aside class="al-calendar-column"><div class="al-calendar-card"><div class="al-calendar-toolbar"><button type="button" class="al-calendar-nav al-calendar-prev" aria-label="Previous month">‹</button><strong class="al-calendar-title">Calendar</strong><button type="button" class="al-calendar-nav al-calendar-next" aria-label="Next month">›</button></div><div class="al-calendar-weekdays" aria-hidden="true"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div><div class="al-calendar-grid" role="grid" aria-label="Choose a booking date"></div><input type="hidden" name="date" required></div><div class="al-timezone-note"><span>◷</span><p>${mode === 'all_day' ? 'Dates use' : 'All times are shown in'} the store time zone: <strong>${text(rule.timezone || 'UTC')}</strong>.</p></div><div class="al-selected-sessions" hidden></div></aside><section class="al-booking-panel">${staffSelector}<div class="al-time-section"><div class="al-field-label-row"><span>${mode === 'all_day' ? 'Availability' : mode === 'multi_slot' ? 'Available sessions' : 'Available time slots'}</span><small class="al-selected-date-label">Choose a date</small></div><div class="al-times"><span class="al-muted">Choose a date first.</span></div></div><div class="al-details-divider"><span>Your details</span></div><div class="al-grid"><div class="al-field"><label for="al-name">Name *</label><input id="al-name" name="name" autocomplete="name" maxlength="120" placeholder="Enter your name" required></div><div class="al-field"><label for="al-email">Email *</label><input id="al-email" name="email" type="email" autocomplete="email" maxlength="254" placeholder="Enter your email" required></div></div><div class="al-field"><label for="al-phone">Phone (optional)</label><input id="al-phone" name="phone" type="tel" autocomplete="tel" maxlength="40" placeholder="Enter your phone number"></div><div class="al-field"><label for="al-note">${text(rule.questionLabel || 'Anything we should know?')}</label><textarea id="al-note" name="note" maxlength="2000" placeholder="Add a note for the team"></textarea></div><div class="al-questions"></div></section></div></div><div class="al-actions"><div class="al-error" hidden role="alert"></div><button class="al-submit" type="submit">Confirm booking</button><p class="al-action-note">You can reschedule or cancel your appointment later.</p></div></form>`;
+    dialog.innerHTML = `<div class="al-head"><div><h2>Book an appointment</h2><p>${text(rule.serviceTitle || rule.productTitle)}</p></div><button class="al-close" type="button" aria-label="Close">×</button></div><form class="al-form"><div class="al-form-body"><div class="al-service-summary">${metaParts.map((value, index) => `<span>${index === 0 ? '◷' : index === 1 ? '⌂' : '◎'} ${text(value)}</span>`).join('<i>·</i>')}<span>◉ ${text(rule.timezone || 'UTC')}</span></div><div class="al-booking-layout"><aside class="al-calendar-column"><div class="al-calendar-card"><div class="al-calendar-toolbar"><button type="button" class="al-calendar-nav al-calendar-prev" aria-label="Previous month">‹</button><strong class="al-calendar-title">Calendar</strong><button type="button" class="al-calendar-nav al-calendar-next" aria-label="Next month">›</button></div><div class="al-calendar-weekdays" aria-hidden="true"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div><div class="al-calendar-grid" role="grid" aria-label="Choose a booking date"></div><input type="hidden" name="date" required></div><div class="al-timezone-note"><span>◷</span><div class="al-timezone-copy"><p class="al-timezone-text"></p><div class="al-timezone-picker"><button class="al-timezone-trigger" type="button" aria-haspopup="listbox" aria-expanded="false"><span class="al-timezone-value"></span><span>⌄</span></button><div class="al-timezone-menu" hidden><input class="al-timezone-search" type="search" placeholder="Search time zones" autocomplete="off"><div class="al-timezone-options" role="listbox"></div></div></div></div></div><div class="al-selected-sessions" hidden></div></aside><section class="al-booking-panel">${staffSelector}<div class="al-time-section"><div class="al-field-label-row"><span>${mode === 'all_day' ? 'Availability' : mode === 'multi_slot' ? 'Available sessions' : 'Available time slots'}</span><small class="al-selected-date-label">Choose a date</small></div><div class="al-times"><span class="al-muted">Choose a date first.</span></div></div><div class="al-details-divider"><span>Your details</span></div><div class="al-grid"><div class="al-field"><label for="al-name">Name *</label><input id="al-name" name="name" autocomplete="name" maxlength="120" placeholder="Enter your name" required></div><div class="al-field"><label for="al-email">Email *</label><input id="al-email" name="email" type="email" autocomplete="email" maxlength="254" placeholder="Enter your email" required></div></div><div class="al-field"><label for="al-phone">Phone (optional)</label><input id="al-phone" name="phone" type="tel" autocomplete="tel" maxlength="40" placeholder="Enter your phone number"></div><div class="al-field"><label for="al-note">${text(rule.questionLabel || 'Anything we should know?')}</label><textarea id="al-note" name="note" maxlength="2000" placeholder="Add a note for the team"></textarea></div><div class="al-questions"></div></section></div></div><div class="al-actions"><div class="al-error" hidden role="alert"></div><button class="al-submit" type="submit">Confirm booking</button><p class="al-action-note">You can reschedule or cancel your appointment later.</p></div></form>`;
     const questions = dialog.querySelector('.al-questions');
     (rule.customQuestions || []).forEach((question, index) => {
       questions.insertAdjacentHTML('beforeend', `<div class="al-field"><label for="al-q-${index}">${text(question.label)}${question.required ? ' *' : ''}</label><input id="al-q-${index}" data-question="${text(question.label)}" maxlength="1000" ${question.required ? 'required' : ''}></div>`);
@@ -531,6 +569,12 @@
     const staffPicker = dialog.querySelector('.al-staff-picker');
     const staffTrigger = dialog.querySelector('.al-staff-trigger');
     const staffMenu = dialog.querySelector('.al-staff-menu');
+    const timezonePicker = dialog.querySelector('.al-timezone-picker');
+    const timezoneTrigger = dialog.querySelector('.al-timezone-trigger');
+    const timezoneMenu = dialog.querySelector('.al-timezone-menu');
+    const timezoneSearch = dialog.querySelector('.al-timezone-search');
+    const timezoneOptions = dialog.querySelector('.al-timezone-options');
+    const timezoneText = dialog.querySelector('.al-timezone-text');
     let selectedStaffId = staffSelect?.value || '';
     let selectedDate = '';
     let calendarCursor = calendarMonthKey(minDate);
@@ -539,6 +583,41 @@
     let selectedOccurrences = [];
     const occurrenceKey = item => `${item.date}T${item.time}`;
     const inRange = date => (!minDate || date >= minDate) && (!maxDate || date <= maxDate);
+
+    const displaySlot = (date, time) => {
+      if (!date || !time || customerTimezone === serviceTimezone) return { date, time, label: time };
+      const shown = zonedParts(wallTimeToInstant(date, time, serviceTimezone), customerTimezone);
+      const label = shown.date === date ? shown.time : `${new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(calendarDateFromKey(shown.date))} · ${shown.time}`;
+      return { ...shown, label };
+    };
+    const displayOccurrence = item => {
+      const shown = displaySlot(item.date, item.time);
+      return customerTimezone === serviceTimezone ? `${item.date} · ${item.time}` : `${shown.date} · ${shown.time}`;
+    };
+    const renderTimezoneCopy = () => {
+      if (mode === 'all_day') {
+        timezoneText.textContent = `Dates use the service time zone: ${serviceTimezone}.`;
+        timezonePicker.hidden = true;
+        return;
+      }
+      timezonePicker.hidden = false;
+      timezoneTrigger.querySelector('.al-timezone-value').textContent = customerTimezone;
+      timezoneText.textContent = customerTimezone === serviceTimezone
+        ? `Service calendar and times use ${serviceTimezone}.`
+        : `Service calendar uses ${serviceTimezone}. Times are displayed in ${customerTimezone}.`;
+    };
+    const renderTimezoneOptions = (query = '') => {
+      const term = query.trim().toLowerCase();
+      const values = supportedTimeZones(serviceTimezone, customerTimezone).filter(value => !term || value.toLowerCase().includes(term)).slice(0, 160);
+      timezoneOptions.innerHTML = values.length ? values.map(value => `<button type="button" class="al-timezone-option${value === customerTimezone ? ' selected' : ''}" data-timezone="${text(value)}"><span>${text(value)}</span><i>${value === customerTimezone ? '✓' : ''}</i></button>`).join('') : '<div class="al-timezone-empty">No matching time zones.</div>';
+      timezoneOptions.querySelectorAll('[data-timezone]').forEach(button => button.addEventListener('click', () => {
+        customerTimezone = button.dataset.timezone;
+        timezoneMenu.hidden = true;
+        timezoneTrigger.setAttribute('aria-expanded', 'false');
+        renderTimezoneCopy(); renderTimezoneOptions(); renderSelected();
+        if (selectedDate && availabilityCache.has(availabilityKey(selectedDate))) renderAvailability(availabilityCache.get(availabilityKey(selectedDate)), selectedDate);
+      }));
+    };
 
     const sessionCountForDate = date => mode === 'multi_slot' ? selectedOccurrences.filter(item => item.date === date).length : 0;
     const renderCalendar = () => {
@@ -559,7 +638,7 @@
         cells.push(`<button type="button" class="al-calendar-day${outside ? ' outside' : ''}${selected ? ' selected' : ''}${key === today ? ' today' : ''}${!open ? ' unavailable' : ''}" data-date="${key}" ${open ? '' : 'disabled'} aria-pressed="${selected ? 'true' : 'false'}"><span>${current.getUTCDate()}</span>${sessionCount ? `<i>${sessionCount}</i>` : ''}</button>`);
       }
       calendarRoot.innerHTML = cells.join('');
-      calendarRoot.querySelectorAll('[data-date]:not(:disabled)').forEach(button => button.addEventListener('click', () => selectDate(button.dataset.date)));
+      calendarRoot.querySelectorAll('[data-date]:not(:disabled)').forEach(button => { button.addEventListener('click', () => selectDate(button.dataset.date)); button.addEventListener('mouseenter', () => prefetchAvailability(button.dataset.date), { once: true }); button.addEventListener('focus', () => prefetchAvailability(button.dataset.date), { once: true }); });
       calendarPrev.disabled = Boolean(minDate && calendarShiftMonth(calendarCursor, -1) < calendarMonthKey(minDate));
       calendarNext.disabled = Boolean(maxDate && calendarShiftMonth(calendarCursor, 1) > calendarMonthKey(maxDate));
     };
@@ -567,7 +646,7 @@
     const renderSelected = () => {
       if (mode !== 'multi_slot') return;
       selectedRoot.hidden = false;
-      selectedRoot.innerHTML = `<div class="al-selected-head"><strong>Selected sessions</strong><span>${selectedOccurrences.length} / ${Number(rule.sessionsRequired || 3)}</span></div><div class="al-selected-list">${selectedOccurrences.length ? selectedOccurrences.map(item => `<button type="button" data-remove-session="${text(occurrenceKey(item))}"><span>${text(item.date)} · ${text(item.time)}</span><i>×</i></button>`).join('') : '<span class="al-muted">Choose dates and time slots until your booking is complete.</span>'}</div>`;
+      selectedRoot.innerHTML = `<div class="al-selected-head"><strong>Selected sessions</strong><span>${selectedOccurrences.length} / ${Number(rule.sessionsRequired || 3)}</span></div><div class="al-selected-list">${selectedOccurrences.length ? selectedOccurrences.map(item => `<button type="button" data-remove-session="${text(occurrenceKey(item))}"><span>${text(displayOccurrence(item))}</span><i>×</i></button>`).join('') : '<span class="al-muted">Choose dates and time slots until your booking is complete.</span>'}</div>`;
       selectedRoot.querySelectorAll('[data-remove-session]').forEach(button => button.addEventListener('click', async () => {
         selectedOccurrences = selectedOccurrences.filter(item => occurrenceKey(item) !== button.dataset.removeSession);
         renderSelected();
@@ -584,41 +663,63 @@
       });
     };
 
+    const availabilityKey = date => `${date}|${selectedStaffId}|${mode === 'multi_slot' ? selectedOccurrences.map(occurrenceKey).sort().join(',') : ''}`;
+    const availabilityTarget = date => apiUrl('/api/public/availability', { ...context, date, ...(selectedStaffId ? { staffId: selectedStaffId } : {}), ...(mode === 'multi_slot' && selectedOccurrences.length ? { selected: selectedOccurrences.map(item => `${item.date}T${item.time}`).join(',') } : {}) });
+    const setAvailabilityLoading = loading => {
+      times.classList.toggle('al-loading', loading);
+      times.setAttribute('aria-busy', String(loading));
+      times.querySelectorAll('button').forEach(button => { button.disabled = loading; });
+      let overlay = times.querySelector('.al-slots-loading');
+      if (loading && !overlay) { overlay = document.createElement('div'); overlay.className = 'al-slots-loading'; overlay.innerHTML = '<i></i><i></i><i></i>'; times.appendChild(overlay); }
+      if (!loading) overlay?.remove();
+    };
+    const renderAvailability = (payload, date) => {
+      if (payload.requiresStaffSelection) { times.innerHTML = '<span class="al-muted al-availability-empty">Choose a staff member to see available times.</span>'; return; }
+      if (mode === 'all_day') {
+        selectedAllDayDate = payload.available ? date : '';
+        times.innerHTML = payload.available ? `<div class="al-all-day"><strong>Available all day</strong><span>${payload.remaining > 1 ? `${payload.remaining} bookings remaining` : 'This date can be booked'}</span></div>` : `<span class="al-muted al-availability-empty">${text(emptyAvailabilityMessage(payload))}</span>`;
+        return;
+      }
+      times.innerHTML = payload.slots.length ? payload.slots.map(time => { const shown = displaySlot(date, time); return `<button type="button" class="al-time" data-time="${text(time)}" aria-pressed="false"><span>${text(shown.label)}</span></button>`; }).join('') : `<span class="al-muted al-availability-empty">${text(emptyAvailabilityMessage(payload))}</span>`;
+      times.querySelectorAll('.al-time').forEach(button => button.addEventListener('click', async () => {
+        if (mode === 'multi_slot') {
+          const item = { date, time: button.dataset.time };
+          const key = occurrenceKey(item);
+          const exists = selectedOccurrences.some(current => occurrenceKey(current) === key);
+          if (exists) selectedOccurrences = selectedOccurrences.filter(current => occurrenceKey(current) !== key);
+          else if (selectedOccurrences.length < Number(rule.sessionsRequired || 3)) selectedOccurrences.push(item);
+          selectedOccurrences.sort((a, b) => occurrenceKey(a).localeCompare(occurrenceKey(b)));
+          renderSelected(); renderCalendar(); await loadAvailability(date);
+        } else {
+          selectedTime = button.dataset.time;
+          times.querySelectorAll('.al-time').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
+        }
+      }));
+      renderTimeStates();
+    };
+    const fetchAvailability = async date => {
+      const key = availabilityKey(date);
+      if (availabilityCache.has(key)) return availabilityCache.get(key);
+      const payload = await requestJson(availabilityTarget(date), {}, 'availability'); availabilityCache.set(key, payload); return payload;
+    };
+    const prefetchAvailability = date => { if (!date || (staffMode === 'customer_choice' && !selectedStaffId)) return; fetchAvailability(date).catch(() => {}); };
     const loadAvailability = async date => {
+      const key = availabilityKey(date);
+      const requestId = ++availabilityRequestId;
       selectedTime = '';
       if (mode === 'all_day') selectedAllDayDate = '';
-      times.innerHTML = `<span class="al-muted">${mode === 'all_day' ? 'Checking this date…' : 'Loading available times…'}</span>`;
+      if (availabilityCache.has(key)) { setAvailabilityLoading(false); renderAvailability(availabilityCache.get(key), date); return; }
+      setAvailabilityLoading(true);
       info('Loading availability.', { ...context, date, bookingMode: mode });
       try {
-        const payload = await requestJson(apiUrl('/api/public/availability', { ...context, date, ...(selectedStaffId ? { staffId: selectedStaffId } : {}), ...(mode === 'multi_slot' && selectedOccurrences.length ? { selected: selectedOccurrences.map(item => `${item.date}T${item.time}`).join(',') } : {}) }), {}, 'availability');
-        if (payload.requiresStaffSelection) { times.innerHTML = '<span class="al-muted al-availability-empty">Choose a staff member to see available times.</span>'; return; }
-        if (mode === 'all_day') {
-          selectedAllDayDate = payload.available ? date : '';
-          times.innerHTML = payload.available ? `<div class="al-all-day"><strong>Available all day</strong><span>${payload.remaining > 1 ? `${payload.remaining} bookings remaining` : 'This date can be booked'}</span></div>` : `<span class="al-muted al-availability-empty">${text(emptyAvailabilityMessage(payload))}</span>`;
-          return;
-        }
-        times.innerHTML = payload.slots.length ? payload.slots.map(time => `<button type="button" class="al-time" data-time="${time}" aria-pressed="false">${time}</button>`).join('') : `<span class="al-muted al-availability-empty">${text(emptyAvailabilityMessage(payload))}</span>`;
-        times.querySelectorAll('.al-time').forEach(button => button.addEventListener('click', async () => {
-          if (mode === 'multi_slot') {
-            const item = { date, time: button.dataset.time };
-            const key = occurrenceKey(item);
-            const exists = selectedOccurrences.some(current => occurrenceKey(current) === key);
-            if (exists) selectedOccurrences = selectedOccurrences.filter(current => occurrenceKey(current) !== key);
-            else if (selectedOccurrences.length < Number(rule.sessionsRequired || 3)) selectedOccurrences.push(item);
-            selectedOccurrences.sort((a, b) => occurrenceKey(a).localeCompare(occurrenceKey(b)));
-            renderSelected();
-            renderCalendar();
-            await loadAvailability(date);
-          } else {
-            selectedTime = button.dataset.time;
-            times.querySelectorAll('.al-time').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
-          }
-        }));
-        renderTimeStates();
+        const payload = await fetchAvailability(date);
+        if (requestId !== availabilityRequestId || selectedDate !== date) return;
+        renderAvailability(payload, date);
       } catch (error) {
+        if (requestId !== availabilityRequestId || selectedDate !== date) return;
         times.innerHTML = '<span class="al-muted al-availability-empty">Could not load availability. Please try another date.</span>';
         failure('Availability could not be rendered.', { ...context, date, status: error.status, message: error.message });
-      }
+      } finally { if (requestId === availabilityRequestId) setAvailabilityLoading(false); }
     };
 
     const selectDate = async date => {
@@ -640,6 +741,12 @@
       return start;
     };
 
+    renderTimezoneCopy();
+    if (timezonePicker && timezoneTrigger && timezoneMenu) {
+      renderTimezoneOptions();
+      timezoneTrigger.addEventListener('click', () => { timezoneMenu.hidden = !timezoneMenu.hidden; timezoneTrigger.setAttribute('aria-expanded', String(!timezoneMenu.hidden)); if (!timezoneMenu.hidden) { timezoneSearch.value = ''; renderTimezoneOptions(); setTimeout(() => timezoneSearch.focus(), 0); } });
+      timezoneSearch.addEventListener('input', event => renderTimezoneOptions(event.target.value));
+    }
     if (mode === 'multi_slot') renderSelected();
     renderCalendar();
     calendarPrev.addEventListener('click', () => { calendarCursor = calendarShiftMonth(calendarCursor, -1); renderCalendar(); });
@@ -670,6 +777,8 @@
         if (!staffPicker.contains(event.target)) { staffMenu.hidden = true; staffTrigger.setAttribute('aria-expanded', 'false'); }
       });
     }
+
+    dialog.addEventListener('click', event => { if (timezonePicker && timezoneMenu && !timezonePicker.contains(event.target)) { timezoneMenu.hidden = true; timezoneTrigger.setAttribute('aria-expanded', 'false'); } });
 
     const initialDate = findInitialDate(minDate);
     calendarCursor = calendarMonthKey(initialDate);
@@ -704,7 +813,7 @@
         const payload = await requestJson(apiUrl('/api/public/bookings'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }, 'booking');
         const receipt = saveBookingReceipt(context, payload.booking);
         renderBookingState(widget, rule, context, receipt);
-        dialog.querySelector('.al-form').innerHTML = `<div class="al-success"><h3>Appointment confirmed</h3><p>${text(bookingWhenText(payload.booking))}</p><p>Store time zone: ${text(payload.booking.timezone || rule.timezone || 'UTC')}</p>${payload.booking.location ? `<p>${text(payload.booking.location)}</p>` : ''}${payload.booking.staff ? `<p>${text(payload.booking.staff)}</p>` : ''}<button class="al-submit" type="button">Done</button></div>`;
+        dialog.querySelector('.al-form').innerHTML = `<div class="al-success"><h3>Appointment confirmed</h3><p>${text(bookingWhenText(payload.booking))}</p><p>Service time zone: ${text(payload.booking.timezone || rule.timezone || 'UTC')}</p>${payload.booking.location ? `<p>${text(payload.booking.location)}</p>` : ''}${payload.booking.staff ? `<p>${text(payload.booking.staff)}</p>` : ''}<button class="al-submit" type="button">Done</button></div>`;
         dialog.querySelector('.al-submit').addEventListener('click', () => dialog.close());
         info('Booking confirmed.', { ...context, bookingId: payload.booking.id, bookingMode: mode });
       } catch (error) {

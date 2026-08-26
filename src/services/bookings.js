@@ -5,7 +5,7 @@ import { Booking } from '../models/Booking.js';
 import { BookingReservation } from '../models/BookingReservation.js';
 import { Staff } from '../models/Staff.js';
 import { StaffReservation } from '../models/StaffReservation.js';
-import { bookingModeFor, filterSlotsByCapacity, futureSlotsForDate, isAllDayBookableDate, occurrenceSlotKey, slotKey } from '../lib/slots.js';
+import { bookingModeFor, filterSlotsByCapacity, futureSlotsForDate, isAllDayBookableDate, occurrenceSlotKey, slotKey, resolveRuleTimezone } from '../lib/slots.js';
 import {
   sendBookingCancelledNotification, sendBookingChangedNotification, sendBookingNotifications, sendCustomerRescheduledNotification,
   sendStaffAssignedNotification, sendStaffBookingUpdatedNotification, sendStaffCancelledNotification
@@ -183,7 +183,7 @@ async function syncSingleReservation({ ReservationModel, booking, rule }) {
 
 export async function createBookingAtomic({ shop, rule, input, BookingModel = Booking, ReservationModel, StaffReservationModel, StaffModel = Staff, notify = sendBookingNotifications, now = new Date() }) {
   const mode = bookingModeFor(rule);
-  const timezone = shop.timezone || 'UTC';
+  const timezone = resolveRuleTimezone(rule, shop.timezone || 'UTC');
   const occurrences = requestedOccurrences(rule, input, timezone, now);
   for (const question of rule.customQuestions || []) {
     if (question.required && !input.answers.find(answer => answer.question === question.label && answer.answer)) {

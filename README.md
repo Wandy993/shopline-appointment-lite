@@ -1,6 +1,6 @@
 # Appointment Lite for SHOPLINE
 
-Version `0.5.2` — introduces a calendar-first storefront booking experience with a desktop two-column calendar + booking panel, responsive mobile stacking, and matching Theme App Block / hosted booking UI across minute-hour, all-day, and multiple-session booking modes.
+Version `0.5.3` — keeps the calendar-first storefront compact and stable, adds per-service scheduling time zones, and lets customers view time slots in their own selectable display time zone without changing the canonical service schedule.
 
 Appointment Lite now supports two booking entry models:
 
@@ -13,6 +13,15 @@ Typical scenarios include furniture installation and measurements, showroom visi
 
 
 
+
+## v0.5.3 Storefront Booking UX + Time Zones
+
+- Desktop booking dialogs stay within the viewport. Calendar density, fields, and spacing are compacted, while long slot lists scroll inside the slot area instead of growing the whole modal.
+- Date changes keep the slot panel height stable. Cached or prefetched availability renders immediately; uncached dates use an in-place skeleton overlay instead of clearing the slot panel and causing layout flicker.
+- Each service can define an IANA **service time zone**. Leaving the field blank inherits the SHOPLINE store time zone, so existing services keep their current behavior.
+- Storefront customers default to their browser time zone and can choose another display time zone. The calendar remains the service calendar; slot labels are converted for display and include the converted date if the time crosses a date boundary.
+- Booking submissions, capacity, minimum notice, exceptions, and stored appointment times remain canonical in the service time zone. All-day bookings remain date-based in the service time zone.
+- Staff schedules are still shared store-level schedules. If one staff member is used across multiple services, those services should use the same service time zone for predictable conflict semantics.
 
 ## v0.5.2 Storefront Calendar Booking UX
 
@@ -147,7 +156,7 @@ Implemented:
 
 For home/onsite services, merchants can use the existing required custom-question field to collect a service address or access instructions. A structured address/resource-routing model remains intentionally deferred so the Lite product does not inherit full field-service-management complexity yet.
 
-Intentionally deferred: Google/Outlook Calendar sync, SMS, deposits, per-staff resource calendars, travel zones/routing, recurring appointments, and complex timezone conversion.
+Intentionally deferred: Google/Outlook Calendar sync, SMS, deposits, per-staff resource calendars, travel zones/routing, recurring appointments.
 
 ## Lightweight architecture
 
@@ -169,7 +178,7 @@ SHOPLINE Admin
 
 Static UI and slot generation run mostly in the browser. Public availability is uncached and capacity-aware; the final booking insert is authoritative. MongoDB owns the capacity-position uniqueness guarantee, so concurrent customers cannot exceed the configured slot capacity.
 
-Appointment rule times are store-local times. The backend remains authoritative for create, customer reschedule, and merchant edit operations and rejects elapsed slots, slots outside the booking window, slots inside the minimum-notice period, and full-capacity slots.
+Appointment rule times are canonical in each service time zone; services with no override inherit the SHOPLINE store time zone. The backend remains authoritative for create, customer reschedule, and merchant edit operations and rejects elapsed slots, slots outside the booking window, slots inside the minimum-notice period, and full-capacity slots.
 
 ## Project layout
 

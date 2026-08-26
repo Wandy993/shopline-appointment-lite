@@ -10,6 +10,10 @@ let calendarCursor = '';
 let selectedDate = '';
 let minBookableDate = '';
 let maxBookableDate = '';
+let serviceTimezone = 'UTC';
+let customerTimezone = 'UTC';
+const availabilityCache = new Map();
+let availabilityRequestId = 0;
 
 const typeLabels = { appointment: 'Appointment', product: 'Appointment', in_store: 'In-store appointment', onsite: 'Home / onsite service', consultation: 'Consultation', class: 'Class / course', other: 'Service appointment' };
 const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -38,6 +42,97 @@ function formatNotice(minutes) {
 
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char]);
+}
+
+
+function validTimeZone(value) {
+  try { new Intl.DateTimeFormat('en', { timeZone: value }).format(new Date()); return true; } catch { return false; }
+}
+
+function supportedTimeZones() {
+  const common = ['UTC','Asia/Shanghai','Asia/Singapore','Asia/Tokyo','Europe/London','Europe/Paris','America/New_York','America/Chicago','America/Denver','America/Los_Angeles','Australia/Sydney'];
+  let values = [];
+  try { values = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : []; } catch {}
+  return [...new Set([serviceTimezone, customerTimezone, ...common, ...values].filter(validTimeZone))];
+}
+
+function zonedParts(instant, timezone) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(instant).map(part => [part.type, part.value]));
+  return { date: `${parts.year}-${parts.month}-${parts.day}`, time: `${parts.hour}:${parts.minute}` };
+}
+
+function wallTimeToInstant(date, time, timezone) {
+  const [year, month, day] = date.split('-').map(Number);
+  const [hour, minute] = time.split(':').map(Number);
+  let instant = new Date(Date.UTC(year, month - 1, day, hour, minute));
+  for (let i = 0; i < 3; i += 1) {
+    const seen = zonedParts(instant, timezone);
+    const wanted = Date.UTC(year, month - 1, day, hour, minute);
+    const [seenYear, seenMonth, seenDay] = seen.date.split('-').map(Number);
+    const [seenHour, seenMinute] = seen.time.split(':').map(Number);
+    const seenWall = Date.UTC(seenYear, seenMonth - 1, seenDay, seenHour, seenMinute);
+    const delta = wanted - seenWall;
+    if (!delta) break;
+    instant = new Date(instant.getTime() + delta);
+  }
+  return instant;
+}
+
+function displaySlot(date, time) {
+  if (!date || !time || customerTimezone === serviceTimezone) return { date, time, label: time };
+  const shown = zonedParts(wallTimeToInstant(date, time, serviceTimezone), customerTimezone);
+  const label = shown.date === date ? shown.time : `${new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(dateFromKey(shown.date))} · ${shown.time}`;
+  return { ...shown, label };
+}
+
+function displayOccurrence(item) {
+  const shown = displaySlot(item.date, item.time);
+  return customerTimezone === serviceTimezone ? `${item.date} · ${item.time}` : `${shown.date} · ${shown.time}`;
+}
+
+function renderTimezoneCopy() {
+  const picker = $('#timezonePicker');
+  if (bookingMode() === 'all_day') {
+    $('#timezoneText').textContent = `Dates use the service time zone: ${serviceTimezone}.`;
+    picker?.classList.add('hidden');
+    return;
+  }
+  picker?.classList.remove('hidden');
+  $('#timezonePickerValue').textContent = customerTimezone;
+  $('#timezoneText').textContent = customerTimezone === serviceTimezone
+    ? `Service calendar and times use ${serviceTimezone}.`
+    : `Service calendar uses ${serviceTimezone}. Times are displayed in ${customerTimezone}.`;
+}
+
+function renderTimezoneOptions(query = '') {
+  const root = $('#timezoneOptions');
+  if (!root) return;
+  const term = query.trim().toLowerCase();
+  const values = supportedTimeZones().filter(value => !term || value.toLowerCase().includes(term)).slice(0, 160);
+  root.innerHTML = values.length ? values.map(value => `<button type="button" class="timezone-option${value === customerTimezone ? ' selected' : ''}" data-timezone="${escapeHtml(value)}"><span>${escapeHtml(value)}</span><i>${value === customerTimezone ? '✓' : ''}</i></button>`).join('') : '<div class="timezone-empty">No matching time zones.</div>';
+  root.querySelectorAll('[data-timezone]').forEach(button => button.addEventListener('click', () => {
+    customerTimezone = button.dataset.timezone;
+    $('#timezonePickerMenu').classList.add('hidden');
+    $('#timezonePickerButton').setAttribute('aria-expanded', 'false');
+    renderTimezoneCopy();
+    renderTimezoneOptions();
+    renderSelectedSessions();
+    if (selectedDate && availabilityCache.has(availabilityKey(selectedDate))) renderAvailability(availabilityCache.get(availabilityKey(selectedDate)), selectedDate);
+  }));
+}
+
+function setupTimezonePicker() {
+  const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  customerTimezone = validTimeZone(browserTimezone) ? browserTimezone : serviceTimezone;
+  renderTimezoneCopy();
+  renderTimezoneOptions();
+  $('#timezonePickerButton')?.addEventListener('click', () => {
+    const menu = $('#timezonePickerMenu');
+    const open = menu.classList.toggle('hidden') === false;
+    $('#timezonePickerButton').setAttribute('aria-expanded', String(open));
+    if (open) { $('#timezoneSearch').value = ''; renderTimezoneOptions(); setTimeout(() => $('#timezoneSearch').focus(), 0); }
+  });
+  $('#timezoneSearch')?.addEventListener('input', event => renderTimezoneOptions(event.target.value));
 }
 
 const staffPresetClasses = new Set(['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose']);
@@ -99,9 +194,10 @@ function occurrenceKey(item) { return `${item.date}T${item.time}`; }
 function formatBookingWhen(booking) {
   const mode = booking.bookingMode || bookingMode();
   const occurrences = booking.occurrences || [];
-  if (mode === 'all_day') return `${booking.date} · All day`;
-  if (mode === 'multi_slot') return occurrences.map(item => `${item.date} ${item.time}`).join(' · ');
-  return `${booking.date} at ${booking.time}`;
+  if (mode === 'all_day') return `${booking.date} · All day · ${serviceTimezone}`;
+  if (mode === 'multi_slot') return occurrences.map(displayOccurrence).join(' · ');
+  const shown = displaySlot(booking.date, booking.time);
+  return customerTimezone === serviceTimezone ? `${booking.date} at ${booking.time}` : `${shown.date} at ${shown.time} (${customerTimezone})`;
 }
 
 function dateFromKey(key) {
@@ -167,7 +263,7 @@ function renderCalendar() {
     cells.push(`<button type="button" class="calendar-day${outside ? ' outside' : ''}${selected ? ' selected' : ''}${key === today ? ' today' : ''}${!open ? ' unavailable' : ''}" data-date="${key}" ${open ? '' : 'disabled'} aria-pressed="${selected ? 'true' : 'false'}" aria-label="${key}${open ? '' : ', unavailable'}"><span>${current.getUTCDate()}</span>${sessionCount ? `<i>${sessionCount}</i>` : ''}</button>`);
   }
   root.innerHTML = cells.join('');
-  root.querySelectorAll('[data-date]:not(:disabled)').forEach(button => button.addEventListener('click', () => selectDate(button.dataset.date)));
+  root.querySelectorAll('[data-date]:not(:disabled)').forEach(button => { button.addEventListener('click', () => selectDate(button.dataset.date)); button.addEventListener('mouseenter', () => prefetchAvailability(button.dataset.date), { once: true }); button.addEventListener('focus', () => prefetchAvailability(button.dataset.date), { once: true }); });
   const prevCursor = shiftMonth(calendarCursor, -1);
   const nextCursor = shiftMonth(calendarCursor, 1);
   const prevEnd = `${prevCursor.slice(0, 7)}-31`;
@@ -201,7 +297,7 @@ function renderSelectedSessions() {
   if (bookingMode() !== 'multi_slot') { root.classList.add('hidden'); return; }
   root.classList.remove('hidden');
   const required = Number(rule.sessionsRequired || 3);
-  root.innerHTML = `<div class="selected-session-head"><strong>Selected sessions</strong><span>${selectedOccurrences.length} / ${required}</span></div><div class="selected-session-list">${selectedOccurrences.length ? selectedOccurrences.map(item => `<button type="button" class="selected-session" data-remove-session="${escapeHtml(occurrenceKey(item))}"><span>${escapeHtml(item.date)} · ${escapeHtml(item.time)}</span><i>×</i></button>`).join('') : '<span class="muted">Choose dates and time slots until your package is complete.</span>'}</div>`;
+  root.innerHTML = `<div class="selected-session-head"><strong>Selected sessions</strong><span>${selectedOccurrences.length} / ${required}</span></div><div class="selected-session-list">${selectedOccurrences.length ? selectedOccurrences.map(item => `<button type="button" class="selected-session" data-remove-session="${escapeHtml(occurrenceKey(item))}"><span>${escapeHtml(displayOccurrence(item))}</span><i>×</i></button>`).join('') : '<span class="muted">Choose dates and time slots until your package is complete.</span>'}</div>`;
   root.querySelectorAll('[data-remove-session]').forEach(button => button.addEventListener('click', async () => {
     selectedOccurrences = selectedOccurrences.filter(item => occurrenceKey(item) !== button.dataset.removeSession);
     renderSelectedSessions();
@@ -221,6 +317,8 @@ function renderCurrentTimeSelection() {
 
 function renderService(payload) {
   rule = { ...payload.rule, storeDate: payload.storeDate || '' };
+  serviceTimezone = payload.timezone || rule.timezone || 'UTC';
+  rule.timezone = serviceTimezone;
   brand = payload.brand || brand;
   document.documentElement.style.setProperty('--brand', brand.accentColor || '#2F6FED');
   document.documentElement.style.setProperty('--brand-soft', `color-mix(in srgb,${brand.accentColor || '#2F6FED'} 9%,white)`);
@@ -231,7 +329,7 @@ function renderService(payload) {
   $('#serviceDescription').textContent = rule.serviceDescription || '';
   $('#serviceDescription').classList.toggle('hidden', !rule.serviceDescription);
   const mode = bookingMode();
-  $('#timezoneText').textContent = mode === 'all_day' ? `Dates use the store time zone: ${payload.timezone}.` : `All times are shown in the store time zone: ${payload.timezone}.`;
+  setupTimezonePicker();
   $('#noteLabel').textContent = rule.questionLabel || 'Anything we should know?';
   const modeMeta = mode === 'all_day' ? 'All-day booking' : mode === 'multi_slot' ? `${rule.sessionsRequired || 3} sessions` : `${rule.duration} minutes`;
   const staffMode = rule.staffAssignment?.mode || 'none';
@@ -261,40 +359,80 @@ function renderService(payload) {
   selectDate(initial, { keepMonth: true });
 }
 
-async function loadAvailability(date) {
+function availabilityKey(date) {
+  return `${date}|${selectedStaffId}|${bookingMode() === 'multi_slot' ? selectedOccurrences.map(occurrenceKey).sort().join(',') : ''}`;
+}
+
+function availabilityUrl(date) {
+  const staffQuery = selectedStaffId ? `&staffId=${encodeURIComponent(selectedStaffId)}` : '';
+  const selectedQuery = bookingMode() === 'multi_slot' && selectedOccurrences.length ? `&selected=${encodeURIComponent(selectedOccurrences.map(item => `${item.date}T${item.time}`).join(','))}` : '';
+  return `/api/public/availability?ruleId=${encodeURIComponent(ruleId)}&date=${encodeURIComponent(date)}${staffQuery}${selectedQuery}`;
+}
+
+function setAvailabilityLoading(loading) {
   const root = $('#timeSlots');
-  root.innerHTML = `<span class="muted">${bookingMode() === 'all_day' ? 'Checking this date…' : 'Loading available times…'}</span>`;
-  try {
-    const staffQuery = selectedStaffId ? `&staffId=${encodeURIComponent(selectedStaffId)}` : '';
-    const selectedQuery = bookingMode() === 'multi_slot' && selectedOccurrences.length ? `&selected=${encodeURIComponent(selectedOccurrences.map(item => `${item.date}T${item.time}`).join(','))}` : '';
-    const payload = await api(`/api/public/availability?ruleId=${encodeURIComponent(ruleId)}&date=${encodeURIComponent(date)}${staffQuery}${selectedQuery}`);
-    if (payload.requiresStaffSelection) { root.innerHTML = '<span class="muted availability-empty">Choose a staff member to see available times.</span>'; return; }
-    if (bookingMode() === 'all_day') {
-      selectedAllDayDate = payload.available ? date : '';
-      root.innerHTML = payload.available
-        ? `<div class="all-day-available"><strong>Available all day</strong><span>${payload.remaining > 1 ? `${payload.remaining} bookings remaining` : 'This date can be booked'}</span></div>`
-        : `<span class="muted availability-empty">${escapeHtml(emptyAvailabilityMessage(payload))}</span>`;
-      return;
+  root.classList.toggle('is-loading', loading);
+  root.setAttribute('aria-busy', String(loading));
+  root.querySelectorAll('button').forEach(button => { button.disabled = loading; });
+  let overlay = root.querySelector('.slots-loading-overlay');
+  if (loading && !overlay) {
+    overlay = document.createElement('div'); overlay.className = 'slots-loading-overlay'; overlay.innerHTML = '<i></i><i></i><i></i>'; root.appendChild(overlay);
+  }
+  if (!loading) overlay?.remove();
+}
+
+function renderAvailability(payload, date) {
+  const root = $('#timeSlots');
+  if (payload.requiresStaffSelection) { root.innerHTML = '<span class="muted availability-empty">Choose a staff member to see available times.</span>'; return; }
+  if (bookingMode() === 'all_day') {
+    selectedAllDayDate = payload.available ? date : '';
+    root.innerHTML = payload.available ? `<div class="all-day-available"><strong>Available all day</strong><span>${payload.remaining > 1 ? `${payload.remaining} bookings remaining` : 'This date can be booked'}</span></div>` : `<span class="muted availability-empty">${escapeHtml(emptyAvailabilityMessage(payload))}</span>`;
+    return;
+  }
+  root.innerHTML = payload.slots.length ? payload.slots.map(time => { const shown = displaySlot(date, time); return `<button type="button" class="time-slot" data-time="${time}" aria-pressed="false"><span>${escapeHtml(shown.label)}</span></button>`; }).join('') : `<span class="muted availability-empty">${escapeHtml(emptyAvailabilityMessage(payload))}</span>`;
+  root.querySelectorAll('.time-slot').forEach(button => button.addEventListener('click', async () => {
+    if (bookingMode() === 'multi_slot') {
+      const item = { date, time: button.dataset.time };
+      const key = occurrenceKey(item);
+      const exists = selectedOccurrences.some(current => occurrenceKey(current) === key);
+      if (exists) selectedOccurrences = selectedOccurrences.filter(current => occurrenceKey(current) !== key);
+      else if (selectedOccurrences.length < Number(rule.sessionsRequired || 3)) selectedOccurrences.push(item);
+      selectedOccurrences.sort((a, b) => occurrenceKey(a).localeCompare(occurrenceKey(b)));
+      renderSelectedSessions(); renderCalendar(); await loadAvailability(date);
+    } else {
+      selectedTime = button.dataset.time;
+      root.querySelectorAll('.time-slot').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
     }
-    root.innerHTML = payload.slots.length ? payload.slots.map(time => `<button type="button" class="time-slot" data-time="${time}" aria-pressed="false">${time}</button>`).join('') : `<span class="muted availability-empty">${escapeHtml(emptyAvailabilityMessage(payload))}</span>`;
-    root.querySelectorAll('.time-slot').forEach(button => button.addEventListener('click', async () => {
-      if (bookingMode() === 'multi_slot') {
-        const item = { date, time: button.dataset.time };
-        const key = occurrenceKey(item);
-        const exists = selectedOccurrences.some(current => occurrenceKey(current) === key);
-        if (exists) selectedOccurrences = selectedOccurrences.filter(current => occurrenceKey(current) !== key);
-        else if (selectedOccurrences.length < Number(rule.sessionsRequired || 3)) selectedOccurrences.push(item);
-        selectedOccurrences.sort((a, b) => occurrenceKey(a).localeCompare(occurrenceKey(b)));
-        renderSelectedSessions();
-        renderCalendar();
-        await loadAvailability(date);
-      } else {
-        selectedTime = button.dataset.time;
-        root.querySelectorAll('.time-slot').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
-      }
-    }));
-    renderCurrentTimeSelection();
-  } catch (error) { root.innerHTML = `<span class="muted availability-empty">${escapeHtml(error.message)}</span>`; }
+  }));
+  renderCurrentTimeSelection();
+}
+
+async function fetchAvailability(date) {
+  const key = availabilityKey(date);
+  if (availabilityCache.has(key)) return availabilityCache.get(key);
+  const payload = await api(availabilityUrl(date)); availabilityCache.set(key, payload); return payload;
+}
+
+function prefetchAvailability(date) {
+  if (!date || ((rule.staffAssignment?.mode || 'none') === 'customer_choice' && !selectedStaffId)) return;
+  fetchAvailability(date).catch(() => {});
+}
+
+async function loadAvailability(date) {
+  const key = availabilityKey(date);
+  const requestId = ++availabilityRequestId;
+  selectedTime = '';
+  if (bookingMode() === 'all_day') selectedAllDayDate = '';
+  if (availabilityCache.has(key)) { setAvailabilityLoading(false); renderAvailability(availabilityCache.get(key), date); return; }
+  setAvailabilityLoading(true);
+  try {
+    const payload = await fetchAvailability(date);
+    if (requestId !== availabilityRequestId || selectedDate !== date) return;
+    renderAvailability(payload, date);
+  } catch (error) {
+    if (requestId !== availabilityRequestId || selectedDate !== date) return;
+    $('#timeSlots').innerHTML = `<span class="muted availability-empty">${escapeHtml(error.message)}</span>`;
+  } finally { if (requestId === availabilityRequestId) setAvailabilityLoading(false); }
 }
 
 $('#calendarPrev').addEventListener('click', () => { calendarCursor = shiftMonth(calendarCursor, -1); renderCalendar(); });
@@ -312,6 +450,8 @@ document.addEventListener('click', event => {
     $('#staffPickerMenu').classList.add('hidden');
     $('#staffPickerButton').setAttribute('aria-expanded', 'false');
   }
+  const timezonePicker = $('#timezonePicker');
+  if (timezonePicker && !timezonePicker.contains(event.target)) { $('#timezonePickerMenu').classList.add('hidden'); $('#timezonePickerButton').setAttribute('aria-expanded', 'false'); }
 });
 
 $('#bookingForm').addEventListener('submit', async event => {

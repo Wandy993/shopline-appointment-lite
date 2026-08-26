@@ -6,7 +6,7 @@ export function bookingPage(ruleId) {
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="robots" content="noindex,nofollow">
   <title>Book an appointment</title>
-  <link rel="stylesheet" href="/book/assets/styles.css?v=0.5.2">
+  <link rel="stylesheet" href="/book/assets/styles.css?v=0.5.3">
 </head>
 <body data-rule-id="${String(ruleId).replace(/[^a-f\d]/gi, '')}">
   <main class="booking-shell">
@@ -31,7 +31,7 @@ export function bookingPage(ruleId) {
               <div id="calendarGrid" class="calendar-grid" role="grid" aria-label="Choose a booking date"></div>
               <input id="bookingDate" name="date" type="hidden" required>
             </div>
-            <div class="timezone-note"><span aria-hidden="true">◷</span><p id="timezoneText">All times use the store time zone.</p></div>
+            <div class="timezone-note"><span aria-hidden="true">◷</span><div class="timezone-copy"><p id="timezoneText">All times use the service time zone.</p><div id="timezonePicker" class="timezone-picker"><button id="timezonePickerButton" class="timezone-picker-button" type="button" aria-haspopup="listbox" aria-expanded="false"><span id="timezonePickerValue">Detecting your time zone…</span><span>⌄</span></button><div id="timezonePickerMenu" class="timezone-picker-menu hidden"><input id="timezoneSearch" type="search" placeholder="Search time zones" autocomplete="off"><div id="timezoneOptions" class="timezone-options" role="listbox"></div></div></div></div></div>
             <div id="selectedSessions" class="selected-sessions hidden"></div>
           </aside>
           <section class="booking-panel">
@@ -52,7 +52,7 @@ export function bookingPage(ruleId) {
     <section id="successView" class="booking-card hidden"><div class="success-state"><span class="success-mark">✓</span><span class="eyebrow">BOOKING CONFIRMED</span><h1 id="successTitle">You're booked.</h1><p id="successWhen"></p><p id="successDetails" class="muted"></p><a id="manageBooking" class="primary link-button" href="#">Manage appointment</a></div></section>
     <footer>Powered by Appointment Lite</footer>
   </main>
-  <script type="module" src="/book/assets/app.js?v=0.5.2"></script>
+  <script type="module" src="/book/assets/app.js?v=0.5.3"></script>
 </body>
 </html>`;
 }

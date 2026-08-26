@@ -5,7 +5,7 @@ import { AppointmentRule } from '../models/AppointmentRule.js';
 import { Booking } from '../models/Booking.js';
 import { BookingReservation } from '../models/BookingReservation.js';
 import { publicStaffOptions, staffAvailabilityForDate } from '../services/staffing.js';
-import { addDays, bookingModeFor, filterSlotsByCapacity, futureSlotsForDate, isAllDayBookableDate, isDateAllowed, slotsForDate, zonedNow } from '../lib/slots.js';
+import { addDays, bookingModeFor, filterSlotsByCapacity, futureSlotsForDate, isAllDayBookableDate, isDateAllowed, resolveRuleTimezone, slotsForDate, zonedNow } from '../lib/slots.js';
 import { validateBookingInput, validateDateInput, validateSlotInput } from '../lib/validation.js';
 import { cancelManagedBooking, createBookingForStore, getLegacyBookingStatus, getManagedAvailability, getManagedBooking, rescheduleManagedBooking } from '../services/bookings.js';
 import { findInstalledShop, validShopHandle, validShoplineStoreId } from '../services/shops.js';
@@ -41,7 +41,7 @@ function serializeRule(rule, timezone, staffMeta = { mode: 'none', options: [] }
   return {
     id: rule._id, bookingSource: rule.bookingSource || (rule.sourceType === 'standalone' ? 'direct' : 'product'),
     sourceType: rule.sourceType || 'product', serviceType: rule.serviceType === 'product' ? 'appointment' : (rule.serviceType || 'appointment'),
-    bookingMode: bookingModeFor(rule), sessionsRequired: Number(rule.sessionsRequired || 3),
+    bookingMode: bookingModeFor(rule), sessionsRequired: Number(rule.sessionsRequired || 3), timezone,
     productId: rule.productId || '', productTitle: rule.productTitle || '', serviceTitle: rule.serviceTitle || rule.productTitle,
     serviceDescription: rule.serviceDescription || '', duration: rule.duration, buffer: rule.buffer,
     capacity: Number(rule.capacity || 1), minimumNoticeMinutes: Number(rule.minimumNoticeMinutes || 0),
@@ -78,7 +78,7 @@ async function findPublicRule(req) {
 publicRouter.get('/rule', async (req, res) => {
   const result = await findPublicRule(req);
   if (result.error) return res.status(result.error.status).json(result.error.body);
-  const timezone = result.shop.timezone || 'UTC';
+  const timezone = resolveRuleTimezone(result.rule, result.shop.timezone || 'UTC');
   const staffMeta = await publicStaffOptions(result.rule);
   res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=300');
   res.json({ rule: serializeRule(result.rule, timezone, staffMeta), timezone, storeDate: zonedNow(timezone).date });
@@ -89,7 +89,7 @@ publicRouter.get('/service', async (req, res) => {
   if (result.error) return res.status(result.error.status).json(result.error.body);
   const bookingSource = result.rule.bookingSource || (result.rule.sourceType === 'standalone' ? 'direct' : 'product');
   if (!['direct', 'both'].includes(bookingSource)) return res.status(404).json({ error: 'NOT_FOUND', message: 'Direct booking is not enabled for this service.' });
-  const timezone = result.shop.timezone || 'UTC';
+  const timezone = resolveRuleTimezone(result.rule, result.shop.timezone || 'UTC');
   const emailSettings = normalizeEmailSettings(result.shop.emailSettings || {});
   const staffMeta = await publicStaffOptions(result.rule);
   res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=300');
@@ -103,7 +103,7 @@ publicRouter.get('/availability', async (req, res) => {
   const date = String(req.query.date || '');
   const result = await findPublicRule(req);
   if (result.error) return res.status(result.error.status).json(result.error.body);
-  const timezone = result.shop.timezone || 'UTC';
+  const timezone = resolveRuleTimezone(result.rule, result.shop.timezone || 'UTC');
   const mode = bookingModeFor(result.rule);
   const capacity = Number(result.rule.capacity || 1);
   const requestedStaffId = String(req.query.staffId || '').trim();

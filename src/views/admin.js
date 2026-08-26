@@ -34,7 +34,7 @@ export function adminPage() {
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light">
   <title>Appointment Lite</title>
-  <link rel="stylesheet" href="/admin/styles.css?v=0.5.2">
+  <link rel="stylesheet" href="/admin/styles.css?v=0.5.3">
 </head>
 <body>
   <div class="app-shell">
@@ -180,9 +180,9 @@ export function adminPage() {
           <div id="multiSlotModeFields" class="mode-settings hidden"><div class="field"><label for="sessionsRequired">Sessions per booking</label><div class="input-suffix compact-suffix"><input id="sessionsRequired" type="number" min="2" max="12" step="1" value="3" disabled><span>sessions</span></div><p class="hint">Customers must select exactly this many available sessions before confirming.</p></div></div>
         </section>
         <section class="rule-step hidden" data-rule-step="2">
-          <div class="step-intro"><h3>When can customers book?</h3><p id="availabilityIntro">Set your regular hours, booking policies, and date-specific exceptions. All times use the store time zone.</p></div>
+          <div class="step-intro"><h3>When can customers book?</h3><p id="availabilityIntro">Set regular hours, booking policies, and date-specific exceptions in the service time zone.</p></div>
           <div id="slotLogicNotice" class="slot-logic-notice"><div class="slot-logic-icon">i</div><div><strong>Start-time calculation</strong><p id="slotLogicText"></p><small id="slotLogicExample"></small></div></div>
-          <div class="field-row"><div class="field"><label for="minimumNoticeMinutes">Minimum notice</label><select id="minimumNoticeMinutes"><option value="0">No minimum</option><option value="60">1 hour</option><option value="120">2 hours</option><option value="240">4 hours</option><option value="720">12 hours</option><option value="1440">1 day</option><option value="2880">2 days</option><option value="10080">7 days</option></select></div><div class="field"><label for="bookingWindowDays">Booking window</label><div class="input-suffix"><input id="bookingWindowDays" type="number" min="1" max="365" value="90" required><span>days ahead</span></div></div></div>
+          <div class="field"><label for="serviceTimezone">Service time zone</label><input id="serviceTimezone" list="serviceTimezoneOptions" maxlength="80" autocomplete="off" placeholder="Use store default time zone"><datalist id="serviceTimezoneOptions"></datalist><p id="serviceTimezoneHint" class="hint">Leave blank to inherit the SHOPLINE store time zone. Keep one time zone across services that share the same staff.</p></div><div class="field-row"><div class="field"><label for="minimumNoticeMinutes">Minimum notice</label><select id="minimumNoticeMinutes"><option value="0">No minimum</option><option value="60">1 hour</option><option value="120">2 hours</option><option value="240">4 hours</option><option value="720">12 hours</option><option value="1440">1 day</option><option value="2880">2 days</option><option value="10080">7 days</option></select></div><div class="field"><label for="bookingWindowDays">Booking window</label><div class="input-suffix"><input id="bookingWindowDays" type="number" min="1" max="365" value="90" required><span>days ahead</span></div></div></div>
           <div class="field-row"><div class="field"><label for="dateFrom">Available from <span>optional</span></label><input id="dateFrom" type="date"></div><div class="field"><label for="dateUntil">Available until <span>optional</span></label><input id="dateUntil" type="date"></div></div>
           <fieldset><legend id="weeklyScheduleLegend">Weekly schedule</legend><div id="weeklySchedule" class="schedule"></div><p id="weeklyScheduleHint" class="hint">Enable the days customers can normally book.</p></fieldset>
           <fieldset class="exceptions-fieldset"><div class="label-row"><legend>Availability exceptions</legend><button id="addException" class="text-button" type="button">${icons.plus} Add exception</button></div><div id="availabilityExceptions" class="exceptions-list"></div><p id="exceptionHint" class="hint">Close a holiday or override one date with special opening hours.</p></fieldset>
@@ -230,7 +230,7 @@ export function adminPage() {
   </dialog>
 
   <dialog id="confirmDialog" class="confirm-modal"><div class="confirm-icon">!</div><div class="confirm-copy"><h2 id="confirmTitle">Please confirm</h2><p id="confirmMessage"></p></div><div class="modal-actions"><button id="confirmNo" class="secondary">Keep it</button><button id="confirmYes" class="danger">Confirm</button></div></dialog>
-  <script type="module" src="/admin/app.js?v=0.5.2"></script>
+  <script type="module" src="/admin/app.js?v=0.5.3"></script>
 </body>
 </html>`;
 }
