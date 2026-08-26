@@ -54,3 +54,16 @@ test('booking-mode unit suffixes stay horizontal and timing guidance keeps clear
   assert.match(view, new RegExp(`styles\\.css\\?v=${escapedVersion}`));
   assert.match(view, new RegExp(`app\\.js\\?v=${escapedVersion}`));
 });
+
+test('service editor disables inactive booking-mode controls before browser submit validation', async () => {
+  const view = await readFile(new URL('../src/views/admin.js', import.meta.url), 'utf8');
+  const asset = await readFile(new URL('../public/admin/app.js', import.meta.url), 'utf8');
+  assert.match(view, /<form id="ruleForm" novalidate>/);
+  assert.match(view, /id="allDayCapacityMirror"[^>]*disabled/);
+  assert.match(view, /id="sessionsRequired"[^>]*disabled/);
+  assert.match(asset, /function setModeControlsDisabled\(root, disabled\)/);
+  assert.match(asset, /setModeControlsDisabled\(\$\('#timedModeFields'\), normalized === 'all_day'\)/);
+  assert.match(asset, /setModeControlsDisabled\(\$\('#allDayModeFields'\), normalized !== 'all_day'\)/);
+  assert.match(asset, /setModeControlsDisabled\(\$\('#multiSlotModeFields'\), normalized !== 'multi_slot'\)/);
+  assert.match(asset, /normalized === 'multi_slot' && Number\(\$\('#sessionsRequired'\)\.value \|\| 0\) < 2/);
+});

@@ -864,6 +864,11 @@ function recommendedBookingMode(serviceType) {
   return 'slot';
 }
 
+function setModeControlsDisabled(root, disabled) {
+  if (!root) return;
+  root.querySelectorAll('input, select, textarea').forEach(control => { control.disabled = disabled; });
+}
+
 function setBookingMode(mode = 'slot', { touched = true } = {}) {
   const normalized = ['slot', 'all_day', 'multi_slot'].includes(mode) ? mode : 'slot';
   $('#bookingMode').value = normalized;
@@ -872,6 +877,10 @@ function setBookingMode(mode = 'slot', { touched = true } = {}) {
   $('#timedModeFields').classList.toggle('hidden', normalized === 'all_day');
   $('#allDayModeFields').classList.toggle('hidden', normalized !== 'all_day');
   $('#multiSlotModeFields').classList.toggle('hidden', normalized !== 'multi_slot');
+  setModeControlsDisabled($('#timedModeFields'), normalized === 'all_day');
+  setModeControlsDisabled($('#allDayModeFields'), normalized !== 'all_day');
+  setModeControlsDisabled($('#multiSlotModeFields'), normalized !== 'multi_slot');
+  if (normalized === 'multi_slot' && Number($('#sessionsRequired').value || 0) < 2) $('#sessionsRequired').value = '3';
   $('#slotLogicNotice').classList.toggle('hidden', normalized === 'all_day');
   $('#weeklySchedule').classList.toggle('all-day-mode', normalized === 'all_day');
   $('#availabilityIntro').textContent = t(normalized === 'all_day'

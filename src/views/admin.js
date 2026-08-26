@@ -34,7 +34,7 @@ export function adminPage() {
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light">
   <title>Appointment Lite</title>
-  <link rel="stylesheet" href="/admin/styles.css?v=0.5.1">
+  <link rel="stylesheet" href="/admin/styles.css?v=0.5.1-hotfix.1">
 </head>
 <body>
   <div class="app-shell">
@@ -145,7 +145,7 @@ export function adminPage() {
   </div>
 
   <dialog id="ruleDialog" class="modal rule-modal">
-    <form id="ruleForm">
+    <form id="ruleForm" novalidate>
       <div class="modal-head"><div><span class="eyebrow">SERVICE CONFIGURATION</span><h2 id="ruleDialogTitle">New appointment service</h2><p id="ruleDialogSubtitle">Choose how customers will book this service.</p></div><button type="button" class="icon-button" data-close-dialog aria-label="Close">${icons.close}</button></div>
       <div class="wizard-steps booking-mode-wizard"><button type="button" class="active" data-rule-step-button="0"><span>1</span>Service</button><i></i><button type="button" data-rule-step-button="1"><span>2</span>Booking mode</button><i></i><button type="button" data-rule-step-button="2"><span>3</span>Availability</button><i></i><button type="button" data-rule-step-button="3"><span>4</span>Experience</button></div>
       <div class="modal-body">
@@ -176,8 +176,8 @@ export function adminPage() {
             <button type="button" class="booking-mode-option" data-booking-mode="multi_slot"><span class="mode-icon">×3</span><strong>Multiple sessions</strong><span>Customers choose several time slots in one booking. Best for course packs and repeat services.</span></button>
           </div></fieldset>
           <div id="timedModeFields" class="mode-settings"><div class="field-row thirds"><div class="field"><label for="duration">Duration</label><div class="input-suffix"><input id="duration" type="number" min="5" max="480" step="5" value="60" required><span>min</span></div></div><div class="field"><label for="buffer">Buffer</label><div class="input-suffix"><input id="buffer" type="number" min="0" max="240" step="5" value="0" required><span>min</span></div></div><div class="field"><label for="capacity">Capacity</label><div class="input-suffix"><input id="capacity" type="number" min="1" max="100" step="1" value="1" required><span id="capacitySuffix">spots</span></div></div></div><div class="timing-helper"><strong>How timing works</strong><p>Duration is the appointment length. Buffer is reserved after each appointment before the next start time. Capacity controls how many customers can book the same start time.</p></div></div>
-          <div id="allDayModeFields" class="mode-settings hidden"><div class="field-row"><div class="field"><label for="allDayCapacityMirror">Daily capacity</label><div class="input-suffix"><input id="allDayCapacityMirror" type="number" min="1" max="100" step="1" value="1"><span>bookings / day</span></div></div><div class="mode-explainer"><strong>No time selection</strong><span>Customers choose a date only. Duration and buffer do not apply to all-day bookings.</span></div></div></div>
-          <div id="multiSlotModeFields" class="mode-settings hidden"><div class="field"><label for="sessionsRequired">Sessions per booking</label><div class="input-suffix compact-suffix"><input id="sessionsRequired" type="number" min="2" max="12" step="1" value="3"><span>sessions</span></div><p class="hint">Customers must select exactly this many available sessions before confirming.</p></div></div>
+          <div id="allDayModeFields" class="mode-settings hidden"><div class="field-row"><div class="field"><label for="allDayCapacityMirror">Daily capacity</label><div class="input-suffix"><input id="allDayCapacityMirror" type="number" min="1" max="100" step="1" value="1" disabled><span>bookings / day</span></div></div><div class="mode-explainer"><strong>No time selection</strong><span>Customers choose a date only. Duration and buffer do not apply to all-day bookings.</span></div></div></div>
+          <div id="multiSlotModeFields" class="mode-settings hidden"><div class="field"><label for="sessionsRequired">Sessions per booking</label><div class="input-suffix compact-suffix"><input id="sessionsRequired" type="number" min="2" max="12" step="1" value="3" disabled><span>sessions</span></div><p class="hint">Customers must select exactly this many available sessions before confirming.</p></div></div>
         </section>
         <section class="rule-step hidden" data-rule-step="2">
           <div class="step-intro"><h3>When can customers book?</h3><p id="availabilityIntro">Set your regular hours, booking policies, and date-specific exceptions. All times use the store time zone.</p></div>
@@ -230,7 +230,7 @@ export function adminPage() {
   </dialog>
 
   <dialog id="confirmDialog" class="confirm-modal"><div class="confirm-icon">!</div><div class="confirm-copy"><h2 id="confirmTitle">Please confirm</h2><p id="confirmMessage"></p></div><div class="modal-actions"><button id="confirmNo" class="secondary">Keep it</button><button id="confirmYes" class="danger">Confirm</button></div></dialog>
-  <script type="module" src="/admin/app.js?v=0.5.1"></script>
+  <script type="module" src="/admin/app.js?v=0.5.1-hotfix.1"></script>
 </body>
 </html>`;
 }

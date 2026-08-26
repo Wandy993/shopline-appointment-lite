@@ -1,6 +1,6 @@
 # Appointment Lite for SHOPLINE
 
-Version `0.5.1` — expands managed staff with profile avatars, custom storefront staff selection, opt-in staff appointment emails, and a daily Staff Operations workspace while retaining conflict-safe scheduling across all booking modes.
+Version `0.5.1-hotfix.1` — fixes editing existing services when inactive booking-mode fields contain values that fail native browser constraint validation. Hidden mode fields are disabled, the service wizard uses application-level validation, and existing Staff Management / Notifications behavior is unchanged.
 
 Appointment Lite now supports two booking entry models:
 
@@ -11,6 +11,14 @@ Typical scenarios include furniture installation and measurements, showroom visi
 
 
 
+
+
+## v0.5.1-hotfix.1 Service Editor hidden-field fix
+
+- Prevents hidden `sessionsRequired` / all-day-only controls from blocking Save with browser `not focusable` validation errors.
+- Disables inactive Booking Mode controls and re-enables only the controls for the selected mode.
+- Automatically restores a valid default session count when switching an existing single-slot service to Multiple Sessions.
+- Keeps the wizard on application-level step validation via `novalidate`, so hidden steps cannot block submit before Appointment Lite can show a useful error.
 
 ## v0.5.1 Staff Notifications + Staff Operations
 

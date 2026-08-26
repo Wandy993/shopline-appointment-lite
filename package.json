@@ -1,7 +1,7 @@
 {
   "name": "appointment-lite",
-  "version": "0.5.1",
-  "description": "SHOPLINE service appointments with booking modes, staff scheduling, team notifications, staff operations, product/direct booking channels, and capacity controls",
+  "version": "0.5.1-hotfix.1",
+  "description": "SHOPLINE service appointments with booking modes, staff scheduling, team notifications, staff operations, product/direct booking channels, capacity controls, and hidden-field-safe service editing",
   "type": "module",
   "engines": {
     "node": ">=20"
