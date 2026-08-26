@@ -23,12 +23,12 @@ test('staff presets use bundled AI-generated portrait assets and keep custom upl
   ]);
   assert.match(server, /\/assets\/staff/);
   assert.match(admin, /staff-1\.webp/);
-  assert.match(hosted, /\/assets\/staff\/\$\{file\}/);
-  assert.match(theme, /\$\{API_BASE\}\/assets\/staff\/\$\{file\}/);
+  assert.match(hosted, /\/assets\/staff\/\$\{file\}\?v=0\.5\.4-hotfix\.1/);
+  assert.match(theme, /\$\{API_BASE\}\/assets\/staff\/\$\{file\}\?v=0\.5\.4-hotfix\.1/);
   assert.match(admin, /processStaffAvatarFile/);
   for (let i = 1; i <= 8; i += 1) {
     const info = await stat(new URL(`../public/staff-avatars/staff-${i}.webp`, import.meta.url));
-    assert.ok(info.size > 500);
+    assert.ok(info.size > 10000);
   }
 });
 
@@ -36,7 +36,7 @@ test('storefront modal fixes selected slots, floating pickers, success sizing, a
   const [themeJs, themeCss, hostedCss] = await Promise.all([
     read('../theme-extension-source/public/appointment-lite.js'), read('../theme-extension-source/public/appointment-lite.css'), read('../public/book/styles.css')
   ]);
-  assert.match(themeJs, /const VERSION = '0\.5\.4'/);
+  assert.match(themeJs, /const VERSION = '0\.5\.4-hotfix\.1'/);
   assert.match(themeJs, /positionTimezoneMenu/);
   assert.match(themeJs, /dialog\.classList\.add\('al-confirmed'\)/);
   assert.match(themeCss, /\.al-time\[aria-pressed=true\] span\{[^}]*color:#fff!important/);

@@ -291,10 +291,21 @@ Object.assign(zh, {
   'Could not read that image.': '无法读取这张图片。', 'Could not decode that image.': '无法解析这张图片。', 'The processed avatar is still too large. Try a simpler image.': '处理后的头像仍然过大，请尝试更简单的图片。'
 });
 
+const enByZh = new Map(Object.entries(zh).map(([english, chinese]) => [chinese, english]));
+
 function t(value, variables = {}) {
-  let result = state.locale === 'zh-CN' ? (zh[value] || value) : value;
+  const english = enByZh.get(value) || value;
+  let result = state.locale === 'zh-CN' ? (zh[english] || english) : english;
   for (const [key, replacement] of Object.entries(variables)) result = result.replaceAll(`{${key}}`, replacement);
   return result;
+}
+
+function staticTranslation(value = '') {
+  const trimmed = String(value).trim();
+  if (!trimmed) return value;
+  const english = enByZh.get(trimmed) || trimmed;
+  const translated = state.locale === 'zh-CN' ? (zh[english] || english) : english;
+  return String(value).replace(trimmed, translated);
 }
 
 function applyStaticTranslations(root = document.body) {
@@ -304,12 +315,11 @@ function applyStaticTranslations(root = document.body) {
     if (['SCRIPT', 'STYLE'].includes(node.parentElement?.tagName)) continue;
     if (!originalText.has(node)) originalText.set(node, node.nodeValue);
     const original = originalText.get(node);
-    const trimmed = original.trim();
-    node.nodeValue = trimmed && zh[trimmed] && state.locale === 'zh-CN' ? original.replace(trimmed, zh[trimmed]) : original;
+    node.nodeValue = staticTranslation(original);
   }
   root.querySelectorAll?.('[placeholder],[aria-label],[title]').forEach(element => {
     if (!originalAttributes.has(element)) originalAttributes.set(element, Object.fromEntries(['placeholder', 'aria-label', 'title'].filter(name => element.hasAttribute(name)).map(name => [name, element.getAttribute(name)])));
-    for (const [name, original] of Object.entries(originalAttributes.get(element))) element.setAttribute(name, state.locale === 'zh-CN' ? (zh[original] || original) : original);
+    for (const [name, original] of Object.entries(originalAttributes.get(element))) element.setAttribute(name, staticTranslation(original));
   });
 }
 
@@ -332,7 +342,7 @@ const staffAvatarPresets = ['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunse
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp' };
 function staffPresetImage(preset) {
   const file = staffAvatarFiles[preset] || staffAvatarFiles.aurora;
-  return `<img src="/assets/staff/${file}" alt="" loading="lazy">`;
+  return `<img src="/assets/staff/${file}?v=0.5.4-hotfix.1" alt="" loading="lazy" decoding="async">`;
 }
 let staffAvatarDraft = { kind: 'preset', value: 'aurora' };
 
@@ -1755,7 +1765,8 @@ async function setLocale(locale, { save = true } = {}) {
   renderTemplateTabs();
   if (state.rules.length) renderRules();
   if (state.bookings.length) renderBookings();
-  if (state.staff.length) renderStaff();
+  if (state.staff.length) { renderStaff(); renderRuleStaffOptions(); renderBookingStaffFilter(); }
+  if (state.staffOperations?.date) renderStaffOperations();
   if (state.bootstrap) { renderDashboard(state.bootstrap); renderOnboarding(state.bootstrap); }
   if (state.emailSettings) renderEmailStudio();
   if (save) {

@@ -306,7 +306,10 @@ test('public staff options expose avatar metadata without leaking contact detail
   const StaffModel = staffModel([{ ...staff(staffId, 'Sarah'), avatar: { kind: 'preset', value: 'ocean' }, phone: 'secret', notifications: { emailEnabled: true } }]);
   const result = await publicStaffOptions(service, { StaffModel });
   assert.equal(result.mode, 'customer_choice');
-  assert.deepEqual(result.options, [{ id: String(staffId), name: 'Sarah', avatar: { kind: 'preset', value: 'ocean' } }]);
+  assert.equal(result.options[0].id, String(staffId));
+  assert.equal(result.options[0].name, 'Sarah');
+  assert.equal(result.options[0].avatar.kind, 'custom');
+  assert.match(result.options[0].avatar.value, /^data:image\/webp;base64,/);
   assert.equal('email' in result.options[0], false);
   assert.equal('phone' in result.options[0], false);
 });

@@ -1,7 +1,26 @@
 import mongoose from 'mongoose';
+import { readFileSync } from 'node:fs';
 import { Staff } from '../models/Staff.js';
 import { StaffReservation } from '../models/StaffReservation.js';
 import { bookingModeFor, minutesFromTime, windowsForDate, isDateAllowed } from '../lib/slots.js';
+
+const staffAvatarPresetFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp' };
+const staffAvatarPresetData = new Map(Object.entries(staffAvatarPresetFiles).map(([preset, file]) => {
+  try {
+    const bytes = readFileSync(new URL(`../../public/staff-avatars/${file}`, import.meta.url));
+    return [preset, `data:image/webp;base64,${bytes.toString('base64')}`];
+  } catch {
+    return [preset, ''];
+  }
+}));
+
+function publicStaffAvatar(avatar = {}) {
+  if (avatar.kind === 'custom' && /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(String(avatar.value || ''))) return { kind: 'custom', value: avatar.value };
+  if (avatar.kind === 'initials') return { kind: 'initials', value: '' };
+  const preset = Object.hasOwn(staffAvatarPresetFiles, avatar.value) ? avatar.value : 'aurora';
+  const embedded = staffAvatarPresetData.get(preset);
+  return embedded ? { kind: 'custom', value: embedded } : { kind: 'preset', value: preset };
+}
 
 export class StaffConflictError extends Error {
   constructor(message = 'The selected staff member is no longer available for this time.') {
@@ -77,7 +96,7 @@ export async function publicStaffOptions(rule, options = {}) {
     options: staff.map(item => ({
       id: String(item._id),
       name: item.name,
-      avatar: item.avatar?.kind ? { kind: item.avatar.kind, value: item.avatar.value || '' } : { kind: 'preset', value: 'aurora' }
+      avatar: publicStaffAvatar(item.avatar?.kind ? item.avatar : { kind: 'preset', value: 'aurora' })
     }))
   };
 }

@@ -1,6 +1,6 @@
 # Appointment Lite for SHOPLINE
 
-Version `0.5.4` — adds staff schedule list/calendar views, realistic AI-generated staff portrait presets, and a more resilient responsive storefront booking modal.
+Version `0.5.4-hotfix.1` — fixes storefront preset avatars, upgrades built-in staff portrait quality, and completes English/Chinese admin locale switching.
 
 Appointment Lite now supports two booking entry models:
 
@@ -13,6 +13,12 @@ Typical scenarios include furniture installation and measurements, showroom visi
 
 
 
+
+## v0.5.4-hotfix.1 Staff Avatar + Admin i18n Cleanup
+
+- Storefront preset avatars are embedded in the public staff payload so existing staff profiles render without cross-origin asset failures.
+- Built-in staff portraits are upgraded to larger WebP assets and cache-busted in Admin.
+- Admin locale switching can reverse dynamically captured Chinese text back to English and rerenders staff schedule surfaces.
 
 ## v0.5.4 Staff Schedule Views + Storefront Modal Polish
 
