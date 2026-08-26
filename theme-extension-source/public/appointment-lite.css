@@ -117,3 +117,74 @@ body.al-dialog-open{position:fixed!important;top:var(--al-dialog-scroll-y,0)!imp
 /* v0.5.4-hotfix.2 — confirmation dialog shrinks to content */
 .al-booking-dialog.al-confirmed{width:min(560px,calc(100vw - 32px))!important;height:auto!important;min-height:0!important;max-height:calc(100dvh - 32px)!important;overflow:hidden!important}.al-booking-dialog.al-confirmed .al-form{display:block!important;flex:0 0 auto!important;height:auto!important;min-height:0!important;overflow:visible!important}.al-booking-dialog.al-confirmed .al-head{padding:16px 20px 14px}.al-booking-dialog.al-confirmed .al-head h2{font-size:19px}.al-booking-dialog.al-confirmed .al-head p{font-size:12px}.al-booking-dialog.al-confirmed .al-success{padding:22px 22px 20px}.al-booking-dialog.al-confirmed .al-success-mark{margin-bottom:10px}.al-booking-dialog.al-confirmed .al-success h3{margin:6px 0 14px;font-size:21px}.al-booking-dialog.al-confirmed .al-success-summary{margin-bottom:12px}.al-booking-dialog.al-confirmed .al-success-note{margin-bottom:14px}.al-booking-dialog.al-confirmed .al-submit{margin-bottom:0}
 @media(max-width:540px){.al-booking-dialog.al-confirmed{width:calc(100vw - 20px)!important;height:auto!important;min-height:0!important;max-height:calc(100dvh - 20px)!important;margin:auto!important;border-radius:15px}.al-booking-dialog.al-confirmed .al-form{flex:0 0 auto!important}.al-booking-dialog.al-confirmed .al-head{padding:14px 16px 12px}.al-booking-dialog.al-confirmed .al-success{padding:20px 14px 16px}}
+
+
+/* v0.5.4-hotfix.3 — confirmation dialog auto height
+   The previous hotfix reset .al-confirmed itself, but the dialog shell could still keep
+   viewport-height/min-height and leave a large blank region below the Done button.
+   Only confirmation-state dialogs are compacted; the normal booking flow keeps its
+   existing scroll/max-height behavior. */
+:where([role="dialog"], [aria-modal="true"], dialog):has(.al-confirmed),
+.al-confirmation-dialog-compact {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: calc(100dvh - 28px) !important;
+  align-self: center !important;
+}
+
+@supports not (height: 100dvh) {
+  :where([role="dialog"], [aria-modal="true"], dialog):has(.al-confirmed),
+  .al-confirmation-dialog-compact {
+    max-height: calc(100vh - 28px) !important;
+  }
+}
+
+:where([role="dialog"], [aria-modal="true"], dialog):has(.al-confirmed) > :has(.al-confirmed),
+.al-confirmation-dialog-compact > :has(.al-confirmed),
+:where([role="dialog"], [aria-modal="true"], dialog):has(.al-confirmed) .al-confirmed,
+.al-confirmation-dialog-compact .al-confirmed {
+  flex: 0 0 auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+
+/* v0.5.4-hotfix.3b — deterministic confirmed dialog shrink */
+.al-dialog[open].al-booking-dialog.al-confirmed,
+.al-dialog[open].al-booking-dialog.al-confirmation-dialog-compact{
+  display:block!important;
+  width:min(560px,calc(100vw - 32px))!important;
+  height:auto!important;
+  block-size:auto!important;
+  min-height:0!important;
+  min-block-size:0!important;
+  max-height:calc(100dvh - 28px)!important;
+  max-block-size:calc(100dvh - 28px)!important;
+  overflow:auto!important;
+  margin:auto!important;
+}
+.al-booking-dialog.al-confirmed>.al-head,
+.al-booking-dialog.al-confirmation-dialog-compact>.al-head{flex:none!important}
+.al-booking-dialog.al-confirmed>.al-form,
+.al-booking-dialog.al-confirmation-dialog-compact>.al-form{
+  display:block!important;
+  flex:none!important;
+  height:auto!important;
+  min-height:0!important;
+  overflow:visible!important;
+}
+@supports not (height:100dvh){
+  .al-dialog[open].al-booking-dialog.al-confirmed,
+  .al-dialog[open].al-booking-dialog.al-confirmation-dialog-compact{
+    max-height:calc(100vh - 28px)!important;
+    max-block-size:calc(100vh - 28px)!important;
+  }
+}
+@media(max-width:540px){
+  .al-dialog[open].al-booking-dialog.al-confirmed,
+  .al-dialog[open].al-booking-dialog.al-confirmation-dialog-compact{
+    width:calc(100vw - 20px)!important;
+    max-height:calc(100dvh - 20px)!important;
+    max-block-size:calc(100dvh - 20px)!important;
+  }
+}

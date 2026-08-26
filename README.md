@@ -1,6 +1,6 @@
 # Appointment Lite for SHOPLINE
 
-Version `0.5.4-hotfix.2` — replaces the blurry staff portrait presets, makes booking confirmations truly content-sized, and forces consistent storefront typography.
+Version `0.5.4-hotfix.3` — keeps the sharper staff portraits and storefront typography from hotfix.2, and makes the product-page booking confirmation dialog deterministically shrink to its content after a successful booking.
 
 Appointment Lite now supports two booking entry models:
 
@@ -14,6 +14,14 @@ Typical scenarios include furniture installation and measurements, showroom visi
 
 
 
+
+
+## v0.5.4-hotfix.3 Confirmation Modal Auto Height
+
+- Forces the successful product-page booking dialog to switch from the full booking flex layout to a compact content-sized block layout.
+- Adds the compact confirmation class synchronously when the booking succeeds, avoiding browser `:has()` support or MutationObserver timing as a requirement.
+- Aligns admin, hosted booking, staff-avatar, health, and Theme Extension cache/version markers to `0.5.4-hotfix.3`.
+- Adds regression coverage for release-version consistency so stale `.2` asset references fail tests before deployment.
 
 ## v0.5.4-hotfix.2 Avatar + Confirmation + Typography Hotfix
 

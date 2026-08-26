@@ -1,8 +1,7 @@
-# Appointment Lite v0.5.4-hotfix.2 Avatar + Confirmation + Typography Hotfix
+# Appointment Lite v0.5.4-hotfix.3 Confirmation Modal Auto Height
 
-This hotfix embeds preset avatars in public staff metadata, replaces low-quality built-in portraits, and fixes Chinese text persisting after switching Admin back to English.
+This clean hotfix is based on the latest local Appointment Lite source after the interrupted hotfix.3 attempts.
 
+It fixes the product-page confirmation dialog so the successful state becomes content-sized immediately, aligns all runtime asset/cache version markers to `0.5.4-hotfix.3`, and adds regression coverage for version consistency.
 
-Use the release ZIP and one-click command in this release. The command verifies Git state, installs locked dependencies, runs the full test suite and JavaScript checks, syncs the local SHOPLINE Theme App Extension, pushes Git, queues Railway with `railway up --detach`, and immediately continues to `sl extension push`.
-
-The release adds Staff Operations list/calendar views, bundled AI-generated staff portrait presets, fixed-layer time-zone/staff pickers, accessible selected-slot colors, compact booking confirmation, and mobile storefront modal polish.
+Use the release ZIP together with the one-click Mac command delivered with this release. The command backs up any interrupted local work, restores a clean Git baseline, overlays the release, installs locked dependencies, runs the full test suite and JavaScript checks, syncs the local SHOPLINE Theme App Extension, commits and pushes Git, queues Railway, and runs `sl extension push`.
