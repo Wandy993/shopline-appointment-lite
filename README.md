@@ -1,6 +1,6 @@
 # Appointment Lite for SHOPLINE
 
-Version `0.5.4-hotfix.3` — keeps the sharper staff portraits and storefront typography from hotfix.2, and makes the product-page booking confirmation dialog deterministically shrink to its content after a successful booking.
+Version `0.6.0` — adds the Google Calendar Foundation: each managed staff member can connect a Google account, choose an owned calendar, and keep an encrypted offline OAuth grant ready for appointment synchronization in the next release. The existing storefront Theme App Extension remains unchanged at `0.5.4-hotfix.3`.
 
 Appointment Lite now supports two booking entry models:
 
@@ -15,6 +15,19 @@ Typical scenarios include furniture installation and measurements, showroom visi
 
 
 
+
+## v0.6.0 Google Calendar Foundation
+
+- Adds a dedicated **Calendar Sync** workspace in merchant Admin.
+- Lets each active managed staff member connect a separate Google account through OAuth 2.0 and choose one calendar they own.
+- Requests offline access and stores only an AES-256-GCM encrypted Google refresh token in MongoDB; the token field is excluded from normal model queries.
+- Adds reconnect, calendar-change, health/error, and disconnect flows. Disconnect performs a best-effort Google token revocation before deleting the local connection.
+- Restricts the first release to owned calendars and the least-privilege `calendar.events.owned` plus `calendar.calendarlist.readonly` scopes.
+- Adds a unique per-store/per-staff Google connection model and database index.
+- Does **not** create/update Google events or block Google busy time yet. Appointment-to-Google event sync and external-busy conflict checking are the next synchronization layer.
+- Does **not** change `theme-extension-source`; no SHOPLINE Theme Extension push is required for this Foundation release.
+
+See [Google Calendar setup and security](docs/GOOGLE_CALENDAR.md).
 
 ## v0.5.4-hotfix.3 Confirmation Modal Auto Height
 
@@ -249,6 +262,10 @@ MONGODB_DB_NAME=shopline_appointment_lite
 SHOPLINE_APP_KEY=...
 SHOPLINE_APP_SECRET=...
 SESSION_SECRET=...
+GOOGLE_CALENDAR_CLIENT_ID=...
+GOOGLE_CALENDAR_CLIENT_SECRET=...
+GOOGLE_CALENDAR_REDIRECT_URI=https://appointment.toolkit.fans/integrations/google/callback
+GOOGLE_TOKEN_ENCRYPTION_KEY=...
 ```
 
 Important settings:
@@ -260,6 +277,8 @@ Important settings:
 - `COOKIE_SAME_SITE=lax` is appropriate for redirect mode. Embedded iframe mode may require `none` with HTTPS and SHOPLINE App Bridge work.
 - `PUBLIC_ALLOWED_ORIGINS` should remain empty for a multi-merchant public app because every merchant has different storefront domains. CORS is not authentication; use dynamic installed-shop origin validation in a later hardening release if required.
 - `PLAN_LIMITS_ENABLED=false` gives every installed store unlimited appointment rules during the MVP. Set it to `true` later to restore the reserved Free/Pro active-rule limits.
+- `GOOGLE_CALENDAR_CLIENT_ID` and `GOOGLE_CALENDAR_CLIENT_SECRET` come from a Google Cloud OAuth **Web application** client. `GOOGLE_CALENDAR_REDIRECT_URI` must exactly match an authorized redirect URI in that client.
+- `GOOGLE_TOKEN_ENCRYPTION_KEY` must be a dedicated 32-byte secret (64 hex characters or base64) used to encrypt stored Google refresh tokens with AES-256-GCM. Keep it stable across deploys; rotating it requires a migration or reconnecting calendars.
 - `EMAIL_PROVIDER=auto` prefers a complete Aliyun DirectMail configuration, then Resend. Use `aliyun`, `resend`, or `none` to force a mode.
 - Aliyun DirectMail uses HTTPS OpenAPI rather than SMTP. Configure `ALIBABA_CLOUD_ACCESS_KEY_ID`, `ALIBABA_CLOUD_ACCESS_KEY_SECRET`, and the verified sender in `ALIYUN_DIRECTMAIL_ACCOUNT_NAME`.
 - `RESEND_API_KEY`, `EMAIL_FROM`, and `MERCHANT_NOTIFICATION_EMAIL` remain available as a fallback. Booking success never depends on email delivery.
@@ -374,6 +393,7 @@ Tests cover query/session signing, weekday/date bounds, store-time-zone past-slo
 - [Data model and atomic conflict design](docs/DATA_MODEL.md)
 - [HTTP API summary](docs/API.md)
 - [Aliyun DirectMail and Resend setup](docs/EMAIL.md)
+- [Google Calendar setup and security](docs/GOOGLE_CALENDAR.md)
 - [Mac ZIP overlay/install procedure](docs/INSTALL_MAC.md)
 
 ## License

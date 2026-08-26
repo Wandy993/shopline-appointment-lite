@@ -28,6 +28,12 @@ export const config = Object.freeze({
   sessionSecret: required('SESSION_SECRET', 'development-only-change-me'),
   cookieSameSite: process.env.COOKIE_SAME_SITE || 'lax',
   publicAllowedOrigins: (process.env.PUBLIC_ALLOWED_ORIGINS || '').split(',').map(v => v.trim()).filter(Boolean),
+  googleCalendar: {
+    clientId: process.env.GOOGLE_CALENDAR_CLIENT_ID || '',
+    clientSecret: process.env.GOOGLE_CALENDAR_CLIENT_SECRET || '',
+    redirectUri: process.env.GOOGLE_CALENDAR_REDIRECT_URI || `${appUrl}/integrations/google/callback`,
+    tokenEncryptionKey: process.env.GOOGLE_TOKEN_ENCRYPTION_KEY || ''
+  },
   email: {
     provider: (process.env.EMAIL_PROVIDER || 'auto').toLowerCase(),
     resendKey: process.env.RESEND_API_KEY || '',

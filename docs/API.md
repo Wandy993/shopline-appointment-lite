@@ -9,6 +9,8 @@ All responses are JSON except `/`, `/app`, `/book/:ruleId`, and OAuth browser re
 - `GET /auth/callback` — signed OAuth code callback
 - `GET /app` — authenticated merchant admin shell
 - `GET /book/:ruleId` — public hosted booking page for an enabled service with `bookingSource=direct|both`
+- `GET /integrations/google/callback` — Google OAuth callback protected by signed short-lived state
+- `GET /integrations/google/complete` — no-store OAuth completion popup used to refresh the merchant Calendar Sync workspace
 
 ## Admin API
 
@@ -33,6 +35,11 @@ Requires the signed `al_session` HTTP-only cookie. Mutations also require `X-CSR
 - `PUT /api/admin/onboarding` — Quickstart progress
 - `POST /api/admin/email/test` — sends to the merchant-supplied test recipient only
 - `PUT /api/admin/email/settings` — per-store email branding, routing, and message templates
+- `GET /api/admin/calendar` — Google Calendar Foundation status plus per-staff public connection metadata
+- `GET /api/admin/calendar/google/:staffId/connect` — returns a short-lived Google OAuth authorization URL for an active staff member
+- `GET /api/admin/calendar/google/:staffId/calendars` — verifies the encrypted offline credential and lists calendars owned by the connected account
+- `PUT /api/admin/calendar/google/:staffId` — selects one owned Google calendar
+- `DELETE /api/admin/calendar/google/:staffId` — best-effort revokes Google authorization and deletes the local connection
 
 ## Public booking API
 

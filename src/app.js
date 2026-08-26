@@ -5,6 +5,7 @@ import { config } from './config.js';
 import { authRouter } from './routes/auth.js';
 import { adminRouter } from './routes/admin.js';
 import { publicRouter } from './routes/public.js';
+import { integrationsRouter } from './routes/integrations.js';
 import { requireAdmin } from './middleware/auth.js';
 import { errorHandler, notFound } from './middleware/errors.js';
 import { adminPage } from './views/admin.js';
@@ -27,13 +28,15 @@ export function createApp() {
   app.use('/assets/staff', express.static('public/staff-avatars', { maxAge: config.nodeEnv === 'production' ? '7d' : 0 }));
   app.use('/manage/assets', express.static('public/manage', { maxAge: config.nodeEnv === 'production' ? '1h' : 0 }));
   app.use('/book/assets', express.static('public/book', { maxAge: config.nodeEnv === 'production' ? '1h' : 0 }));
+  app.use('/integration-assets', express.static('public/integrations', { maxAge: config.nodeEnv === 'production' ? '1h' : 0 }));
 
-  app.get('/health', (req, res) => res.json({ ok: true, service: 'appointment-lite', version: '0.5.4-hotfix.3' }));
+  app.get('/health', (req, res) => res.json({ ok: true, service: 'appointment-lite', version: '0.6.0' }));
   app.get('/', (req, res) => {
     if (req.query.handle || req.query.appkey) return res.redirect(`/auth/install?${new URLSearchParams(req.query)}`);
     res.type('html').send('<!doctype html><title>Appointment Lite</title><h1>Appointment Lite is running</h1><p>Open this app from SHOPLINE Admin to continue.</p>');
   });
   app.use('/auth', authRouter);
+  app.use('/integrations', integrationsRouter);
   app.get('/app', requireAdmin, (req, res) => res.type('html').send(adminPage()));
   app.get('/manage', (req, res) => res.set({ 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' }).type('html').send(managePage()));
   app.get('/book/:ruleId', (req, res) => res.set({ 'Cache-Control': 'no-store' }).type('html').send(bookingPage(req.params.ruleId)));

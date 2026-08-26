@@ -5,6 +5,7 @@ import { Booking } from './models/Booking.js';
 import { BookingReservation } from './models/BookingReservation.js';
 import { Staff } from './models/Staff.js';
 import { StaffReservation } from './models/StaffReservation.js';
+import { CalendarConnection } from './models/CalendarConnection.js';
 
 async function dropIndexIfPresent(collection, name) {
   const indexes = await collection.indexes();
@@ -91,6 +92,7 @@ export async function ensureOperationalIndexes() {
   await BookingReservation.syncIndexes();
   await Staff.syncIndexes();
   await StaffReservation.syncIndexes();
+  await CalendarConnection.syncIndexes();
 }
 
 export async function connectDatabase() {

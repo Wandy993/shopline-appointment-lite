@@ -1,12 +1,13 @@
 const state = {
   csrf: '', shop: null, email: null, emailSettings: null, rules: [], bookings: [], products: [], staff: [], staffOperations: { date: '', timezone: '', staff: [], unassigned: [] }, staffOperationsView: 'list',
   ruleStep: 0, activeTemplate: 'confirmation', emailEditorReady: false, bookingView: 'list', calendarMonth: '',
-  locale: 'en', currentView: 'dashboard', themeLinkLoaded: false, bootstrap: null, onboarding: null, lastTestEmail: '', ruleModeTouched: false, editingRule: false
+  locale: 'en', currentView: 'dashboard', themeLinkLoaded: false, bootstrap: null, onboarding: null, lastTestEmail: '', ruleModeTouched: false, editingRule: false,
+  calendarSync: null, calendarStaffId: '', calendarPopup: null
 };
 const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const viewLabels = {
   dashboard: ['Workspace', 'Overview'], rules: ['Service catalog', 'Services & rules'], bookings: ['Customer schedule', 'Bookings'], staff: ['Team scheduling', 'Staff'],
-  email: ['Customer communication', 'Email Studio'], setup: ['Configuration', 'Storefront setup']
+  calendar: ['Calendar integrations', 'Calendar Sync'], email: ['Customer communication', 'Email Studio'], setup: ['Configuration', 'Storefront setup']
 };
 const templateMeta = {
   confirmation: { label: 'Confirmation', manage: true },
@@ -291,6 +292,28 @@ Object.assign(zh, {
   'Could not read that image.': '无法读取这张图片。', 'Could not decode that image.': '无法解析这张图片。', 'The processed avatar is still too large. Try a simpler image.': '处理后的头像仍然过大，请尝试更简单的图片。'
 });
 
+Object.assign(zh, {
+  'Calendar Sync': '日历同步', 'Calendar integrations': '日历集成', 'CALENDAR INTEGRATIONS': '日历集成', 'Foundation': '基础连接',
+  'Connect each staff member to an owned Google Calendar and choose the calendar Appointment Lite will use.': '为每位员工连接其拥有的 Google 日历，并选择 Appointment Lite 后续使用的日历。',
+  'GOOGLE CALENDAR': 'Google 日历', 'Checking Google Calendar setup…': '正在检查 Google 日历配置…', 'Checking': '检查中',
+  'Appointment Lite is checking whether Google OAuth credentials are configured.': 'Appointment Lite 正在检查 Google OAuth 配置。',
+  'STAFF CALENDARS': '员工日历', 'Connect staff calendars': '连接员工日历',
+  'Each active staff member can connect a separate Google account and choose one owned calendar.': '每位启用中的员工都可以连接独立 Google 账号，并选择一个本人拥有的日历。',
+  'Google Calendar is ready to connect.': 'Google 日历已可以连接。', 'OAuth credentials configured': 'OAuth 配置已完成',
+  'Google Calendar is not configured yet.': 'Google 日历尚未配置。', 'Add the Google Calendar Railway variables before connecting staff accounts.': '请先在 Railway 添加 Google Calendar 环境变量，再连接员工账号。',
+  'Redirect URI': '回调地址', 'Connect Google Calendar': '连接 Google 日历', 'Reconnect': '重新连接', 'Change calendar': '更换日历', 'Disconnect': '断开连接',
+  'Connected': '已连接', 'Connection error': '连接异常', 'Not connected': '未连接', 'Inactive staff': '员工已停用',
+  'Google account': 'Google 账号', 'Selected calendar': '当前日历', 'Owned calendars only': '仅支持本人拥有的日历',
+  'Choose calendar': '选择日历', 'Choose the owned calendar Appointment Lite should use for this staff member.': '选择 Appointment Lite 后续为该员工使用的本人拥有的 Google 日历。',
+  'Loading Google calendars…': '正在加载 Google 日历…', 'Calendar': '日历', 'Loading calendars…': '正在加载日历…',
+  'Save calendar': '保存日历', 'Google Calendar connected.': 'Google 日历已连接。', 'Calendar selection saved.': '日历选择已保存。',
+  'Google Calendar disconnected.': 'Google 日历已断开。', 'Disconnect Google Calendar?': '断开 Google 日历连接？',
+  'Appointment Lite will remove the stored Google authorization for this staff member. Existing appointments are not changed.': 'Appointment Lite 会删除该员工已保存的 Google 授权；现有预约不会发生变化。',
+  'Disconnect calendar': '断开日历', 'Allow pop-ups to connect Google Calendar, then try again.': '请允许浏览器弹窗后重新连接 Google 日历。',
+  'Choose a Google Calendar.': '请选择一个 Google 日历。', 'No owned calendars are available for this account.': '该 Google 账号没有可用的本人日历。',
+  'Connection foundation ready': '日历连接基础能力已就绪', 'Appointment event sync and busy-time blocking are not active in v0.6.0 yet.': 'v0.6.0 暂不启用预约事件写入和 Google 忙碌时间拦截。'
+});
+
 const enByZh = new Map(Object.entries(zh).map(([english, chinese]) => [chinese, english]));
 
 function t(value, variables = {}) {
@@ -342,7 +365,7 @@ const staffAvatarPresets = ['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunse
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp' };
 function staffPresetImage(preset) {
   const file = staffAvatarFiles[preset] || staffAvatarFiles.aurora;
-  return `<img src="/assets/staff/${file}?v=0.5.4-hotfix.3" alt="" loading="lazy" decoding="async">`;
+  return `<img src="/assets/staff/${file}?v=0.6.0" alt="" loading="lazy" decoding="async">`;
 }
 let staffAvatarDraft = { kind: 'preset', value: 'aurora' };
 
@@ -434,6 +457,7 @@ function switchView(name) {
   if (name === 'rules') loadRules();
   if (name === 'bookings') Promise.all([ensureStaff(), loadRules(), loadBookings()]);
   if (name === 'staff') Promise.all([loadStaff(), loadStaffOperations($('#staffOperationsDate')?.value || '')]);
+  if (name === 'calendar') loadCalendarSync();
   if (name === 'email') renderEmailStudio();
   if (name === 'setup') loadThemeEditorLink();
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -683,6 +707,140 @@ async function loadStaff({ force = false } = {}) {
 async function ensureStaff() {
   if (!state.staff.length) await loadStaff({ force: true });
   return state.staff;
+}
+
+function renderCalendarSync() {
+  const payload = state.calendarSync;
+  if (!payload) return;
+  const configured = Boolean(payload.configured);
+  const configTitle = $('#calendarConfigTitle');
+  const configText = $('#calendarConfigText');
+  const configBadge = $('#calendarConfigBadge');
+  const configMeta = $('#calendarConfigMeta');
+  if (configTitle) configTitle.textContent = t(configured ? 'Google Calendar is ready to connect.' : 'Google Calendar is not configured yet.');
+  if (configText) configText.textContent = t(configured ? 'Connection foundation ready' : 'Add the Google Calendar Railway variables before connecting staff accounts.');
+  if (configBadge) {
+    configBadge.textContent = t(configured ? 'OAuth credentials configured' : 'Not connected');
+    configBadge.className = `status-badge ${configured ? 'enabled' : 'disabled'}`;
+  }
+  if (configMeta) {
+    configMeta.innerHTML = `<span><strong>${t('Redirect URI')}</strong>${escapeHtml(payload.redirectUri || '')}</span><span><strong>${t('Owned calendars only')}</strong>calendar.events.owned</span>${configured ? `<small>${t('Appointment event sync and busy-time blocking are not active in v0.6.0 yet.')}</small>` : ''}`;
+  }
+
+  const root = $('#calendarStaffList');
+  if (!root) return;
+  const rows = payload.staff || [];
+  if (!rows.length) {
+    root.innerHTML = `<div class="panel empty"><strong>${t('No staff yet')}</strong><span>${t('Add your first team member to start staff-aware scheduling.')}</span></div>`;
+    return;
+  }
+  root.innerHTML = rows.map(item => {
+    const connection = item.connection;
+    const connected = connection?.status === 'connected';
+    const errored = connection?.status === 'error';
+    const active = item.status === 'active';
+    const statusLabel = connected ? 'Connected' : errored ? 'Connection error' : active ? 'Not connected' : 'Inactive staff';
+    const statusClass = connected ? 'enabled' : errored ? 'no_show' : 'disabled';
+    const connectDisabled = !configured || !active;
+    const action = connection
+      ? `<button type="button" class="secondary small" data-calendar-manage="${item.id}">${t('Change calendar')}</button><button type="button" class="secondary small" data-calendar-connect="${item.id}" ${connectDisabled ? 'disabled' : ''}>${t('Reconnect')}</button><button type="button" class="text-button calendar-disconnect" data-calendar-disconnect="${item.id}">${t('Disconnect')}</button>`
+      : `<button type="button" class="primary small" data-calendar-connect="${item.id}" ${connectDisabled ? 'disabled' : ''}>${t('Connect Google Calendar')}</button>`;
+    return `<article class="panel calendar-staff-card"><div class="calendar-staff-person">${staffAvatarMarkup(item)}<div><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.email || t('No contact details'))}</span></div></div><span class="status-badge ${statusClass}">${t(statusLabel)}</span><div class="calendar-staff-details"><div><span>${t('Google account')}</span><strong>${escapeHtml(connection?.accountLabel || '—')}</strong></div><div><span>${t('Selected calendar')}</span><strong>${escapeHtml(connection?.calendarName || '—')}</strong>${connection?.calendarTimeZone ? `<small>${escapeHtml(connection.calendarTimeZone)}</small>` : ''}</div></div>${errored && connection?.lastError ? `<p class="calendar-error-copy">${escapeHtml(connection.lastError)}</p>` : ''}<div class="calendar-staff-actions">${action}</div></article>`;
+  }).join('');
+}
+
+async function loadCalendarSync({ force = false } = {}) {
+  if (!force && state.calendarSync && state.currentView !== 'calendar') return state.calendarSync;
+  const root = $('#calendarStaffList');
+  if (root && !state.calendarSync) root.innerHTML = '<div class="panel loading">Loading calendar connections…</div>';
+  try {
+    state.calendarSync = await api('/calendar');
+    renderCalendarSync();
+    return state.calendarSync;
+  } catch (error) {
+    showError(error);
+    if (root) root.innerHTML = `<div class="panel empty"><strong>${t('Could not load Google Calendar connections')}</strong><span>${escapeHtml(error.message)}</span></div>`;
+    return null;
+  }
+}
+
+async function connectGoogleCalendar(staffId) {
+  const popup = window.open('about:blank', 'appointmentLiteGoogleCalendar', 'popup=yes,width=620,height=760,resizable=yes,scrollbars=yes');
+  if (!popup) {
+    toast(t('Allow pop-ups to connect Google Calendar, then try again.'), 'error');
+    return;
+  }
+  state.calendarPopup = popup;
+  try {
+    popup.document.title = 'Appointment Lite · Google Calendar';
+    const payload = await api(`/calendar/google/${encodeURIComponent(staffId)}/connect`);
+    popup.location.href = payload.authorizationUrl;
+    popup.focus();
+  } catch (error) {
+    try { popup.close(); } catch {}
+    state.calendarPopup = null;
+    showError(error);
+  }
+}
+
+async function openCalendarManager(staffId) {
+  state.calendarStaffId = String(staffId || '');
+  const item = state.calendarSync?.staff?.find(row => String(row.id) === state.calendarStaffId);
+  $('#calendarStaffId').value = state.calendarStaffId;
+  $('#calendarDialogTitle').textContent = t('Choose calendar');
+  $('#calendarDialogSubtitle').textContent = item ? `${item.name} · ${t('Owned calendars only')}` : t('Choose the owned calendar Appointment Lite should use for this staff member.');
+  $('#calendarAccountNotice').textContent = t('Loading Google calendars…');
+  $('#calendarFormError').classList.add('hidden');
+  $('#calendarSelect').innerHTML = `<option value="">${t('Loading calendars…')}</option>`;
+  $('#saveCalendarSelection').disabled = true;
+  $('#calendarDialog').showModal();
+  try {
+    const payload = await api(`/calendar/google/${encodeURIComponent(state.calendarStaffId)}/calendars`);
+    const calendars = payload.calendars || [];
+    if (!calendars.length) {
+      $('#calendarSelect').innerHTML = `<option value="">${t('No owned calendars are available for this account.')}</option>`;
+      $('#calendarAccountNotice').textContent = t('No owned calendars are available for this account.');
+      return;
+    }
+    $('#calendarSelect').innerHTML = calendars.map(calendar => `<option value="${escapeHtml(calendar.id)}" ${calendar.id === payload.selectedCalendarId ? 'selected' : ''}>${escapeHtml(calendar.summary)}${calendar.primary ? ' · Primary' : ''}${calendar.timeZone ? ` · ${escapeHtml(calendar.timeZone)}` : ''}</option>`).join('');
+    $('#calendarAccountNotice').textContent = `${calendars.length} ${t('Owned calendars only').toLowerCase()}`;
+    $('#saveCalendarSelection').disabled = false;
+  } catch (error) {
+    $('#calendarFormError').textContent = t(error.message);
+    $('#calendarFormError').classList.remove('hidden');
+    $('#calendarAccountNotice').textContent = t('Connection error');
+  }
+}
+
+async function saveCalendarSelection(event) {
+  event.preventDefault();
+  const staffId = $('#calendarStaffId').value;
+  const calendarId = $('#calendarSelect').value;
+  if (!calendarId) {
+    $('#calendarFormError').textContent = t('Choose a Google Calendar.');
+    $('#calendarFormError').classList.remove('hidden');
+    return;
+  }
+  const button = $('#saveCalendarSelection');
+  button.disabled = true;
+  $('#calendarFormError').classList.add('hidden');
+  try {
+    await api(`/calendar/google/${encodeURIComponent(staffId)}`, { method: 'PUT', body: JSON.stringify({ calendarId }) });
+    $('#calendarDialog').close();
+    toast(t('Calendar selection saved.'));
+    await loadCalendarSync({ force: true });
+  } catch (error) {
+    $('#calendarFormError').textContent = t(error.message);
+    $('#calendarFormError').classList.remove('hidden');
+  } finally { button.disabled = false; }
+}
+
+function disconnectGoogleCalendar(staffId) {
+  confirmAction('Disconnect Google Calendar?', 'Appointment Lite will remove the stored Google authorization for this staff member. Existing appointments are not changed.', 'Disconnect calendar', async () => {
+    await api(`/calendar/google/${encodeURIComponent(staffId)}`, { method: 'DELETE' });
+    toast(t('Google Calendar disconnected.'));
+    await loadCalendarSync({ force: true });
+  });
 }
 
 function staffTimeMinutes(value = '') {
@@ -1767,6 +1925,7 @@ async function setLocale(locale, { save = true } = {}) {
   if (state.bookings.length) renderBookings();
   if (state.staff.length) { renderStaff(); renderRuleStaffOptions(); renderBookingStaffFilter(); }
   if (state.staffOperations?.date) renderStaffOperations();
+  if (state.calendarSync) renderCalendarSync();
   if (state.bootstrap) { renderDashboard(state.bootstrap); renderOnboarding(state.bootstrap); }
   if (state.emailSettings) renderEmailStudio();
   if (save) {
@@ -1838,6 +1997,23 @@ function bind() {
   $('#ruleSearch').addEventListener('input', renderRules);
   $('#newStaffButton')?.addEventListener('click', () => openStaff());
   $('#staffSearch')?.addEventListener('input', renderStaff);
+  $('#calendarStaffList')?.addEventListener('click', event => {
+    const connect = event.target.closest('[data-calendar-connect]');
+    const manage = event.target.closest('[data-calendar-manage]');
+    const disconnect = event.target.closest('[data-calendar-disconnect]');
+    if (connect && !connect.disabled) connectGoogleCalendar(connect.dataset.calendarConnect);
+    else if (manage) openCalendarManager(manage.dataset.calendarManage);
+    else if (disconnect) disconnectGoogleCalendar(disconnect.dataset.calendarDisconnect);
+  });
+  $('#calendarForm')?.addEventListener('submit', saveCalendarSelection);
+  $$('[data-close-calendar-dialog]').forEach(button => button.addEventListener('click', () => $('#calendarDialog').close()));
+  window.addEventListener('message', event => {
+    if (event.origin !== window.location.origin || event.data?.type !== 'appointment-lite:google-calendar') return;
+    if (event.data.status === 'connected') toast(t('Google Calendar connected.'));
+    else toast(t(event.data.message || 'Could not connect Google Calendar.'), 'error');
+    state.calendarPopup = null;
+    loadCalendarSync({ force: true });
+  });
   $('#staffForm')?.addEventListener('submit', saveStaff);
   $$('[data-close-staff-dialog]').forEach(button => button.addEventListener('click', () => $('#staffDialog').close()));
   $('#addStaffException')?.addEventListener('click', () => addStaffException());

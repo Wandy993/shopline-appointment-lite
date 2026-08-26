@@ -6,6 +6,7 @@ const icons = {
   bookings: icon('<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M16 3v4M8 3v4M3 10h18"/><path d="m8 15 2 2 5-5"/>'),
   staff: icon('<circle cx="9" cy="8" r="3"/><path d="M3.5 20v-2.2A4.8 4.8 0 0 1 8.3 13h1.4a4.8 4.8 0 0 1 4.8 4.8V20"/><circle cx="17" cy="9" r="2.4"/><path d="M15.5 14.5h1.7a3.8 3.8 0 0 1 3.8 3.8V20"/>'),
   email: icon('<rect x="3" y="5" width="18" height="14" rx="3"/><path d="m4 7 8 6 8-6"/>'),
+  calendarSync: icon('<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M16 3v4M8 3v4M3 10h18"/><path d="M8 14h3v3H8zM13 14h3v3h-3z"/>'),
   setup: icon('<path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/><circle cx="12" cy="12" r="3"/>'),
   plus: icon('<path d="M12 5v14M5 12h14"/>'),
   arrow: icon('<path d="m9 18 6-6-6-6"/>'),
@@ -34,7 +35,7 @@ export function adminPage() {
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light">
   <title>Appointment Lite</title>
-  <link rel="stylesheet" href="/admin/styles.css?v=0.5.4-hotfix.3">
+  <link rel="stylesheet" href="/admin/styles.css?v=0.6.0">
 </head>
 <body>
   <div class="app-shell">
@@ -47,6 +48,7 @@ export function adminPage() {
         ${navButton('bookings', 'Bookings', icons.bookings)}
         ${navButton('staff', 'Staff', icons.staff)}
         <span class="nav-label nav-label-spaced">Configuration</span>
+        ${navButton('calendar', 'Calendar Sync', icons.calendarSync)}
         ${navButton('email', 'Email Studio', icons.email)}
         ${navButton('setup', 'Storefront setup', icons.setup)}
       </nav>
@@ -114,6 +116,14 @@ export function adminPage() {
           <article class="panel staff-operations-panel"><div class="panel-head staff-operations-head"><div><span class="eyebrow">STAFF OPERATIONS</span><h2>Team schedule</h2><p>Review staff appointments in a compact list or daily calendar.</p></div><div class="staff-operations-controls"><div class="segmented staff-ops-segmented" role="group" aria-label="Schedule view"><button type="button" class="active" data-staff-ops-view="list">List</button><button type="button" data-staff-ops-view="calendar">Calendar</button></div><label class="staff-operations-date"><span>Date</span><input id="staffOperationsDate" type="date"></label></div></div><div id="staffOperationsList" class="staff-operations-list"><div class="empty-compact">Loading team schedule…</div></div></article>
           <div class="toolbar"><label class="search-field">${icons.search}<input id="staffSearch" type="search" placeholder="Search staff by name or email"></label><div class="toolbar-meta"><span id="staffResultCount">0 staff</span></div></div>
           <div id="staffList" class="staff-list"><div class="panel loading">Loading staff…</div></div>
+        </section>
+
+
+        <section id="calendarView" class="view hidden">
+          <div class="page-heading"><div><span class="eyebrow">CALENDAR INTEGRATIONS</span><h1>Calendar Sync</h1><p>Connect each staff member to an owned Google Calendar and choose the calendar Appointment Lite will use.</p></div><span id="calendarFoundationBadge" class="status-badge enabled">Foundation</span></div>
+          <article class="panel calendar-foundation-panel"><div class="calendar-provider-mark">G</div><div class="calendar-foundation-copy"><div class="panel-head"><div><span class="eyebrow">GOOGLE CALENDAR</span><h2 id="calendarConfigTitle">Checking Google Calendar setup…</h2></div><span id="calendarConfigBadge" class="status-badge disabled">Checking</span></div><p id="calendarConfigText">Appointment Lite is checking whether Google OAuth credentials are configured.</p><div id="calendarConfigMeta" class="calendar-config-meta"></div></div></article>
+          <div class="calendar-section-head"><div><span class="eyebrow">STAFF CALENDARS</span><h2>Connect staff calendars</h2><p>Each active staff member can connect a separate Google account and choose one owned calendar.</p></div></div>
+          <div id="calendarStaffList" class="calendar-staff-list"><div class="panel loading">Loading calendar connections…</div></div>
         </section>
 
         <section id="emailView" class="view hidden">
@@ -208,6 +218,15 @@ export function adminPage() {
 
   <dialog id="bookingFlowDialog" class="modal flow-modal"><div class="modal-head"><div><span class="eyebrow">BOOKING ACTIVITY</span><h2>Appointment history</h2><p id="bookingFlowSummary"></p></div><button type="button" class="icon-button" data-close-flow-dialog aria-label="Close">${icons.close}</button></div><div class="modal-body"><div id="bookingFlow" class="booking-flow"></div></div><div class="modal-actions"><button type="button" class="primary" data-close-flow-dialog>Done</button></div></dialog>
 
+
+  <dialog id="calendarDialog" class="modal compact-modal calendar-modal">
+    <form id="calendarForm">
+      <div class="modal-head"><div><span class="eyebrow">GOOGLE CALENDAR</span><h2 id="calendarDialogTitle">Choose calendar</h2><p id="calendarDialogSubtitle">Choose the owned calendar Appointment Lite should use for this staff member.</p></div><button type="button" class="icon-button" data-close-calendar-dialog aria-label="Close">${icons.close}</button></div>
+      <div class="modal-body"><input id="calendarStaffId" type="hidden"><div id="calendarAccountNotice" class="inline-notice">Loading Google calendars…</div><div class="field"><label for="calendarSelect">Calendar</label><select id="calendarSelect"><option value="">Loading calendars…</option></select><p class="hint">v0.6.0 connects and selects the calendar. Appointment event sync and busy-time blocking are enabled in the next calendar-sync milestone.</p></div><div id="calendarFormError" class="form-error hidden" role="alert"></div></div>
+      <div class="modal-actions"><button type="button" class="secondary" data-close-calendar-dialog>Cancel</button><button id="saveCalendarSelection" type="submit" class="primary">Save calendar</button></div>
+    </form>
+  </dialog>
+
   <dialog id="testEmailDialog" class="modal compact-modal">
     <form id="testEmailForm">
       <div class="modal-head"><div><span class="eyebrow">EMAIL TEST</span><h2>Send a test email</h2><p>Choose the inbox that should receive this preview.</p></div><button type="button" class="icon-button" data-close-test-email aria-label="Close">${icons.close}</button></div>
@@ -230,7 +249,7 @@ export function adminPage() {
   </dialog>
 
   <dialog id="confirmDialog" class="confirm-modal"><div class="confirm-icon">!</div><div class="confirm-copy"><h2 id="confirmTitle">Please confirm</h2><p id="confirmMessage"></p></div><div class="modal-actions"><button id="confirmNo" class="secondary">Keep it</button><button id="confirmYes" class="danger">Confirm</button></div></dialog>
-  <script type="module" src="/admin/app.js?v=0.5.4-hotfix.3"></script>
+  <script type="module" src="/admin/app.js?v=0.6.0"></script>
 </body>
 </html>`;
 }

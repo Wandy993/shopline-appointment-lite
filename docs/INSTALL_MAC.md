@@ -1,7 +1,7 @@
-# Appointment Lite v0.5.4-hotfix.3 Confirmation Modal Auto Height
+# Appointment Lite v0.6.0 Google Calendar Foundation
 
-This clean hotfix is based on the latest local Appointment Lite source after the interrupted hotfix.3 attempts.
+Use the v0.6.0 release ZIP together with its one-click Mac release command. The command backs up interrupted local work, restores the Git baseline, overlays the release, installs locked dependencies, runs the full test suite and JavaScript checks, commits/pushes Git, and queues the Railway deployment.
 
-It fixes the product-page confirmation dialog so the successful state becomes content-sized immediately, aligns all runtime asset/cache version markers to `0.5.4-hotfix.3`, and adds regression coverage for version consistency.
+This release does **not** modify the storefront Theme App Extension, so the command intentionally skips `sl extension push`.
 
-Use the release ZIP together with the one-click Mac command delivered with this release. The command backs up any interrupted local work, restores a clean Git baseline, overlays the release, installs locked dependencies, runs the full test suite and JavaScript checks, syncs the local SHOPLINE Theme App Extension, commits and pushes Git, queues Railway, and runs `sl extension push`.
+After deployment, configure the four Google Calendar variables in Railway and redeploy/restart the app if those variables were not already present. See [GOOGLE_CALENDAR.md](GOOGLE_CALENDAR.md).

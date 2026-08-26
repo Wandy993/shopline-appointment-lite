@@ -18,12 +18,13 @@ test('staff workspace exposes list and calendar schedule views', async () => {
 });
 
 test('staff presets use bundled AI-generated portrait assets and keep custom upload support', async () => {
-  const [server, admin, hosted, theme] = await Promise.all([
-    read('../src/app.js'), read('../public/admin/app.js'), read('../public/book/app.js'), read('../theme-extension-source/public/appointment-lite.js')
+  const [server, admin, hosted, theme, pkgText] = await Promise.all([
+    read('../src/app.js'), read('../public/admin/app.js'), read('../public/book/app.js'), read('../theme-extension-source/public/appointment-lite.js'), read('../package.json')
   ]);
+  const version = JSON.parse(pkgText).version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   assert.match(server, /\/assets\/staff/);
   assert.match(admin, /staff-1\.webp/);
-  assert.match(hosted, /\/assets\/staff\/\$\{file\}\?v=0\.5\.4-hotfix\.3/);
+  assert.match(hosted, new RegExp(`\\/assets\\/staff\\/\\$\\{file\\}\\?v=${version}`));
   assert.match(theme, /\$\{API_BASE\}\/assets\/staff\/\$\{file\}\?v=0\.5\.4-hotfix\.3/);
   assert.match(admin, /processStaffAvatarFile/);
   for (let i = 1; i <= 8; i += 1) {
