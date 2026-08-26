@@ -22,3 +22,14 @@
 
 /* v0.6.0.3 customer add-to-calendar actions */
 .success-calendar-actions{display:flex;justify-content:center;width:100%;max-width:470px;margin:18px auto 0}.success-calendar-actions .calendar-link{display:inline-flex;justify-content:center;align-items:center;gap:9px;width:100%;border:1px solid var(--line-strong);border-radius:10px;background:#fff;color:#344861;padding:11px 14px;text-decoration:none;font-size:13px;font-weight:750}.success-calendar-actions .calendar-link:hover{background:#fafcff;border-color:#aabbd1}.google-g-icon{width:19px;height:19px;display:inline-flex;flex:0 0 auto}.google-g-icon svg{width:100%;height:100%;display:block}.success-calendar-actions .hidden{display:none!important}
+
+/* v0.6.0.4 Google Calendar action polish */
+.success-calendar-actions{margin:16px auto 0}
+.success-calendar-actions .calendar-link{min-height:48px;justify-content:flex-start;gap:11px;padding:8px 12px;border:1px solid #d8e4f5;border-radius:11px;background:#f3f7ff;color:var(--brand);box-shadow:0 1px 2px rgba(42,70,112,.03);transition:background .16s ease,border-color .16s ease,box-shadow .16s ease,transform .16s ease}
+.success-calendar-actions .calendar-link:hover{background:#eef4ff;border-color:#bfd2ef;box-shadow:0 6px 16px rgba(47,111,237,.08);transform:translateY(-1px)}
+.success-calendar-actions .google-g-icon{width:30px;height:30px;padding:6px;border:1px solid #e3eaf3;border-radius:9px;background:#fff;box-shadow:0 1px 3px rgba(39,54,76,.06)}
+.success-calendar-actions .calendar-link-label{flex:1;text-align:left;color:#315b9d;font-size:13px;font-weight:750}
+.success-calendar-actions .calendar-link-arrow{display:grid;place-items:center;width:24px;height:24px;border-radius:8px;color:#6f8bb4;font-size:16px;transition:transform .16s ease}
+.success-calendar-actions .calendar-link:hover .calendar-link-arrow{transform:translateX(2px)}
+
+.staff-avatar.customer.preset-nova{background:linear-gradient(145deg,#477dbb,#4fa08c)}

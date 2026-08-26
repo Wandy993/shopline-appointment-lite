@@ -1,6 +1,6 @@
 # Email delivery and notification architecture
 
-Appointment Lite v0.6.0.3 keeps email independent from Google Calendar. A merchant or staff notification recipient can use Gmail, QQ, 163, Outlook, or a normal enterprise mailbox; the recipient does not need a Google account or SHOPLINE Admin access.
+Appointment Lite v0.6.0.4 keeps email independent from Google Calendar. A merchant or staff notification recipient can use Gmail, QQ, 163, Outlook, or a normal enterprise mailbox; the recipient does not need a Google account or SHOPLINE Admin access.
 
 ## Notification routing
 

@@ -4,7 +4,7 @@ import { Staff } from '../models/Staff.js';
 import { StaffReservation } from '../models/StaffReservation.js';
 import { bookingModeFor, minutesFromTime, windowsForDate, isDateAllowed } from '../lib/slots.js';
 
-const staffAvatarPresetFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp' };
+const staffAvatarPresetFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
 const staffAvatarPresetData = new Map(Object.entries(staffAvatarPresetFiles).map(([preset, file]) => {
   try {
     const bytes = readFileSync(new URL(`../../public/staff-avatars/${file}`, import.meta.url));

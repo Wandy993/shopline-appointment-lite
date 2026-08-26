@@ -1,10 +1,10 @@
 # Appointment Lite
 
-> v0.6.0.3 — Business Calendar UX Cleanup
+> v0.6.0.4 — Storefront Calendar Button + Staff Avatar Library
 
-Appointment Lite uses one optional **Business Google Calendar** per store. Staff do not need Google access: merchants add staff email addresses for assignment notifications. Customer confirmation surfaces provide one clean **Add to Google Calendar** action; Google guest invitations are disabled by default architecture to avoid unknown-sender invitation warnings.
+Appointment Lite uses one optional **Business Google Calendar** per store. Staff do not need Google access: merchants add staff email addresses for assignment notifications. Customer confirmation now uses a polished Appointment Lite-style **Add to Google Calendar** action, and the staff editor ships with a clearer nine-portrait built-in avatar library.
 
-Release `v0.6.0.3` finalizes the **Business Calendar UX**: merchant and staff email notifications work with any normal email address, customers get one clean Google Calendar action, and one store-wide Google Calendar can sync all appointments. Staff no longer connect personal Google accounts from the merchant admin. Appointment Lite does not split these capabilities into Free/Pro feature tiers.
+Release `v0.6.0.4` polishes the customer calendar action and replaces the previous staff avatar presets with nine locally bundled, higher-resolution portraits. Merchant/staff notification architecture and the single Business Google Calendar model remain unchanged.
 
 Appointment Lite now supports two booking entry models:
 
@@ -19,6 +19,16 @@ Typical scenarios include furniture installation and measurements, showroom visi
 
 
 
+
+## v0.6.0.4 Storefront Calendar Button + Staff Avatar Library
+
+- Redesigns the customer **Add to Google Calendar** action as an Appointment Lite soft-secondary control with the official multicolor Google G, a clearer visual hierarchy, and consistent hover behavior.
+- Applies the same calendar-action treatment to the Theme App Block and hosted booking confirmation page.
+- Replaces the previous eight portrait assets with nine user-supplied 1024px headshots, optimized to 640px WebP for sharp storefront/admin rendering without multi-megabyte downloads.
+- Preserves all existing avatar preset IDs for stored staff profiles and adds one new `nova` preset for the ninth portrait.
+- Keeps custom image upload and initials fallback unchanged.
+- Expands the staff avatar picker to a clearer nine-portrait library and updates cache/version markers to `0.6.0.4`.
+- Updates the Theme App Extension to `0.6.0.4`, so this release requires `sl extension push`.
 
 ## v0.6.0.3 Business Calendar UX Cleanup
 

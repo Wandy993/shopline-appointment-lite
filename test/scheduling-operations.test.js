@@ -138,7 +138,7 @@ test('admin and hosted booking UI expose Scheduling Operations service types', a
 test('theme App Block honors the booking-window max date, release version, and Arctic Blue', async () => {
   const asset = await readFile(new URL('../theme-extension-source/public/appointment-lite.js', import.meta.url), 'utf8');
   const stylesheet = await readFile(new URL('../theme-extension-source/public/appointment-lite.css', import.meta.url), 'utf8');
-  const escapedVersion = '0\\.6\\.0\\.3';
+  const escapedVersion = '0\\.6\\.0\\.4';
   assert.match(asset, /bookingWindowUntil/);
   assert.match(asset, new RegExp(`const VERSION = '${escapedVersion}'`));
   assert.match(asset, /#2F6FED/);

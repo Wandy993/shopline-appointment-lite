@@ -1,4 +1,4 @@
-# Use the one-click Mac release command delivered alongside Appointment Lite v0.6.0.3.
+# Use the one-click Mac release command delivered alongside Appointment Lite v0.6.0.4.
 # It performs backup, safe overlay, obsolete plan-service cleanup, npm ci, full tests,
 # JavaScript checks, Theme App Extension source sync, Git push, Railway deployment,
 # and SHOPLINE `sl extension push` in one run.

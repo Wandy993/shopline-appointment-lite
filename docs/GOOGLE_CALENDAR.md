@@ -1,6 +1,6 @@
 # Google Calendar
 
-Appointment Lite v0.6.0.3 uses a merchant-first calendar model.
+Appointment Lite v0.6.0.4 uses a merchant-first calendar model.
 
 - The merchant optionally connects **one Business Google Calendar** for the store.
 - Confirmed bookings, reschedules and cancellations sync to that business calendar.

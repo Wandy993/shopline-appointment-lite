@@ -379,11 +379,11 @@ function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char]);
 }
 
-const staffAvatarPresets = ['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose'];
-const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp' };
+const staffAvatarPresets = ['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose', 'nova'];
+const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
 function staffPresetImage(preset) {
   const file = staffAvatarFiles[preset] || staffAvatarFiles.aurora;
-  return `<img src="/assets/staff/${file}?v=0.6.0.3" alt="" loading="lazy" decoding="async">`;
+  return `<img src="/assets/staff/${file}?v=0.6.0.4" alt="" loading="lazy" decoding="async">`;
 }
 let staffAvatarDraft = { kind: 'preset', value: 'aurora' };
 
@@ -415,7 +415,7 @@ function renderStaffAvatarPresets() {
   const root = $('#staffAvatarPresets');
   if (!root) return;
   const name = $('#staffName')?.value || 'Staff';
-  root.innerHTML = staffAvatarPresets.map(preset => `<button type="button" class="staff-avatar-preset" data-avatar-preset="${preset}" aria-label="${preset}">${staffAvatarMarkup({ name, avatar: { kind: 'preset', value: preset } }, 'preset-button')}</button>`).join('');
+  root.innerHTML = staffAvatarPresets.map((preset, index) => `<button type="button" class="staff-avatar-preset" data-avatar-preset="${preset}" aria-label="Staff portrait ${index + 1}">${staffAvatarMarkup({ name, avatar: { kind: 'preset', value: preset } }, 'preset-button')}</button>`).join('');
   root.querySelectorAll('[data-avatar-preset]').forEach(button => button.addEventListener('click', () => setStaffAvatarDraft({ kind: 'preset', value: button.dataset.avatarPreset }, name)));
   setStaffAvatarDraft(staffAvatarDraft, name);
 }

@@ -76,7 +76,7 @@ test('public and admin routes expose product, direct, and dual booking channels'
 
 test('theme App Block renders the service title and matches the release version', async () => {
   const asset = await readFile(new URL('../theme-extension-source/public/appointment-lite.js', import.meta.url), 'utf8');
-  const escapedVersion = '0\\.6\\.0\\.3';
+  const escapedVersion = '0\\.6\\.0\\.4';
   assert.match(asset, /rule\.serviceTitle \|\| rule\.productTitle/);
   assert.match(asset, new RegExp(`const VERSION = '${escapedVersion}'`));
 });

@@ -1,7 +1,7 @@
 {
   "name": "appointment-lite",
-  "version": "0.6.0.3",
-  "description": "SHOPLINE appointment scheduling with merchant/staff email notifications, customer add-to-calendar links, and optional business or personal Google Calendar sync.",
+  "version": "0.6.0.4",
+  "description": "SHOPLINE appointment scheduling with merchant/staff email notifications, a polished customer Google Calendar action, a bundled staff portrait library, and optional business Google Calendar sync.",
   "type": "module",
   "engines": {
     "node": ">=20"

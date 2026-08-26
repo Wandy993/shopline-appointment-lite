@@ -181,7 +181,7 @@ export function validateStaffInput(body) {
   if (!name) errors.push('Staff name is required.');
   if (email && !EMAIL_PATTERN.test(email)) errors.push('Enter a valid staff email address.');
 
-  const presetIds = new Set(['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose']);
+  const presetIds = new Set(['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose', 'nova']);
   const requestedAvatar = body.avatar && typeof body.avatar === 'object' ? body.avatar : {};
   const avatarKind = ['preset', 'custom', 'initials'].includes(requestedAvatar.kind) ? requestedAvatar.kind : 'preset';
   let avatarValue = text(requestedAvatar.value, 50000);
