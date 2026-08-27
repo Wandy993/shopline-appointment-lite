@@ -62,7 +62,7 @@ test('v0.6.6 supports soft deletion with a custom second confirmation for bookin
 
 test('v0.6.6 release version is aligned', async () => {
   const pkg = JSON.parse(await source('package.json'));
-  assert.equal(pkg.version, '0.6.9');
+  assert.equal(pkg.version, '0.6.10');
 });
 
 test('v0.6.6 deleting an active booking soft-deletes it and releases it from active status', async () => {

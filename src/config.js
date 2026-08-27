@@ -34,6 +34,10 @@ export const config = Object.freeze({
   sessionSecret: required('SESSION_SECRET', 'development-only-change-me'),
   cookieSameSite: process.env.COOKIE_SAME_SITE || 'lax',
   publicAllowedOrigins: (process.env.PUBLIC_ALLOWED_ORIGINS || '').split(',').map(v => v.trim()).filter(Boolean),
+  legal: {
+    operatorName: process.env.LEGAL_OPERATOR_NAME || 'Appointment Lite',
+    supportEmail: process.env.LEGAL_SUPPORT_EMAIL || ''
+  },
   googleCalendar: {
     clientId: process.env.GOOGLE_CALENDAR_CLIENT_ID || '',
     clientSecret: process.env.GOOGLE_CALENDAR_CLIENT_SECRET || '',

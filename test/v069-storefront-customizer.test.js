@@ -58,7 +58,7 @@ test('v0.6.9 merchant admin has a live storefront button and dialog customizer',
   }
   assert.match(app, /function renderStorefrontPreview\(\)/);
   assert.match(app, /api\('\/storefront\/settings', \{ method: 'PUT'/);
-  assert.match(css, /v0\.6\.9 — Storefront button \+ booking dialog customizer/);
+  assert.match(css, /v0.6.9 — Storefront button \+ booking dialog customizer/);
 });
 
 test('v0.6.9 Theme App Block applies merchant button width colors text and modal visibility', async () => {
@@ -93,13 +93,13 @@ test('v0.6.9 release versions stay aligned', async () => {
   const [pkgText, adminView, bookView, theme, health, release] = await Promise.all([
     source('package.json'), source('src/views/admin.js'), source('src/views/book.js'), source('theme-extension-source/public/appointment-lite.js'), source('src/app.js'), source('scripts/build-release.sh')
   ]);
-  assert.equal(JSON.parse(pkgText).version, '0.6.9');
-  assert.match(adminView, /styles\.css\?v=0\.6\.9/);
-  assert.match(adminView, /app\.js\?v=0\.6\.9/);
-  assert.match(bookView, /styles\.css\?v=0\.6\.9/);
-  assert.match(bookView, /app\.js\?v=0\.6\.9/);
-  assert.match(theme, /const VERSION = '0\.6\.9'/);
-  assert.match(health, /version: '0\.6\.9'/);
-  assert.match(release, /RELEASE_VERSION="0\.6\.9"/);
-  assert.match(release, /storefront-customizer/);
+  assert.equal(JSON.parse(pkgText).version, '0.6.10');
+  assert.match(adminView, /styles\.css\?v=0.6.10/);
+  assert.match(adminView, /app\.js\?v=0.6.10/);
+  assert.match(bookView, /styles\.css\?v=0.6.10/);
+  assert.match(bookView, /app\.js\?v=0.6.10/);
+  assert.match(theme, /const VERSION = '0.6.10'/);
+  assert.match(health, /version: '0.6.10'/);
+  assert.match(release, /RELEASE_VERSION="0.6.10"/);
+  assert.match(release, /legal-pages-faq/);
 });

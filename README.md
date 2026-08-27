@@ -1,5 +1,27 @@
 # Appointment Lite
 
+> v0.6.10 — Legal Pages & FAQ
+
+Appointment Lite v0.6.10 publishes App Store-ready Chinese and English Privacy Policy and FAQ pages as public routes that do not require SHOPLINE admin authentication.
+
+## v0.6.10 Legal Pages & FAQ
+
+- Adds `/zh-cn/privacy` and `/en/privacy` with privacy coverage for SHOPLINE store/product/order data, booking customers, staff, locations, transactional email, Business Google Calendar, retention, uninstallation, privacy rights, and data deletion requests.
+- Adds `/zh-cn/faq` and `/en/faq` with the same complete 45-question help center.
+- Adds FAQ keyword search and native accordion sections with no third-party frontend dependency.
+- Adds `/privacy` and `/faq` language shortcuts: Chinese browser languages redirect to `zh-cn`; all other languages default to English.
+- Keeps all four App Store URLs public and independent from merchant OAuth, App Bridge, `shop` query parameters, or admin sessions.
+- Adds optional `LEGAL_OPERATOR_NAME` and `LEGAL_SUPPORT_EMAIL` environment settings. When no support email is configured, the legal page points users to the official SHOPLINE App Store support contact instead of rendering a fake email address.
+
+Production URLs after Railway deploy:
+
+- `https://appointment.toolkit.fans/zh-cn/privacy`
+- `https://appointment.toolkit.fans/en/privacy`
+- `https://appointment.toolkit.fans/zh-cn/faq`
+- `https://appointment.toolkit.fans/en/faq`
+
+See [Legal Pages & FAQ](docs/V0610_LEGAL_PAGES_FAQ.md).
+
 > v0.6.9 — Storefront Customizer
 
 Appointment Lite v0.6.9 adds merchant-controlled storefront styling so the booking entry and customer booking UI can match each SHOPLINE theme without changing service scheduling logic.

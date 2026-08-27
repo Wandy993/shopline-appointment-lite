@@ -11,6 +11,7 @@ import { errorHandler, notFound } from './middleware/errors.js';
 import { adminPage } from './views/admin.js';
 import { managePage } from './views/manage.js';
 import { bookingPage } from './views/book.js';
+import { privacyPage, faqPage, preferredLegalLocale } from './views/legal.js';
 import { shoplinePaidBookingWebhook } from './routes/shopline-webhooks.js';
 
 export function createApp() {
@@ -31,8 +32,16 @@ export function createApp() {
   app.use('/manage/assets', express.static('public/manage', { maxAge: config.nodeEnv === 'production' ? '1h' : 0 }));
   app.use('/book/assets', express.static('public/book', { maxAge: config.nodeEnv === 'production' ? '1h' : 0 }));
   app.use('/integration-assets', express.static('public/integrations', { maxAge: config.nodeEnv === 'production' ? '1h' : 0 }));
+  app.use('/legal/assets', express.static('public/legal', { maxAge: config.nodeEnv === 'production' ? '1h' : 0 }));
 
-  app.get('/health', (req, res) => res.json({ ok: true, service: 'appointment-lite', version: '0.6.9' }));
+  app.get('/health', (req, res) => res.json({ ok: true, service: 'appointment-lite', version: '0.6.10' }));
+  const legalHeaders = { 'Cache-Control': 'public, max-age=3600', 'Referrer-Policy': 'strict-origin-when-cross-origin' };
+  app.get('/privacy', (req, res) => res.redirect(302, `/${preferredLegalLocale(req.get('accept-language'))}/privacy`));
+  app.get('/faq', (req, res) => res.redirect(302, `/${preferredLegalLocale(req.get('accept-language'))}/faq`));
+  app.get('/zh-cn/privacy', (req, res) => res.set(legalHeaders).type('html').send(privacyPage('zh-cn')));
+  app.get('/en/privacy', (req, res) => res.set(legalHeaders).type('html').send(privacyPage('en')));
+  app.get('/zh-cn/faq', (req, res) => res.set(legalHeaders).type('html').send(faqPage('zh-cn')));
+  app.get('/en/faq', (req, res) => res.set(legalHeaders).type('html').send(faqPage('en')));
   app.get('/', (req, res) => {
     if (req.query.handle || req.query.appkey) return res.redirect(`/auth/install?${new URLSearchParams(req.query)}`);
     res.type('html').send('<!doctype html><title>Appointment Lite</title><h1>Appointment Lite is running</h1><p>Open this app from SHOPLINE Admin to continue.</p>');
