@@ -5,7 +5,7 @@ const BOOKING_SOURCES = new Set(['product', 'direct', 'both']);
 const SERVICE_TYPES = new Set(['appointment', 'product', 'in_store', 'onsite', 'consultation', 'class', 'other']);
 const BOOKING_MODES = new Set(['slot', 'all_day', 'multi_slot']);
 const COMMERCE_MODES = new Set(['standalone_free', 'standalone_paid', 'product_pre_purchase', 'product_post_purchase']);
-const ACTIVE_COMMERCE_MODES = new Set(['standalone_free', 'product_pre_purchase']);
+const ACTIVE_COMMERCE_MODES = new Set(['standalone_free', 'standalone_paid', 'product_pre_purchase']);
 const STAFF_ASSIGNMENT_MODES = new Set(['none', 'any', 'customer_choice', 'fixed']);
 const OBJECT_ID_PATTERN = /^[a-f\d]{24}$/i;
 
@@ -60,6 +60,10 @@ export function validateRuleInput(body) {
   const needsProductBinding = usesProductPage || ['standalone_paid', 'product_pre_purchase', 'product_post_purchase'].includes(commerceMode);
   const productId = needsProductBinding ? text(body.productId, 100) : '';
   const productTitle = needsProductBinding ? text(body.productTitle, 255) : '';
+  const productVariantId = commerceMode === 'standalone_paid' ? text(body.productVariantId, 100) : '';
+  const productVariantTitle = commerceMode === 'standalone_paid' ? text(body.productVariantTitle, 255) : '';
+  const productVariantPrice = commerceMode === 'standalone_paid' ? text(body.productVariantPrice, 40) : '';
+  const paymentHoldMinutes = commerceMode === 'standalone_paid' ? Number(body.paymentHoldMinutes ?? 15) : 15;
   const serviceTitle = text(body.serviceTitle || body.productTitle, 255);
   const rawStaffAssignment = body.staffAssignment && typeof body.staffAssignment === 'object' ? body.staffAssignment : {};
   const staffAssignmentMode = STAFF_ASSIGNMENT_MODES.has(rawStaffAssignment.mode) ? rawStaffAssignment.mode : 'none';
@@ -68,14 +72,12 @@ export function validateRuleInput(body) {
   if (['any', 'customer_choice'].includes(staffAssignmentMode) && staffIds.length < 1) errors.push('Choose at least one staff member for this assignment mode.');
 
   if (!serviceTitle) errors.push('Service name is required.');
-  if (!ACTIVE_COMMERCE_MODES.has(commerceMode)) {
-    errors.push(commerceMode === 'standalone_paid'
-      ? 'Paid appointment checkout is defined but not enabled in this release.'
-      : 'Post-purchase appointment scheduling is defined but not enabled in this release.');
-  }
+  if (!ACTIVE_COMMERCE_MODES.has(commerceMode)) errors.push('Post-purchase appointment scheduling is defined but not enabled in this release.');
   if (!validTimeZone(timezone)) errors.push('Choose a valid IANA service time zone.');
   if (needsProductBinding && !productId) errors.push('Product is required for this booking flow.');
   if (needsProductBinding && !productTitle) errors.push('Product title is required for this booking flow.');
+  if (commerceMode === 'standalone_paid' && !productVariantId) errors.push('Choose the SHOPLINE variant customers will pay for.');
+  if (commerceMode === 'standalone_paid' && (!Number.isInteger(paymentHoldMinutes) || paymentHoldMinutes < 5 || paymentHoldMinutes > 30)) errors.push('Payment hold time must be 5–30 minutes.');
   if (bookingMode !== 'all_day' && (!Number.isInteger(duration) || duration < 5 || duration > 480)) errors.push('Duration must be 5–480 minutes.');
   if (bookingMode !== 'all_day' && (!Number.isInteger(buffer) || buffer < 0 || buffer > 240)) errors.push('Buffer must be 0–240 minutes.');
   if (!Number.isInteger(capacity) || capacity < 1 || capacity > 100) errors.push(bookingMode === 'all_day' ? 'Capacity must be 1–100 bookings per day.' : 'Capacity must be 1–100 bookings per time slot.');
@@ -121,6 +123,7 @@ export function validateRuleInput(body) {
     bookingSource, commerceMode, sourceType, serviceType, bookingMode, sessionsRequired, serviceTitle, timezone,
     productId, productTitle,
     productHandle: needsProductBinding ? text(body.productHandle, 255) : '',
+    productVariantId, productVariantTitle, productVariantPrice, paymentHoldMinutes,
     serviceDescription: text(body.serviceDescription, 500),
     duration, buffer, capacity, minimumNoticeMinutes, bookingWindowDays,
     dateFrom, dateUntil, weeklyAvailability, availabilityExceptions,

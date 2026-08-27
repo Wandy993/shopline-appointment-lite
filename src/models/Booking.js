@@ -22,13 +22,13 @@ const bookingSnapshotSchema = new mongoose.Schema({
   staff: { type: String, default: '' },
   staffId: { type: mongoose.Schema.Types.ObjectId, ref: 'Staff', default: null },
   staffEmail: { type: String, default: '' },
-  status: { type: String, enum: ['confirmed', 'cancelled', 'completed', 'no_show'], default: 'confirmed' }
+  status: { type: String, enum: ['pending_payment', 'confirmed', 'cancelled', 'completed', 'no_show', 'payment_expired', 'payment_conflict'], default: 'confirmed' }
 }, { _id: false });
 
 const bookingEventSchema = new mongoose.Schema({
   type: {
     type: String,
-    enum: ['created', 'customer_rescheduled', 'merchant_updated', 'customer_cancelled', 'merchant_cancelled', 'merchant_completed', 'merchant_no_show'],
+    enum: ['payment_started', 'payment_confirmed', 'payment_expired', 'payment_conflict', 'created', 'customer_rescheduled', 'merchant_updated', 'customer_cancelled', 'merchant_cancelled', 'merchant_completed', 'merchant_no_show'],
     required: true
   },
   actor: { type: String, enum: ['customer', 'merchant', 'system'], required: true },
@@ -62,6 +62,7 @@ const bookingSchema = new mongoose.Schema({
   serviceType: { type: String, enum: ['appointment', 'product', 'in_store', 'onsite', 'consultation', 'class', 'other'], default: 'appointment' },
   bookingMode: { type: String, enum: ['slot', 'all_day', 'multi_slot'], default: 'slot', index: true },
   productId: { type: String, default: '' },
+  productVariantId: { type: String, default: '' },
   productTitle: { type: String, required: true },
   date: { type: String, required: true, match: /^\d{4}-\d{2}-\d{2}$/ },
   time: { type: String, required: true, match: /^([01]\d|2[0-3]):[0-5]\d$/ },
@@ -89,7 +90,17 @@ const bookingSchema = new mongoose.Schema({
   calendarSyncStatus: { type: String, enum: ['pending', 'synced', 'error', 'paused', 'not_connected'], default: 'pending' },
   calendarSyncError: { type: String, default: '', maxlength: 500 },
   lastCalendarSyncAt: Date,
-  status: { type: String, enum: ['confirmed', 'cancelled', 'completed', 'no_show'], default: 'confirmed', index: true },
+  payment: {
+    holdExpiresAt: Date,
+    checkoutStartedAt: Date,
+    confirmedAt: Date,
+    shoplineOrderId: { type: String, default: '', maxlength: 100 },
+    shoplineOrderName: { type: String, default: '', maxlength: 100 },
+    financialStatus: { type: String, default: '', maxlength: 40 },
+    lastWebhookId: { type: String, default: '', maxlength: 120 },
+    failureReason: { type: String, default: '', maxlength: 500 }
+  },
+  status: { type: String, enum: ['pending_payment', 'confirmed', 'cancelled', 'completed', 'no_show', 'payment_expired', 'payment_conflict'], default: 'confirmed', index: true },
   cancelledAt: Date,
   completedAt: Date,
   noShowAt: Date,
@@ -100,5 +111,8 @@ bookingSchema.index(
   { shopId: 1, ruleId: 1, slotKey: 1, slotPosition: 1 },
   { unique: true, partialFilterExpression: { status: 'confirmed' }, name: 'capacity_position_per_slot' }
 );
+
+bookingSchema.index({ 'payment.shoplineOrderId': 1 }, { sparse: true, name: 'paid_booking_order_lookup' });
+bookingSchema.index({ status: 1, 'payment.holdExpiresAt': 1 }, { name: 'paid_booking_hold_expiry' });
 
 export const Booking = mongoose.model('Booking', bookingSchema);

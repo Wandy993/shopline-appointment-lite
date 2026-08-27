@@ -147,7 +147,7 @@ function setupTimezonePicker() {
 
 const staffPresetClasses = new Set(['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose', 'nova']);
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
-function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="/assets/staff/${file}?v=0.6.1" alt="" loading="lazy" decoding="async">`;}
+function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="/assets/staff/${file}?v=0.6.2" alt="" loading="lazy" decoding="async">`;}
 
 function staffAvatarMarkup(item, className = '') {
   const avatar = item?.avatar || {};
@@ -360,6 +360,12 @@ function renderService(payload) {
   setStaffPickerValue(null);
   renderStaffPicker(staffOptions);
   $('#timeLabel').textContent = mode === 'all_day' ? 'Availability' : mode === 'multi_slot' ? 'Available sessions' : 'Available time slots';
+  const paid = rule.commerceMode === 'standalone_paid';
+  $('#submitBooking').textContent = paid ? 'Continue to checkout' : 'Confirm booking';
+  const actionNote = document.querySelector('.booking-actions p');
+  if (actionNote) actionNote.textContent = paid
+    ? `Your selected time will be held for ${Number(rule.payment?.holdMinutes || 15)} minutes while you complete payment.`
+    : 'You can reschedule or cancel your appointment later.';
   if (mode === 'multi_slot') renderSelectedSessions();
   const initial = findInitialDate(minBookableDate);
   calendarCursor = monthKey(initial);
@@ -476,7 +482,8 @@ $('#bookingForm').addEventListener('submit', async event => {
   const form = new FormData(event.currentTarget);
   const submit = $('#submitBooking');
   submit.disabled = true;
-  submit.textContent = 'Confirming…';
+  const paid = rule.commerceMode === 'standalone_paid';
+  submit.textContent = paid ? 'Holding your time…' : 'Confirming…';
   errorBox.classList.add('hidden');
   try {
     const body = {
@@ -489,7 +496,12 @@ $('#bookingForm').addEventListener('submit', async event => {
       note: form.get('note'),
       answers: [...document.querySelectorAll('[data-question]')].map(input => ({ question: input.dataset.question, answer: input.value }))
     };
-    const payload = await api('/api/public/bookings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const payload = await api(paid ? '/api/public/paid-bookings' : '/api/public/bookings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (paid) {
+      submit.textContent = 'Opening secure checkout…';
+      window.location.assign(payload.checkoutUrl);
+      return;
+    }
     $('#bookingView').classList.add('hidden');
     $('#successTitle').textContent = `${rule.serviceTitle} is confirmed.`;
     $('#successWhen').textContent = formatBookingWhen(payload.booking);
@@ -509,7 +521,12 @@ $('#bookingForm').addEventListener('submit', async event => {
       }
       if (selectedDate) loadAvailability(selectedDate);
     }
-  } finally { submit.disabled = false; submit.textContent = 'Confirm booking'; }
+  } finally {
+    if (document.visibilityState === 'visible') {
+      submit.disabled = false;
+      submit.textContent = paid ? 'Continue to checkout' : 'Confirm booking';
+    }
+  }
 });
 
 (async function load() {

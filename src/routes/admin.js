@@ -8,8 +8,8 @@ import { StaffReservation } from '../models/StaffReservation.js';
 import { CalendarConnection } from '../models/CalendarConnection.js';
 import { validateAdminBookingInput, validateBookingStatus, validateRuleInput, validateStaffInput } from '../lib/validation.js';
 import { requireAdmin, requireCsrf } from '../middleware/auth.js';
-import { shoplineGet, syncShopMetadata } from '../services/shopline.js';
-import { syncProductCatalog } from '../services/product-catalog.js';
+import { ensurePaidBookingWebhooks, shoplineGet, syncShopMetadata } from '../services/shopline.js';
+import { getProductVariants, syncProductCatalog } from '../services/product-catalog.js';
 import { cancelBookingByMerchant, setBookingStatusByMerchant, updateBookingByMerchant } from '../services/bookings.js';
 import { emailStatus, sendTestEmail } from '../services/email.js';
 import { zonedNow } from '../lib/slots.js';
@@ -145,6 +145,14 @@ adminRouter.get('/products', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+adminRouter.get('/products/:productId/variants', async (req, res, next) => {
+  try {
+    const variants = await getProductVariants(req.shop._id, req.params.productId);
+    res.set('Cache-Control', 'no-store');
+    res.json({ variants });
+  } catch (error) { next(error); }
+});
+
 
 adminRouter.get('/staff', async (req, res) => {
   const [staff, rules] = await Promise.all([
@@ -228,10 +236,10 @@ adminRouter.put('/staff/:id', async (req, res, next) => {
     if (errors.length) return res.status(422).json({ error: 'VALIDATION_ERROR', message: errors.join(' '), fields: errors });
     if (value.status === 'inactive') {
       const [activeBookings, assignedServices] = await Promise.all([
-        Booking.countDocuments({ shopId: req.shop._id, staffId: staff._id, status: 'confirmed' }),
+        Booking.countDocuments({ shopId: req.shop._id, staffId: staff._id, status: { $in: ['confirmed', 'pending_payment'] } }),
         AppointmentRule.countDocuments({ shopId: req.shop._id, 'staffAssignment.staffIds': staff._id })
       ]);
-      if (activeBookings > 0) return res.status(409).json({ error: 'STAFF_HAS_ACTIVE_BOOKINGS', message: `This staff member still has ${activeBookings} confirmed booking${activeBookings === 1 ? '' : 's'}. Reassign or finish them before making the staff member inactive.` });
+      if (activeBookings > 0) return res.status(409).json({ error: 'STAFF_HAS_ACTIVE_BOOKINGS', message: `This staff member still has ${activeBookings} active booking${activeBookings === 1 ? '' : 's'} or payment hold${activeBookings === 1 ? '' : 's'}. Reassign, finish, or wait for pending checkout holds to expire first.` });
       if (assignedServices > 0) return res.status(409).json({ error: 'STAFF_ASSIGNED_TO_SERVICES', message: `This staff member is still assigned to ${assignedServices} service${assignedServices === 1 ? '' : 's'}. Remove the staff member from those services before making them inactive.` });
     }
     Object.assign(staff, value);
@@ -245,10 +253,10 @@ adminRouter.delete('/staff/:id', async (req, res, next) => {
     const staff = await Staff.findOne({ _id: req.params.id, shopId: req.shop._id }).select('_id name');
     if (!staff) return res.status(404).json({ error: 'NOT_FOUND', message: 'Staff member not found.' });
     const [activeBookings, assignedServices] = await Promise.all([
-      Booking.countDocuments({ shopId: req.shop._id, staffId: staff._id, status: 'confirmed' }),
+      Booking.countDocuments({ shopId: req.shop._id, staffId: staff._id, status: { $in: ['confirmed', 'pending_payment'] } }),
       AppointmentRule.countDocuments({ shopId: req.shop._id, 'staffAssignment.staffIds': staff._id })
     ]);
-    if (activeBookings > 0) return res.status(409).json({ error: 'STAFF_HAS_ACTIVE_BOOKINGS', message: `This staff member still has ${activeBookings} confirmed booking${activeBookings === 1 ? '' : 's'}. Reassign or finish them before deleting the staff member.` });
+    if (activeBookings > 0) return res.status(409).json({ error: 'STAFF_HAS_ACTIVE_BOOKINGS', message: `This staff member still has ${activeBookings} active booking${activeBookings === 1 ? '' : 's'} or payment hold${activeBookings === 1 ? '' : 's'}. Reassign, finish, or wait for pending checkout holds to expire first.` });
     if (assignedServices > 0) return res.status(409).json({ error: 'STAFF_ASSIGNED_TO_SERVICES', message: `This staff member is still assigned to ${assignedServices} service${assignedServices === 1 ? '' : 's'}. Remove the staff member from those services before deleting the staff member.` });
     await Promise.all([
       StaffReservation.deleteMany({ shopId: req.shop._id, staffId: staff._id }),
@@ -292,6 +300,13 @@ adminRouter.post('/rules', async (req, res, next) => {
     if (errors.length) return res.status(422).json({ error: 'VALIDATION_ERROR', message: errors.join(' '), fields: errors });
     const staffError = await validateManagedStaffSelection(req.shop._id, value);
     if (staffError) return res.status(422).json({ error: 'VALIDATION_ERROR', message: staffError });
+    if (value.commerceMode === 'standalone_paid') {
+      const webhookResults = await ensurePaidBookingWebhooks(req.shop._id);
+      if (webhookResults.some(item => !item.ok)) {
+        console.warn('Paid booking webhook subscription needs attention', webhookResults);
+        return res.status(503).json({ error: 'PAID_CHECKOUT_SETUP_FAILED', message: 'Could not prepare SHOPLINE payment confirmation. Please try saving the service again.' });
+      }
+    }
     const rule = await AppointmentRule.create({ shopId: req.shop._id, ...value });
     res.status(201).json({ rule });
   } catch (error) {
@@ -308,6 +323,13 @@ adminRouter.put('/rules/:id', async (req, res, next) => {
     if (errors.length) return res.status(422).json({ error: 'VALIDATION_ERROR', message: errors.join(' '), fields: errors });
     const staffError = await validateManagedStaffSelection(req.shop._id, value);
     if (staffError) return res.status(422).json({ error: 'VALIDATION_ERROR', message: staffError });
+    if (value.commerceMode === 'standalone_paid') {
+      const webhookResults = await ensurePaidBookingWebhooks(req.shop._id);
+      if (webhookResults.some(item => !item.ok)) {
+        console.warn('Paid booking webhook subscription needs attention', webhookResults);
+        return res.status(503).json({ error: 'PAID_CHECKOUT_SETUP_FAILED', message: 'Could not prepare SHOPLINE payment confirmation. Please try saving the service again.' });
+      }
+    }
     Object.assign(rule, value);
     await rule.save();
     res.json({ rule });
@@ -322,12 +344,12 @@ adminRouter.delete('/rules/:id', async (req, res) => {
   if (!rule) return res.status(404).json({ error: 'NOT_FOUND', message: 'Rule not found.' });
   const [bookingCount, confirmedBookingCount] = await Promise.all([
     Booking.countDocuments({ ruleId: rule._id, shopId: req.shop._id }),
-    Booking.countDocuments({ ruleId: rule._id, shopId: req.shop._id, status: 'confirmed' })
+    Booking.countDocuments({ ruleId: rule._id, shopId: req.shop._id, status: { $in: ['confirmed', 'pending_payment'] } })
   ]);
   if (confirmedBookingCount > 0) {
     return res.status(409).json({
       error: 'RULE_HAS_ACTIVE_BOOKINGS',
-      message: `This service still has ${confirmedBookingCount} confirmed booking${confirmedBookingCount === 1 ? '' : 's'}. Cancel, complete, or mark them as no-show before deleting the service.`
+      message: `This service still has ${confirmedBookingCount} active booking${confirmedBookingCount === 1 ? '' : 's'} or payment hold${confirmedBookingCount === 1 ? '' : 's'}. Finish active bookings or wait for pending checkout holds to expire before deleting the service.`
     });
   }
   await Promise.all([
@@ -340,7 +362,7 @@ adminRouter.delete('/rules/:id', async (req, res) => {
 
 adminRouter.get('/bookings', async (req, res) => {
   const filter = { shopId: req.shop._id };
-  if (req.query.status && ['confirmed', 'cancelled', 'completed', 'no_show'].includes(req.query.status)) filter.status = req.query.status;
+  if (req.query.status && ['pending_payment', 'confirmed', 'cancelled', 'completed', 'no_show', 'payment_expired', 'payment_conflict'].includes(req.query.status)) filter.status = req.query.status;
   if (req.query.ruleId) filter.ruleId = req.query.ruleId;
   if (req.query.staffId) filter.staffId = req.query.staffId;
   if (req.query.from || req.query.to) {

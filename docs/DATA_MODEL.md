@@ -163,13 +163,27 @@ Customer guest invitations are disabled by live synchronization. `Booking.calend
 Customer-facing confirmation surfaces expose one **Add to Google Calendar** link generated from the canonical booking snapshot. The signed `.ics` route remains available internally for backward compatibility, but v0.6.0.3 no longer presents it as a customer download button.
 
 
-## v0.6.1 Booking commerce architecture
+## v0.6.2 paid booking lifecycle
 
-`AppointmentRule.commerceMode` is one of:
+`AppointmentRule.commerceMode` remains one of:
 
 - `standalone_free`
 - `standalone_paid`
 - `product_pre_purchase`
 - `product_post_purchase`
 
-The field is independent from `bookingSource`. `Booking.commerceMode` snapshots the rule value so historical bookings retain their commercial context. `standalone_paid` and `product_post_purchase` are modeled but intentionally gated until SHOPLINE checkout confirmation and paid-order verification are implemented.
+The field is independent from `bookingSource`, and `Booking.commerceMode` snapshots the rule value so historical records retain their commercial context. `standalone_paid` is active in v0.6.2; `product_post_purchase` remains gated for the order-linked scheduling milestone.
+
+Paid appointment rules additionally store `productVariantId`, variant title/price snapshots, and `paymentHoldMinutes` (5–30). A paid Booking starts as `pending_payment` and stores `payment.holdExpiresAt`, checkout start time, SHOPLINE order identity/financial status, and the last webhook ID. Normal `BookingReservation` and `StaffReservation` rows are created before checkout, so pending payment consumes capacity exactly like a confirmed appointment until the hold expires.
+
+Paid status transitions are:
+
+```text
+pending_payment -> confirmed
+pending_payment -> payment_expired
+payment_expired -> payment_conflict   (late payment)
+```
+
+`payment_expired` releases all appointment/staff reservations. A payment that arrives after release is recorded as `payment_conflict` instead of being auto-confirmed, because the capacity may already have been sold to another customer.
+
+`WebhookReceipt` stores the unique SHOPLINE webhook ID, topic, store ID, external order ID, processing status, and error metadata. This makes webhook retries idempotent and lets `orders/create` / `order_transactions/create` close the payment race regardless of delivery order.

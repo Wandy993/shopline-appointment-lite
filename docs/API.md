@@ -26,7 +26,7 @@ Requires the signed `al_session` HTTP-only cookie. Mutations also require `X-CSR
 - `POST /api/admin/staff` — create a staff member with weekly hours and availability exceptions
 - `PUT /api/admin/staff/:id` — edit contact details, status, and availability; deactivation is blocked while active bookings or service assignments remain
 - `DELETE /api/admin/staff/:id` — delete only after confirmed bookings are resolved and the member is removed from assigned services
-- `GET /api/admin/bookings?status=confirmed|cancelled|completed|no_show&ruleId=...&staffId=...&from=YYYY-MM-DD&to=YYYY-MM-DD` — max 1000 records; the admin UI also applies client-side text search and CSV export
+- `GET /api/admin/bookings?status=pending_payment|confirmed|cancelled|completed|no_show|payment_expired|payment_conflict&ruleId=...&staffId=...&from=YYYY-MM-DD&to=YYYY-MM-DD` — max 1000 records; the admin UI also applies client-side text search and CSV export
 - `PUT /api/admin/bookings/:id` — merchant date/time/location/staff edit for minute/hour bookings; managed staff reassignment is conflict-checked before the old assignment is released
 - `POST /api/admin/bookings/:id/cancel` — merchant cancellation
 - `POST /api/admin/bookings/:id/status` — merchant lifecycle update to `completed` or `no_show`
@@ -56,6 +56,9 @@ Requires the signed `al_session` HTTP-only cookie. Mutations also require `X-CSR
 - `GET /api/public/service?ruleId=RULE_ID`
 - `GET /api/public/availability?ruleId=RULE_ID&date=YYYY-MM-DD&staffId=STAFF_ID` — same staff-aware availability behavior as the product flow
 - `POST /api/public/bookings` with `ruleId`, customer fields, and the selection required by `bookingMode`
+- `POST /api/public/paid-bookings` — for `standalone_paid` only; validates the same selection/customer payload, reserves capacity as `pending_payment`, and returns `checkoutUrl` plus `holdExpiresAt` instead of a confirmed booking token
+
+Paid bookings are finalized asynchronously by the raw-body SHOPLINE webhook endpoint `POST /webhooks/shopline`, which handles `orders/create` and `order_transactions/create`. The endpoint verifies SHOPLINE HMAC headers and stores webhook IDs for idempotency.
 
 Both flows use the same scheduling engine and the same Theme/hosted behavior. Availability is `no-store`, policy-aware, and capacity-aware.
 

@@ -10,7 +10,7 @@ const base = overrides => ({
   bookingWindowDays: 90, minimumNoticeMinutes: 0, weeklyAvailability: weekly, ...overrides
 });
 
-test('v0.6.1 models the four commerce paths while activating the safe existing flows', () => {
+test('v0.6.2 models the four commerce paths while activating the safe existing flows', () => {
   const product = validateRuleInput(base({ commerceMode: 'product_pre_purchase' }));
   assert.deepEqual(product.errors, []);
   assert.equal(product.value.commerceMode, 'product_pre_purchase');
@@ -18,18 +18,21 @@ test('v0.6.1 models the four commerce paths while activating the safe existing f
   assert.deepEqual(free.errors, []);
   assert.equal(free.value.commerceMode, 'standalone_free');
   assert.equal(free.value.productId, '');
-  assert.match(validateRuleInput(base({ commerceMode: 'standalone_paid' })).errors.join(' '), /Paid appointment checkout is defined/);
+  const paid = validateRuleInput(base({ commerceMode: 'standalone_paid', productVariantId: '123456789', productVariantTitle: 'Default', productVariantPrice: '29.00', paymentHoldMinutes: 15 }));
+  assert.deepEqual(paid.errors, []);
+  assert.equal(paid.value.commerceMode, 'standalone_paid');
+  assert.equal(paid.value.productVariantId, '123456789');
   assert.match(validateRuleInput(base({ commerceMode: 'product_post_purchase' })).errors.join(' '), /Post-purchase appointment scheduling is defined/);
 });
 
-test('v0.6.1 allows appointment-only SHOPLINE product pages without treating them as product-purchase appointments', () => {
+test('v0.6.2 allows appointment-only SHOPLINE product pages without treating them as product-purchase appointments', () => {
   const result = validateRuleInput(base({ commerceMode: 'standalone_free', bookingSource: 'product' }));
   assert.deepEqual(result.errors, []);
   assert.equal(result.value.commerceMode, 'standalone_free');
   assert.equal(result.value.productId, 'gid-product-1');
 });
 
-test('v0.6.1 product-related bookings keep a product binding even when the entry is a direct booking page', () => {
+test('v0.6.2 product-related bookings keep a product binding even when the entry is a direct booking page', () => {
   const result = validateRuleInput(base({ commerceMode: 'product_pre_purchase', bookingSource: 'direct' }));
   assert.deepEqual(result.errors, []);
   assert.equal(result.value.productId, 'gid-product-1');
@@ -37,7 +40,7 @@ test('v0.6.1 product-related bookings keep a product binding even when the entry
   assert.match(missing.errors.join(' '), /Product is required/);
 });
 
-test('v0.6.1 admin separates commerce relationship from booking entry and gives template guidance', async () => {
+test('v0.6.2 admin separates commerce relationship from booking entry and gives template guidance', async () => {
   const [view, app, css] = await Promise.all([
     readFile(new URL('../src/views/admin.js', import.meta.url), 'utf8'),
     readFile(new URL('../public/admin/app.js', import.meta.url), 'utf8'),
@@ -45,7 +48,10 @@ test('v0.6.1 admin separates commerce relationship from booking entry and gives 
   ]);
   assert.match(view, /id="commerceMode"/);
   assert.match(view, /data-commerce-mode="standalone_free"/);
-  assert.match(view, /data-commerce-mode="standalone_paid" disabled/);
+  assert.match(view, /data-commerce-mode="standalone_paid"/);
+  assert.doesNotMatch(view, /data-commerce-mode="standalone_paid" disabled/);
+  assert.match(view, /id="paidVariantSelect"/);
+  assert.match(view, /id="paymentHoldMinutes"/);
   assert.match(view, /data-commerce-mode="product_pre_purchase"/);
   assert.match(view, /data-commerce-mode="product_post_purchase" disabled/);
   assert.match(view, /Booking entry/);
@@ -55,7 +61,7 @@ test('v0.6.1 admin separates commerce relationship from booking entry and gives 
   assert.match(css, /\.commerce-mode-grid/);
 });
 
-test('v0.6.1 snapshots commerce mode and never hides SHOPLINE buy buttons with storefront DOM hacks', async () => {
+test('v0.6.2 snapshots commerce mode and never hides SHOPLINE buy buttons with storefront DOM hacks', async () => {
   const [ruleModel, bookingModel, bookings, theme] = await Promise.all([
     readFile(new URL('../src/models/AppointmentRule.js', import.meta.url), 'utf8'),
     readFile(new URL('../src/models/Booking.js', import.meta.url), 'utf8'),

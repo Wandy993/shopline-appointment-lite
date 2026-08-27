@@ -2,7 +2,7 @@ const state = {
   csrf: '', shop: null, email: null, emailSettings: null, rules: [], bookings: [], products: [], staff: [], staffOperations: { date: '', timezone: '', staff: [], unassigned: [] }, staffOperationsView: 'list',
   ruleStep: 0, activeTemplate: 'confirmation', emailEditorReady: false, bookingView: 'list', calendarMonth: '',
   locale: 'en', currentView: 'dashboard', themeLinkLoaded: false, bootstrap: null, onboarding: null, lastTestEmail: '', ruleModeTouched: false, editingRule: false,
-  calendarSync: null, calendarStaffId: '', calendarPopup: null, calendarDayItems: {}
+  calendarSync: null, calendarStaffId: '', calendarPopup: null, calendarDayItems: {}, paidVariants: []
 };
 const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const viewLabels = {
@@ -28,7 +28,7 @@ const variables = ['customer_name', 'product_title', 'date', 'time', 'timezone',
 const serviceTypeLabels = { appointment: 'Appointment', product: 'Appointment', in_store: 'In-store appointment', onsite: 'Home / onsite service', consultation: 'Consultation', class: 'Class / course', other: 'Other service' };
 const bookingSourceLabels = { product: 'Product page', direct: 'Booking page', both: 'Product page + booking link' };
 const commerceModeLabels = { standalone_free: 'Standalone · no payment', standalone_paid: 'Standalone · payment required', product_pre_purchase: 'Product + appointment', product_post_purchase: 'Purchase first · schedule after' };
-const activeCommerceModes = new Set(['standalone_free', 'product_pre_purchase']);
+const activeCommerceModes = new Set(['standalone_free', 'standalone_paid', 'product_pre_purchase']);
 const productStatusLabels = { active: 'Published', draft: 'Draft' };
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -204,7 +204,7 @@ Object.assign(zh, {
   'New service': '新建服务', 'Loading services…': '正在加载服务…', 'SCHEDULING OPERATIONS': '预约运营',
   'Run your daily schedule in a list or calendar, update status, and export records when needed.': '通过列表或日历管理每日预约、更新状态，并按需导出记录。',
   'Export CSV': '导出 CSV', 'Search customer, service, or email': '搜索客户、服务或邮箱', 'All services': '全部服务', 'All statuses': '全部状态',
-  'Completed': '已完成', 'No-show': '未到店', 'List': '列表', 'Calendar': '日历', 'From': '开始日期', 'To': '结束日期', 'Clear filters': '清除筛选',
+  'Completed': '已完成', 'No-show': '未到店', 'Awaiting payment': '等待付款', 'Payment expired': '付款超时', 'Payment needs review': '付款需处理', 'List': '列表', 'Calendar': '日历', 'From': '开始日期', 'To': '结束日期', 'Clear filters': '清除筛选',
   'New appointment service': '新建预约服务', 'Choose how customers will book this service.': '选择客户如何预约这项服务。',
   'What kind of service is this?': '这是什么类型的服务？',
   'Product appointments use your SHOPLINE product page. Other services get a standalone booking link you can share anywhere.': '商品预约通过 SHOPLINE 商品页进入；其他服务会自动生成可分享的独立预约链接。',
@@ -304,7 +304,7 @@ Object.assign(zh, {
   'Customers buy first, then schedule the included service from an eligible order.': '客户先完成购买，再基于符合条件的订单预约配套服务。',
   'Installation, delivery setup, onboarding, or post-purchase service.': '适合安装、配送调试、上门配置或售后服务。',
   'No checkout is required. If you use a SHOPLINE product page, use a dedicated appointment-only template so other products keep their normal purchase buttons.': '无需结账。如果使用 SHOPLINE 商品页，请为纯预约商品使用独立的预约模板，避免影响其他商品的正常购买按钮。',
-  'Customers will select a slot before checkout. The checkout activation is intentionally reserved for the paid-booking milestone.': '客户将先选择预约时段，再进入结账；支付确认将在后续付费预约版本中启用。',
+  'Customers choose an available time first. Appointment Lite temporarily holds that capacity, then sends them to SHOPLINE checkout. The booking is confirmed only after payment.': '客户先选择可预约时间，Appointment Lite 会临时保留该时段，然后进入 SHOPLINE 结账；只有支付成功后预约才会正式确认。',
   'Keep SHOPLINE Add to cart / Buy now actions. Appointment Lite appears as an additional booking action before purchase.': '保留 SHOPLINE 的加入购物车 / 立即购买按钮，Appointment Lite 作为购买前的额外预约入口。',
   'Keep the normal purchase flow. Scheduling will open from an eligible paid order once order-linked booking is activated.': '保留正常购买流程；订单关联预约启用后，客户将从符合条件的已付款订单进入预约。',
   'Display the Appointment Lite action on the linked SHOPLINE product.': '在关联的 SHOPLINE 商品页展示 Appointment Lite 预约入口。',
@@ -318,8 +318,23 @@ Object.assign(zh, {
   'Use a dedicated appointment-only product template if you do not want native purchase buttons on this service product.': '如果该服务商品不需要原生购买按钮，请使用独立的纯预约商品模板。',
   'Keep the SHOPLINE purchase actions and show Appointment Lite as an additional booking option.': '保留 SHOPLINE 商品购买按钮，并将 Appointment Lite 作为额外预约选项。',
   'For appointment-only product pages, use a dedicated SHOPLINE product template without native purchase buttons.': '对于纯预约商品页，请使用独立的 SHOPLINE 商品模板并移除该模板中的原生购买按钮。',
-  'Paid appointment checkout is defined but not enabled in this release.': '付费预约结构已预留，但当前版本暂未启用支付流程。',
-  'Post-purchase appointment scheduling is defined but not enabled in this release.': '购买后预约结构已预留，但当前版本暂未启用订单关联预约。'
+  'Post-purchase appointment scheduling is defined but not enabled in this release.': '购买后预约结构已预留，但当前版本暂未启用订单关联预约。',
+  'SHOPLINE checkout': 'SHOPLINE 结账', 'Payment flow': '支付流程', 'Checkout variant': '结账规格', 'Payment hold': '付款保留时长',
+  'Select a product first': '请先选择商品', 'Loading checkout variants…': '正在加载结账规格…', 'Choose checkout variant': '选择结账规格',
+  'The selected variant provides the checkout price. Use a dedicated appointment product for the cleanest setup.': '所选规格将决定结账价格。建议为付费预约使用独立的预约商品。',
+  'The selected slot is temporarily reserved while the customer pays.': '客户付款期间，所选预约时段会被临时保留。',
+  'Select the SHOPLINE product used to charge for this appointment.': '请选择用于收取本次预约费用的 SHOPLINE 商品。',
+  'This variant provides the price used at SHOPLINE checkout.': '该规格提供 SHOPLINE 结账时使用的价格。',
+  'No variants are available for this product.': '该商品没有可用规格。', 'Could not load variants': '无法加载规格',
+  'Could not load checkout variants from SHOPLINE.': '无法从 SHOPLINE 加载结账规格。',
+  'Customers choose a time first. Appointment Lite holds that capacity while they complete SHOPLINE checkout.': '客户先选择预约时间；完成 SHOPLINE 结账期间，Appointment Lite 会临时保留该时段。',
+  'Choose the SHOPLINE variant customers will pay for.': '请选择客户付款时使用的 SHOPLINE 商品规格。',
+  'Checkout started': '已开始结账', 'The selected appointment time is being held while payment is completed.': '客户付款期间，所选预约时间正在临时保留。',
+  'Payment confirmed': '付款已确认', 'SHOPLINE reported a successful payment and the appointment was confirmed.': 'SHOPLINE 已确认付款成功，预约已正式确认。',
+  'Payment hold expired': '付款保留已过期', 'Payment was not confirmed before the hold expired, so the selected time was released.': '付款未在保留时间内确认，所选预约时间已释放。',
+  'Payment arrived after the appointment hold was released. Review this booking before contacting the customer.': '预约时段释放后才收到付款结果，请先核对这条预约再联系客户。',
+  '5 minutes': '5 分钟', '10 minutes': '10 分钟', '15 minutes': '15 分钟', '20 minutes': '20 分钟', '30 minutes': '30 分钟',
+  'Could not prepare SHOPLINE payment confirmation. Please try saving the service again.': '暂时无法完成 SHOPLINE 付款确认配置，请重新保存服务后再试。'
 });
 
 Object.assign(zh, {
@@ -445,7 +460,7 @@ const staffAvatarPresets = ['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunse
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
 function staffPresetImage(preset) {
   const file = staffAvatarFiles[preset] || staffAvatarFiles.aurora;
-  return `<img src="/assets/staff/${file}?v=0.6.1" alt="" loading="lazy" decoding="async">`;
+  return `<img src="/assets/staff/${file}?v=0.6.2" alt="" loading="lazy" decoding="async">`;
 }
 let staffAvatarDraft = { kind: 'preset', value: 'aurora' };
 
@@ -1083,13 +1098,53 @@ function renderProductOptions(query = '') {
   $$('#productOptions .product-option').forEach(button => button.addEventListener('click', () => selectProduct(button.dataset.productId)));
 }
 
-function selectProduct(productId) {
+async function selectProduct(productId, { preserveVariant = false } = {}) {
   const product = state.products.find(item => item.id === productId);
   $('#productSelect').value = productId || '';
   $('#productPickerLabel').textContent = product?.title || t('Select a product');
   $('#productPickerButton').classList.toggle('has-value', Boolean(product));
   if ($('#productDialog').open) $('#productDialog').close();
   renderProductOptions($('#productSearch').value);
+  if (!preserveVariant) {
+    $('#productVariantId').value = '';
+    $('#productVariantTitle').value = '';
+    $('#productVariantPrice').value = '';
+  }
+  if ($('#commerceMode').value === 'standalone_paid') await loadPaidVariants(productId, { preserveVariant });
+}
+
+async function loadPaidVariants(productId, { preserveVariant = false } = {}) {
+  const select = $('#paidVariantSelect');
+  const meta = $('#paidCheckoutVariantMeta');
+  state.paidVariants = [];
+  if (!productId) {
+    select.innerHTML = `<option value="">${t('Select a product first')}</option>`;
+    meta.textContent = t('Select the SHOPLINE product used to charge for this appointment.');
+    return;
+  }
+  select.disabled = true;
+  select.innerHTML = `<option value="">${t('Loading checkout variants…')}</option>`;
+  meta.textContent = t('Loading price options from SHOPLINE…');
+  try {
+    const payload = await api(`/products/${encodeURIComponent(productId)}/variants`, { cache: 'no-store' });
+    state.paidVariants = payload.variants || [];
+    select.innerHTML = `<option value="">${t('Choose checkout variant')}</option>${state.paidVariants.map(item => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.title || t('Default'))}${item.price ? ` · ${escapeHtml(item.price)}` : ''}${item.sku ? ` · ${escapeHtml(item.sku)}` : ''}</option>`).join('')}`;
+    const existing = preserveVariant ? $('#productVariantId').value : '';
+    if (existing && state.paidVariants.some(item => item.id === existing)) select.value = existing;
+    else if (state.paidVariants.length === 1) select.value = state.paidVariants[0].id;
+    if (select.value) setPaidVariant(select.value);
+    meta.textContent = state.paidVariants.length ? t('This variant provides the price used at SHOPLINE checkout.') : t('No variants are available for this product.');
+  } catch (error) {
+    select.innerHTML = `<option value="">${t('Could not load variants')}</option>`;
+    meta.textContent = t('Could not load checkout variants from SHOPLINE.');
+  } finally { select.disabled = false; }
+}
+
+function setPaidVariant(variantId) {
+  const variant = state.paidVariants.find(item => item.id === variantId);
+  $('#productVariantId').value = variant?.id || '';
+  $('#productVariantTitle').value = variant?.title || '';
+  $('#productVariantPrice').value = variant?.price || '';
 }
 
 async function ensureProducts(force = false) {
@@ -1156,12 +1211,13 @@ function setCommerceMode(mode = 'product_pre_purchase') {
   $$('#commerceModeGrid [data-commerce-mode]').forEach(button => button.classList.toggle('selected', button.dataset.commerceMode === normalized));
   const guidance = {
     standalone_free: 'No checkout is required. If you use a SHOPLINE product page, use a dedicated appointment-only template so other products keep their normal purchase buttons.',
-    standalone_paid: 'Customers will select a slot before checkout. The checkout activation is intentionally reserved for the paid-booking milestone.',
+    standalone_paid: 'Customers choose an available time first. Appointment Lite temporarily holds that capacity, then sends them to SHOPLINE checkout. The booking is confirmed only after payment.',
     product_pre_purchase: 'Keep SHOPLINE Add to cart / Buy now actions. Appointment Lite appears as an additional booking action before purchase.',
     product_post_purchase: 'Keep the normal purchase flow. Scheduling will open from an eligible paid order once order-linked booking is activated.'
   }[normalized];
   $('#commerceGuidance').innerHTML = `<strong>${t(commerceModeLabels[normalized])}</strong><span>${t(guidance)}</span>`;
   setBookingSource($('#bookingSource').value || 'product');
+  if (normalized === 'standalone_paid' && $('#productSelect').value) loadPaidVariants($('#productSelect').value, { preserveVariant: true });
 }
 
 function setBookingSource(source = 'product') {
@@ -1172,6 +1228,7 @@ function setBookingSource(source = 'product') {
   const commerceMode = $('#commerceMode')?.value || 'product_pre_purchase';
   const needsProduct = commerceModeNeedsProduct(commerceMode, normalized);
   $('#productSourceFields').classList.toggle('hidden', !needsProduct);
+  $('#paidCheckoutFields').classList.toggle('hidden', commerceMode !== 'standalone_paid');
   $('#productBindingHint').textContent = t(
     commerceMode === 'product_pre_purchase' ? 'This product keeps its normal purchase actions; Appointment Lite adds a separate booking action.' :
     commerceMode === 'product_post_purchase' ? 'This product will be used to verify which paid orders can schedule the service.' :
@@ -1277,8 +1334,9 @@ function validateRuleStep(step) {
   const commerceMode = $('#commerceMode').value;
   const mode = $('#bookingMode').value;
   if (step === 0 && !$('#serviceTitle').value.trim()) message = 'Service name is required before continuing.';
-  if (step === 0 && !activeCommerceModes.has(commerceMode)) message = commerceMode === 'standalone_paid' ? 'Paid appointment checkout is defined but not enabled in this release.' : 'Post-purchase appointment scheduling is defined but not enabled in this release.';
+  if (step === 0 && !activeCommerceModes.has(commerceMode)) message = 'Post-purchase appointment scheduling is defined but not enabled in this release.';
   if (step === 0 && commerceModeNeedsProduct(commerceMode, bookingSource) && !$('#productSelect').value) message = 'Select a SHOPLINE product before continuing.';
+  if (step === 0 && commerceMode === 'standalone_paid' && !$('#productVariantId').value) message = 'Choose the SHOPLINE variant customers will pay for.';
   if (step === 1 && mode !== 'all_day' && (!$('#duration').checkValidity() || !$('#buffer').checkValidity() || !$('#capacity').checkValidity())) message = 'Enter valid duration, buffer, and capacity.';
   if (step === 1 && mode === 'all_day' && !$('#allDayCapacityMirror').checkValidity()) message = 'Enter valid duration, buffer, and capacity.';
   if (step === 1 && mode === 'multi_slot' && !$('#sessionsRequired').checkValidity()) message = 'Choose 2–12 sessions per booking.';
@@ -1336,8 +1394,15 @@ async function openRule(rule = null) {
   if (commerceModeNeedsProduct(commerceMode, bookingSource)) {
     await ensureProducts();
     if (rule?.productId && !state.products.some(product => product.id === rule.productId)) state.products.push({ id: rule.productId, title: rule.productTitle || rule.serviceTitle, handle: rule.productHandle || '' });
-    selectProduct(rule?.productId || '');
-  } else selectProduct('');
+    await selectProduct(rule?.productId || '', { preserveVariant: true });
+  } else await selectProduct('');
+  $('#paymentHoldMinutes').value = String(rule?.paymentHoldMinutes || 15);
+  if (commerceMode === 'standalone_paid' && rule?.productVariantId) {
+    $('#productVariantId').value = rule.productVariantId;
+    $('#productVariantTitle').value = rule.productVariantTitle || '';
+    $('#productVariantPrice').value = rule.productVariantPrice || '';
+    await loadPaidVariants(rule.productId, { preserveVariant: true });
+  }
   $('#duration').value = rule?.duration || 60;
   $('#buffer').value = rule?.buffer || 0;
   $('#dateFrom').value = rule?.dateFrom || '';
@@ -1371,6 +1436,10 @@ function rulePayload() {
     productId: usesProduct ? (product?.id || '') : '',
     productTitle: usesProduct ? (product?.title || '') : '',
     productHandle: usesProduct ? (product?.handle || '') : '',
+    productVariantId: commerceMode === 'standalone_paid' ? $('#productVariantId').value : '',
+    productVariantTitle: commerceMode === 'standalone_paid' ? $('#productVariantTitle').value : '',
+    productVariantPrice: commerceMode === 'standalone_paid' ? $('#productVariantPrice').value : '',
+    paymentHoldMinutes: commerceMode === 'standalone_paid' ? Number($('#paymentHoldMinutes').value || 15) : 15,
     serviceDescription: $('#serviceDescription').value,
     duration: allDay ? 60 : Number($('#duration').value), buffer: allDay ? 0 : Number($('#buffer').value), capacity,
     timezone: $('#serviceTimezone').value.trim(),
@@ -1537,7 +1606,7 @@ async function saveBooking(event) {
 }
 
 function bookingStatusLabel(status) {
-  return t({ confirmed: 'Confirmed', cancelled: 'Cancelled', completed: 'Completed', no_show: 'No-show' }[status] || status);
+  return t({ pending_payment: 'Awaiting payment', confirmed: 'Confirmed', cancelled: 'Cancelled', completed: 'Completed', no_show: 'No-show', payment_expired: 'Payment expired', payment_conflict: 'Payment needs review' }[status] || status);
 }
 
 
@@ -1746,6 +1815,10 @@ function formatEventDate(value) {
 
 function eventMeta(event) {
   const labels = {
+    payment_started: ['Checkout started', 'The selected appointment time is being held while payment is completed.'],
+    payment_confirmed: ['Payment confirmed', 'SHOPLINE reported a successful payment and the appointment was confirmed.'],
+    payment_expired: ['Payment hold expired', 'Payment was not confirmed before the hold expired, so the selected time was released.'],
+    payment_conflict: ['Payment needs review', 'Payment arrived after the appointment hold was released. Review this booking before contacting the customer.'],
     created: ['Appointment created', 'The customer submitted this booking.'],
     customer_rescheduled: ['Customer changed the time', 'The customer used their online change.'],
     merchant_updated: ['Store updated the appointment', 'The date, time, location, or specialist was updated.'],
@@ -2124,6 +2197,7 @@ function bind() {
   });
   $('#productSearch').addEventListener('input', event => renderProductOptions(event.target.value));
   $('#productSyncButton').addEventListener('click', () => ensureProducts(true));
+  $('#paidVariantSelect')?.addEventListener('change', event => setPaidVariant(event.target.value));
   $('#languageButton').addEventListener('click', () => {
     const menu = $('#languageMenu');
     menu.classList.toggle('hidden');

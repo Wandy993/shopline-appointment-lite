@@ -117,3 +117,57 @@ export async function syncShopMetadata(shopId) {
   await Shop.updateOne({ _id: shopId }, { $set: update });
   return update;
 }
+
+export async function shoplinePost(shopId, endpoint, body = {}) {
+  const { handle, accessToken } = await accessTokenForShop(shopId);
+  const response = await fetch(`https://${handle}.myshopline.com/admin/openapi/${config.shopline.apiVersion}/${endpoint}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json', 'Content-Type': 'application/json; charset=utf-8' },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(15000)
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw Object.assign(new Error(`SHOPLINE API failed (${response.status}): ${payload.message || payload.errors || 'unknown error'}`), { status: response.status, payload });
+  return payload;
+}
+
+export async function ensurePaidBookingWebhooks(shopId) {
+  const address = `${config.appUrl}/webhooks/shopline`;
+  const topics = ['orders/create', 'order_transactions/create'];
+  const results = [];
+
+  let existing = [];
+  try {
+    const payload = await shoplineGet(shopId, 'webhooks.json');
+    const raw = payload?.webhooks ?? payload?.data?.webhooks ?? payload?.data ?? [];
+    existing = Array.isArray(raw) ? raw : [];
+  } catch (error) {
+    // Listing subscriptions is an optimization. If it fails we still attempt to
+    // create the required subscriptions and rely on duplicate handling below.
+    existing = [];
+  }
+
+  for (const topic of topics) {
+    const found = existing.find(item => {
+      const currentTopic = String(item?.topic || item?.event || '').trim();
+      const currentAddress = String(item?.address || item?.callback_url || item?.callbackUrl || '').trim();
+      return currentTopic === topic && currentAddress === address;
+    });
+    if (found) {
+      results.push({ topic, ok: true, existing: true, id: String(found.id || found.webhook_id || '') });
+      continue;
+    }
+
+    try {
+      const payload = await shoplinePost(shopId, 'webhooks.json', { webhook: { address, api_version: config.shopline.apiVersion, topic } });
+      results.push({ topic, ok: true, created: true, id: payload?.webhook?.id || payload?.data?.webhook?.id || '' });
+    } catch (error) {
+      // SHOPLINE may reject a duplicate subscription. Existing subscriptions are
+      // already sufficient, so do not block the merchant from saving the service.
+      const message = String(error.message || '');
+      const duplicate = /duplicate|already|exist/i.test(message) || Number(error.status) === 409 || Number(error.status) === 422;
+      results.push({ topic, ok: duplicate, duplicate, error: duplicate ? '' : message });
+    }
+  }
+  return results;
+}

@@ -69,3 +69,20 @@ export async function syncProductCatalog(shopId) {
   };
   return { products, diagnostics };
 }
+
+export async function getProductVariants(shopId, productId) {
+  const { payload } = await shoplineGetPage(shopId, `products/${encodeURIComponent(String(productId))}/variants.json`, {
+    limit: 250,
+    fields: 'id,title,price,sku,inventory_quantity,inventory_policy,required_shipping'
+  });
+  const variants = payload.variants || payload.data?.variants || payload.data || [];
+  return (Array.isArray(variants) ? variants : []).map(item => ({
+    id: String(item.id || ''),
+    title: String(item.title || 'Default'),
+    price: String(item.price ?? ''),
+    sku: String(item.sku || ''),
+    inventoryQuantity: Number(item.inventory_quantity ?? 0),
+    inventoryPolicy: String(item.inventory_policy || ''),
+    requiredShipping: Boolean(item.required_shipping)
+  })).filter(item => item.id);
+}

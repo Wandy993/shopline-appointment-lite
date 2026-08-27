@@ -7,7 +7,7 @@ import { BookingReservation } from '../models/BookingReservation.js';
 import { publicStaffOptions, staffAvailabilityForDate } from '../services/staffing.js';
 import { addDays, bookingModeFor, filterSlotsByCapacity, futureSlotsForDate, isAllDayBookableDate, isDateAllowed, resolveRuleTimezone, slotsForDate, zonedNow } from '../lib/slots.js';
 import { validateBookingInput, validateDateInput, validateSlotInput } from '../lib/validation.js';
-import { cancelManagedBooking, createBookingForStore, getLegacyBookingStatus, getManagedAvailability, getManagedBooking, rescheduleManagedBooking } from '../services/bookings.js';
+import { cancelManagedBooking, createBookingForStore, createPaidBookingForStore, getLegacyBookingStatus, getManagedAvailability, getManagedBooking, rescheduleManagedBooking } from '../services/bookings.js';
 import { findInstalledShop, validShopHandle, validShoplineStoreId } from '../services/shops.js';
 import { normalizeEmailSettings } from '../lib/email-settings.js';
 import { buildBookingIcs, calendarLinksForBooking, readBookingCalendarToken } from '../lib/calendar-links.js';
@@ -53,6 +53,7 @@ function serializeRule(rule, timezone, staffMeta = { mode: 'none', options: [] }
     dateFrom: rule.dateFrom, dateUntil: rule.dateUntil, weeklyAvailability: rule.weeklyAvailability,
     availabilityExceptions: rule.availabilityExceptions || [], location: rule.location, staff: rule.staff,
     staffAssignment: { mode: staffMeta.mode, staffIds: staffMeta.options.map(item => item.id) }, staffOptions: staffMeta.options,
+    payment: rule.commerceMode === 'standalone_paid' ? { required: true, holdMinutes: Number(rule.paymentHoldMinutes || 15), price: rule.productVariantPrice || '', variantTitle: rule.productVariantTitle || '' } : { required: false },
     questionLabel: rule.questionLabel, customQuestions: rule.customQuestions
   };
 }
@@ -177,6 +178,28 @@ publicRouter.get('/bookings/:id/calendar.ics', async (req, res) => {
     'Content-Disposition': `attachment; filename="${safeName}.ics"`
   });
   res.send(buildBookingIcs(booking));
+});
+
+publicRouter.post('/paid-bookings', bookingLimiter, async (req, res, next) => {
+  try {
+    const handle = String(req.body.shop || '').toLowerCase();
+    const shopId = String(req.body.shopId || '').trim();
+    const { errors, value } = validateBookingInput(req.body);
+    const standalone = Boolean(value.ruleId);
+    if (standalone && !validRuleId(value.ruleId)) errors.push('A valid appointment service is required.');
+    if (!standalone && !validShoplineStoreId(shopId) && !validShopHandle(handle)) errors.push('Invalid shop identity.');
+    if (!standalone && !value.productId) errors.push('Product is required.');
+    if (errors.length) return res.status(422).json({ error: 'VALIDATION_ERROR', message: errors.join(' '), fields: errors });
+    const result = await createPaidBookingForStore({ shopId, handle, productId: value.productId, ruleId: value.ruleId, input: value });
+    res.status(201).json({
+      booking: {
+        ...publicBooking(result.booking),
+        holdExpiresAt: result.holdExpiresAt,
+        managementToken: ''
+      },
+      checkoutUrl: result.checkoutUrl
+    });
+  } catch (error) { next(error); }
 });
 
 publicRouter.post('/bookings', bookingLimiter, async (req, res, next) => {

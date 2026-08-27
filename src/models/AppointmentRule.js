@@ -34,8 +34,8 @@ const appointmentRuleSchema = new mongoose.Schema({
   // v0.3.1: booking channel is independent from the kind of service.
   // sourceType remains as a compatibility field for older records and clients.
   bookingSource: { type: String, enum: ['product', 'direct', 'both'], default: 'product', index: true },
-  // v0.6.1: commercial relationship is independent from where the booking entry is rendered.
-  // The paid and post-purchase paths are modeled now but remain gated until checkout/order linking is enabled.
+  // v0.6.2: commercial relationship is independent from where the booking entry is rendered.
+  // Standalone paid checkout is active in v0.6.2; post-purchase scheduling remains gated until order-linked booking is enabled.
   commerceMode: { type: String, enum: ['standalone_free', 'standalone_paid', 'product_pre_purchase', 'product_post_purchase'], default: 'product_pre_purchase', index: true },
   sourceType: { type: String, enum: ['product', 'standalone'], default: 'product', index: true },
   serviceType: { type: String, enum: ['appointment', 'product', 'in_store', 'onsite', 'consultation', 'class', 'other'], default: 'appointment' },
@@ -50,6 +50,10 @@ const appointmentRuleSchema = new mongoose.Schema({
   productId: { type: String, default: '', trim: true },
   productTitle: { type: String, default: '', trim: true, maxlength: 255 },
   productHandle: { type: String, default: '', trim: true },
+  productVariantId: { type: String, default: '', trim: true, maxlength: 100 },
+  productVariantTitle: { type: String, default: '', trim: true, maxlength: 255 },
+  productVariantPrice: { type: String, default: '', trim: true, maxlength: 40 },
+  paymentHoldMinutes: { type: Number, min: 5, max: 30, default: 15 },
 
   duration: { type: Number, required: true, min: 5, max: 480, default: 60 },
   buffer: { type: Number, min: 0, max: 240, default: 0 },

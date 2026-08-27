@@ -1,46 +1,27 @@
 # Appointment Lite
 
-> v0.6.1 — Booking Commerce Architecture
+> v0.6.2 — Paid Booking Flow
 
-Appointment Lite now separates **what customers are booking**, **how the booking relates to a purchase**, and **where the booking entry appears**. This keeps free appointments, product-linked consultations, future paid bookings, and future post-purchase service scheduling on one compatible data model without hiding SHOPLINE purchase buttons through theme DOM hacks.
+Appointment Lite v0.6.2 activates paid standalone appointments on top of the commerce architecture introduced in v0.6.1. Customers choose a valid appointment first, Appointment Lite temporarily holds the selected capacity, then redirects to SHOPLINE checkout. The Booking is confirmed only after SHOPLINE reports successful payment.
 
-## v0.6.1 Booking Commerce Architecture
+## v0.6.2 Paid Booking Flow
 
-Four customer journeys are modeled:
+The four commerce relationships remain:
 
-1. **Standalone · no payment** — active in v0.6.1. Free consultations, measurements, or appointment-only service pages.
-2. **Standalone · payment required** — schema/UI architecture reserved; checkout activation intentionally follows in the paid-booking milestone.
-3. **Product + appointment** — active in v0.6.1. Keep SHOPLINE Add to cart / Buy now and add Appointment Lite as a separate booking action.
-4. **Purchase first · schedule after** — schema/UI architecture reserved; order verification and post-purchase entry follow in the order-linked milestone.
+1. **Standalone · no payment** — active. Free consultations, measurements, or appointment-only services.
+2. **Standalone · payment required** — **active in v0.6.2**. Choose a slot first, hold capacity for 5–30 minutes, complete SHOPLINE checkout, and confirm only after payment webhook verification.
+3. **Product + appointment** — active. Keep SHOPLINE Add to cart / Buy now and add Appointment Lite as a separate booking action.
+4. **Purchase first · schedule after** — modeled but still gated until v0.6.3 order-linked scheduling.
 
-`bookingSource` remains a separate presentation choice (`product`, `direct`, `both`) so the commerce relationship does not get confused with the place where customers enter the booking flow. Existing records without `commerceMode` are mapped safely: direct services without a product become `standalone_free`, while existing product-linked services keep their current behavior as `product_pre_purchase`.
+Paid services select the SHOPLINE product variant used for checkout and a hold duration. While payment is pending the Booking uses `pending_payment` and consumes normal BookingReservation/StaffReservation capacity. Unpaid holds become `payment_expired` and release their capacity. A payment reported after release becomes `payment_conflict` for merchant review instead of silently double-booking the slot.
+
+SHOPLINE `orders/create` and `order_transactions/create` webhooks are provisioned best-effort when a paid service is saved. Webhook IDs are persisted for idempotency and the order/payment handlers tolerate either webhook arriving first. Customer/staff notifications and Business Google Calendar sync start only after the paid Booking reaches `confirmed`.
+
+See [Paid Booking Flow](docs/PAID_BOOKING.md) for checkout, hold, webhook, and conflict behavior.
 
 ### Theme guidance
 
 Appointment Lite does **not** remove SHOPLINE purchase buttons with JavaScript. For appointment-only products, merchants should assign a dedicated product template without native purchase buttons. Product + appointment services keep the normal product template and purchase actions.
-
-# Appointment Lite
-
-> v0.6.0.6 — Email Design UI Polish
-
-Appointment Lite uses one optional **Business Google Calendar** per store, independent merchant/staff email notifications, and configurable customer communication. Staff do not need Google access: merchants add staff email addresses for assignment notifications.
-
-Release `v0.6.0.6` reorganizes Email Studio notification controls into clear audience cards with aligned checkboxes, compact titles, readable helper text, and a dedicated reminder-timing control. The layout is optimized for Simplified Chinese and responsive admin widths without exposing implementation details.
-
-Appointment Lite now supports two booking entry models:
-
-- **SHOPLINE product appointments** — bind an appointment service to a SHOPLINE product and expose it through the Theme App Block.
-- **Standalone services** — create in-store visits, home/onsite services, consultations, classes/courses, or other services without creating a SHOPLINE product. Each active standalone service receives a shareable hosted booking URL.
-
-Typical scenarios include furniture installation and measurements, showroom visits, wedding fittings, jewelry or design consultations, beauty appointments, technician visits, lessons, workshops, small-group classes, and made-to-order product appointments.
-
-
-
-
-
-
-
-
 
 ## v0.6.0.6 Email Design UI Polish
 
@@ -467,6 +448,7 @@ Tests cover query/session signing, weekday/date bounds, store-time-zone past-slo
 - [HTTP API summary](docs/API.md)
 - [Aliyun DirectMail and Resend setup](docs/EMAIL.md)
 - [Google Calendar setup and security](docs/GOOGLE_CALENDAR.md)
+- [Paid booking checkout and webhook lifecycle](docs/PAID_BOOKING.md)
 - [Mac ZIP overlay/install procedure](docs/INSTALL_MAC.md)
 
 ## License

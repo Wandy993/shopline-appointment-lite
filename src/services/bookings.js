@@ -13,6 +13,7 @@ import {
 import { findInstalledShop } from './shops.js';
 import { normalizedStaffAssignment, releaseStaffReservations, reserveStaffForBooking, staffAvailabilityForDate } from './staffing.js';
 import { queueBookingGoogleCalendarSync } from './calendar-sync.js';
+import { buildPaidBookingCheckoutUrl } from '../lib/paid-checkout.js';
 
 export class SlotConflictError extends Error { constructor() { super('This time is at capacity. Please choose another slot.'); this.code = 'SLOT_CONFLICT'; } }
 
@@ -182,7 +183,10 @@ async function syncSingleReservation({ ReservationModel, booking, rule }) {
   }
 }
 
-export async function createBookingAtomic({ shop, rule, input, BookingModel = Booking, ReservationModel, StaffReservationModel, StaffModel = Staff, notify = sendBookingNotifications, now = new Date() }) {
+export async function createBookingAtomic({
+  shop, rule, input, BookingModel = Booking, ReservationModel, StaffReservationModel, StaffModel = Staff,
+  notify = sendBookingNotifications, now = new Date(), initialStatus = 'confirmed', payment = null, notifications = true
+}) {
   const mode = bookingModeFor(rule);
   const timezone = resolveRuleTimezone(rule, shop.timezone || 'UTC');
   const occurrences = requestedOccurrences(rule, input, timezone, now);
@@ -217,20 +221,23 @@ export async function createBookingAtomic({ shop, rule, input, BookingModel = Bo
 
   const first = reserved[0];
   const primaryTime = mode === 'all_day' ? '00:00' : first.time;
+  const eventType = initialStatus === 'pending_payment' ? 'payment_started' : 'created';
+  const eventActor = initialStatus === 'pending_payment' ? 'system' : 'customer';
   const document = {
     _id: bookingId,
     shopId: shop._id, ruleId: rule._id, bookingSource: rule.bookingSource || (rule.sourceType === 'standalone' ? 'direct' : 'product'),
     commerceMode: rule.commerceMode || ((rule.bookingSource || (rule.sourceType === 'standalone' ? 'direct' : 'product')) === 'direct' && !rule.productId ? 'standalone_free' : 'product_pre_purchase'),
     sourceType: rule.sourceType || 'product', serviceType: rule.serviceType === 'product' ? 'appointment' : (rule.serviceType || 'appointment'),
     bookingMode: mode,
-    productId: rule.productId || '', productTitle: rule.serviceTitle || rule.productTitle,
+    productId: rule.productId || '', productVariantId: rule.productVariantId || '', productTitle: rule.serviceTitle || rule.productTitle,
     date: first.date, time: primaryTime, slotKey: first.slotKey, slotPosition: Number(first.slotPosition || 0), occurrences: reserved,
     duration: rule.duration, buffer: rule.buffer, timezone, location: rule.location, staff: staffName, staffId, staffEmail,
     managementTokenHash: hashManagementToken(managementToken),
-    customer: input.customer, note: input.note, answers: input.answers, status: 'confirmed',
+    customer: input.customer, note: input.note, answers: input.answers, status: initialStatus,
+    ...(payment ? { payment } : {}),
     events: [{
-      type: 'created', actor: 'customer', at: now,
-      to: { date: first.date, time: primaryTime, location: rule.location || '', staff: staffName, staffId, staffEmail, status: 'confirmed' }
+      type: eventType, actor: eventActor, at: now,
+      to: { date: first.date, time: primaryTime, location: rule.location || '', staff: staffName, staffId, staffEmail, status: initialStatus }
     }]
   };
   let booking;
@@ -243,13 +250,15 @@ export async function createBookingAtomic({ shop, rule, input, BookingModel = Bo
     if (error?.code === 11000) throw new SlotConflictError();
     throw error;
   }
-  Promise.resolve(notify(booking, shop.email, managementToken, shop.emailSettings || null)).catch(error => console.error('Email notification failed', error.message));
-  if (BookingModel === Booking && booking.staffId) Promise.resolve(sendStaffAssignedNotification(booking, shop.emailSettings || null)).catch(error => console.error('Staff assignment email failed', error.message));
-  if (BookingModel === Booking) queueBookingGoogleCalendarSync(booking._id, 'created');
+  if (notifications && initialStatus === 'confirmed') {
+    Promise.resolve(notify(booking, shop.email, managementToken, shop.emailSettings || null)).catch(error => console.error('Email notification failed', error.message));
+    if (BookingModel === Booking && booking.staffId) Promise.resolve(sendStaffAssignedNotification(booking, shop.emailSettings || null)).catch(error => console.error('Staff assignment email failed', error.message));
+    if (BookingModel === Booking) queueBookingGoogleCalendarSync(booking._id, 'created');
+  }
   return { booking, managementToken };
 }
 
-export async function createBookingForStore({ shopId, handle, productId, ruleId, input }) {
+async function resolveBookingContext({ shopId, handle, productId, ruleId }) {
   let rule;
   let shop;
   if (ruleId) {
@@ -262,10 +271,124 @@ export async function createBookingForStore({ shopId, handle, productId, ruleId,
   }
   if (!shop) throw Object.assign(new Error('Store is not available.'), { code: 'NOT_FOUND' });
   if (!rule) throw Object.assign(new Error('Appointments are not enabled for this service.'), { code: 'NOT_FOUND' });
+  return { shop, rule };
+}
+
+export async function createBookingForStore({ shopId, handle, productId, ruleId, input }) {
+  const { shop, rule } = await resolveBookingContext({ shopId, handle, productId, ruleId });
   const commerceMode = rule.commerceMode || ((rule.bookingSource || (rule.sourceType === 'standalone' ? 'direct' : 'product')) === 'direct' && !rule.productId ? 'standalone_free' : 'product_pre_purchase');
-  if (commerceMode === 'standalone_paid') throw Object.assign(new Error('Paid appointment checkout is not enabled for this service yet.'), { code: 'COMMERCE_FLOW_NOT_READY' });
+  if (commerceMode === 'standalone_paid') throw Object.assign(new Error('This service requires checkout. Continue with the paid booking flow.'), { code: 'PAID_CHECKOUT_REQUIRED' });
   if (commerceMode === 'product_post_purchase') throw Object.assign(new Error('This appointment will be scheduled from an eligible paid order.'), { code: 'COMMERCE_FLOW_NOT_READY' });
   return createBookingAtomic({ shop, rule, input });
+}
+
+export async function createPaidBookingForStore({ shopId, handle, productId, ruleId, input, now = new Date() }) {
+  const { shop, rule } = await resolveBookingContext({ shopId, handle, productId, ruleId });
+  const commerceMode = rule.commerceMode || '';
+  if (commerceMode !== 'standalone_paid') throw Object.assign(new Error('Paid checkout is not enabled for this appointment service.'), { code: 'PAID_CHECKOUT_NOT_AVAILABLE' });
+  if (!rule.productVariantId) throw Object.assign(new Error('This paid service is missing its SHOPLINE checkout variant.'), { code: 'PAID_CHECKOUT_NOT_CONFIGURED' });
+  const holdMinutes = Math.max(5, Math.min(30, Number(rule.paymentHoldMinutes || 15)));
+  const holdExpiresAt = new Date(now.getTime() + holdMinutes * 60_000);
+  const { booking } = await createBookingAtomic({
+    shop, rule, input, now, initialStatus: 'pending_payment', notifications: false,
+    payment: { holdExpiresAt, checkoutStartedAt: now, financialStatus: 'pending' }
+  });
+  const checkoutUrl = buildPaidBookingCheckoutUrl({ handle: shop.handle, variantId: rule.productVariantId, booking });
+  return { booking, checkoutUrl, holdExpiresAt };
+}
+
+export async function attachPaidOrderToBooking({ bookingId, orderId = '', orderName = '', financialStatus = '', webhookId = '', BookingModel = Booking }) {
+  if (!bookingId) return null;
+  return BookingModel.findOneAndUpdate(
+    { _id: bookingId, commerceMode: 'standalone_paid', status: { $in: ['pending_payment', 'confirmed', 'payment_expired', 'payment_conflict'] } },
+    { $set: {
+      'payment.shoplineOrderId': String(orderId || ''),
+      'payment.shoplineOrderName': String(orderName || ''),
+      'payment.financialStatus': String(financialStatus || ''),
+      'payment.lastWebhookId': String(webhookId || '')
+    } },
+    { new: true }
+  );
+}
+
+export async function confirmPaidBooking({ bookingId, orderId = '', orderName = '', financialStatus = 'paid', webhookId = '', now = new Date(), BookingModel = Booking }) {
+  let booking = await BookingModel.findById(bookingId).select('+managementTokenHash');
+  if (!booking || booking.commerceMode !== 'standalone_paid') return { booking: null, confirmed: false, reason: 'BOOKING_NOT_FOUND' };
+  if (booking.status === 'confirmed') return { booking, confirmed: true, idempotent: true };
+
+  const holdExpiresAt = booking.payment?.holdExpiresAt ? new Date(booking.payment.holdExpiresAt) : null;
+  if (booking.status !== 'pending_payment' || !holdExpiresAt || holdExpiresAt.getTime() < now.getTime()) {
+    if (['pending_payment', 'payment_expired'].includes(booking.status)) {
+      booking = await BookingModel.findOneAndUpdate(
+        { _id: booking._id, status: { $in: ['pending_payment', 'payment_expired'] } },
+        { $set: {
+          status: 'payment_conflict',
+          'payment.shoplineOrderId': String(orderId || booking.payment?.shoplineOrderId || ''),
+          'payment.shoplineOrderName': String(orderName || booking.payment?.shoplineOrderName || ''),
+          'payment.financialStatus': String(financialStatus || 'paid'),
+          'payment.lastWebhookId': String(webhookId || ''),
+          'payment.failureReason': 'Payment completed after the appointment hold expired. Manual resolution is required.'
+        }, $push: { events: {
+          type: 'payment_conflict', actor: 'system', at: now,
+          from: bookingSnapshot(booking), to: bookingSnapshot(booking, { status: 'payment_conflict' })
+        } } },
+        { new: true }
+      ) || booking;
+    }
+    await releaseReservations(BookingModel === Booking ? BookingReservation : null, booking._id);
+    if (BookingModel === Booking) await releaseStaffReservations({ bookingId: booking._id, StaffReservationModel: StaffReservation });
+    return { booking, confirmed: false, reason: 'HOLD_EXPIRED' };
+  }
+
+  const managementToken = randomBytes(32).toString('base64url');
+  const next = await BookingModel.findOneAndUpdate(
+    { _id: booking._id, status: 'pending_payment', 'payment.holdExpiresAt': { $gte: now } },
+    { $set: {
+      status: 'confirmed', managementTokenHash: hashManagementToken(managementToken),
+      'payment.confirmedAt': now,
+      'payment.shoplineOrderId': String(orderId || booking.payment?.shoplineOrderId || ''),
+      'payment.shoplineOrderName': String(orderName || booking.payment?.shoplineOrderName || ''),
+      'payment.financialStatus': String(financialStatus || 'paid'),
+      'payment.lastWebhookId': String(webhookId || ''),
+      'payment.failureReason': ''
+    }, $push: { events: {
+      type: 'payment_confirmed', actor: 'system', at: now,
+      from: bookingSnapshot(booking), to: bookingSnapshot(booking, { status: 'confirmed' })
+    } } },
+    { new: true, runValidators: true }
+  );
+  if (!next) return confirmPaidBooking({ bookingId, orderId, orderName, financialStatus, webhookId, now, BookingModel });
+
+  if (BookingModel === Booking) {
+    const shop = await findInstalledShop({ objectId: next.shopId });
+    if (shop) {
+      Promise.resolve(sendBookingNotifications(next, shop.email, managementToken, shop.emailSettings || null)).catch(error => console.error('Paid booking confirmation email failed', error.message));
+      if (next.staffId) Promise.resolve(sendStaffAssignedNotification(next, shop.emailSettings || null)).catch(error => console.error('Paid booking staff email failed', error.message));
+    }
+    queueBookingGoogleCalendarSync(next._id, 'payment_confirmed');
+  }
+  return { booking: next, managementToken, confirmed: true };
+}
+
+export async function expirePendingPaidBookings({ now = new Date(), BookingModel = Booking, ReservationModel = BookingReservation, StaffReservationModel = StaffReservation, limit = 250 } = {}) {
+  const candidates = await BookingModel.find({ status: 'pending_payment', commerceMode: 'standalone_paid', 'payment.holdExpiresAt': { $lte: now } })
+    .sort({ 'payment.holdExpiresAt': 1 }).limit(Math.max(1, Math.min(1000, Number(limit || 250))));
+  let expired = 0;
+  for (const current of candidates) {
+    const booking = await BookingModel.findOneAndUpdate(
+      { _id: current._id, status: 'pending_payment', 'payment.holdExpiresAt': { $lte: now } },
+      { $set: { status: 'payment_expired', 'payment.financialStatus': current.payment?.financialStatus || 'expired' }, $push: { events: {
+        type: 'payment_expired', actor: 'system', at: now,
+        from: bookingSnapshot(current), to: bookingSnapshot(current, { status: 'payment_expired' })
+      } } },
+      { new: true }
+    );
+    if (!booking) continue;
+    if (ReservationModel) await releaseReservations(ReservationModel, booking._id);
+    if (StaffReservationModel) await releaseStaffReservations({ bookingId: booking._id, StaffReservationModel });
+    expired += 1;
+  }
+  return { scanned: candidates.length, expired };
 }
 
 export async function getManagedBooking({ bookingId, token, BookingModel = Booking }) {

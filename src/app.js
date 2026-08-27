@@ -11,6 +11,7 @@ import { errorHandler, notFound } from './middleware/errors.js';
 import { adminPage } from './views/admin.js';
 import { managePage } from './views/manage.js';
 import { bookingPage } from './views/book.js';
+import { shoplinePaidBookingWebhook } from './routes/shopline-webhooks.js';
 
 export function createApp() {
   const app = express();
@@ -22,6 +23,7 @@ export function createApp() {
       connectSrc: ["'self'"], frameAncestors: ["'self'", 'https://*.myshopline.com']
     }
   }}));
+  app.post('/webhooks/shopline', express.raw({ type: 'application/json', limit: '1mb' }), shoplinePaidBookingWebhook);
   app.use(express.json({ limit: '100kb' }));
   app.use(express.urlencoded({ extended: false, limit: '20kb' }));
   app.use('/admin', express.static('public/admin', { maxAge: config.nodeEnv === 'production' ? '1h' : 0 }));
@@ -30,7 +32,7 @@ export function createApp() {
   app.use('/book/assets', express.static('public/book', { maxAge: config.nodeEnv === 'production' ? '1h' : 0 }));
   app.use('/integration-assets', express.static('public/integrations', { maxAge: config.nodeEnv === 'production' ? '1h' : 0 }));
 
-  app.get('/health', (req, res) => res.json({ ok: true, service: 'appointment-lite', version: '0.6.1' }));
+  app.get('/health', (req, res) => res.json({ ok: true, service: 'appointment-lite', version: '0.6.2' }));
   app.get('/', (req, res) => {
     if (req.query.handle || req.query.appkey) return res.redirect(`/auth/install?${new URLSearchParams(req.query)}`);
     res.type('html').send('<!doctype html><title>Appointment Lite</title><h1>Appointment Lite is running</h1><p>Open this app from SHOPLINE Admin to continue.</p>');

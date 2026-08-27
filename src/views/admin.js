@@ -39,7 +39,7 @@ export function adminPage() {
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light">
   <title>Appointment Lite</title>
-  <link rel="stylesheet" href="/admin/styles.css?v=0.6.1">
+  <link rel="stylesheet" href="/admin/styles.css?v=0.6.2">
 </head>
 <body>
   <div class="app-shell">
@@ -103,7 +103,7 @@ export function adminPage() {
             <div class="booking-filter-main">
               <label class="booking-search">${icons.search}<input id="bookingSearch" type="search" placeholder="Search customer, service, or email"></label>
               <label class="filter-control"><span>Service</span><select id="bookingServiceFilter"><option value="">All services</option></select></label>
-              <label class="filter-control"><span>Staff</span><select id="bookingStaffFilter"><option value="">All staff</option></select></label><label class="filter-control"><span>Status</span><select id="bookingStatusFilter"><option value="">All statuses</option><option value="confirmed">Confirmed</option><option value="completed">Completed</option><option value="no_show">No-show</option><option value="cancelled">Cancelled</option></select></label>
+              <label class="filter-control"><span>Staff</span><select id="bookingStaffFilter"><option value="">All staff</option></select></label><label class="filter-control"><span>Status</span><select id="bookingStatusFilter"><option value="">All statuses</option><option value="pending_payment">Awaiting payment</option><option value="confirmed">Confirmed</option><option value="completed">Completed</option><option value="no_show">No-show</option><option value="cancelled">Cancelled</option><option value="payment_expired">Payment expired</option><option value="payment_conflict">Payment needs review</option></select></label>
               <label class="filter-control filter-date"><span>From</span><input id="bookingFrom" type="date"></label>
               <label class="filter-control filter-date"><span>To</span><input id="bookingTo" type="date"></label>
               <button id="clearBookingFilters" class="secondary filter-reset hidden" type="button">Clear</button>
@@ -200,7 +200,7 @@ export function adminPage() {
       <div class="modal-head"><div><span class="eyebrow">SERVICE CONFIGURATION</span><h2 id="ruleDialogTitle">New appointment service</h2><p id="ruleDialogSubtitle">Choose how customers will book this service.</p></div><button type="button" class="icon-button" data-close-dialog aria-label="Close">${icons.close}</button></div>
       <div class="wizard-steps booking-mode-wizard"><button type="button" class="active" data-rule-step-button="0"><span>1</span>Service</button><i></i><button type="button" data-rule-step-button="1"><span>2</span>Booking mode</button><i></i><button type="button" data-rule-step-button="2"><span>3</span>Availability</button><i></i><button type="button" data-rule-step-button="3"><span>4</span>Experience</button></div>
       <div class="modal-body">
-        <input type="hidden" id="ruleId"><input type="hidden" id="productSelect"><input type="hidden" id="serviceType" value="appointment"><input type="hidden" id="commerceMode" value="product_pre_purchase"><input type="hidden" id="bookingSource" value="product"><input type="hidden" id="sourceType" value="product"><input type="hidden" id="bookingMode" value="slot">
+        <input type="hidden" id="ruleId"><input type="hidden" id="productSelect"><input type="hidden" id="productVariantId"><input type="hidden" id="productVariantTitle"><input type="hidden" id="productVariantPrice"><input type="hidden" id="serviceType" value="appointment"><input type="hidden" id="commerceMode" value="product_pre_purchase"><input type="hidden" id="bookingSource" value="product"><input type="hidden" id="sourceType" value="product"><input type="hidden" id="bookingMode" value="slot">
         <section class="rule-step" data-rule-step="0">
           <div class="step-intro"><h3>Define the appointment service</h3><p>Choose the service type, how it relates to a purchase, and where customers enter the booking flow.</p></div>
           <div class="field"><label for="serviceTitle">Service name</label><input id="serviceTitle" maxlength="255" placeholder="e.g. Home installation service" required><p class="hint">Describe the service customers are booking, independent of the linked product.</p></div>
@@ -214,7 +214,7 @@ export function adminPage() {
           </div></fieldset>
           <fieldset class="choice-fieldset commerce-fieldset"><legend>Booking & purchase relationship</legend><div id="commerceModeGrid" class="commerce-mode-grid">
             <button type="button" class="commerce-mode-option" data-commerce-mode="standalone_free"><span class="commerce-option-head"><strong>Standalone · no payment</strong><em class="commerce-state ready">Ready</em></span><span>Customers book the service directly without checkout.</span><small>Free consultations, free measurements, or appointment-only service pages.</small></button>
-            <button type="button" class="commerce-mode-option" data-commerce-mode="standalone_paid" disabled aria-disabled="true"><span class="commerce-option-head"><strong>Standalone · payment required</strong><em class="commerce-state planned">Checkout next</em></span><span>Customers choose a time first, then complete SHOPLINE checkout.</span><small>Paid classes, massage, photography, or professional sessions.</small></button>
+            <button type="button" class="commerce-mode-option" data-commerce-mode="standalone_paid"><span class="commerce-option-head"><strong>Standalone · payment required</strong><em class="commerce-state ready">Ready</em></span><span>Customers choose a time first, then complete SHOPLINE checkout.</span><small>Paid classes, massage, photography, or professional sessions.</small></button>
             <button type="button" class="commerce-mode-option selected" data-commerce-mode="product_pre_purchase"><span class="commerce-option-head"><strong>Product + appointment</strong><em class="commerce-state ready">Ready</em></span><span>Keep the normal product purchase flow and add appointment booking as another action.</span><small>Design consultations, showroom visits, measurement, or pre-sale services.</small></button>
             <button type="button" class="commerce-mode-option" data-commerce-mode="product_post_purchase" disabled aria-disabled="true"><span class="commerce-option-head"><strong>Purchase first · schedule after</strong><em class="commerce-state planned">Order flow next</em></span><span>Customers buy first, then schedule the included service from an eligible order.</span><small>Installation, delivery setup, onboarding, or post-purchase service.</small></button>
           </div><div id="commerceGuidance" class="commerce-guidance"></div></fieldset>
@@ -223,7 +223,7 @@ export function adminPage() {
             <button type="button" class="booking-source-option" data-booking-source="direct"><strong>Booking page only</strong><span>Use a shareable Appointment Lite booking page.</span></button>
             <button type="button" class="booking-source-option" data-booking-source="both"><strong>Both</strong><span>Use both the linked product page and a shareable booking page.</span></button>
           </div></fieldset>
-          <div id="productSourceFields"><div class="field"><label>Linked SHOPLINE product</label><div id="productPicker" class="custom-select"><button id="productPickerButton" type="button" aria-haspopup="dialog"><span id="productPickerLabel">Select a product</span>${icons.chevron}</button></div><p id="productBindingHint" class="hint">Choose the SHOPLINE product connected to this appointment experience.</p></div></div>
+          <div id="productSourceFields"><div class="field"><label>Linked SHOPLINE product</label><div id="productPicker" class="custom-select"><button id="productPickerButton" type="button" aria-haspopup="dialog"><span id="productPickerLabel">Select a product</span>${icons.chevron}</button></div><p id="productBindingHint" class="hint">Choose the SHOPLINE product connected to this appointment experience.</p></div></div><div id="paidCheckoutFields" class="paid-checkout-fields hidden"><div class="paid-checkout-callout"><div><strong>SHOPLINE checkout</strong><span>Customers choose a time first. Appointment Lite holds that capacity while they complete SHOPLINE checkout.</span></div><span class="status-badge success">Payment flow</span></div><div class="field-row"><div class="field"><label for="paidVariantSelect">Checkout variant</label><select id="paidVariantSelect"><option value="">Select a product first</option></select><p class="hint">The selected variant provides the checkout price. Use a dedicated appointment product for the cleanest setup.</p></div><div class="field"><label for="paymentHoldMinutes">Payment hold</label><select id="paymentHoldMinutes"><option value="5">5 minutes</option><option value="10">10 minutes</option><option value="15" selected>15 minutes</option><option value="20">20 minutes</option><option value="30">30 minutes</option></select><p class="hint">The selected slot is temporarily reserved while the customer pays.</p></div></div><p id="paidCheckoutVariantMeta" class="hint">Select the SHOPLINE product used to charge for this appointment.</p></div>
         </section>
         <section class="rule-step hidden" data-rule-step="1">
           <div class="step-intro"><h3>How should customers book time?</h3><p>Choose a booking mode. Appointment Lite will only show settings that apply to that mode.</p><small id="bookingModeRecommendation" class="mode-recommendation"></small></div>
@@ -298,7 +298,7 @@ export function adminPage() {
   </dialog>
 
   <dialog id="confirmDialog" class="confirm-modal"><div class="confirm-icon">!</div><div class="confirm-copy"><h2 id="confirmTitle">Please confirm</h2><p id="confirmMessage"></p></div><div class="modal-actions"><button id="confirmNo" class="secondary">Keep it</button><button id="confirmYes" class="danger">Confirm</button></div></dialog>
-  <script type="module" src="/admin/app.js?v=0.6.1"></script>
+  <script type="module" src="/admin/app.js?v=0.6.2"></script>
 </body>
 </html>`;
 }
