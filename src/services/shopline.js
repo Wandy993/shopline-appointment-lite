@@ -54,11 +54,19 @@ export function authorizationUrl(handle, customField) {
 }
 
 export const SHOPLINE_ORDER_SCOPE = 'read_orders';
+export const SHOPLINE_LOCATION_SCOPE = 'read_location';
 
 export function shoplineOrderAccessStatus(shop = {}) {
   const scopes = new Set((shop.scopes || []).map(value => String(value || '').trim()).filter(Boolean));
   const granted = scopes.has(SHOPLINE_ORDER_SCOPE);
   return { requiredScope: SHOPLINE_ORDER_SCOPE, granted, missingScopes: granted ? [] : [SHOPLINE_ORDER_SCOPE] };
+}
+
+
+export function shoplineLocationAccessStatus(shop = {}) {
+  const scopes = new Set((shop.scopes || []).map(value => String(value || '').trim()).filter(Boolean));
+  const granted = scopes.has(SHOPLINE_LOCATION_SCOPE);
+  return { requiredScope: SHOPLINE_LOCATION_SCOPE, granted, missingScopes: granted ? [] : [SHOPLINE_LOCATION_SCOPE] };
 }
 
 export function reauthorizationUrlForShop(shop) {
@@ -93,7 +101,7 @@ export async function shoplineGetPage(shopId, endpoint, query = {}) {
   const url = new URL(`https://${handle}.myshopline.com/admin/openapi/${config.shopline.apiVersion}/${endpoint}`);
   for (const [key, value] of Object.entries(query)) if (value !== '' && value != null) url.searchParams.set(key, value);
   const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' },
+    headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json', 'Content-Type': 'application/json; charset=utf-8' },
     signal: AbortSignal.timeout(15000)
   });
   const payload = await response.json().catch(() => ({}));

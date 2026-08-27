@@ -7,6 +7,7 @@ const BOOKING_MODES = new Set(['slot', 'all_day', 'multi_slot']);
 const COMMERCE_MODES = new Set(['standalone_free', 'standalone_paid', 'product_pre_purchase', 'product_post_purchase']);
 const ACTIVE_COMMERCE_MODES = new Set(['standalone_free', 'standalone_paid', 'product_pre_purchase', 'product_post_purchase']);
 const STAFF_ASSIGNMENT_MODES = new Set(['none', 'any', 'customer_choice', 'fixed']);
+const LOCATION_MODES = new Set(['shopline_location', 'customer_address', 'online', 'custom']);
 const OBJECT_ID_PATTERN = /^[a-f\d]{24}$/i;
 
 function validTimeZone(value) {
@@ -66,6 +67,10 @@ export function validateRuleInput(body) {
   const productVariantPrice = commerceMode === 'standalone_paid' ? text(body.productVariantPrice, 40) : '';
   const paymentHoldMinutes = commerceMode === 'standalone_paid' ? Number(body.paymentHoldMinutes ?? 15) : 15;
   const serviceTitle = text(body.serviceTitle || body.productTitle, 255);
+  const legacyLocation = text(body.location, 300);
+  const locationMode = LOCATION_MODES.has(body.locationMode) ? body.locationMode : (legacyLocation ? 'custom' : 'custom');
+  const shoplineLocationId = locationMode === 'shopline_location' ? text(body.shoplineLocationId, 100) : '';
+  if (locationMode === 'shopline_location' && !shoplineLocationId) errors.push('Choose a SHOPLINE location.');
   const rawStaffAssignment = body.staffAssignment && typeof body.staffAssignment === 'object' ? body.staffAssignment : {};
   const staffAssignmentMode = STAFF_ASSIGNMENT_MODES.has(rawStaffAssignment.mode) ? rawStaffAssignment.mode : 'none';
   const staffIds = [...new Set((Array.isArray(rawStaffAssignment.staffIds) ? rawStaffAssignment.staffIds : []).map(value => text(value, 24)).filter(value => OBJECT_ID_PATTERN.test(value)))];
@@ -127,7 +132,8 @@ export function validateRuleInput(body) {
     serviceDescription: text(body.serviceDescription, 500),
     duration, buffer, capacity, minimumNoticeMinutes, bookingWindowDays,
     dateFrom, dateUntil, weeklyAvailability, availabilityExceptions,
-    location: text(body.location, 200), staff: text(body.staff, 200),
+    locationMode, shoplineLocationId, locationSnapshot: undefined,
+    location: locationMode === 'custom' ? legacyLocation : '', staff: text(body.staff, 200),
     staffAssignment: { mode: staffAssignmentMode, staffIds },
     questionLabel: text(body.questionLabel || 'Anything we should know?', 120), customQuestions,
     enabled: body.enabled !== false
@@ -158,6 +164,7 @@ export function validateBookingInput(body) {
   if (!date && !occurrences.length) errors.push('A valid date is required.');
   return { errors: [...new Set(errors)], value: {
     productId: text(body.productId, 100), ruleId: text(body.ruleId, 24), staffId: text(body.staffId, 24), date, time, occurrences, customer,
+    serviceAddress: text(body.serviceAddress || body.location, 300),
     note: text(body.note, 2000),
     answers: (Array.isArray(body.answers) ? body.answers : []).slice(0, 5).map(answer => ({
       question: text(answer.question, 120), answer: text(answer.answer, 1000)
@@ -183,7 +190,7 @@ export function validateAdminBookingInput(body) {
   const { errors, value } = validateSlotInput(body);
   return { errors, value: {
     ...value,
-    location: text(body.location, 200),
+    location: text(body.location, 300),
     staff: text(body.staff, 200),
     staffId: text(body.staffId, 24)
   } };

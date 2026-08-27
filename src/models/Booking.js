@@ -6,6 +6,20 @@ const answerSchema = new mongoose.Schema({
 }, { _id: false });
 
 
+const locationSnapshotSchema = new mongoose.Schema({
+  name: { type: String, default: '', maxlength: 160 },
+  address1: { type: String, default: '', maxlength: 200 },
+  address2: { type: String, default: '', maxlength: 200 },
+  city: { type: String, default: '', maxlength: 120 },
+  province: { type: String, default: '', maxlength: 120 },
+  provinceCode: { type: String, default: '', maxlength: 40 },
+  country: { type: String, default: '', maxlength: 120 },
+  countryCode: { type: String, default: '', maxlength: 8 },
+  zip: { type: String, default: '', maxlength: 40 },
+  phone: { type: String, default: '', maxlength: 60 },
+  isDefault: { type: Boolean, default: false }
+}, { _id: false });
+
 const occurrenceSchema = new mongoose.Schema({
   date: { type: String, required: true, match: /^\d{4}-\d{2}-\d{2}$/ },
   time: { type: String, default: '' },
@@ -18,6 +32,9 @@ const occurrenceSchema = new mongoose.Schema({
 const bookingSnapshotSchema = new mongoose.Schema({
   date: { type: String, default: '' },
   time: { type: String, default: '' },
+  locationMode: { type: String, enum: ['shopline_location', 'customer_address', 'online', 'custom'], default: 'custom' },
+  shoplineLocationId: { type: String, default: '', maxlength: 100 },
+  locationSnapshot: { type: locationSnapshotSchema, default: undefined },
   location: { type: String, default: '' },
   staff: { type: String, default: '' },
   staffId: { type: mongoose.Schema.Types.ObjectId, ref: 'Staff', default: null },
@@ -53,6 +70,7 @@ const calendarEventSchema = new mongoose.Schema({
   lastSyncedAt: Date
 }, { _id: false });
 
+
 const postPurchaseSchema = new mongoose.Schema({
   entitlementId: { type: mongoose.Schema.Types.ObjectId, ref: 'PostPurchaseEntitlement', default: null },
   shoplineOrderId: { type: String, default: '', maxlength: 100 },
@@ -78,6 +96,9 @@ const bookingSchema = new mongoose.Schema({
   duration: { type: Number, required: true },
   buffer: { type: Number, default: 0 },
   timezone: { type: String, default: 'UTC' },
+  locationMode: { type: String, enum: ['shopline_location', 'customer_address', 'online', 'custom'], default: 'custom' },
+  shoplineLocationId: { type: String, default: '', maxlength: 100 },
+  locationSnapshot: { type: locationSnapshotSchema, default: undefined },
   location: { type: String, default: '' },
   staff: { type: String, default: '' },
   staffId: { type: mongoose.Schema.Types.ObjectId, ref: 'Staff', default: null, index: true },

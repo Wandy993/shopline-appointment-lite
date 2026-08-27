@@ -184,6 +184,26 @@ async function syncSingleReservation({ ReservationModel, booking, rule }) {
   }
 }
 
+
+function compactAddress(value = {}) {
+  return [value.address1, value.address2, value.city, value.province, value.zip, value.country]
+    .map(part => String(part || '').trim()).filter(Boolean).join(', ').slice(0, 300);
+}
+
+function bookingLocationForRule(rule, input = {}) {
+  const mode = rule.locationMode || (rule.shoplineLocationId ? 'shopline_location' : (rule.location ? 'custom' : 'custom'));
+  if (mode === 'customer_address') {
+    const address = String(input.serviceAddress || '').trim().slice(0, 300);
+    if (!address) throw Object.assign(new Error('Enter the address where this service will be provided.'), { code: 'VALIDATION_ERROR' });
+    return { locationMode: mode, shoplineLocationId: '', locationSnapshot: undefined, location: address };
+  }
+  if (mode === 'online') return { locationMode: mode, shoplineLocationId: '', locationSnapshot: undefined, location: 'Online' };
+  if (mode === 'shopline_location') {
+    return { locationMode: mode, shoplineLocationId: String(rule.shoplineLocationId || ''), locationSnapshot: rule.locationSnapshot || undefined, location: String(rule.location || rule.locationSnapshot?.name || '').slice(0, 300) };
+  }
+  return { locationMode: 'custom', shoplineLocationId: '', locationSnapshot: undefined, location: String(rule.location || '').slice(0, 300) };
+}
+
 export async function createBookingAtomic({
   shop, rule, input, BookingModel = Booking, ReservationModel, StaffReservationModel, StaffModel = Staff,
   notify = sendBookingNotifications, now = new Date(), initialStatus = 'confirmed', payment = null, postPurchase = null, notifications = true
@@ -224,6 +244,7 @@ export async function createBookingAtomic({
   const primaryTime = mode === 'all_day' ? '00:00' : first.time;
   const eventType = initialStatus === 'pending_payment' ? 'payment_started' : 'created';
   const eventActor = initialStatus === 'pending_payment' ? 'system' : 'customer';
+  const resolvedLocation = bookingLocationForRule(rule, input);
   const document = {
     _id: bookingId,
     shopId: shop._id, ruleId: rule._id, bookingSource: rule.bookingSource || (rule.sourceType === 'standalone' ? 'direct' : 'product'),
@@ -232,14 +253,17 @@ export async function createBookingAtomic({
     bookingMode: mode,
     productId: rule.productId || '', productVariantId: rule.productVariantId || '', productTitle: rule.serviceTitle || rule.productTitle,
     date: first.date, time: primaryTime, slotKey: first.slotKey, slotPosition: Number(first.slotPosition || 0), occurrences: reserved,
-    duration: rule.duration, buffer: rule.buffer, timezone, location: rule.location, staff: staffName, staffId, staffEmail,
+    duration: rule.duration, buffer: rule.buffer, timezone,
+    locationMode: resolvedLocation.locationMode, shoplineLocationId: resolvedLocation.shoplineLocationId,
+    ...(resolvedLocation.locationSnapshot ? { locationSnapshot: resolvedLocation.locationSnapshot } : {}),
+    location: resolvedLocation.location, staff: staffName, staffId, staffEmail,
     managementTokenHash: hashManagementToken(managementToken),
     customer: input.customer, note: input.note, answers: input.answers, status: initialStatus,
     ...(postPurchase ? { postPurchase } : {}),
     ...(payment ? { payment } : {}),
     events: [{
       type: eventType, actor: eventActor, at: now,
-      to: { date: first.date, time: primaryTime, location: rule.location || '', staff: staffName, staffId, staffEmail, status: initialStatus }
+      to: { date: first.date, time: primaryTime, locationMode: resolvedLocation.locationMode, shoplineLocationId: resolvedLocation.shoplineLocationId, ...(resolvedLocation.locationSnapshot ? { locationSnapshot: resolvedLocation.locationSnapshot } : {}), location: resolvedLocation.location || '', staff: staffName, staffId, staffEmail, status: initialStatus }
     }]
   };
   let booking;
@@ -318,10 +342,16 @@ export async function createPostPurchaseBookingForStore({ ruleId, entitlementTok
     email: claimed.customer?.email || input.customer?.email || '',
     phone: claimed.customer?.phone || input.customer?.phone || ''
   };
+  const orderAddress = compactAddress(claimed.shippingAddress || {});
+  const bookingInput = {
+    ...input,
+    customer,
+    serviceAddress: input.serviceAddress || (rule.locationMode === 'customer_address' ? orderAddress : '')
+  };
   let result;
   try {
     result = await createBookingAtomic({
-      shop, rule, input: { ...input, customer }, now,
+      shop, rule, input: bookingInput, now,
       postPurchase: {
         entitlementId: claimed._id,
         shoplineOrderId: claimed.orderId || '',

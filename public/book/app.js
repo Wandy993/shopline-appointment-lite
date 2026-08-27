@@ -148,7 +148,7 @@ function setupTimezonePicker() {
 
 const staffPresetClasses = new Set(['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose', 'nova']);
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
-function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="/assets/staff/${file}?v=0.6.4" alt="" loading="lazy" decoding="async">`;}
+function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="/assets/staff/${file}?v=0.6.5" alt="" loading="lazy" decoding="async">`;}
 
 function staffAvatarMarkup(item, className = '') {
   const avatar = item?.avatar || {};
@@ -362,6 +362,17 @@ function renderService(payload) {
     if (emailInput && payload.postPurchase.customer.email) { emailInput.value = payload.postPurchase.customer.email; emailInput.readOnly = true; }
     if (phoneInput && payload.postPurchase.customer.phone) phoneInput.value = payload.postPurchase.customer.phone;
   }
+  const serviceAddressField = $('#serviceAddressField');
+  const serviceAddressInput = $('#bookingForm [name="serviceAddress"]');
+  const needsCustomerAddress = rule.locationMode === 'customer_address';
+  serviceAddressField?.classList.toggle('hidden', !needsCustomerAddress);
+  if (serviceAddressInput) {
+    serviceAddressInput.required = needsCustomerAddress;
+    if (needsCustomerAddress && payload.postPurchase?.shippingAddress) {
+      const address = [payload.postPurchase.shippingAddress.address1, payload.postPurchase.shippingAddress.address2, payload.postPurchase.shippingAddress.city, payload.postPurchase.shippingAddress.province, payload.postPurchase.shippingAddress.zip, payload.postPurchase.shippingAddress.country].filter(Boolean).join(', ');
+      if (address) serviceAddressInput.value = address;
+    }
+  }
   const staffField = $('#staffField');
   const staffSelect = $('#staffSelect');
   staffField.classList.toggle('hidden', staffMode !== 'customer_choice');
@@ -508,6 +519,7 @@ $('#bookingForm').addEventListener('submit', async event => {
       time: mode === 'slot' ? selectedTime : '',
       occurrences: mode === 'multi_slot' ? selectedOccurrences : [],
       customer: { name: form.get('name'), email: form.get('email'), phone: form.get('phone') },
+      serviceAddress: form.get('serviceAddress') || '',
       note: form.get('note'),
       answers: [...document.querySelectorAll('[data-question]')].map(input => ({ question: input.dataset.question, answer: input.value })),
       ...(postPurchase ? { entitlementToken } : {})

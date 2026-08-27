@@ -23,6 +23,21 @@ const staffAssignmentSchema = new mongoose.Schema({
   staffIds: { type: [mongoose.Schema.Types.ObjectId], ref: 'Staff', default: [] }
 }, { _id: false });
 
+
+const locationSnapshotSchema = new mongoose.Schema({
+  name: { type: String, default: '', maxlength: 160 },
+  address1: { type: String, default: '', maxlength: 200 },
+  address2: { type: String, default: '', maxlength: 200 },
+  city: { type: String, default: '', maxlength: 120 },
+  province: { type: String, default: '', maxlength: 120 },
+  provinceCode: { type: String, default: '', maxlength: 40 },
+  country: { type: String, default: '', maxlength: 120 },
+  countryCode: { type: String, default: '', maxlength: 8 },
+  zip: { type: String, default: '', maxlength: 40 },
+  phone: { type: String, default: '', maxlength: 60 },
+  isDefault: { type: Boolean, default: false }
+}, { _id: false });
+
 const questionSchema = new mongoose.Schema({
   label: { type: String, required: true, maxlength: 120 },
   required: { type: Boolean, default: false }
@@ -64,7 +79,10 @@ const appointmentRuleSchema = new mongoose.Schema({
   dateUntil: { type: String, default: '' },
   weeklyAvailability: { type: [weeklySchema], default: [] },
   availabilityExceptions: { type: [exceptionSchema], default: [] },
-  location: { type: String, default: '', maxlength: 200 },
+  locationMode: { type: String, enum: ['shopline_location', 'customer_address', 'online', 'custom'], default: 'custom', index: true },
+  shoplineLocationId: { type: String, default: '', trim: true, maxlength: 100 },
+  locationSnapshot: { type: locationSnapshotSchema, default: undefined },
+  location: { type: String, default: '', maxlength: 300 },
   // Legacy free-text staff remains for older services. Managed staff uses staffAssignment.
   staff: { type: String, default: '', maxlength: 200 },
   staffAssignment: { type: staffAssignmentSchema, default: () => ({ mode: 'none', staffIds: [] }) },

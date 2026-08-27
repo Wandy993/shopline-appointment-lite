@@ -1,6 +1,6 @@
 # SHOPLINE order sync
 
-Appointment Lite v0.6.4 uses SHOPLINE order data to confirm paid standalone bookings and activate purchase-first scheduling links.
+Appointment Lite v0.6.5 uses SHOPLINE order data to confirm paid standalone bookings and activate purchase-first scheduling links.
 
 ## Permission
 

@@ -3,12 +3,13 @@ import { config } from '../config.js';
 import { AppointmentRule } from '../models/AppointmentRule.js';
 import { Booking } from '../models/Booking.js';
 import { BookingReservation } from '../models/BookingReservation.js';
+import { PostPurchaseEntitlement } from '../models/PostPurchaseEntitlement.js';
 import { Staff } from '../models/Staff.js';
 import { StaffReservation } from '../models/StaffReservation.js';
 import { CalendarConnection } from '../models/CalendarConnection.js';
 import { validateAdminBookingInput, validateBookingStatus, validateRuleInput, validateStaffInput } from '../lib/validation.js';
 import { requireAdmin, requireCsrf } from '../middleware/auth.js';
-import { ensureBookingCommerceWebhooks, reauthorizationUrlForShop, shoplineGet, shoplineOrderAccessStatus, syncShopMetadata } from '../services/shopline.js';
+import { ensureBookingCommerceWebhooks, reauthorizationUrlForShop, shoplineGet, shoplineLocationAccessStatus, shoplineOrderAccessStatus, syncShopMetadata } from '../services/shopline.js';
 import { getProductVariants, syncProductCatalog } from '../services/product-catalog.js';
 import { cancelBookingByMerchant, setBookingStatusByMerchant, updateBookingByMerchant } from '../services/bookings.js';
 import { emailStatus, sendTestEmail } from '../services/email.js';
@@ -17,7 +18,8 @@ import { normalizeEmailSettings, validateEmailSettings, validateTestEmailRecipie
 import { buildThemeAppBlockDeepLink } from '../lib/theme-deep-link.js';
 import { accessTokenForConnection, decryptGoogleRefreshToken, googleCalendarAuthorizationUrl, googleCalendarConfigured, listOwnedGoogleCalendars, publicConnection, revokeGoogleRefreshToken } from '../services/google-calendar.js';
 import { queueUpcomingGoogleCalendarBookingsForBusiness, syncUpcomingGoogleCalendarBookingsForBusiness } from '../services/calendar-sync.js';
-import { reconcileRecentPaidOrdersForShop } from '../services/paid-bookings.js';
+import { reconcileRecentCommerceOrdersForShop } from '../services/paid-bookings.js';
+import { formatLocationSnapshot, listShoplineLocations, resolveShoplineLocation } from '../services/locations.js';
 
 export const adminRouter = Router();
 adminRouter.use(requireAdmin, requireCsrf);
@@ -276,6 +278,16 @@ adminRouter.delete('/staff/:id', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+
+adminRouter.get('/locations', async (req, res, next) => {
+  try {
+    const access = shoplineLocationAccessStatus(req.shop);
+    if (!access.granted) return res.json({ locations: [], access: { ...access, authorizationUrl: reauthorizationUrlForShop(req.shop) } });
+    const locations = await listShoplineLocations(req.shop._id);
+    res.json({ locations, access: { ...access, authorizationUrl: '' } });
+  } catch (error) { next(error); }
+});
+
 adminRouter.get('/rules', async (req, res) => {
   const [rules, bookingCounts] = await Promise.all([
     AppointmentRule.find({ shopId: req.shop._id }).sort({ updatedAt: -1 }).lean(),
@@ -303,6 +315,80 @@ adminRouter.get('/rules', async (req, res) => {
   }) });
 });
 
+
+function locationAccessRequiredResponse(req, res) {
+  return res.status(409).json({
+    error: 'LOCATION_ACCESS_REQUIRED',
+    message: 'Authorize SHOPLINE location access before selecting a store location.',
+    authorizationUrl: reauthorizationUrlForShop(req.shop)
+  });
+}
+
+async function canonicalizeRuleLocation(shop, value) {
+  const mode = value.locationMode || 'custom';
+  if (mode === 'online') return { ...value, shoplineLocationId: '', locationSnapshot: undefined, location: 'Online' };
+  if (mode === 'customer_address') return { ...value, shoplineLocationId: '', locationSnapshot: undefined, location: 'Customer address' };
+  if (mode !== 'shopline_location') return { ...value, shoplineLocationId: '', locationSnapshot: undefined, location: String(value.location || '').trim().slice(0, 300) };
+  if (!shoplineLocationAccessStatus(shop).granted) throw Object.assign(new Error('Authorize SHOPLINE location access before selecting a store location.'), { code: 'LOCATION_ACCESS_REQUIRED' });
+  const location = await resolveShoplineLocation(shop._id, value.shoplineLocationId);
+  if (!location) throw Object.assign(new Error('The selected SHOPLINE location is no longer available. Refresh locations and choose another one.'), { code: 'SHOPLINE_LOCATION_NOT_FOUND' });
+  return {
+    ...value,
+    shoplineLocationId: location.id,
+    locationSnapshot: location,
+    location: formatLocationSnapshot(location)
+  };
+}
+
+function paymentStatusForBooking(booking = {}) {
+  const mode = booking.commerceMode || '';
+  if (!['standalone_paid', 'product_post_purchase'].includes(mode)) return 'not_required';
+  const financial = String(booking.payment?.financialStatus || '').toLowerCase();
+  if (mode === 'product_post_purchase') return 'paid';
+  if (financial === 'paid' || booking.payment?.confirmedAt) return 'paid';
+  if (booking.status === 'payment_expired') return 'expired';
+  if (booking.status === 'payment_conflict') return 'needs_review';
+  return 'unpaid';
+}
+
+function appointmentStatusForBooking(booking = {}) {
+  if (booking.status === 'pending_payment') return 'waiting_payment';
+  if (booking.status === 'payment_expired') return 'payment_expired';
+  if (booking.status === 'payment_conflict') return 'needs_review';
+  if (booking.status === 'confirmed') return 'scheduled';
+  return booking.status || 'scheduled';
+}
+
+function orderLifecycleRecord(entitlement, rule, handle) {
+  const eligible = Math.max(1, Number(entitlement.eligibleQuantity || 1));
+  const used = Math.max(0, Number(entitlement.usedBookings || 0));
+  const remaining = Math.max(0, eligible - used);
+  const paid = String(entitlement.financialStatus || '').toLowerCase() === 'paid' || ['active', 'exhausted'].includes(entitlement.status);
+  let appointmentStatus = 'waiting_payment';
+  if (entitlement.status === 'revoked') appointmentStatus = 'cancelled';
+  else if (paid && used === 0) appointmentStatus = 'awaiting_schedule';
+  else if (paid && remaining > 0) appointmentStatus = 'partially_scheduled';
+  else if (paid && remaining === 0) appointmentStatus = 'scheduled';
+  const orderId = String(entitlement.orderId || '');
+  return {
+    _id: String(entitlement._id),
+    recordType: 'order_lifecycle',
+    ruleId: String(entitlement.ruleId || ''),
+    commerceMode: 'product_post_purchase',
+    productTitle: rule?.serviceTitle || rule?.productTitle || 'Post-purchase appointment',
+    productId: entitlement.productId || rule?.productId || '',
+    customer: entitlement.customer || { name: 'Customer', email: '', phone: '' },
+    date: '', time: '', bookingMode: 'slot', occurrences: [], timezone: '',
+    location: rule?.location || '', staff: '', status: appointmentStatus,
+    paymentStatus: paid ? 'paid' : 'unpaid', appointmentStatus,
+    schedulingProgress: { eligible, used, remaining },
+    notificationSentAt: entitlement.notificationSentAt || null,
+    orderStatus: entitlement.orderStatus || '',
+    createdAt: entitlement.createdAt, updatedAt: entitlement.updatedAt,
+    shoplineOrder: orderId ? { id: orderId, name: entitlement.orderName || orderId, adminUrl: `https://${handle}.myshopline.com/admin/orders/${encodeURIComponent(orderId)}` } : null
+  };
+}
+
 function orderAccessRequiredResponse(req, res) {
   return res.status(409).json({
     error: 'ORDER_ACCESS_REQUIRED',
@@ -317,7 +403,14 @@ adminRouter.post('/rules', async (req, res, next) => {
     if (errors.length) return res.status(422).json({ error: 'VALIDATION_ERROR', message: errors.join(' '), fields: errors });
     const staffError = await validateManagedStaffSelection(req.shop._id, value);
     if (staffError) return res.status(422).json({ error: 'VALIDATION_ERROR', message: staffError });
-    if (['standalone_paid', 'product_post_purchase'].includes(value.commerceMode)) {
+    let canonicalValue;
+    try { canonicalValue = await canonicalizeRuleLocation(req.shop, value); }
+    catch (error) {
+      if (error.code === 'LOCATION_ACCESS_REQUIRED') return locationAccessRequiredResponse(req, res);
+      if (error.code === 'SHOPLINE_LOCATION_NOT_FOUND') return res.status(422).json({ error: error.code, message: error.message });
+      throw error;
+    }
+    if (['standalone_paid', 'product_post_purchase'].includes(canonicalValue.commerceMode)) {
       if (!shoplineOrderAccessStatus(req.shop).granted) return orderAccessRequiredResponse(req, res);
       const webhookResults = await ensureBookingCommerceWebhooks(req.shop._id);
       if (webhookResults.some(item => !item.ok)) {
@@ -325,7 +418,7 @@ adminRouter.post('/rules', async (req, res, next) => {
         return res.status(503).json({ error: 'COMMERCE_WEBHOOK_SETUP_FAILED', message: 'Could not prepare SHOPLINE order confirmation. Please try saving the service again.' });
       }
     }
-    const rule = await AppointmentRule.create({ shopId: req.shop._id, ...value });
+    const rule = await AppointmentRule.create({ shopId: req.shop._id, ...canonicalValue });
     res.status(201).json({ rule });
   } catch (error) {
     if (error?.code === 11000) return res.status(409).json({ error: 'DUPLICATE_PRODUCT', message: 'This product is already linked to another appointment service.' });
@@ -341,7 +434,14 @@ adminRouter.put('/rules/:id', async (req, res, next) => {
     if (errors.length) return res.status(422).json({ error: 'VALIDATION_ERROR', message: errors.join(' '), fields: errors });
     const staffError = await validateManagedStaffSelection(req.shop._id, value);
     if (staffError) return res.status(422).json({ error: 'VALIDATION_ERROR', message: staffError });
-    if (['standalone_paid', 'product_post_purchase'].includes(value.commerceMode)) {
+    let canonicalValue;
+    try { canonicalValue = await canonicalizeRuleLocation(req.shop, value); }
+    catch (error) {
+      if (error.code === 'LOCATION_ACCESS_REQUIRED') return locationAccessRequiredResponse(req, res);
+      if (error.code === 'SHOPLINE_LOCATION_NOT_FOUND') return res.status(422).json({ error: error.code, message: error.message });
+      throw error;
+    }
+    if (['standalone_paid', 'product_post_purchase'].includes(canonicalValue.commerceMode)) {
       if (!shoplineOrderAccessStatus(req.shop).granted) return orderAccessRequiredResponse(req, res);
       const webhookResults = await ensureBookingCommerceWebhooks(req.shop._id);
       if (webhookResults.some(item => !item.ok)) {
@@ -349,7 +449,7 @@ adminRouter.put('/rules/:id', async (req, res, next) => {
         return res.status(503).json({ error: 'COMMERCE_WEBHOOK_SETUP_FAILED', message: 'Could not prepare SHOPLINE order confirmation. Please try saving the service again.' });
       }
     }
-    Object.assign(rule, value);
+    Object.assign(rule, canonicalValue);
     await rule.save();
     res.json({ rule });
   } catch (error) {
@@ -396,7 +496,7 @@ adminRouter.post('/commerce/reconcile', async (req, res, next) => {
     const webhookResults = await ensureBookingCommerceWebhooks(req.shop._id);
     const failed = webhookResults.filter(item => !item.ok);
     if (failed.length) console.warn('Some SHOPLINE booking webhooks could not be prepared during reconciliation', failed);
-    const result = await reconcileRecentPaidOrdersForShop({ shop: req.shop });
+    const result = await reconcileRecentCommerceOrdersForShop({ shop: req.shop });
     res.json({ ok: true, result, webhookWarnings: failed.length });
   } catch (error) { next(error); }
 });
@@ -411,8 +511,29 @@ adminRouter.get('/bookings', async (req, res) => {
     if (req.query.from) filter.date.$gte = String(req.query.from).slice(0, 10);
     if (req.query.to) filter.date.$lte = String(req.query.to).slice(0, 10);
   }
-  const bookings = await Booking.find(filter).sort({ date: -1, time: -1 }).limit(1000).lean();
-  res.json({ bookings: bookings.map(booking => ({ ...withBookingHistory(booking), shoplineOrder: orderLinkForBooking(booking, req.shop.handle) })) });
+  const [bookings, entitlements] = await Promise.all([
+    Booking.find(filter).sort({ date: -1, time: -1 }).limit(1000).lean(),
+    req.query.staffId ? [] : PostPurchaseEntitlement.find({ shopId: req.shop._id }).sort({ createdAt: -1 }).limit(1000).lean()
+  ]);
+  const ruleIds = [...new Set(entitlements.map(item => String(item.ruleId || '')).filter(Boolean))];
+  const rules = ruleIds.length ? await AppointmentRule.find({ _id: { $in: ruleIds }, shopId: req.shop._id }).select('_id serviceTitle productTitle productId location').lean() : [];
+  const ruleMap = new Map(rules.map(rule => [String(rule._id), rule]));
+  const bookingRows = bookings.map(booking => ({
+    ...withBookingHistory(booking),
+    recordType: 'booking',
+    paymentStatus: paymentStatusForBooking(booking),
+    appointmentStatus: appointmentStatusForBooking(booking),
+    shoplineOrder: orderLinkForBooking(booking, req.shop.handle)
+  }));
+  const lifecycleRows = entitlements
+    .filter(item => {
+      const eligible = Math.max(1, Number(item.eligibleQuantity || 1));
+      const used = Math.max(0, Number(item.usedBookings || 0));
+      return item.status === 'pending_payment' || item.status === 'revoked' || used < eligible;
+    })
+    .map(item => orderLifecycleRecord(item, ruleMap.get(String(item.ruleId)), req.shop.handle));
+  const rows = [...bookingRows, ...lifecycleRows].sort((a, b) => String(b.updatedAt || b.createdAt || '').localeCompare(String(a.updatedAt || a.createdAt || ''))).slice(0, 1200);
+  res.json({ bookings: rows });
 });
 
 adminRouter.put('/preferences', async (req, res) => {

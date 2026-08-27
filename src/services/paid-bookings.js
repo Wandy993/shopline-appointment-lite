@@ -109,6 +109,58 @@ export async function reconcilePendingCommercePayments({
   return summary;
 }
 
+export async function reconcileRecentCommerceOrdersForShop({
+  shop,
+  days = 7,
+  limit = 100,
+  BookingModel = Booking,
+  EntitlementModel = PostPurchaseEntitlement,
+  shoplineGetFn = shoplineGet
+} = {}) {
+  if (!shop?._id || !hasReadOrders(shop)) return { skipped: true, reason: 'READ_ORDERS_REQUIRED', ordersChecked: 0 };
+  const createdAtMin = new Date(Date.now() - Math.max(1, Number(days || 7)) * 24 * 60 * 60 * 1000).toISOString();
+  const payload = await shoplineGetFn(shop._id, 'orders.json', {
+    status: 'any',
+    created_at_min: createdAtMin,
+    limit: String(Math.max(1, Math.min(100, Number(limit || 100))))
+  });
+  const orders = orderList(payload);
+  let standaloneMatched = 0;
+  let standaloneConfirmed = 0;
+  let postPurchaseMatched = 0;
+  let postPurchaseActivated = 0;
+  let postPurchaseNotified = 0;
+
+  for (const order of orders) {
+    const paid = shoplineOrderIsPaid(order);
+    if (paid) {
+      const standalone = await confirmStandalonePaidFromOrder({ shop, order, BookingModel });
+      if (standalone.matched) standaloneMatched += 1;
+      if (standalone.confirmed) standaloneConfirmed += 1;
+    }
+    const postPurchase = await upsertPostPurchaseEntitlementsFromOrder({
+      shop,
+      payload: order,
+      paid,
+      webhookId: `reconcile:${String(order.id || order.order_id || '')}`,
+      EntitlementModel
+    });
+    postPurchaseMatched += Number(postPurchase.matched || 0);
+    postPurchaseActivated += Number(postPurchase.activated || 0);
+    postPurchaseNotified += Number(postPurchase.notified || 0);
+  }
+
+  return {
+    skipped: false,
+    ordersChecked: orders.length,
+    standaloneMatched,
+    standaloneConfirmed,
+    postPurchaseMatched,
+    postPurchaseActivated,
+    postPurchaseNotified
+  };
+}
+
 export async function reconcileRecentPaidOrdersForShop({
   shop,
   days = 7,

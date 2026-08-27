@@ -2,7 +2,7 @@ const state = {
   csrf: '', shop: null, email: null, emailSettings: null, rules: [], bookings: [], products: [], staff: [], staffOperations: { date: '', timezone: '', staff: [], unassigned: [] }, staffOperationsView: 'list',
   ruleStep: 0, activeTemplate: 'confirmation', emailEditorReady: false, bookingView: 'list', calendarMonth: '',
   locale: 'en', currentView: 'dashboard', themeLinkLoaded: false, bootstrap: null, onboarding: null, lastTestEmail: '', ruleModeTouched: false, editingRule: false,
-  calendarSync: null, calendarStaffId: '', calendarPopup: null, calendarDayItems: {}, paidVariants: [], orderAccess: null
+  calendarSync: null, calendarStaffId: '', calendarPopup: null, calendarDayItems: {}, paidVariants: [], orderAccess: null, locations: [], locationAccess: null
 };
 const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const viewLabels = {
@@ -407,12 +407,33 @@ Object.assign(zh, {
   'View {count} more': '查看另外 {count} 条', 'Appointments on {date}': '{date} 的预约', 'appointments on this day': '条当日预约',
   'Order sync needs authorization': '订单同步需要授权',
   'Allow Appointment Lite to read SHOPLINE orders so paid bookings can be confirmed automatically. Appointment Lite does not modify orders.': '授权 Appointment Lite 读取 SHOPLINE 订单后，付费预约才能自动确认。Appointment Lite 不会修改订单。',
-  'Authorize order access': '授权订单读取权限', 'Sync paid orders': '同步已付款订单',
+  'Authorize order access': '授权订单读取权限', 'Sync SHOPLINE orders': '同步 SHOPLINE 订单',
   'Order sync authorization is required for this service.': '此服务需要先授权 SHOPLINE 订单读取权限。',
-  'Paid orders synced.': '已同步付款订单。', 'No new paid orders to sync.': '暂无新的已付款订单需要同步。', 'Could not sync paid orders.': '无法同步付款订单，请稍后重试。',
+  'SHOPLINE orders synced.': 'SHOPLINE 订单已同步。', 'No new SHOPLINE orders to sync.': '暂无新的 SHOPLINE 订单需要同步。', 'Could not sync SHOPLINE orders.': '无法同步 SHOPLINE 订单，请稍后重试。',
   'SHOPLINE order': 'SHOPLINE 订单',
   'Post-purchase scheduling link': '购买后预约链接',
   'Send the private scheduling link after an eligible SHOPLINE order is paid.': '符合条件的 SHOPLINE 订单付款后，向客户发送私密预约链接。'
+});
+
+
+Object.assign(zh, {
+  'SHOPLINE order': 'SHOPLINE 订单', 'Payment': '付款', 'Appointment': '预约', 'No payment required': '无需付款',
+  'Unpaid': '未付款', 'Paid': '已付款', 'Payment expired': '付款已超时', 'Needs review': '需要处理',
+  'Waiting for payment': '等待付款', 'Awaiting scheduling': '待预约', 'Partially scheduled': '部分已预约', 'Scheduled': '已预约',
+  'Order cancelled': '订单已取消', 'appointments scheduled': '个已预约', 'Private link sent': '私密预约链接已发送',
+  'Service location': '服务地点', 'Choose where this appointment is delivered. SHOPLINE locations stay managed in SHOPLINE Admin.': '选择预约的履约地点。SHOPLINE 地点仍统一在 SHOPLINE 后台维护。',
+  'SHOPLINE location': 'SHOPLINE 地点', 'Use a location already configured in SHOPLINE.': '使用已在 SHOPLINE 后台创建的地点。',
+  'Customer address': '客户地址', 'Collect the service address from the customer or paid order.': '预约时收集客户服务地址；购买后预约可优先使用订单收货地址。',
+  'Online': '线上服务', 'This appointment does not need a physical location.': '此预约无需实体地点。',
+  'Custom location': '自定义地点', 'Enter a one-off location for this service.': '手动填写该服务的地点。',
+  'Refresh locations': '刷新地点', 'Choose a SHOPLINE location': '选择 SHOPLINE 地点', 'Locations are read from SHOPLINE Admin.': '地点从 SHOPLINE 后台读取。',
+  'Customer address': '客户地址', 'Customers enter the service address while booking. For purchase-first appointments, the SHOPLINE shipping address is prefilled when available.': '客户预约时填写服务地址；先购买后预约时，如订单包含收货地址会自动预填。',
+  'Online service': '线上服务', 'No physical address is required for this appointment.': '此预约无需填写实体地址。',
+  'Location access needs authorization': '地点读取需要授权', 'Authorize SHOPLINE location access to choose a store location for this service.': '授权 Appointment Lite 读取 SHOPLINE 地点后，即可在服务中直接选择店铺地点。',
+  'Authorize location access': '授权地点读取权限', 'Could not load SHOPLINE locations.': '无法读取 SHOPLINE 地点，请稍后重试。',
+  'The selected SHOPLINE location is no longer available. Refresh locations and choose another one.': '所选 SHOPLINE 地点已不存在，请刷新地点后重新选择。',
+  'Choose a SHOPLINE location.': '请选择一个 SHOPLINE 地点。', 'Default': '默认', 'Location removed from SHOPLINE': '该地点已从 SHOPLINE 删除',
+  'Order lifecycle': '订单生命周期', 'Schedule remaining': '继续预约', 'Not scheduled yet': '尚未预约', 'Order created': '订单已创建', 'Open order': '打开订单'
 });
 
 const enByZh = new Map(Object.entries(zh).map(([english, chinese]) => [chinese, english]));
@@ -466,7 +487,7 @@ const staffAvatarPresets = ['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunse
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
 function staffPresetImage(preset) {
   const file = staffAvatarFiles[preset] || staffAvatarFiles.aurora;
-  return `<img src="/assets/staff/${file}?v=0.6.4" alt="" loading="lazy" decoding="async">`;
+  return `<img src="/assets/staff/${file}?v=0.6.5" alt="" loading="lazy" decoding="async">`;
 }
 let staffAvatarDraft = { kind: 'preset', value: 'aurora' };
 
@@ -1257,6 +1278,52 @@ function setBookingSource(source = 'product') {
   );
 }
 
+
+function locationLabel(item = {}) {
+  const address = [item.address1, item.address2, item.city, item.province, item.zip, item.country].filter(Boolean).join(', ');
+  return [item.name, address].filter(Boolean).join(' · ');
+}
+
+function renderLocationOptions(selectedId = $('#shoplineLocationId')?.value || '') {
+  const select = $('#shoplineLocationId');
+  if (!select) return;
+  const options = state.locations.map(item => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}${item.isDefault ? ` · ${t('Default')}` : ''}${locationLabel(item).replace(item.name, '') ? ` — ${escapeHtml(locationLabel(item).replace(`${item.name} · `, ''))}` : ''}</option>`).join('');
+  const missing = selectedId && !state.locations.some(item => item.id === selectedId);
+  select.innerHTML = `<option value="">${t('Choose a SHOPLINE location')}</option>${missing ? `<option value="${escapeHtml(selectedId)}">${t('Location removed from SHOPLINE')}</option>` : ''}${options}`;
+  select.value = selectedId || '';
+}
+
+async function loadLocations({ force = false, selectedId = '' } = {}) {
+  if (!force && state.locationAccess?.granted && state.locations.length) { renderLocationOptions(selectedId || $('#shoplineLocationId')?.value || ''); return state.locations; }
+  const hint = $('#shoplineLocationHint');
+  if (hint) hint.textContent = t('Locations are read from SHOPLINE Admin.');
+  try {
+    const payload = await api('/locations');
+    state.locations = payload.locations || [];
+    state.locationAccess = payload.access || null;
+    renderLocationOptions(selectedId || $('#shoplineLocationId')?.value || '');
+    if (hint && state.locationAccess && !state.locationAccess.granted) {
+      hint.innerHTML = `${escapeHtml(t('Location access needs authorization'))}. <button type="button" class="text-button" data-authorize-location>${escapeHtml(t('Authorize location access'))}</button>`;
+      hint.querySelector('[data-authorize-location]')?.addEventListener('click', () => openOrderAuthorization(state.locationAccess.authorizationUrl));
+    }
+    return state.locations;
+  } catch (error) {
+    if (hint) hint.textContent = t('Could not load SHOPLINE locations.');
+    throw error;
+  }
+}
+
+function setLocationMode(mode = 'custom') {
+  const normalized = ['shopline_location', 'customer_address', 'online', 'custom'].includes(mode) ? mode : 'custom';
+  $('#locationMode').value = normalized;
+  $$('#locationModeGrid [data-location-mode]').forEach(button => button.classList.toggle('selected', button.dataset.locationMode === normalized));
+  $('#shoplineLocationFields')?.classList.toggle('hidden', normalized !== 'shopline_location');
+  $('#customLocationFields')?.classList.toggle('hidden', normalized !== 'custom');
+  $('#customerAddressLocationHint')?.classList.toggle('hidden', normalized !== 'customer_address');
+  $('#onlineLocationHint')?.classList.toggle('hidden', normalized !== 'online');
+  if (normalized === 'shopline_location') loadLocations({ selectedId: $('#shoplineLocationId')?.value || '' }).catch(showError);
+}
+
 function recommendedBookingMode(serviceType) {
   if (serviceType === 'class') return 'multi_slot';
   return 'slot';
@@ -1358,6 +1425,8 @@ function validateRuleStep(step) {
     if (!weeklyOpen && !exceptionOpen) message = 'Enable at least one weekday or add an open exception.';
   }
   if (step === 3) {
+    const locationMode = $('#locationMode').value;
+    if (locationMode === 'shopline_location' && !$('#shoplineLocationId').value) message = 'Choose a SHOPLINE location.';
     const assignment = currentStaffAssignment();
     if (assignment.mode === 'fixed' && assignment.staffIds.length !== 1) message = 'Select exactly one staff member for fixed assignment.';
     if (['any', 'customer_choice'].includes(assignment.mode) && assignment.staffIds.length < 1) message = 'Select at least one staff member for this assignment mode.';
@@ -1418,7 +1487,11 @@ async function openRule(rule = null) {
   $('#buffer').value = rule?.buffer || 0;
   $('#dateFrom').value = rule?.dateFrom || '';
   $('#dateUntil').value = rule?.dateUntil || '';
-  $('#location').value = rule?.location || '';
+  const locationMode = rule?.locationMode || (rule?.shoplineLocationId ? 'shopline_location' : (rule?.location ? 'custom' : 'custom'));
+  $('#location').value = locationMode === 'custom' ? (rule?.location || '') : '';
+  $('#shoplineLocationId').value = rule?.shoplineLocationId || '';
+  setLocationMode(locationMode);
+  if (locationMode === 'shopline_location') await loadLocations({ selectedId: rule?.shoplineLocationId || '' }).catch(() => {});
   $('#staff').value = rule?.staff || '';
   const assignment = rule?.staffAssignment || { mode: 'none', staffIds: [] };
   renderRuleStaffOptions((assignment.staffIds || []).map(String));
@@ -1462,7 +1535,10 @@ function rulePayload() {
       closed: row.querySelector('.exception-mode').value === 'closed',
       windows: !allDay && row.querySelector('.exception-mode').value === 'hours' ? [{ start: row.querySelector('.exception-start').value, end: row.querySelector('.exception-end').value }] : []
     })).filter(item => item.date),
-    location: $('#location').value, staff: $('#staff').value, staffAssignment: currentStaffAssignment(), questionLabel: $('#questionLabel').value, enabled: $('#enabled').checked,
+    locationMode: $('#locationMode').value,
+    shoplineLocationId: $('#locationMode').value === 'shopline_location' ? $('#shoplineLocationId').value : '',
+    location: $('#locationMode').value === 'custom' ? $('#location').value : '',
+    staff: $('#staff').value, staffAssignment: currentStaffAssignment(), questionLabel: $('#questionLabel').value, enabled: $('#enabled').checked,
     customQuestions: $$('.question-row').map(row => ({ label: row.querySelector('input[type=text]').value, required: row.querySelector('input[type=checkbox]').checked }))
   };
 }
@@ -1483,6 +1559,9 @@ async function saveRule(event) {
     if (error.payload?.error === 'ORDER_ACCESS_REQUIRED' && error.payload?.authorizationUrl) {
       $('#formError').innerHTML = `${escapeHtml(t('Order sync authorization is required for this service.'))} <button type="button" class="text-button" id="ruleAuthorizeOrderAccess">${escapeHtml(t('Authorize order access'))}</button>`;
       $('#ruleAuthorizeOrderAccess')?.addEventListener('click', () => openOrderAuthorization(error.payload.authorizationUrl));
+    } else if (error.payload?.error === 'LOCATION_ACCESS_REQUIRED' && error.payload?.authorizationUrl) {
+      $('#formError').innerHTML = `${escapeHtml(t('Authorize SHOPLINE location access to choose a store location for this service.'))} <button type="button" class="text-button" id="ruleAuthorizeLocationAccess">${escapeHtml(t('Authorize location access'))}</button>`;
+      $('#ruleAuthorizeLocationAccess')?.addEventListener('click', () => openOrderAuthorization(error.payload.authorizationUrl));
     } else {
       $('#formError').textContent = t(error.message);
     }
@@ -1625,8 +1704,17 @@ function bookingStatusLabel(status) {
   return t({ pending_payment: 'Awaiting payment', confirmed: 'Confirmed', cancelled: 'Cancelled', completed: 'Completed', no_show: 'No-show', payment_expired: 'Payment expired', payment_conflict: 'Payment needs review' }[status] || status);
 }
 
+function paymentStatusLabel(status) {
+  return t({ not_required: 'No payment required', unpaid: 'Unpaid', paid: 'Paid', expired: 'Payment expired', needs_review: 'Needs review' }[status] || status || 'No payment required');
+}
+
+function appointmentStatusLabel(status) {
+  return t({ waiting_payment: 'Waiting for payment', awaiting_schedule: 'Awaiting scheduling', partially_scheduled: 'Partially scheduled', scheduled: 'Scheduled', confirmed: 'Scheduled', cancelled: 'Cancelled', completed: 'Completed', no_show: 'No-show', payment_expired: 'Payment expired', needs_review: 'Needs review', payment_conflict: 'Needs review' }[status] || status || 'Scheduled');
+}
+
 
 function bookingWhenLabel(booking) {
+  if (booking.recordType === 'order_lifecycle' || !booking.date) return { primary: t('Not scheduled yet'), secondary: booking.createdAt ? formatEventDate(booking.createdAt) : '' };
   const mode = booking.bookingMode || 'slot';
   const occurrences = Array.isArray(booking.occurrences) ? booking.occurrences : [];
   if (mode === 'all_day') return { primary: booking.date, secondary: `${t('All day')} · ${booking.timezone || state.shop?.timezone || 'UTC'}` };
@@ -1660,11 +1748,12 @@ function filteredBookings() {
   const from = $('#bookingFrom').value;
   const to = $('#bookingTo').value;
   return state.bookings.filter(booking => {
-    if (query && ![booking.productTitle, booking.customer?.name, booking.customer?.email, booking.customer?.phone, booking.staff, booking.location].some(value => String(value || '').toLowerCase().includes(query))) return false;
+    if (query && ![booking.productTitle, booking.customer?.name, booking.customer?.email, booking.customer?.phone, booking.staff, booking.location, booking.shoplineOrder?.name, booking.shoplineOrder?.id].some(value => String(value || '').toLowerCase().includes(query))) return false;
     if (serviceId && String(booking.ruleId) !== serviceId) return false;
-    if (status && booking.status !== status) return false;
+    if (status && (booking.appointmentStatus || booking.status) !== status && booking.status !== status) return false;
     if (staffId && String(booking.staffId || '') !== staffId && !(booking.occurrences || []).some(item => String(item.staffId || '') === staffId)) return false;
     const dates = bookingOccurrenceDates(booking);
+    if ((from || to) && booking.recordType === 'order_lifecycle') return false;
     if (from && !dates.some(date => date >= from)) return false;
     if (to && !dates.some(date => date <= to)) return false;
     if (from && to && !dates.some(date => date >= from && date <= to)) return false;
@@ -1715,9 +1804,19 @@ function renderBookingList(bookings) {
   }
   root.innerHTML = bookings.map(booking => {
     const when = bookingWhenLabel(booking);
-    const canDirectEdit = (booking.bookingMode || 'slot') === 'slot';
-    const orderLink = booking.shoplineOrder?.adminUrl ? `<a class="booking-order-link" href="${escapeHtml(booking.shoplineOrder.adminUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(t('SHOPLINE order'))} ${escapeHtml(booking.shoplineOrder.name)} ↗</a>` : '';
-    return `<div class="booking-row"><div class="booking-primary"><strong>${escapeHtml(booking.productTitle)}</strong><span>${escapeHtml(booking.customer.name)} · ${escapeHtml(booking.customer.email)}</span>${orderLink}</div><div class="booking-cell"><strong>${escapeHtml(when.primary)}</strong><span>${escapeHtml(when.secondary)}</span></div><div class="booking-cell"><strong>${escapeHtml(booking.staff || t('Any staff'))}</strong><span>${escapeHtml(booking.location || t('No location'))}</span></div><span class="status-badge ${booking.status}">${bookingStatusLabel(booking.status)}</span><div class="row-actions"><button class="small booking-action activity" data-flow-booking="${booking._id}">${t('Activity')}</button>${booking.status === 'confirmed' ? `${canDirectEdit ? `<button class="small booking-action edit" data-edit-booking="${booking._id}">${t('Edit')}</button>` : ''}<button class="small booking-action complete" data-complete="${booking._id}">${t('Mark complete')}</button><button class="small booking-action no-show" data-no-show="${booking._id}">${t('No-show')}</button><button class="small booking-action cancel" data-cancel="${booking._id}">${t('Cancel')}</button>` : ''}</div></div>`;
+    const isLifecycle = booking.recordType === 'order_lifecycle';
+    const canDirectEdit = !isLifecycle && (booking.bookingMode || 'slot') === 'slot';
+    const orderCell = booking.shoplineOrder?.adminUrl
+      ? `<a class="booking-order-link booking-order-cell" href="${escapeHtml(booking.shoplineOrder.adminUrl)}" target="_blank" rel="noopener noreferrer"><strong>${escapeHtml(booking.shoplineOrder.name)}</strong><span>${escapeHtml(booking.shoplineOrder.id)}</span><i>↗</i></a>`
+      : `<span class="booking-muted-cell">—</span>`;
+    const paymentStatus = booking.paymentStatus || 'not_required';
+    const appointmentStatus = booking.appointmentStatus || booking.status;
+    const progress = booking.schedulingProgress;
+    const appointmentMeta = progress ? `<small>${escapeHtml(`${progress.used}/${progress.eligible} ${t('appointments scheduled')}`)}</small>` : '';
+    const actions = isLifecycle
+      ? `${booking.shoplineOrder?.adminUrl ? `<a class="small booking-action activity button-link" href="${escapeHtml(booking.shoplineOrder.adminUrl)}" target="_blank" rel="noopener noreferrer">${t('Open order')} ↗</a>` : ''}`
+      : `<button class="small booking-action activity" data-flow-booking="${booking._id}">${t('Activity')}</button>${booking.status === 'confirmed' ? `${canDirectEdit ? `<button class="small booking-action edit" data-edit-booking="${booking._id}">${t('Edit')}</button>` : ''}<button class="small booking-action complete" data-complete="${booking._id}">${t('Mark complete')}</button><button class="small booking-action no-show" data-no-show="${booking._id}">${t('No-show')}</button><button class="small booking-action cancel" data-cancel="${booking._id}">${t('Cancel')}</button>` : ''}`;
+    return `<div class="booking-row ${isLifecycle ? 'order-lifecycle-row' : ''}"><div class="booking-primary"><strong>${escapeHtml(booking.productTitle)}</strong><span>${escapeHtml(booking.customer?.name || t('Customer'))}${booking.customer?.email ? ` · ${escapeHtml(booking.customer.email)}` : ''}</span>${isLifecycle && booking.notificationSentAt ? `<small>${t('Private link sent')}</small>` : ''}</div><div class="booking-order-column">${orderCell}</div><div class="booking-status-cell"><span class="status-badge payment-${escapeHtml(paymentStatus)}">${escapeHtml(paymentStatusLabel(paymentStatus))}</span></div><div class="booking-status-cell"><span class="status-badge appointment-${escapeHtml(appointmentStatus)}">${escapeHtml(appointmentStatusLabel(appointmentStatus))}</span>${appointmentMeta}</div><div class="booking-cell"><strong>${escapeHtml(when.primary)}</strong><span>${escapeHtml(when.secondary)}</span></div><div class="booking-cell"><strong>${escapeHtml(booking.staff || (isLifecycle ? t('Not scheduled yet') : t('Any staff')))}</strong><span>${escapeHtml(booking.location || t('No location'))}</span></div><div class="row-actions">${actions}</div></div>`;
   }).join('');
   bindBookingRows();
 }
@@ -1801,8 +1900,8 @@ function renderBookings() {
 function exportBookingsCsv() {
   const bookings = filteredBookings();
   if (!bookings.length) return toast(t('No bookings match the current filters.'), 'error');
-  const rows = [['Service', 'Customer', 'Email', 'Phone', 'Booking mode', 'Date', 'Time', 'Sessions', 'Time zone', 'Location', 'Staff', 'Status']];
-  bookings.forEach(booking => rows.push([booking.productTitle, booking.customer?.name, booking.customer?.email, booking.customer?.phone, booking.bookingMode || 'slot', booking.date, booking.bookingMode === 'all_day' ? '' : booking.time, bookingOccurrencesText(booking), booking.timezone, booking.location, booking.staff, booking.status]));
+  const rows = [['Service', 'Customer', 'Email', 'Phone', 'SHOPLINE order', 'Payment', 'Appointment', 'Booking mode', 'Date', 'Time', 'Sessions', 'Time zone', 'Location', 'Staff']];
+  bookings.forEach(booking => rows.push([booking.productTitle, booking.customer?.name, booking.customer?.email, booking.customer?.phone, booking.shoplineOrder?.name || '', paymentStatusLabel(booking.paymentStatus || 'not_required'), appointmentStatusLabel(booking.appointmentStatus || booking.status), booking.bookingMode || 'slot', booking.date, booking.bookingMode === 'all_day' ? '' : booking.time, bookingOccurrenceDates(booking).length ? bookingOccurrencesText(booking) : '', booking.timezone, booking.location, booking.staff]));
   const csv = rows.map(row => row.map(value => `"${String(value || '').replaceAll('"', '""')}"`).join(',')).join('\n');
   const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' });
   const link = document.createElement('a');
@@ -2064,11 +2163,11 @@ async function reconcileOrdersNow() {
   try {
     const payload = await api('/commerce/reconcile', { method: 'POST', body: '{}' });
     const changed = Number(payload.result?.standaloneConfirmed || 0) + Number(payload.result?.postPurchaseActivated || 0);
-    toast(t(changed ? 'Paid orders synced.' : 'No new paid orders to sync.'));
+    toast(t((Number(payload.result?.ordersChecked || 0) || changed) ? 'SHOPLINE orders synced.' : 'No new SHOPLINE orders to sync.'));
     await Promise.all([loadBookings(), loadBootstrap()]);
   } catch (error) {
     if (error.payload?.authorizationUrl) openOrderAuthorization(error.payload.authorizationUrl);
-    else toast(t(error.message || 'Could not sync paid orders.'), 'error');
+    else toast(t(error.message || 'Could not sync SHOPLINE orders.'), 'error');
   } finally { if (button) button.disabled = false; }
 }
 
@@ -2231,6 +2330,8 @@ function bind() {
   $('#ruleForm').addEventListener('submit', saveRule);
   $('#bookingForm').addEventListener('submit', saveBooking);
   $('#addQuestion').addEventListener('click', () => addQuestion());
+  $$('#locationModeGrid [data-location-mode]').forEach(button => button.addEventListener('click', () => setLocationMode(button.dataset.locationMode)));
+  $('#refreshLocations')?.addEventListener('click', () => loadLocations({ force: true, selectedId: $('#shoplineLocationId')?.value || '' }).catch(showError));
   $('#ruleNext').addEventListener('click', () => { if (validateRuleStep(state.ruleStep)) setRuleStep(state.ruleStep + 1); });
   $('#ruleBack').addEventListener('click', () => setRuleStep(state.ruleStep - 1));
   $$('[data-rule-step-button]').forEach(button => button.addEventListener('click', () => {

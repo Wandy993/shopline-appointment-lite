@@ -4,7 +4,7 @@ import { config } from '../config.js';
 import { readSignedPayload, signPayload, verifyShoplineQuery } from '../lib/signature.js';
 import { Shop } from '../models/Shop.js';
 import { authorizationUrl, ensureBookingCommerceWebhooks, exchangeAuthorizationCode, shoplineOrderAccessStatus, syncShopMetadata } from '../services/shopline.js';
-import { reconcileRecentPaidOrdersForShop } from '../services/paid-bookings.js';
+import { reconcileRecentCommerceOrdersForShop } from '../services/paid-bookings.js';
 import { setSessionCookie } from '../middleware/auth.js';
 
 export const authRouter = Router();
@@ -48,12 +48,12 @@ authRouter.get('/callback', async (req, res, next) => {
 
     // Existing installations must reauthorize after order-read access is added.
     // Once that permission is present, repair webhook subscriptions and reconcile
-    // recently paid orders immediately so an in-flight booking does not have to
+    // recent SHOPLINE orders immediately so an in-flight booking does not have to
     // wait for the background scheduler. These are best-effort and never block login.
     if (shoplineOrderAccessStatus(shop).granted) {
       try {
         await ensureBookingCommerceWebhooks(shop._id);
-        await reconcileRecentPaidOrdersForShop({ shop });
+        await reconcileRecentCommerceOrdersForShop({ shop });
       } catch (error) {
         console.warn('Could not initialize SHOPLINE order reconciliation after authorization:', error.message);
       }

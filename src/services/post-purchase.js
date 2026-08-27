@@ -52,6 +52,21 @@ function orderCustomer(payload = {}) {
   return { name, email: EMAIL_PATTERN.test(email) ? email : '', phone };
 }
 
+function orderShippingAddress(payload = {}) {
+  const source = payload.shipping_address || payload.shippingAddress || {};
+  return {
+    name: cleanText(source.name || [source.first_name, source.last_name].filter(Boolean).join(' '), 120),
+    address1: cleanText(source.address1 || source.address_1, 200),
+    address2: cleanText(source.address2 || source.address_2, 200),
+    city: cleanText(source.city, 120),
+    province: cleanText(source.province || source.state, 120),
+    country: cleanText(source.country, 120),
+    countryCode: cleanText(source.country_code || source.countryCode, 8),
+    zip: cleanText(source.zip || source.postal_code || source.postalCode, 40),
+    phone: cleanText(source.phone, 60)
+  };
+}
+
 function lineItems(payload = {}) {
   return Array.isArray(payload.line_items) ? payload.line_items : [];
 }
@@ -82,6 +97,17 @@ export function publicPostPurchaseEntitlement(entitlement) {
       name: entitlement?.customer?.name || '',
       email: entitlement?.customer?.email || '',
       phone: entitlement?.customer?.phone || ''
+    },
+    shippingAddress: {
+      name: entitlement?.shippingAddress?.name || '',
+      address1: entitlement?.shippingAddress?.address1 || '',
+      address2: entitlement?.shippingAddress?.address2 || '',
+      city: entitlement?.shippingAddress?.city || '',
+      province: entitlement?.shippingAddress?.province || '',
+      country: entitlement?.shippingAddress?.country || '',
+      countryCode: entitlement?.shippingAddress?.countryCode || '',
+      zip: entitlement?.shippingAddress?.zip || '',
+      phone: entitlement?.shippingAddress?.phone || ''
     }
   };
 }
@@ -140,6 +166,7 @@ export async function upsertPostPurchaseEntitlementsFromOrder({ shop, payload, p
   let activated = 0;
   let notified = 0;
   const customer = orderCustomer(payload);
+  const shippingAddress = orderShippingAddress(payload);
   const financialStatus = financialStatusOf(payload);
   const orderStatus = orderStatusOf(payload);
 
@@ -150,7 +177,7 @@ export async function upsertPostPurchaseEntitlementsFromOrder({ shop, payload, p
       {
         $setOnInsert: { shopId: shop._id, ruleId: rule._id, productId: String(rule.productId), orderId, usedBookings: 0, bookingIds: [] },
         $set: {
-          orderName: orderNameOf(payload), eligibleQuantity, customer,
+          orderName: orderNameOf(payload), eligibleQuantity, customer, shippingAddress,
           financialStatus: paid ? 'paid' : financialStatus,
           orderStatus,
           lastWebhookId: cleanText(webhookId, 120)

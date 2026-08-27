@@ -11,7 +11,7 @@ function required(name, fallback = '') {
 const appUrl = required('APP_URL', 'http://localhost:3000').replace(/\/$/, '');
 
 function mergedShoplineScopes(value = '') {
-  const required = ['read_products', 'read_store_information', 'read_content', 'read_orders'];
+  const required = ['read_products', 'read_store_information', 'read_content', 'read_orders', 'read_location'];
   const requested = String(value || '').split(',').map(item => item.trim()).filter(Boolean);
   return [...new Set([...requested, ...required])].join(',');
 }

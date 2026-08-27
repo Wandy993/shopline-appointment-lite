@@ -1,8 +1,22 @@
 # Appointment Lite
 
-> v0.6.4 — Order Sync & Availability Performance
+> v0.6.5 — Order Lifecycle + SHOPLINE Locations
 
-Appointment Lite v0.6.4 makes paid and post-purchase booking recovery reliable with SHOPLINE order-read authorization, the orders/paid webhook, recent-order reconciliation, faster batched staff availability checks, clearer order links in Bookings, and an explicit post-purchase scheduling email preference.
+Appointment Lite v0.6.5 makes commerce bookings operationally visible from the SHOPLINE order stage onward and lets services reuse locations managed in SHOPLINE Admin instead of maintaining duplicate addresses.
+
+## v0.6.5 Order Lifecycle + SHOPLINE Locations
+
+- Shows purchase-first SHOPLINE orders in **Bookings** as soon as a matching order is observed, including unpaid orders before a scheduling link is available.
+- Separates **Payment** and **Appointment** lifecycle states so merchants can distinguish unpaid, paid/awaiting scheduling, partially scheduled, and scheduled work.
+- Keeps the SHOPLINE order ID/name on operational rows and links directly to the matching SHOPLINE order in Admin.
+- Reconciles recent paid and unpaid SHOPLINE orders on demand and after reauthorization, in addition to webhook delivery.
+- Adds read-only `read_location` authorization and reads locations from SHOPLINE's Locations API; inventory access is not requested.
+- Adds four service-location modes: **SHOPLINE location**, **Customer address**, **Online**, and **Custom location**.
+- Saves both the SHOPLINE location ID and an address snapshot so historical bookings retain the location used at booking time even if the merchant later edits the SHOPLINE location.
+- Prefills the SHOPLINE order shipping address for purchase-first services that are delivered at the customer's address.
+- Updates hosted booking and the Theme App Block to collect a customer service address only when the service requires it.
+
+See [Order lifecycle & SHOPLINE locations](docs/ORDER_LIFECYCLE_LOCATIONS.md).
 
 ## v0.6.4 Order Sync & Availability Performance
 

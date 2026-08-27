@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const source = async relative => readFile(path.join(root, relative), 'utf8');
 
-test('v0.6.4 requests read-only SHOPLINE order access and never requests order write access', async () => {
+test('v0.6.5 requests read-only SHOPLINE order access and never requests order write access', async () => {
   const [config, env] = await Promise.all([source('src/config.js'), source('.env.example')]);
   assert.match(config, /read_orders/);
   assert.match(env, /SHOPLINE_SCOPES=.*read_orders/);
@@ -15,19 +15,19 @@ test('v0.6.4 requests read-only SHOPLINE order access and never requests order w
   assert.doesNotMatch(env, /write_orders/);
 });
 
-test('v0.6.4 uses orders paid webhook and recent-order reconciliation for payment recovery', async () => {
+test('v0.6.5 uses orders paid webhook and recent-order reconciliation for payment recovery', async () => {
   const [shopline, webhook, paid, auth] = await Promise.all([
     source('src/services/shopline.js'), source('src/routes/shopline-webhooks.js'), source('src/services/paid-bookings.js'), source('src/routes/auth.js')
   ]);
   assert.match(shopline, /'orders\/paid'/);
   assert.match(webhook, /SUPPORTED_TOPICS.*orders\/paid/s);
   assert.match(webhook, /handleOrderPaid/);
-  assert.match(paid, /reconcileRecentPaidOrdersForShop/);
+  assert.match(paid, /reconcileRecent(?:Paid|Commerce)OrdersForShop/);
   assert.match(paid, /financial_status:\s*'paid'/);
-  assert.match(auth, /reconcileRecentPaidOrdersForShop/);
+  assert.match(auth, /reconcileRecent(?:Paid|Commerce)OrdersForShop/);
 });
 
-test('v0.6.4 batches staff availability reads instead of querying once per slot', async () => {
+test('v0.6.5 batches staff availability reads instead of querying once per slot', async () => {
   const [staffing, publicRoute] = await Promise.all([source('src/services/staffing.js'), source('src/routes/public.js')]);
   assert.match(staffing, /function availableStaffFromContext/);
   assert.match(staffing, /const context = await availabilityContext\(\{ shopId, rule, occurrences: candidateOccurrences/);
@@ -36,18 +36,18 @@ test('v0.6.4 batches staff availability reads instead of querying once per slot'
   assert.match(publicRoute, /const \[reservations, bookingRows\] = await Promise\.all/);
 });
 
-test('v0.6.4 exposes order authorization, reconciliation and direct SHOPLINE order links in admin', async () => {
+test('v0.6.5 exposes order authorization, reconciliation and direct SHOPLINE order links in admin', async () => {
   const [route, view, app] = await Promise.all([source('src/routes/admin.js'), source('src/views/admin.js'), source('public/admin/app.js')]);
   assert.match(route, /ORDER_ACCESS_REQUIRED/);
   assert.match(route, /\/commerce\/reconcile/);
   assert.match(route, /\/admin\/orders\/\$\{encodeURIComponent\(orderId\)\}/);
   assert.match(view, /orderAccessBanner/);
-  assert.match(view, /Sync paid orders/);
+  assert.match(view, /Sync (?:paid|SHOPLINE) orders/);
   assert.match(app, /booking-order-link/);
   assert.match(app, /shoplineOrder\.adminUrl/);
 });
 
-test('v0.6.4 fixes service staff portrait rendering and adds post-purchase email choice', async () => {
+test('v0.6.5 fixes service staff portrait rendering and adds post-purchase email choice', async () => {
   const [app, css, settings, shop, email] = await Promise.all([
     source('public/admin/app.js'), source('public/admin/styles.css'), source('src/lib/email-settings.js'), source('src/models/Shop.js'), source('src/services/email.js')
   ]);
@@ -59,14 +59,14 @@ test('v0.6.4 fixes service staff portrait rendering and adds post-purchase email
   assert.match(app, /customerNotifyPostPurchase/);
 });
 
-test('v0.6.4 release versions stay aligned across admin, hosted booking and Theme App Block', async () => {
+test('v0.6.5 release versions stay aligned across admin, hosted booking and Theme App Block', async () => {
   const packageJson = JSON.parse(await source('package.json'));
   const [health, admin, book, theme] = await Promise.all([source('src/app.js'), source('src/views/admin.js'), source('src/views/book.js'), source('theme-extension-source/public/appointment-lite.js')]);
-  assert.equal(packageJson.version, '0.6.4');
-  assert.match(health, /version: '0\.6\.4'/);
-  assert.match(admin, /styles\.css\?v=0\.6\.4/);
-  assert.match(admin, /app\.js\?v=0\.6\.4/);
-  assert.match(book, /styles\.css\?v=0\.6\.4/);
-  assert.match(book, /app\.js\?v=0\.6\.4/);
-  assert.match(theme, /const VERSION = '0\.6\.4'/);
+  const version = packageJson.version;
+  assert.ok(health.includes(`version: '${version}'`));
+  assert.ok(admin.includes(`/admin/styles.css?v=${version}`));
+  assert.ok(admin.includes(`/admin/app.js?v=${version}`));
+  assert.ok(book.includes(`/book/assets/styles.css?v=${version}`));
+  assert.ok(book.includes(`/book/assets/app.js?v=${version}`));
+  assert.ok(theme.includes(`const VERSION = '${version}'`));
 });
