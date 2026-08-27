@@ -53,6 +53,12 @@ const calendarEventSchema = new mongoose.Schema({
   lastSyncedAt: Date
 }, { _id: false });
 
+const postPurchaseSchema = new mongoose.Schema({
+  entitlementId: { type: mongoose.Schema.Types.ObjectId, ref: 'PostPurchaseEntitlement', default: null },
+  shoplineOrderId: { type: String, default: '', maxlength: 100 },
+  shoplineOrderName: { type: String, default: '', maxlength: 100 }
+}, { _id: false });
+
 const bookingSchema = new mongoose.Schema({
   shopId: { type: mongoose.Schema.Types.ObjectId, ref: 'Shop', required: true, index: true },
   ruleId: { type: mongoose.Schema.Types.ObjectId, ref: 'AppointmentRule', required: true, index: true },
@@ -90,6 +96,7 @@ const bookingSchema = new mongoose.Schema({
   calendarSyncStatus: { type: String, enum: ['pending', 'synced', 'error', 'paused', 'not_connected'], default: 'pending' },
   calendarSyncError: { type: String, default: '', maxlength: 500 },
   lastCalendarSyncAt: Date,
+  postPurchase: { type: postPurchaseSchema, default: undefined },
   payment: {
     holdExpiresAt: Date,
     checkoutStartedAt: Date,

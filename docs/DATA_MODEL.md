@@ -163,7 +163,7 @@ Customer guest invitations are disabled by live synchronization. `Booking.calend
 Customer-facing confirmation surfaces expose one **Add to Google Calendar** link generated from the canonical booking snapshot. The signed `.ics` route remains available internally for backward compatibility, but v0.6.0.3 no longer presents it as a customer download button.
 
 
-## v0.6.2 paid booking lifecycle
+## v0.6.3 booking commerce lifecycle
 
 `AppointmentRule.commerceMode` remains one of:
 
@@ -172,7 +172,7 @@ Customer-facing confirmation surfaces expose one **Add to Google Calendar** link
 - `product_pre_purchase`
 - `product_post_purchase`
 
-The field is independent from `bookingSource`, and `Booking.commerceMode` snapshots the rule value so historical records retain their commercial context. `standalone_paid` is active in v0.6.2; `product_post_purchase` remains gated for the order-linked scheduling milestone.
+The field is independent from `bookingSource`, and `Booking.commerceMode` snapshots the rule value so historical records retain their commercial context. `standalone_paid` and `product_post_purchase` are both active. Purchase-first rules are forced to `bookingSource=direct` internally because their hosted scheduling page is reachable only from a private paid-order link, not from a public pre-purchase button.
 
 Paid appointment rules additionally store `productVariantId`, variant title/price snapshots, and `paymentHoldMinutes` (5–30). A paid Booking starts as `pending_payment` and stores `payment.holdExpiresAt`, checkout start time, SHOPLINE order identity/financial status, and the last webhook ID. Normal `BookingReservation` and `StaffReservation` rows are created before checkout, so pending payment consumes capacity exactly like a confirmed appointment until the hold expires.
 
@@ -187,3 +187,16 @@ payment_expired -> payment_conflict   (late payment)
 `payment_expired` releases all appointment/staff reservations. A payment that arrives after release is recorded as `payment_conflict` instead of being auto-confirmed, because the capacity may already have been sold to another customer.
 
 `WebhookReceipt` stores the unique SHOPLINE webhook ID, topic, store ID, external order ID, processing status, and error metadata. This makes webhook retries idempotent and lets `orders/create` / `order_transactions/create` close the payment race regardless of delivery order.
+
+
+### PostPurchaseEntitlement
+
+`PostPurchaseEntitlement` is the paid-order eligibility record for `product_post_purchase` services. It is unique by `{ shopId, ruleId, orderId }` and stores the matching SHOPLINE product/order identity, order customer snapshot, purchased quantity, consumed booking count, linked Booking IDs, payment/order state, and notification health.
+
+- `eligibleQuantity` — appointment quota from the SHOPLINE line-item quantity.
+- `usedBookings` — atomically claimed quota while creating appointments.
+- `status` — `pending_payment`, `active`, `exhausted`, or `revoked`.
+- `tokenHash` — SHA-256 of the private schedule token and `select:false`.
+- `notificationSentAt` / retry metadata — protects and retries private schedule-link delivery.
+
+`Booking.postPurchase` snapshots `entitlementId`, `shoplineOrderId`, and `shoplineOrderName`. Customer/merchant cancellation restores quota only once by removing the Booking ID from the entitlement.

@@ -8,7 +8,7 @@ import { StaffReservation } from '../models/StaffReservation.js';
 import { CalendarConnection } from '../models/CalendarConnection.js';
 import { validateAdminBookingInput, validateBookingStatus, validateRuleInput, validateStaffInput } from '../lib/validation.js';
 import { requireAdmin, requireCsrf } from '../middleware/auth.js';
-import { ensurePaidBookingWebhooks, shoplineGet, syncShopMetadata } from '../services/shopline.js';
+import { ensureBookingCommerceWebhooks, shoplineGet, syncShopMetadata } from '../services/shopline.js';
 import { getProductVariants, syncProductCatalog } from '../services/product-catalog.js';
 import { cancelBookingByMerchant, setBookingStatusByMerchant, updateBookingByMerchant } from '../services/bookings.js';
 import { emailStatus, sendTestEmail } from '../services/email.js';
@@ -289,7 +289,7 @@ adminRouter.get('/rules', async (req, res) => {
       serviceTitle: rule.serviceTitle || rule.productTitle,
       bookingCount: counts.get(String(rule._id))?.count || 0,
       confirmedBookingCount: counts.get(String(rule._id))?.confirmedCount || 0,
-      bookingUrl: ['direct', 'both'].includes(bookingSource) ? `${config.appUrl}/book/${rule._id}` : ''
+      bookingUrl: commerceMode !== 'product_post_purchase' && ['direct', 'both'].includes(bookingSource) ? `${config.appUrl}/book/${rule._id}` : ''
     };
   }) });
 });
@@ -300,11 +300,11 @@ adminRouter.post('/rules', async (req, res, next) => {
     if (errors.length) return res.status(422).json({ error: 'VALIDATION_ERROR', message: errors.join(' '), fields: errors });
     const staffError = await validateManagedStaffSelection(req.shop._id, value);
     if (staffError) return res.status(422).json({ error: 'VALIDATION_ERROR', message: staffError });
-    if (value.commerceMode === 'standalone_paid') {
-      const webhookResults = await ensurePaidBookingWebhooks(req.shop._id);
+    if (['standalone_paid', 'product_post_purchase'].includes(value.commerceMode)) {
+      const webhookResults = await ensureBookingCommerceWebhooks(req.shop._id);
       if (webhookResults.some(item => !item.ok)) {
-        console.warn('Paid booking webhook subscription needs attention', webhookResults);
-        return res.status(503).json({ error: 'PAID_CHECKOUT_SETUP_FAILED', message: 'Could not prepare SHOPLINE payment confirmation. Please try saving the service again.' });
+        console.warn('Booking commerce webhook subscription needs attention', webhookResults);
+        return res.status(503).json({ error: 'COMMERCE_WEBHOOK_SETUP_FAILED', message: 'Could not prepare SHOPLINE order confirmation. Please try saving the service again.' });
       }
     }
     const rule = await AppointmentRule.create({ shopId: req.shop._id, ...value });
@@ -323,11 +323,11 @@ adminRouter.put('/rules/:id', async (req, res, next) => {
     if (errors.length) return res.status(422).json({ error: 'VALIDATION_ERROR', message: errors.join(' '), fields: errors });
     const staffError = await validateManagedStaffSelection(req.shop._id, value);
     if (staffError) return res.status(422).json({ error: 'VALIDATION_ERROR', message: staffError });
-    if (value.commerceMode === 'standalone_paid') {
-      const webhookResults = await ensurePaidBookingWebhooks(req.shop._id);
+    if (['standalone_paid', 'product_post_purchase'].includes(value.commerceMode)) {
+      const webhookResults = await ensureBookingCommerceWebhooks(req.shop._id);
       if (webhookResults.some(item => !item.ok)) {
-        console.warn('Paid booking webhook subscription needs attention', webhookResults);
-        return res.status(503).json({ error: 'PAID_CHECKOUT_SETUP_FAILED', message: 'Could not prepare SHOPLINE payment confirmation. Please try saving the service again.' });
+        console.warn('Booking commerce webhook subscription needs attention', webhookResults);
+        return res.status(503).json({ error: 'COMMERCE_WEBHOOK_SETUP_FAILED', message: 'Could not prepare SHOPLINE order confirmation. Please try saving the service again.' });
       }
     }
     Object.assign(rule, value);

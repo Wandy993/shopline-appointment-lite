@@ -1,27 +1,29 @@
 # Appointment Lite
 
-> v0.6.2 — Paid Booking Flow
+> v0.6.3 — Post-purchase Appointment
 
-Appointment Lite v0.6.2 activates paid standalone appointments on top of the commerce architecture introduced in v0.6.1. Customers choose a valid appointment first, Appointment Lite temporarily holds the selected capacity, then redirects to SHOPLINE checkout. The Booking is confirmed only after SHOPLINE reports successful payment.
+Appointment Lite v0.6.3 activates the **Purchase first · schedule after** commerce path for installation, delivery setup, onboarding, warranty service, and other order-linked appointments. The SHOPLINE order remains the source of purchase eligibility; Appointment Lite creates a private scheduling entitlement only after payment is confirmed.
 
-## v0.6.2 Paid Booking Flow
+## v0.6.3 Post-purchase Appointment
 
-The four commerce relationships remain:
+All four commerce relationships are now active:
 
-1. **Standalone · no payment** — active. Free consultations, measurements, or appointment-only services.
-2. **Standalone · payment required** — **active in v0.6.2**. Choose a slot first, hold capacity for 5–30 minutes, complete SHOPLINE checkout, and confirm only after payment webhook verification.
-3. **Product + appointment** — active. Keep SHOPLINE Add to cart / Buy now and add Appointment Lite as a separate booking action.
-4. **Purchase first · schedule after** — modeled but still gated until v0.6.3 order-linked scheduling.
+1. **Standalone · no payment** — choose a time and confirm directly.
+2. **Standalone · payment required** — choose a time, hold capacity, pay through SHOPLINE checkout, then confirm.
+3. **Product + appointment** — keep SHOPLINE purchase actions and expose an independent pre-purchase appointment action.
+4. **Purchase first · schedule after** — buy the linked SHOPLINE product first; after payment, the buyer receives a private Appointment Lite scheduling link.
 
-Paid services select the SHOPLINE product variant used for checkout and a hold duration. While payment is pending the Booking uses `pending_payment` and consumes normal BookingReservation/StaffReservation capacity. Unpaid holds become `payment_expired` and release their capacity. A payment reported after release becomes `payment_conflict` for merchant review instead of silently double-booking the slot.
+For purchase-first services, Appointment Lite subscribes to the same order/payment webhook surface used by paid bookings plus order cancellation. A paid matching order creates an order entitlement. **Each purchased unit grants one appointment**; quantity 2 grants two bookings through the same private link. The order customer is prefilled on the private scheduling page, and confirmed bookings snapshot the SHOPLINE order ID/name for operations and support.
 
-SHOPLINE `orders/create` and `order_transactions/create` webhooks are provisioned best-effort when a paid service is saved. Webhook IDs are persisted for idempotency and the order/payment handlers tolerate either webhook arriving first. Customer/staff notifications and Business Google Calendar sync start only after the paid Booking reaches `confirmed`.
+The private link uses a high-entropy token whose SHA-256 hash is stored in MongoDB. It is never exposed through normal public payloads. Transient scheduling-email failures are retried by a lightweight background scheduler. Order cancellation revokes unused scheduling access. Cancelling a confirmed Appointment Lite booking restores that order's unused appointment quota unless the SHOPLINE order itself has been revoked.
 
-See [Paid Booking Flow](docs/PAID_BOOKING.md) for checkout, hold, webhook, and conflict behavior.
+The purchase-first service does **not** show a booking button before purchase. Merchants continue to use the normal SHOPLINE product page and checkout; the scheduling entry is delivered privately after payment. Existing confirmed appointments are not automatically cancelled when a SHOPLINE order is later cancelled, because that may require merchant-specific refund/service handling.
+
+See [Post-purchase Appointment](docs/POST_PURCHASE_APPOINTMENTS.md) and [Paid Booking Flow](docs/PAID_BOOKING.md).
 
 ### Theme guidance
 
-Appointment Lite does **not** remove SHOPLINE purchase buttons with JavaScript. For appointment-only products, merchants should assign a dedicated product template without native purchase buttons. Product + appointment services keep the normal product template and purchase actions.
+Appointment Lite does **not** remove SHOPLINE purchase buttons with JavaScript. Appointment-only products should use a dedicated product template without native purchase buttons. Product + appointment services keep normal SHOPLINE purchase actions. Purchase-first services use the normal product template and do not expose a pre-purchase booking action.
 
 ## v0.6.0.6 Email Design UI Polish
 

@@ -1,5 +1,6 @@
 const $ = selector => document.querySelector(selector);
 const ruleId = document.body.dataset.ruleId || '';
+const entitlementToken = new URLSearchParams(window.location.search).get('access') || '';
 let rule;
 let selectedTime = '';
 let selectedAllDayDate = '';
@@ -147,7 +148,7 @@ function setupTimezonePicker() {
 
 const staffPresetClasses = new Set(['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose', 'nova']);
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
-function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="/assets/staff/${file}?v=0.6.2" alt="" loading="lazy" decoding="async">`;}
+function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="/assets/staff/${file}?v=0.6.3" alt="" loading="lazy" decoding="async">`;}
 
 function staffAvatarMarkup(item, className = '') {
   const avatar = item?.avatar || {};
@@ -345,13 +346,22 @@ function renderService(payload) {
   const staffMode = rule.staffAssignment?.mode || 'none';
   const staffOptions = Array.isArray(rule.staffOptions) ? rule.staffOptions : [];
   const managedStaffMeta = staffMode === 'fixed' && staffOptions[0] ? staffOptions[0].name : staffMode === 'any' ? 'Staff assigned automatically' : '';
-  const meta = [modeMeta, rule.location, managedStaffMeta || rule.staff, rule.capacity > 1 ? `${rule.capacity} ${mode === 'all_day' ? 'bookings per day' : 'spots per time'}` : '', formatNotice(rule.minimumNoticeMinutes)].filter(Boolean);
+  const orderMeta = payload.postPurchase?.orderName ? `Order ${payload.postPurchase.orderName} verified` : '';
+  const meta = [modeMeta, orderMeta, rule.location, managedStaffMeta || rule.staff, rule.capacity > 1 ? `${rule.capacity} ${mode === 'all_day' ? 'bookings per day' : 'spots per time'}` : '', formatNotice(rule.minimumNoticeMinutes)].filter(Boolean);
   $('#serviceMeta').innerHTML = meta.map(value => `<span>${escapeHtml(value)}</span>`).join('');
   const today = payload.storeDate || new Date().toISOString().slice(0, 10);
   minBookableDate = rule.dateFrom && rule.dateFrom > today ? rule.dateFrom : today;
   const maxByWindow = rule.bookingWindowUntil || '';
   maxBookableDate = [rule.dateUntil, maxByWindow].filter(Boolean).sort()[0] || '';
   $('#customQuestions').innerHTML = (rule.customQuestions || []).map(question => `<label class="field"><span>${escapeHtml(question.label)}${question.required ? ' *' : ''}</span><input data-question="${escapeHtml(question.label)}" maxlength="1000" ${question.required ? 'required' : ''}></label>`).join('');
+  if (payload.postPurchase?.customer) {
+    const nameInput = $('#bookingForm [name="name"]');
+    const emailInput = $('#bookingForm [name="email"]');
+    const phoneInput = $('#bookingForm [name="phone"]');
+    if (nameInput && payload.postPurchase.customer.name) nameInput.value = payload.postPurchase.customer.name;
+    if (emailInput && payload.postPurchase.customer.email) { emailInput.value = payload.postPurchase.customer.email; emailInput.readOnly = true; }
+    if (phoneInput && payload.postPurchase.customer.phone) phoneInput.value = payload.postPurchase.customer.phone;
+  }
   const staffField = $('#staffField');
   const staffSelect = $('#staffSelect');
   staffField.classList.toggle('hidden', staffMode !== 'customer_choice');
@@ -361,11 +371,14 @@ function renderService(payload) {
   renderStaffPicker(staffOptions);
   $('#timeLabel').textContent = mode === 'all_day' ? 'Availability' : mode === 'multi_slot' ? 'Available sessions' : 'Available time slots';
   const paid = rule.commerceMode === 'standalone_paid';
+  const postPurchase = rule.commerceMode === 'product_post_purchase';
   $('#submitBooking').textContent = paid ? 'Continue to checkout' : 'Confirm booking';
   const actionNote = document.querySelector('.booking-actions p');
   if (actionNote) actionNote.textContent = paid
     ? `Your selected time will be held for ${Number(rule.payment?.holdMinutes || 15)} minutes while you complete payment.`
-    : 'You can reschedule or cancel your appointment later.';
+    : postPurchase
+      ? `This appointment is included with ${payload.postPurchase?.orderName ? `order ${payload.postPurchase.orderName}` : 'your paid order'}.`
+      : 'You can reschedule or cancel your appointment later.';
   if (mode === 'multi_slot') renderSelectedSessions();
   const initial = findInitialDate(minBookableDate);
   calendarCursor = monthKey(initial);
@@ -382,7 +395,8 @@ function availabilityKey(date) {
 function availabilityUrl(date) {
   const staffQuery = selectedStaffId ? `&staffId=${encodeURIComponent(selectedStaffId)}` : '';
   const selectedQuery = bookingMode() === 'multi_slot' && selectedOccurrences.length ? `&selected=${encodeURIComponent(selectedOccurrences.map(item => `${item.date}T${item.time}`).join(','))}` : '';
-  return `/api/public/availability?ruleId=${encodeURIComponent(ruleId)}&date=${encodeURIComponent(date)}${staffQuery}${selectedQuery}`;
+  const accessQuery = entitlementToken ? `&access=${encodeURIComponent(entitlementToken)}` : '';
+  return `/api/public/availability?ruleId=${encodeURIComponent(ruleId)}&date=${encodeURIComponent(date)}${staffQuery}${selectedQuery}${accessQuery}`;
 }
 
 function setAvailabilityLoading(loading) {
@@ -483,6 +497,7 @@ $('#bookingForm').addEventListener('submit', async event => {
   const submit = $('#submitBooking');
   submit.disabled = true;
   const paid = rule.commerceMode === 'standalone_paid';
+  const postPurchase = rule.commerceMode === 'product_post_purchase';
   submit.textContent = paid ? 'Holding your time…' : 'Confirming…';
   errorBox.classList.add('hidden');
   try {
@@ -494,9 +509,11 @@ $('#bookingForm').addEventListener('submit', async event => {
       occurrences: mode === 'multi_slot' ? selectedOccurrences : [],
       customer: { name: form.get('name'), email: form.get('email'), phone: form.get('phone') },
       note: form.get('note'),
-      answers: [...document.querySelectorAll('[data-question]')].map(input => ({ question: input.dataset.question, answer: input.value }))
+      answers: [...document.querySelectorAll('[data-question]')].map(input => ({ question: input.dataset.question, answer: input.value })),
+      ...(postPurchase ? { entitlementToken } : {})
     };
-    const payload = await api(paid ? '/api/public/paid-bookings' : '/api/public/bookings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const endpoint = paid ? '/api/public/paid-bookings' : postPurchase ? '/api/public/post-purchase-bookings' : '/api/public/bookings';
+    const payload = await api(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     if (paid) {
       submit.textContent = 'Opening secure checkout…';
       window.location.assign(payload.checkoutUrl);
@@ -531,7 +548,8 @@ $('#bookingForm').addEventListener('submit', async event => {
 
 (async function load() {
   try {
-    const payload = await api(`/api/public/service?ruleId=${encodeURIComponent(ruleId)}`);
+    const accessQuery = entitlementToken ? `&access=${encodeURIComponent(entitlementToken)}` : '';
+    const payload = await api(`/api/public/service?ruleId=${encodeURIComponent(ruleId)}${accessQuery}`);
     renderService(payload);
   } catch (error) { showError(error.message); }
 })();

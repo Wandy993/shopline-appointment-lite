@@ -82,4 +82,4 @@ A dedicated appointment product is recommended so its price/title are easy for t
 - A late payment after hold release is surfaced as `payment_conflict` rather than risking double booking.
 - Automatic refunds/manual conflict resolution are not part of v0.6.2.
 - SHOPLINE's hosted checkout/thank-you page remains the post-payment browser destination; Appointment Lite confirmation happens asynchronously from webhooks.
-- `product_post_purchase` (buy a product first, then schedule installation/service from the eligible order) remains reserved for v0.6.3.
+- `product_post_purchase` is activated in v0.6.3; see `POST_PURCHASE_APPOINTMENTS.md` for the paid-order entitlement and private scheduling flow.

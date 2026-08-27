@@ -39,7 +39,7 @@ export function adminPage() {
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light">
   <title>Appointment Lite</title>
-  <link rel="stylesheet" href="/admin/styles.css?v=0.6.2">
+  <link rel="stylesheet" href="/admin/styles.css?v=0.6.3">
 </head>
 <body>
   <div class="app-shell">
@@ -216,13 +216,14 @@ export function adminPage() {
             <button type="button" class="commerce-mode-option" data-commerce-mode="standalone_free"><span class="commerce-option-head"><strong>Standalone · no payment</strong><em class="commerce-state ready">Ready</em></span><span>Customers book the service directly without checkout.</span><small>Free consultations, free measurements, or appointment-only service pages.</small></button>
             <button type="button" class="commerce-mode-option" data-commerce-mode="standalone_paid"><span class="commerce-option-head"><strong>Standalone · payment required</strong><em class="commerce-state ready">Ready</em></span><span>Customers choose a time first, then complete SHOPLINE checkout.</span><small>Paid classes, massage, photography, or professional sessions.</small></button>
             <button type="button" class="commerce-mode-option selected" data-commerce-mode="product_pre_purchase"><span class="commerce-option-head"><strong>Product + appointment</strong><em class="commerce-state ready">Ready</em></span><span>Keep the normal product purchase flow and add appointment booking as another action.</span><small>Design consultations, showroom visits, measurement, or pre-sale services.</small></button>
-            <button type="button" class="commerce-mode-option" data-commerce-mode="product_post_purchase" disabled aria-disabled="true"><span class="commerce-option-head"><strong>Purchase first · schedule after</strong><em class="commerce-state planned">Order flow next</em></span><span>Customers buy first, then schedule the included service from an eligible order.</span><small>Installation, delivery setup, onboarding, or post-purchase service.</small></button>
+            <button type="button" class="commerce-mode-option" data-commerce-mode="product_post_purchase"><span class="commerce-option-head"><strong>Purchase first · schedule after</strong><em class="commerce-state ready">Ready</em></span><span>Customers buy first, then receive a private scheduling link after payment.</span><small>Installation, delivery setup, onboarding, or post-purchase service.</small></button>
           </div><div id="commerceGuidance" class="commerce-guidance"></div></fieldset>
-          <fieldset class="choice-fieldset"><legend>Booking entry</legend><div id="bookingSourceGrid" class="booking-source-grid">
+          <fieldset id="bookingSourceFieldset" class="choice-fieldset"><legend>Booking entry</legend><div id="bookingSourceGrid" class="booking-source-grid">
             <button type="button" class="booking-source-option selected" data-booking-source="product"><strong>Product page only</strong><span>Display the Appointment Lite action on the linked SHOPLINE product.</span></button>
             <button type="button" class="booking-source-option" data-booking-source="direct"><strong>Booking page only</strong><span>Use a shareable Appointment Lite booking page.</span></button>
             <button type="button" class="booking-source-option" data-booking-source="both"><strong>Both</strong><span>Use both the linked product page and a shareable booking page.</span></button>
           </div></fieldset>
+          <div id="postPurchaseEntryCallout" class="paid-checkout-callout post-purchase-callout hidden"><div><strong>Private order scheduling link</strong><span>Appointment Lite waits for a paid SHOPLINE order, then emails the buyer a private scheduling link. One purchased unit provides one appointment.</span></div><span class="status-badge success">Order-linked</span></div>
           <div id="productSourceFields"><div class="field"><label>Linked SHOPLINE product</label><div id="productPicker" class="custom-select"><button id="productPickerButton" type="button" aria-haspopup="dialog"><span id="productPickerLabel">Select a product</span>${icons.chevron}</button></div><p id="productBindingHint" class="hint">Choose the SHOPLINE product connected to this appointment experience.</p></div></div><div id="paidCheckoutFields" class="paid-checkout-fields hidden"><div class="paid-checkout-callout"><div><strong>SHOPLINE checkout</strong><span>Customers choose a time first. Appointment Lite holds that capacity while they complete SHOPLINE checkout.</span></div><span class="status-badge success">Payment flow</span></div><div class="field-row"><div class="field"><label for="paidVariantSelect">Checkout variant</label><select id="paidVariantSelect"><option value="">Select a product first</option></select><p class="hint">The selected variant provides the checkout price. Use a dedicated appointment product for the cleanest setup.</p></div><div class="field"><label for="paymentHoldMinutes">Payment hold</label><select id="paymentHoldMinutes"><option value="5">5 minutes</option><option value="10">10 minutes</option><option value="15" selected>15 minutes</option><option value="20">20 minutes</option><option value="30">30 minutes</option></select><p class="hint">The selected slot is temporarily reserved while the customer pays.</p></div></div><p id="paidCheckoutVariantMeta" class="hint">Select the SHOPLINE product used to charge for this appointment.</p></div>
         </section>
         <section class="rule-step hidden" data-rule-step="1">
@@ -298,7 +299,7 @@ export function adminPage() {
   </dialog>
 
   <dialog id="confirmDialog" class="confirm-modal"><div class="confirm-icon">!</div><div class="confirm-copy"><h2 id="confirmTitle">Please confirm</h2><p id="confirmMessage"></p></div><div class="modal-actions"><button id="confirmNo" class="secondary">Keep it</button><button id="confirmYes" class="danger">Confirm</button></div></dialog>
-  <script type="module" src="/admin/app.js?v=0.6.2"></script>
+  <script type="module" src="/admin/app.js?v=0.6.3"></script>
 </body>
 </html>`;
 }

@@ -131,9 +131,9 @@ export async function shoplinePost(shopId, endpoint, body = {}) {
   return payload;
 }
 
-export async function ensurePaidBookingWebhooks(shopId) {
+export async function ensureBookingCommerceWebhooks(shopId) {
   const address = `${config.appUrl}/webhooks/shopline`;
-  const topics = ['orders/create', 'order_transactions/create'];
+  const topics = ['orders/create', 'order_transactions/create', 'orders/cancelled'];
   const results = [];
 
   let existing = [];
@@ -171,3 +171,6 @@ export async function ensurePaidBookingWebhooks(shopId) {
   }
   return results;
 }
+
+
+export const ensurePaidBookingWebhooks = ensureBookingCommerceWebhooks;

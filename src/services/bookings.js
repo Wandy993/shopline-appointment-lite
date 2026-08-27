@@ -14,6 +14,7 @@ import { findInstalledShop } from './shops.js';
 import { normalizedStaffAssignment, releaseStaffReservations, reserveStaffForBooking, staffAvailabilityForDate } from './staffing.js';
 import { queueBookingGoogleCalendarSync } from './calendar-sync.js';
 import { buildPaidBookingCheckoutUrl } from '../lib/paid-checkout.js';
+import { attachBookingToPostPurchaseEntitlement, claimPostPurchaseEntitlement, getPostPurchaseEntitlement, releasePostPurchaseEntitlementClaim, restorePostPurchaseEntitlementForBooking } from './post-purchase.js';
 
 export class SlotConflictError extends Error { constructor() { super('This time is at capacity. Please choose another slot.'); this.code = 'SLOT_CONFLICT'; } }
 
@@ -185,7 +186,7 @@ async function syncSingleReservation({ ReservationModel, booking, rule }) {
 
 export async function createBookingAtomic({
   shop, rule, input, BookingModel = Booking, ReservationModel, StaffReservationModel, StaffModel = Staff,
-  notify = sendBookingNotifications, now = new Date(), initialStatus = 'confirmed', payment = null, notifications = true
+  notify = sendBookingNotifications, now = new Date(), initialStatus = 'confirmed', payment = null, postPurchase = null, notifications = true
 }) {
   const mode = bookingModeFor(rule);
   const timezone = resolveRuleTimezone(rule, shop.timezone || 'UTC');
@@ -234,6 +235,7 @@ export async function createBookingAtomic({
     duration: rule.duration, buffer: rule.buffer, timezone, location: rule.location, staff: staffName, staffId, staffEmail,
     managementTokenHash: hashManagementToken(managementToken),
     customer: input.customer, note: input.note, answers: input.answers, status: initialStatus,
+    ...(postPurchase ? { postPurchase } : {}),
     ...(payment ? { payment } : {}),
     events: [{
       type: eventType, actor: eventActor, at: now,
@@ -278,7 +280,7 @@ export async function createBookingForStore({ shopId, handle, productId, ruleId,
   const { shop, rule } = await resolveBookingContext({ shopId, handle, productId, ruleId });
   const commerceMode = rule.commerceMode || ((rule.bookingSource || (rule.sourceType === 'standalone' ? 'direct' : 'product')) === 'direct' && !rule.productId ? 'standalone_free' : 'product_pre_purchase');
   if (commerceMode === 'standalone_paid') throw Object.assign(new Error('This service requires checkout. Continue with the paid booking flow.'), { code: 'PAID_CHECKOUT_REQUIRED' });
-  if (commerceMode === 'product_post_purchase') throw Object.assign(new Error('This appointment will be scheduled from an eligible paid order.'), { code: 'COMMERCE_FLOW_NOT_READY' });
+  if (commerceMode === 'product_post_purchase') throw Object.assign(new Error('This appointment requires a private link from an eligible paid order.'), { code: 'POST_PURCHASE_ACCESS_REQUIRED' });
   return createBookingAtomic({ shop, rule, input });
 }
 
@@ -295,6 +297,51 @@ export async function createPaidBookingForStore({ shopId, handle, productId, rul
   });
   const checkoutUrl = buildPaidBookingCheckoutUrl({ handle: shop.handle, variantId: rule.productVariantId, booking });
   return { booking, checkoutUrl, holdExpiresAt };
+}
+
+
+export async function createPostPurchaseBookingForStore({ ruleId, entitlementToken, input, now = new Date(), EntitlementModel }) {
+  const entitlement = await getPostPurchaseEntitlement({ ruleId, token: entitlementToken, ...(EntitlementModel ? { EntitlementModel } : {}) });
+  if (!entitlement || entitlement.status !== 'active' || Number(entitlement.usedBookings || 0) >= Number(entitlement.eligibleQuantity || 1)) {
+    throw Object.assign(new Error('This private scheduling link is no longer available.'), { code: 'POST_PURCHASE_ACCESS_INVALID', status: 404 });
+  }
+  const { shop, rule } = await resolveBookingContext({ ruleId });
+  if (String(entitlement.shopId) !== String(shop._id) || String(entitlement.ruleId) !== String(rule._id) || rule.commerceMode !== 'product_post_purchase') {
+    throw Object.assign(new Error('This private scheduling link is no longer available.'), { code: 'POST_PURCHASE_ACCESS_INVALID', status: 404 });
+  }
+
+  const claimed = await claimPostPurchaseEntitlement({ entitlementId: entitlement._id, ...(EntitlementModel ? { EntitlementModel } : {}) });
+  if (!claimed) throw Object.assign(new Error('All appointments included with this order have already been scheduled.'), { code: 'POST_PURCHASE_EXHAUSTED', status: 409 });
+
+  const customer = {
+    name: claimed.customer?.name || input.customer?.name || 'Customer',
+    email: claimed.customer?.email || input.customer?.email || '',
+    phone: claimed.customer?.phone || input.customer?.phone || ''
+  };
+  let result;
+  try {
+    result = await createBookingAtomic({
+      shop, rule, input: { ...input, customer }, now,
+      postPurchase: {
+        entitlementId: claimed._id,
+        shoplineOrderId: claimed.orderId || '',
+        shoplineOrderName: claimed.orderName || ''
+      }
+    });
+  } catch (error) {
+    await releasePostPurchaseEntitlementClaim({ entitlementId: claimed._id, ...(EntitlementModel ? { EntitlementModel } : {}) }).catch(() => {});
+    throw error;
+  }
+
+  // The appointment is already committed at this point. If the bookkeeping
+  // back-reference fails, keep the entitlement quota consumed rather than
+  // releasing it and risking a duplicate appointment from the same purchase.
+  try {
+    await attachBookingToPostPurchaseEntitlement({ entitlementId: claimed._id, bookingId: result.booking._id, ...(EntitlementModel ? { EntitlementModel } : {}) });
+  } catch (error) {
+    console.error('Post-purchase booking entitlement link failed', { bookingId: String(result.booking._id), entitlementId: String(claimed._id), message: error.message });
+  }
+  return { ...result, remainingBookings: Math.max(0, Number(claimed.eligibleQuantity || 0) - Number(claimed.usedBookings || 0)) };
 }
 
 export async function attachPaidOrderToBooking({ bookingId, orderId = '', orderName = '', financialStatus = '', webhookId = '', BookingModel = Booking }) {
@@ -439,7 +486,10 @@ export async function cancelManagedBooking({ bookingId, token, BookingModel = Bo
   if (activeStaffReservationModel) await releaseStaffReservations({ bookingId: booking._id, StaffReservationModel: activeStaffReservationModel });
   Promise.resolve(notify(booking)).catch(error => console.error('Cancellation email notification failed', error.message));
   if (BookingModel === Booking && booking.staffId) Promise.resolve(sendStaffCancelledNotification(booking)).catch(error => console.error('Staff cancellation email failed', error.message));
-  if (BookingModel === Booking) queueBookingGoogleCalendarSync(booking._id, 'customer_cancelled');
+  if (BookingModel === Booking) {
+    if (booking.commerceMode === 'product_post_purchase' && booking.postPurchase?.entitlementId) await restorePostPurchaseEntitlementForBooking(booking).catch(error => console.error('Post-purchase entitlement restore failed', error.message));
+    queueBookingGoogleCalendarSync(booking._id, 'customer_cancelled');
+  }
   return booking;
 }
 
@@ -566,7 +616,10 @@ export async function cancelBookingByMerchant({ shopObjectId, bookingId, Booking
   if (activeStaffReservationModel) await releaseStaffReservations({ bookingId: booking._id, StaffReservationModel: activeStaffReservationModel });
   const notification = await Promise.resolve(notify(booking)).catch(error => ({ skipped: false, attempted: 1, failed: 1, reason: error.message }));
   if (BookingModel === Booking && booking.staffId) Promise.resolve(sendStaffCancelledNotification(booking)).catch(error => console.error('Staff cancellation email failed', error.message));
-  if (BookingModel === Booking) queueBookingGoogleCalendarSync(booking._id, 'merchant_cancelled');
+  if (BookingModel === Booking) {
+    if (booking.commerceMode === 'product_post_purchase' && booking.postPurchase?.entitlementId) await restorePostPurchaseEntitlementForBooking(booking).catch(error => console.error('Post-purchase entitlement restore failed', error.message));
+    queueBookingGoogleCalendarSync(booking._id, 'merchant_cancelled');
+  }
   return { booking, notification };
 }
 

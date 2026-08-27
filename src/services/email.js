@@ -237,6 +237,26 @@ export async function sendMerchantUpcomingReminder(booking, suppliedSettings = n
 }
 
 
+export async function sendPostPurchaseScheduleNotification({ entitlement, rule, shop, token }) {
+  if (!entitlement?.customer?.email || !rule?._id || !token) return { skipped: true, provider: selectedProvider().provider, reason: 'Post-purchase scheduling recipient is missing' };
+  const settings = normalizeEmailSettings(shop?.emailSettings || {});
+  const remaining = Math.max(0, Number(entitlement.eligibleQuantity || 0) - Number(entitlement.usedBookings || 0));
+  const scheduleUrl = `${config.appUrl}/book/${encodeURIComponent(String(rule._id))}?access=${encodeURIComponent(token)}`;
+  const orderLabel = entitlement.orderName ? `Order ${entitlement.orderName}` : 'Your order';
+  const quantityCopy = remaining > 1 ? `${remaining} appointments are available from this purchase.` : 'One appointment is available from this purchase.';
+  const intro = `<p style="margin:0 0 18px;color:#475467;line-height:1.65">Hi ${escapeHtml(entitlement.customer.name || 'there')},</p><p style="margin:0 0 20px;color:#475467;line-height:1.65">${escapeHtml(orderLabel)} includes <strong>${escapeHtml(rule.serviceTitle || rule.productTitle || 'an appointment service')}</strong>. ${escapeHtml(quantityCopy)} Choose a convenient time using the private scheduling link below.</p>`;
+  const orderCard = `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:separate;border-spacing:0;border:1px solid #E3E9F1;border-radius:12px;overflow:hidden;background:#FBFCFE"><tr><td style="padding:10px 12px;color:#8A98AA;font-size:12px;font-weight:600;border-bottom:1px solid #EEF2F6;width:110px">Order</td><td style="padding:10px 12px;color:#344861;font-size:13px;font-weight:600;border-bottom:1px solid #EEF2F6">${escapeHtml(entitlement.orderName || entitlement.orderId || '')}</td></tr><tr><td style="padding:10px 12px;color:#8A98AA;font-size:12px;font-weight:600;width:110px">Service</td><td style="padding:10px 12px;color:#344861;font-size:13px;font-weight:600">${escapeHtml(rule.serviceTitle || rule.productTitle || 'Appointment')}</td></tr></table>`;
+  const button = `<p style="margin:24px 0 0"><a href="${escapeHtml(scheduleUrl)}" style="display:inline-block;padding:12px 18px;border-radius:9px;background:${settings.accentColor};color:#fff;text-decoration:none;font-weight:bold">Schedule appointment</a></p><p style="font-size:12px;color:#8A94A6;line-height:1.55">This private link is connected to your paid order. Do not forward it.</p>`;
+  return deliverEmail({
+    to: entitlement.customer.email,
+    subject: `Schedule your ${rule.serviceTitle || rule.productTitle || 'appointment'} — ${entitlement.orderName || 'order confirmed'}`,
+    html: emailDocument('Schedule your appointment', `${intro}${orderCard}${button}`, settings),
+    fromName: settings.brandName,
+    replyTo: settings.replyToEmail || ''
+  });
+}
+
+
 async function staffNotificationRecipient(staffId, shopId = null) {
   if (!staffId) return null;
   const filter = { _id: staffId, ...(shopId ? { shopId } : {}) };

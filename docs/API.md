@@ -57,8 +57,11 @@ Requires the signed `al_session` HTTP-only cookie. Mutations also require `X-CSR
 - `GET /api/public/availability?ruleId=RULE_ID&date=YYYY-MM-DD&staffId=STAFF_ID` — same staff-aware availability behavior as the product flow
 - `POST /api/public/bookings` with `ruleId`, customer fields, and the selection required by `bookingMode`
 - `POST /api/public/paid-bookings` — for `standalone_paid` only; validates the same selection/customer payload, reserves capacity as `pending_payment`, and returns `checkoutUrl` plus `holdExpiresAt` instead of a confirmed booking token
+- `GET /api/public/service?ruleId=RULE_ID&access=PRIVATE_TOKEN` — private purchase-first service bootstrap; the token is mandatory for `product_post_purchase`
+- `GET /api/public/availability?ruleId=RULE_ID&date=YYYY-MM-DD&access=PRIVATE_TOKEN` — private order-linked availability
+- `POST /api/public/post-purchase-bookings` — consumes one eligible order appointment and creates a normal confirmed Booking; accepts `entitlementToken` plus the standard booking selection payload
 
-Paid bookings are finalized asynchronously by the raw-body SHOPLINE webhook endpoint `POST /webhooks/shopline`, which handles `orders/create` and `order_transactions/create`. The endpoint verifies SHOPLINE HMAC headers and stores webhook IDs for idempotency.
+Paid bookings are finalized asynchronously by the raw-body SHOPLINE webhook endpoint `POST /webhooks/shopline`, which handles `orders/create`, `order_transactions/create`, and `orders/cancelled`. The same webhook endpoint activates/revokes post-purchase scheduling entitlements. The endpoint verifies SHOPLINE HMAC headers and stores webhook IDs for idempotency.
 
 Both flows use the same scheduling engine and the same Theme/hosted behavior. Availability is `no-store`, policy-aware, and capacity-aware.
 

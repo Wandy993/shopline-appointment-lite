@@ -10,7 +10,7 @@ const base = overrides => ({
   bookingWindowDays: 90, minimumNoticeMinutes: 0, weeklyAvailability: weekly, ...overrides
 });
 
-test('v0.6.2 models the four commerce paths while activating the safe existing flows', () => {
+test('v0.6.3 activates all four booking commerce paths', () => {
   const product = validateRuleInput(base({ commerceMode: 'product_pre_purchase' }));
   assert.deepEqual(product.errors, []);
   assert.equal(product.value.commerceMode, 'product_pre_purchase');
@@ -22,7 +22,10 @@ test('v0.6.2 models the four commerce paths while activating the safe existing f
   assert.deepEqual(paid.errors, []);
   assert.equal(paid.value.commerceMode, 'standalone_paid');
   assert.equal(paid.value.productVariantId, '123456789');
-  assert.match(validateRuleInput(base({ commerceMode: 'product_post_purchase' })).errors.join(' '), /Post-purchase appointment scheduling is defined/);
+  const postPurchase = validateRuleInput(base({ commerceMode: 'product_post_purchase', bookingSource: 'product' }));
+  assert.deepEqual(postPurchase.errors, []);
+  assert.equal(postPurchase.value.commerceMode, 'product_post_purchase');
+  assert.equal(postPurchase.value.bookingSource, 'direct');
 });
 
 test('v0.6.2 allows appointment-only SHOPLINE product pages without treating them as product-purchase appointments', () => {
@@ -53,7 +56,9 @@ test('v0.6.2 admin separates commerce relationship from booking entry and gives 
   assert.match(view, /id="paidVariantSelect"/);
   assert.match(view, /id="paymentHoldMinutes"/);
   assert.match(view, /data-commerce-mode="product_pre_purchase"/);
-  assert.match(view, /data-commerce-mode="product_post_purchase" disabled/);
+  assert.match(view, /data-commerce-mode="product_post_purchase"/);
+  assert.doesNotMatch(view, /data-commerce-mode="product_post_purchase" disabled/);
+  assert.match(view, /Private order scheduling link/);
   assert.match(view, /Booking entry/);
   assert.match(app, /function setCommerceMode/);
   assert.match(app, /function commerceModeNeedsProduct/);

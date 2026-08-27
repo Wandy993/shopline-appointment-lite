@@ -7,10 +7,11 @@ import { BookingReservation } from '../models/BookingReservation.js';
 import { publicStaffOptions, staffAvailabilityForDate } from '../services/staffing.js';
 import { addDays, bookingModeFor, filterSlotsByCapacity, futureSlotsForDate, isAllDayBookableDate, isDateAllowed, resolveRuleTimezone, slotsForDate, zonedNow } from '../lib/slots.js';
 import { validateBookingInput, validateDateInput, validateSlotInput } from '../lib/validation.js';
-import { cancelManagedBooking, createBookingForStore, createPaidBookingForStore, getLegacyBookingStatus, getManagedAvailability, getManagedBooking, rescheduleManagedBooking } from '../services/bookings.js';
+import { cancelManagedBooking, createBookingForStore, createPaidBookingForStore, createPostPurchaseBookingForStore, getLegacyBookingStatus, getManagedAvailability, getManagedBooking, rescheduleManagedBooking } from '../services/bookings.js';
 import { findInstalledShop, validShopHandle, validShoplineStoreId } from '../services/shops.js';
 import { normalizeEmailSettings } from '../lib/email-settings.js';
 import { buildBookingIcs, calendarLinksForBooking, readBookingCalendarToken } from '../lib/calendar-links.js';
+import { getPostPurchaseEntitlement, publicPostPurchaseEntitlement } from '../services/post-purchase.js';
 
 export const publicRouter = Router();
 const bookingLimiter = rateLimit({ windowMs: 60_000, limit: 10, standardHeaders: true, legacyHeaders: false, message: { error: 'RATE_LIMITED', message: 'Too many attempts. Please wait a minute.' } });
@@ -34,6 +35,7 @@ function publicBooking(booking) {
     date: booking.date, time: bookingMode === 'all_day' ? '' : booking.time, timezone, storeDate: zonedNow(timezone).date,
     location: booking.location, staff: booking.staff, staffId: booking.staffId ? String(booking.staffId) : '', status: booking.status, customerRescheduleCount,
     customerCanReschedule: bookingMode === 'slot' && booking.status === 'confirmed' && customerRescheduleCount < 1,
+    postPurchase: booking.postPurchase ? { orderId: booking.postPurchase.shoplineOrderId || '', orderName: booking.postPurchase.shoplineOrderName || '' } : null,
     calendar: booking.status === 'confirmed' ? calendarLinksForBooking(booking) : { google: '', ics: '' }
   };
 }
@@ -54,6 +56,7 @@ function serializeRule(rule, timezone, staffMeta = { mode: 'none', options: [] }
     availabilityExceptions: rule.availabilityExceptions || [], location: rule.location, staff: rule.staff,
     staffAssignment: { mode: staffMeta.mode, staffIds: staffMeta.options.map(item => item.id) }, staffOptions: staffMeta.options,
     payment: rule.commerceMode === 'standalone_paid' ? { required: true, holdMinutes: Number(rule.paymentHoldMinutes || 15), price: rule.productVariantPrice || '', variantTitle: rule.productVariantTitle || '' } : { required: false },
+    postPurchaseRequired: rule.commerceMode === 'product_post_purchase',
     questionLabel: rule.questionLabel, customQuestions: rule.customQuestions
   };
 }
@@ -80,6 +83,20 @@ async function findPublicRule(req) {
   return { rule, shop };
 }
 
+
+async function postPurchaseAccessForRequest(result, token) {
+  if (result.rule.commerceMode !== 'product_post_purchase') return { required: false, entitlement: null };
+  const entitlement = await getPostPurchaseEntitlement({ ruleId: result.rule._id, token: String(token || '') });
+  if (!entitlement || String(entitlement.shopId) !== String(result.shop._id) || entitlement.status === 'revoked' || entitlement.status === 'pending_payment') {
+    return { error: { status: 404, body: { error: 'NOT_FOUND', message: 'This private scheduling link is invalid or no longer available.' } } };
+  }
+  const remaining = Math.max(0, Number(entitlement.eligibleQuantity || 0) - Number(entitlement.usedBookings || 0));
+  if (remaining < 1 || entitlement.status === 'exhausted') {
+    return { error: { status: 409, body: { error: 'POST_PURCHASE_EXHAUSTED', message: 'All appointments included with this order have already been scheduled.' } } };
+  }
+  return { required: true, entitlement };
+}
+
 publicRouter.get('/rule', async (req, res) => {
   const result = await findPublicRule(req);
   if (result.error) return res.status(result.error.status).json(result.error.body);
@@ -94,12 +111,15 @@ publicRouter.get('/service', async (req, res) => {
   if (result.error) return res.status(result.error.status).json(result.error.body);
   const bookingSource = result.rule.bookingSource || (result.rule.sourceType === 'standalone' ? 'direct' : 'product');
   if (!['direct', 'both'].includes(bookingSource)) return res.status(404).json({ error: 'NOT_FOUND', message: 'Direct booking is not enabled for this service.' });
+  const access = await postPurchaseAccessForRequest(result, req.query.access);
+  if (access.error) return res.status(access.error.status).json(access.error.body);
   const timezone = resolveRuleTimezone(result.rule, result.shop.timezone || 'UTC');
   const emailSettings = normalizeEmailSettings(result.shop.emailSettings || {});
   const staffMeta = await publicStaffOptions(result.rule);
-  res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=300');
+  res.set('Cache-Control', result.rule.commerceMode === 'product_post_purchase' ? 'no-store' : 'public, max-age=120, stale-while-revalidate=300');
   res.json({
     rule: serializeRule(result.rule, timezone, staffMeta), timezone, storeDate: zonedNow(timezone).date,
+    postPurchase: access.entitlement ? publicPostPurchaseEntitlement(access.entitlement) : null,
     brand: { name: emailSettings.brandName || result.shop.handle || 'Appointment Lite', logoUrl: emailSettings.logoUrl || '', accentColor: emailSettings.accentColor || '#2F6FED' }
   });
 });
@@ -108,6 +128,8 @@ publicRouter.get('/availability', async (req, res) => {
   const date = String(req.query.date || '');
   const result = await findPublicRule(req);
   if (result.error) return res.status(result.error.status).json(result.error.body);
+  const access = await postPurchaseAccessForRequest(result, req.query.access);
+  if (access.error) return res.status(access.error.status).json(access.error.body);
   const timezone = resolveRuleTimezone(result.rule, result.shop.timezone || 'UTC');
   const mode = bookingModeFor(result.rule);
   const capacity = Number(result.rule.capacity || 1);
@@ -199,6 +221,17 @@ publicRouter.post('/paid-bookings', bookingLimiter, async (req, res, next) => {
       },
       checkoutUrl: result.checkoutUrl
     });
+  } catch (error) { next(error); }
+});
+
+
+publicRouter.post('/post-purchase-bookings', bookingLimiter, async (req, res, next) => {
+  try {
+    const { errors, value } = validateBookingInput(req.body);
+    if (errors.length) return res.status(422).json({ error: 'VALIDATION_ERROR', message: errors.join(' '), fields: errors });
+    const entitlementToken = String(req.body.entitlementToken || '').trim();
+    const { booking, managementToken, remainingBookings } = await createPostPurchaseBookingForStore({ ruleId: value.ruleId, entitlementToken, input: value });
+    res.status(201).json({ booking: { ...publicBooking(booking), managementToken }, remainingBookings });
   } catch (error) { next(error); }
 });
 

@@ -94,5 +94,5 @@ test('v0.6.2 wires paid hold, checkout redirect, payment webhooks and hold expir
   assert.match(shopline, /existing\.find/);
   assert.match(shopline, /orders\/create/);
   assert.match(shopline, /order_transactions\/create/);
-  assert.match(adminRoutes, /PAID_CHECKOUT_SETUP_FAILED/);
+  assert.match(adminRoutes, /(?:PAID_CHECKOUT_SETUP_FAILED|COMMERCE_WEBHOOK_SETUP_FAILED)/);
 });

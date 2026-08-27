@@ -28,7 +28,7 @@ const variables = ['customer_name', 'product_title', 'date', 'time', 'timezone',
 const serviceTypeLabels = { appointment: 'Appointment', product: 'Appointment', in_store: 'In-store appointment', onsite: 'Home / onsite service', consultation: 'Consultation', class: 'Class / course', other: 'Other service' };
 const bookingSourceLabels = { product: 'Product page', direct: 'Booking page', both: 'Product page + booking link' };
 const commerceModeLabels = { standalone_free: 'Standalone · no payment', standalone_paid: 'Standalone · payment required', product_pre_purchase: 'Product + appointment', product_post_purchase: 'Purchase first · schedule after' };
-const activeCommerceModes = new Set(['standalone_free', 'standalone_paid', 'product_pre_purchase']);
+const activeCommerceModes = new Set(['standalone_free', 'standalone_paid', 'product_pre_purchase', 'product_post_purchase']);
 const productStatusLabels = { active: 'Published', draft: 'Draft' };
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -294,7 +294,7 @@ Object.assign(zh, {
   'Booking & purchase relationship': '预约与购买关系', 'Booking entry': '预约入口', 'Customer journey': '客户流程',
   'Choose the service type, how it relates to a purchase, and where customers enter the booking flow.': '选择服务类型、与购买的关系，以及客户从哪里进入预约流程。',
   'Standalone · no payment': '纯预约 · 无需付款', 'Standalone · payment required': '纯预约 · 需要付款', 'Product + appointment': '商品 + 预约', 'Purchase first · schedule after': '先购买 · 后预约',
-  'Ready': '可使用', 'Checkout next': '下一阶段接入支付', 'Order flow next': '下一阶段接入订单',
+  'Ready': '可使用',
   'Customers book the service directly without checkout.': '客户直接预约服务，无需进入结账。',
   'Free consultations, free measurements, or appointment-only service pages.': '适合免费咨询、免费测量或仅提供预约的服务页面。',
   'Customers choose a time first, then complete SHOPLINE checkout.': '客户先选择预约时间，再完成 SHOPLINE 结账。',
@@ -306,7 +306,6 @@ Object.assign(zh, {
   'No checkout is required. If you use a SHOPLINE product page, use a dedicated appointment-only template so other products keep their normal purchase buttons.': '无需结账。如果使用 SHOPLINE 商品页，请为纯预约商品使用独立的预约模板，避免影响其他商品的正常购买按钮。',
   'Customers choose an available time first. Appointment Lite temporarily holds that capacity, then sends them to SHOPLINE checkout. The booking is confirmed only after payment.': '客户先选择可预约时间，Appointment Lite 会临时保留该时段，然后进入 SHOPLINE 结账；只有支付成功后预约才会正式确认。',
   'Keep SHOPLINE Add to cart / Buy now actions. Appointment Lite appears as an additional booking action before purchase.': '保留 SHOPLINE 的加入购物车 / 立即购买按钮，Appointment Lite 作为购买前的额外预约入口。',
-  'Keep the normal purchase flow. Scheduling will open from an eligible paid order once order-linked booking is activated.': '保留正常购买流程；订单关联预约启用后，客户将从符合条件的已付款订单进入预约。',
   'Display the Appointment Lite action on the linked SHOPLINE product.': '在关联的 SHOPLINE 商品页展示 Appointment Lite 预约入口。',
   'Use a shareable Appointment Lite booking page.': '使用可分享的 Appointment Lite 独立预约页。',
   'Use both the linked product page and a shareable booking page.': '同时使用关联商品页和可分享的独立预约页。',
@@ -318,7 +317,6 @@ Object.assign(zh, {
   'Use a dedicated appointment-only product template if you do not want native purchase buttons on this service product.': '如果该服务商品不需要原生购买按钮，请使用独立的纯预约商品模板。',
   'Keep the SHOPLINE purchase actions and show Appointment Lite as an additional booking option.': '保留 SHOPLINE 商品购买按钮，并将 Appointment Lite 作为额外预约选项。',
   'For appointment-only product pages, use a dedicated SHOPLINE product template without native purchase buttons.': '对于纯预约商品页，请使用独立的 SHOPLINE 商品模板并移除该模板中的原生购买按钮。',
-  'Post-purchase appointment scheduling is defined but not enabled in this release.': '购买后预约结构已预留，但当前版本暂未启用订单关联预约。',
   'SHOPLINE checkout': 'SHOPLINE 结账', 'Payment flow': '支付流程', 'Checkout variant': '结账规格', 'Payment hold': '付款保留时长',
   'Select a product first': '请先选择商品', 'Loading checkout variants…': '正在加载结账规格…', 'Choose checkout variant': '选择结账规格',
   'The selected variant provides the checkout price. Use a dedicated appointment product for the cleanest setup.': '所选规格将决定结账价格。建议为付费预约使用独立的预约商品。',
@@ -460,7 +458,7 @@ const staffAvatarPresets = ['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunse
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
 function staffPresetImage(preset) {
   const file = staffAvatarFiles[preset] || staffAvatarFiles.aurora;
-  return `<img src="/assets/staff/${file}?v=0.6.2" alt="" loading="lazy" decoding="async">`;
+  return `<img src="/assets/staff/${file}?v=0.6.3" alt="" loading="lazy" decoding="async">`;
 }
 let staffAvatarDraft = { kind: 'preset', value: 'aurora' };
 
@@ -1213,10 +1211,11 @@ function setCommerceMode(mode = 'product_pre_purchase') {
     standalone_free: 'No checkout is required. If you use a SHOPLINE product page, use a dedicated appointment-only template so other products keep their normal purchase buttons.',
     standalone_paid: 'Customers choose an available time first. Appointment Lite temporarily holds that capacity, then sends them to SHOPLINE checkout. The booking is confirmed only after payment.',
     product_pre_purchase: 'Keep SHOPLINE Add to cart / Buy now actions. Appointment Lite appears as an additional booking action before purchase.',
-    product_post_purchase: 'Keep the normal purchase flow. Scheduling will open from an eligible paid order once order-linked booking is activated.'
+    product_post_purchase: 'Customers complete the normal SHOPLINE purchase first. After payment, Appointment Lite emails the buyer a private link to schedule the included service.'
   }[normalized];
   $('#commerceGuidance').innerHTML = `<strong>${t(commerceModeLabels[normalized])}</strong><span>${t(guidance)}</span>`;
-  setBookingSource($('#bookingSource').value || 'product');
+  if (normalized === 'product_post_purchase') $('#bookingSource').value = 'direct';
+  setBookingSource(normalized === 'product_post_purchase' ? 'direct' : ($('#bookingSource').value || 'product'));
   if (normalized === 'standalone_paid' && $('#productSelect').value) loadPaidVariants($('#productSelect').value, { preserveVariant: true });
 }
 
@@ -1226,18 +1225,23 @@ function setBookingSource(source = 'product') {
   $('#sourceType').value = normalized === 'direct' ? 'standalone' : 'product';
   $$('#bookingSourceGrid [data-booking-source]').forEach(button => button.classList.toggle('selected', button.dataset.bookingSource === normalized));
   const commerceMode = $('#commerceMode')?.value || 'product_pre_purchase';
+  const postPurchase = commerceMode === 'product_post_purchase';
   const needsProduct = commerceModeNeedsProduct(commerceMode, normalized);
+  $('#bookingSourceFieldset')?.classList.toggle('hidden', postPurchase);
+  $('#postPurchaseEntryCallout')?.classList.toggle('hidden', !postPurchase);
   $('#productSourceFields').classList.toggle('hidden', !needsProduct);
   $('#paidCheckoutFields').classList.toggle('hidden', commerceMode !== 'standalone_paid');
+  $$('#bookingSourceGrid [data-booking-source]').forEach(button => { button.disabled = postPurchase; });
   $('#productBindingHint').textContent = t(
     commerceMode === 'product_pre_purchase' ? 'This product keeps its normal purchase actions; Appointment Lite adds a separate booking action.' :
-    commerceMode === 'product_post_purchase' ? 'This product will be used to verify which paid orders can schedule the service.' :
+    commerceMode === 'product_post_purchase' ? 'Customers who pay for this product receive a private scheduling link for the included service.' :
     commerceMode === 'standalone_paid' ? 'This product will provide the SHOPLINE price and checkout for the paid appointment.' :
     normalized === 'direct' ? 'No SHOPLINE product is required for a standalone direct booking page.' :
     'Use a dedicated appointment-only product template if you do not want native purchase buttons on this service product.'
   );
   $('#serviceActiveHint').textContent = t(
     commerceMode === 'product_pre_purchase' ? 'Keep the SHOPLINE purchase actions and show Appointment Lite as an additional booking option.' :
+    commerceMode === 'product_post_purchase' ? 'No booking button is shown before purchase. The buyer schedules from the private order email after payment.' :
     commerceMode === 'standalone_free' && normalized !== 'direct' ? 'For appointment-only product pages, use a dedicated SHOPLINE product template without native purchase buttons.' :
     normalized === 'product' ? 'Show this service on the linked SHOPLINE product page.' :
     normalized === 'both' ? 'Show this service on the linked product page and a shareable booking page.' :
@@ -1330,11 +1334,10 @@ function setRuleStep(step) {
 
 function validateRuleStep(step) {
   let message = '';
-  const bookingSource = $('#bookingSource').value;
   const commerceMode = $('#commerceMode').value;
+  const bookingSource = commerceMode === 'product_post_purchase' ? 'direct' : $('#bookingSource').value;
   const mode = $('#bookingMode').value;
   if (step === 0 && !$('#serviceTitle').value.trim()) message = 'Service name is required before continuing.';
-  if (step === 0 && !activeCommerceModes.has(commerceMode)) message = 'Post-purchase appointment scheduling is defined but not enabled in this release.';
   if (step === 0 && commerceModeNeedsProduct(commerceMode, bookingSource) && !$('#productSelect').value) message = 'Select a SHOPLINE product before continuing.';
   if (step === 0 && commerceMode === 'standalone_paid' && !$('#productVariantId').value) message = 'Choose the SHOPLINE variant customers will pay for.';
   if (step === 1 && mode !== 'all_day' && (!$('#duration').checkValidity() || !$('#buffer').checkValidity() || !$('#capacity').checkValidity())) message = 'Enter valid duration, buffer, and capacity.';
@@ -1386,7 +1389,7 @@ async function openRule(rule = null) {
   const bookingSource = rule?.bookingSource || (rule?.sourceType === 'standalone' ? 'direct' : 'product');
   const commerceMode = legacyCommerceMode(rule || {});
   setCommerceMode(commerceMode);
-  setBookingSource(bookingSource);
+  setBookingSource(commerceMode === 'product_post_purchase' ? 'direct' : bookingSource);
   setBookingMode(rule?.bookingMode || 'slot', { touched: false });
   renderSchedule(rule?.weeklyAvailability || [1, 2, 3, 4, 5].map(weekday => ({ weekday, enabled: true, windows: [{ start: '09:00', end: '17:00' }] })));
   renderExceptions(rule?.availabilityExceptions || []);
@@ -1418,8 +1421,8 @@ async function openRule(rule = null) {
 }
 
 function rulePayload() {
-  const bookingSource = $('#bookingSource').value;
   const commerceMode = $('#commerceMode').value;
+  const bookingSource = commerceMode === 'product_post_purchase' ? 'direct' : $('#bookingSource').value;
   const bookingMode = $('#bookingMode').value;
   const usesProduct = commerceModeNeedsProduct(commerceMode, bookingSource);
   const product = state.products.find(item => item.id === $('#productSelect').value);
@@ -1513,8 +1516,8 @@ function renderRules() {
     const serviceTitle = rule.serviceTitle || rule.productTitle;
     const typeLabel = t(serviceTypeLabels[rule.serviceType] || 'Appointment');
     const bookingSource = rule.bookingSource || (rule.sourceType === 'standalone' ? 'direct' : 'product');
-    const sourceLabel = t(bookingSourceLabels[bookingSource] || 'Product page');
     const commerceMode = legacyCommerceMode(rule);
+    const sourceLabel = commerceMode === 'product_post_purchase' ? t('Private order link') : t(bookingSourceLabels[bookingSource] || 'Product page');
     const commerceLabel = t(commerceModeLabels[commerceMode] || 'Product + appointment');
     const productLine = rule.productId && rule.productTitle ? `<span class="service-product-line">${t('Linked product')}: ${escapeHtml(rule.productTitle)}</span>` : '';
     const linkActions = ['direct', 'both'].includes(bookingSource) && rule.bookingUrl ? `<button class="secondary small" data-copy-link="${escapeHtml(rule.bookingUrl)}">${t('Copy link')}</button><a class="button-link secondary-link small" href="${escapeHtml(rule.bookingUrl)}" target="_blank" rel="noopener noreferrer">${t('Open booking page')}</a>` : '';
@@ -2316,3 +2319,16 @@ function bind() {
 bind();
 $('#bookingsList').innerHTML = bookingSkeletons();
 loadBootstrap().catch(showError);
+
+
+Object.assign(zh, {
+  'Customers buy first, then receive a private scheduling link after payment.': '客户先完成购买，付款成功后收到私密预约链接。',
+  'Installation, delivery setup, onboarding, or post-purchase service.': '适合安装、交付调试、开通服务或其他购买后服务。',
+  'Customers complete the normal SHOPLINE purchase first. After payment, Appointment Lite emails the buyer a private link to schedule the included service.': '客户先完成正常的 SHOPLINE 购买。付款成功后，Appointment Lite 会向买家发送私密链接，用于预约随订单提供的服务。',
+  'Private order scheduling link': '订单专属预约链接',
+  'Appointment Lite waits for a paid SHOPLINE order, then emails the buyer a private scheduling link. One purchased unit provides one appointment.': 'Appointment Lite 会等待 SHOPLINE 订单付款成功，然后向买家发送私密预约链接。每购买 1 件商品可预约 1 次服务。',
+  'Order-linked': '订单关联',
+  'Customers who pay for this product receive a private scheduling link for the included service.': '购买并支付该商品的客户，会收到用于预约随订单服务的私密链接。',
+  'No booking button is shown before purchase. The buyer schedules from the private order email after payment.': '购买前不会显示预约按钮。付款成功后，买家通过订单邮件中的私密链接进行预约。',
+  'Private order link': '订单私密链接'
+});

@@ -5,7 +5,7 @@ const BOOKING_SOURCES = new Set(['product', 'direct', 'both']);
 const SERVICE_TYPES = new Set(['appointment', 'product', 'in_store', 'onsite', 'consultation', 'class', 'other']);
 const BOOKING_MODES = new Set(['slot', 'all_day', 'multi_slot']);
 const COMMERCE_MODES = new Set(['standalone_free', 'standalone_paid', 'product_pre_purchase', 'product_post_purchase']);
-const ACTIVE_COMMERCE_MODES = new Set(['standalone_free', 'standalone_paid', 'product_pre_purchase']);
+const ACTIVE_COMMERCE_MODES = new Set(['standalone_free', 'standalone_paid', 'product_pre_purchase', 'product_post_purchase']);
 const STAFF_ASSIGNMENT_MODES = new Set(['none', 'any', 'customer_choice', 'fixed']);
 const OBJECT_ID_PATTERN = /^[a-f\d]{24}$/i;
 
@@ -40,8 +40,9 @@ function legacyCommerceMode(body, bookingSource) {
 
 export function validateRuleInput(body) {
   const errors = [];
-  const bookingSource = BOOKING_SOURCES.has(body.bookingSource) ? body.bookingSource : legacyBookingSource(body);
-  const commerceMode = legacyCommerceMode(body, bookingSource);
+  const requestedBookingSource = BOOKING_SOURCES.has(body.bookingSource) ? body.bookingSource : legacyBookingSource(body);
+  const commerceMode = legacyCommerceMode(body, requestedBookingSource);
+  const bookingSource = commerceMode === 'product_post_purchase' ? 'direct' : requestedBookingSource;
   const rawServiceType = SERVICE_TYPES.has(body.serviceType) ? body.serviceType : 'appointment';
   const serviceType = rawServiceType === 'product' ? 'appointment' : rawServiceType;
   const bookingMode = BOOKING_MODES.has(body.bookingMode) ? body.bookingMode : 'slot';
@@ -72,7 +73,6 @@ export function validateRuleInput(body) {
   if (['any', 'customer_choice'].includes(staffAssignmentMode) && staffIds.length < 1) errors.push('Choose at least one staff member for this assignment mode.');
 
   if (!serviceTitle) errors.push('Service name is required.');
-  if (!ACTIVE_COMMERCE_MODES.has(commerceMode)) errors.push('Post-purchase appointment scheduling is defined but not enabled in this release.');
   if (!validTimeZone(timezone)) errors.push('Choose a valid IANA service time zone.');
   if (needsProductBinding && !productId) errors.push('Product is required for this booking flow.');
   if (needsProductBinding && !productTitle) errors.push('Product title is required for this booking flow.');
