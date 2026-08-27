@@ -37,7 +37,9 @@ test('storefront modal fixes selected slots, floating pickers, success sizing, a
   const [themeJs, themeCss, hostedCss] = await Promise.all([
     read('../theme-extension-source/public/appointment-lite.js'), read('../theme-extension-source/public/appointment-lite.css'), read('../public/book/styles.css')
   ]);
-  assert.match(themeJs, /const VERSION = '0\.6\.0\.4'/);
+  const pkg = JSON.parse(await read('../package.json'));
+  const escapedVersion = pkg.version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  assert.match(themeJs, new RegExp(`const VERSION = '${escapedVersion}'`));
   assert.match(themeJs, /positionTimezoneMenu/);
   assert.match(themeJs, /dialog\.classList\.add\('al-confirmed'\)/);
   assert.match(themeCss, /\.al-time\[aria-pressed=true\] span\{[^}]*color:#fff!important/);

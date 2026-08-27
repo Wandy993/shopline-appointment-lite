@@ -1,11 +1,11 @@
 # Email delivery and notification architecture
 
-Appointment Lite v0.6.0.4 keeps email independent from Google Calendar. A merchant or staff notification recipient can use Gmail, QQ, 163, Outlook, or a normal enterprise mailbox; the recipient does not need a Google account or SHOPLINE Admin access.
+Appointment Lite v0.6.0.5 keeps email independent from Google Calendar. A merchant or staff notification recipient can use Gmail, QQ, 163, Outlook, or a normal enterprise mailbox; the recipient does not need a Google account or SHOPLINE Admin access.
 
 ## Notification routing
 
-- **Customer** — receives Appointment Lite confirmation/change/cancellation email. Confirmed appointments include one **Add to Google Calendar** action.
-- **Merchant** — `Primary merchant inbox` plus optional additional inboxes receive store-wide new-booking/change/cancellation notifications according to Email Studio switches. If no primary inbox is configured, Appointment Lite can fall back to the SHOPLINE store email / deployment fallback address.
+- **Customer** — can receive Appointment Lite confirmation/change/cancellation/reminder email according to the merchant’s Email Studio switches. Confirmed appointments and reminders include one **Add to Google Calendar** action.
+- **Merchant** — `Primary merchant inbox` plus optional additional inboxes receive store-wide new-booking/change/cancellation/reminder notifications according to Email Studio switches. If no primary inbox is configured, Appointment Lite can fall back to the SHOPLINE store email / deployment fallback address.
 - **Staff** — `Staff.email` plus **Email appointment updates** sends assignment, update, reassignment, and cancellation messages only for that employee. Google authorization is not required.
 
 Google guest invitations are not sent by the Business Calendar sync. Customers add the appointment from the Appointment Lite confirmation link instead, avoiding first-contact unknown-sender warnings.
@@ -59,7 +59,9 @@ Provider credentials and verified sender addresses remain environment-level secr
 
 - Brand name, square HTTPS logo URL, and accent color.
 - Customer reply-to address and merchant new-booking notification address.
-- Subject, heading, and plain-text intro message for confirmation, customer reschedule, merchant edit, cancellation, and merchant alert emails.
+- Independent customer and merchant notification switches for booking creation/confirmation, changes, cancellation, and pre-appointment reminders.
+- Reminder lead time of 3, 6, 12, 24, 48, or 72 hours.
+- Subject, heading, and plain-text intro message for confirmation, customer reschedule, merchant edit, cancellation, reminder, and merchant alert emails.
 - Safe variables such as `{{customer_name}}`, `{{product_title}}`, `{{date}}`, `{{time}}`, `{{timezone}}`, `{{location}}`, `{{staff}}`, and `{{store_name}}`.
 
 Template text is escaped before it enters HTML email, while the appointment card and private management button remain system controlled. This prevents a merchant template from injecting active HTML or replacing security-critical appointment details.
@@ -83,6 +85,7 @@ With `EMAIL_PROVIDER=auto`, Appointment Lite chooses a fully configured Aliyun D
 - Customer changes date/time: customer confirmation and a reminder that the single online change was used.
 - Customer or merchant cancels: customer cancellation email.
 - Merchant edits: customer update email.
+- Pre-appointment reminder: optional customer and/or merchant email at the configured lead time. Multi-session services are reminded per occurrence and a Mongo-backed delivery record prevents duplicate sends.
 - Managed staff (v0.5.1, per-employee opt-in): new assignment, customer/merchant schedule update, reassignment, and cancellation email. Staff notification delivery is best-effort and never rolls back a booking change.
 
 The private email link is built as `/manage?booking=BOOKING_ID&access=SECRET`. Query delivery is used because some email clients and copy/open flows discard URL fragments. The management response disables caching and referrers; JavaScript immediately stores the token in session storage and replaces the visible URL with `/manage?booking=BOOKING_ID`. Legacy `#token=SECRET` links remain supported. MongoDB stores only the token's SHA-256 hash.

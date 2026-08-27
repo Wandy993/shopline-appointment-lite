@@ -187,43 +187,54 @@ async function sendMany(messages) {
 
 export async function sendBookingNotifications(booking, merchantEmail = '', managementToken = '', suppliedSettings = null) {
   const { settings, shopEmail } = await bookingEmailContext(booking, suppliedSettings);
-  const link = managementLinkFor(booking, managementToken);
-  const customer = messageFor(booking, settings, 'confirmation', `${manageButton(link, settings)}${calendarButtons(booking, settings)}`);
-  const messages = [{ to: booking.customer?.email, ...customer }];
+  const messages = [];
+  if (settings.customerNotifications?.confirmation !== false) {
+    const link = managementLinkFor(booking, managementToken);
+    messages.push({ to: booking.customer?.email, ...messageFor(booking, settings, 'confirmation', `${manageButton(link, settings)}${calendarButtons(booking, settings)}`) });
+  }
   if (settings.merchantNotifications?.newBooking !== false) {
-    const recipients = merchantNotificationRecipients(settings, merchantEmail || shopEmail || config.email.merchantTo);
-    for (const to of recipients) messages.push({ to, ...merchantMessage(booking, settings, 'merchantNewBooking') });
+    for (const to of merchantNotificationRecipients(settings, merchantEmail || shopEmail || config.email.merchantTo)) messages.push({ to, ...merchantMessage(booking, settings, 'merchantNewBooking') });
   }
   return sendMany(messages);
 }
 
 export async function sendBookingChangedNotification(booking, suppliedSettings = null) {
   const { settings, shopEmail } = await bookingEmailContext(booking, suppliedSettings);
-  const messages = [{ to: booking.customer?.email, ...messageFor(booking, settings, 'merchantUpdated', calendarButtons(booking, settings)) }];
-  if (settings.merchantNotifications?.bookingChanged !== false) {
-    for (const to of merchantNotificationRecipients(settings, shopEmail || config.email.merchantTo)) messages.push({ to, ...merchantMessage(booking, settings, 'merchantBookingUpdated') });
-  }
+  const messages = [];
+  if (settings.customerNotifications?.bookingChanged !== false) messages.push({ to: booking.customer?.email, ...messageFor(booking, settings, 'merchantUpdated', calendarButtons(booking, settings)) });
+  if (settings.merchantNotifications?.bookingChanged !== false) for (const to of merchantNotificationRecipients(settings, shopEmail || config.email.merchantTo)) messages.push({ to, ...merchantMessage(booking, settings, 'merchantBookingUpdated') });
   return sendMany(messages);
 }
 
 export async function sendCustomerRescheduledNotification(booking, managementToken, suppliedSettings = null) {
   const { settings, shopEmail } = await bookingEmailContext(booking, suppliedSettings);
-  const messages = [{ to: booking.customer?.email, ...messageFor(booking, settings, 'rescheduled', `${manageButton(managementLinkFor(booking, managementToken), settings)}${calendarButtons(booking, settings)}`) }];
-  if (settings.merchantNotifications?.bookingChanged !== false) {
-    for (const to of merchantNotificationRecipients(settings, shopEmail || config.email.merchantTo)) messages.push({ to, ...merchantMessage(booking, settings, 'merchantBookingUpdated') });
-  }
+  const messages = [];
+  if (settings.customerNotifications?.bookingChanged !== false) messages.push({ to: booking.customer?.email, ...messageFor(booking, settings, 'rescheduled', `${manageButton(managementLinkFor(booking, managementToken), settings)}${calendarButtons(booking, settings)}`) });
+  if (settings.merchantNotifications?.bookingChanged !== false) for (const to of merchantNotificationRecipients(settings, shopEmail || config.email.merchantTo)) messages.push({ to, ...merchantMessage(booking, settings, 'merchantBookingUpdated') });
   return sendMany(messages);
 }
 
 export async function sendBookingCancelledNotification(booking, suppliedSettings = null) {
   const { settings, shopEmail } = await bookingEmailContext(booking, suppliedSettings);
-  const messages = [{ to: booking.customer?.email, ...messageFor(booking, settings, 'cancelled') }];
-  if (settings.merchantNotifications?.bookingCancelled !== false) {
-    for (const to of merchantNotificationRecipients(settings, shopEmail || config.email.merchantTo)) messages.push({ to, ...merchantMessage(booking, settings, 'merchantBookingCancelled') });
-  }
+  const messages = [];
+  if (settings.customerNotifications?.bookingCancelled !== false) messages.push({ to: booking.customer?.email, ...messageFor(booking, settings, 'cancelled') });
+  if (settings.merchantNotifications?.bookingCancelled !== false) for (const to of merchantNotificationRecipients(settings, shopEmail || config.email.merchantTo)) messages.push({ to, ...merchantMessage(booking, settings, 'merchantBookingCancelled') });
   return sendMany(messages);
 }
 
+export async function sendCustomerUpcomingReminder(booking, suppliedSettings = null) {
+  const { settings } = await bookingEmailContext(booking, suppliedSettings);
+  if (settings.customerNotifications?.upcomingReminder === false) return { skipped: true, provider: selectedProvider().provider, reason: 'Customer reminder is disabled' };
+  return deliverEmail({ to: booking.customer?.email, ...messageFor(booking, settings, 'reminder', calendarButtons(booking, settings)) });
+}
+
+export async function sendMerchantUpcomingReminder(booking, suppliedSettings = null, merchantEmail = '') {
+  const { settings, shopEmail } = await bookingEmailContext(booking, suppliedSettings);
+  if (settings.merchantNotifications?.upcomingReminder === false) return { skipped: true, provider: selectedProvider().provider, reason: 'Merchant reminder is disabled' };
+  const recipients = merchantNotificationRecipients(settings, merchantEmail || shopEmail || config.email.merchantTo);
+  if (!recipients.length) return { skipped: true, provider: selectedProvider().provider, reason: 'Merchant reminder recipient is missing' };
+  return sendMany(recipients.map(to => ({ to, ...merchantMessage(booking, settings, 'merchantReminder') })));
+}
 
 
 async function staffNotificationRecipient(staffId, shopId = null) {

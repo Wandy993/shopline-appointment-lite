@@ -2,7 +2,7 @@ const state = {
   csrf: '', shop: null, email: null, emailSettings: null, rules: [], bookings: [], products: [], staff: [], staffOperations: { date: '', timezone: '', staff: [], unassigned: [] }, staffOperationsView: 'list',
   ruleStep: 0, activeTemplate: 'confirmation', emailEditorReady: false, bookingView: 'list', calendarMonth: '',
   locale: 'en', currentView: 'dashboard', themeLinkLoaded: false, bootstrap: null, onboarding: null, lastTestEmail: '', ruleModeTouched: false, editingRule: false,
-  calendarSync: null, calendarStaffId: '', calendarPopup: null
+  calendarSync: null, calendarStaffId: '', calendarPopup: null, calendarDayItems: {}
 };
 const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const viewLabels = {
@@ -14,9 +14,11 @@ const templateMeta = {
   rescheduled: { label: 'Customer changed', manage: true },
   merchantUpdated: { label: 'Store changed', manage: false },
   cancelled: { label: 'Cancelled', manage: false },
+  reminder: { label: 'Customer reminder', manage: false },
   merchantNewBooking: { label: 'Merchant new', manage: false },
   merchantBookingUpdated: { label: 'Merchant updated', manage: false },
-  merchantBookingCancelled: { label: 'Merchant cancelled', manage: false }
+  merchantBookingCancelled: { label: 'Merchant cancelled', manage: false },
+  merchantReminder: { label: 'Merchant reminder', manage: false }
 };
 const sample = {
   customer_name: 'Jamie Chen', customer_email: 'jamie@example.com', product_title: 'Private design consultation',
@@ -295,7 +297,9 @@ Object.assign(zh, {
   'Email on': '邮件通知开启', 'Email off': '邮件通知关闭', 'Set the team member profile, notifications, and store-local working schedule.': '设置员工头像、通知方式以及店铺本地时区下的工作时间。',
   'Choose a PNG, JPG, or WebP image.': '请选择 PNG、JPG 或 WebP 图片。', 'Choose an image smaller than 5 MB.': '请选择小于 5 MB 的图片。',
   'List':'列表','Calendar':'日历','Daily calendar':'日历排期','Review staff appointments in a compact list or daily calendar.':'通过列表或日历查看员工当天的预约安排。','All-day':'全天','No scheduled bookings':'暂无预约','AI portrait or custom image':'AI 真人头像或自定义图片','Customer':'客户',
-  'Could not read that image.': '无法读取这张图片。', 'Could not decode that image.': '无法解析这张图片。', 'The processed avatar is still too large. Try a simpler image.': '处理后的头像仍然过大，请尝试更简单的图片。'
+  'Could not read that image.': '无法读取这张图片。', 'Could not decode that image.': '无法解析这张图片。', 'The processed avatar is still too large. Try a simpler image.': '处理后的头像仍然过大，请尝试更简单的图片。',
+  'Built-in portrait or custom image': '内置头像或自定义图片',
+  'Choose a built-in staff portrait, upload a photo, or use initials. Custom images are resized in your browser before saving.': '选择内置员工头像、上传照片或使用姓名首字母。自定义图片会在浏览器中压缩后保存。'
 });
 
 Object.assign(zh, {
@@ -329,7 +333,22 @@ Object.assign(zh, {
   'STAFF NOTIFICATIONS': '员工通知', 'Staff do not need to connect Google': '员工无需连接 Google',
   'Add an email address to each staff member and Appointment Lite will send their assigned booking updates automatically.': '为员工填写邮箱后，Appointment Lite 会自动发送分配给他们的预约、改期和取消通知。',
   'Manage staff emails': '管理员工邮箱', 'Loading calendar…': '正在加载日历…',
-  'New bookings and appointment changes sync automatically after you save.': '保存后，新预约和预约变更会自动同步。'
+  'New bookings and appointment changes sync automatically after you save.': '保存后，新预约和预约变更会自动同步。',
+  'The merchant inbox receives store-wide appointment activity. It can be Gmail, QQ, 163, Outlook, or any normal email address. Staff notifications are configured separately in Staff.': '商家主邮箱用于接收全店预约动态，可使用 Gmail、QQ、163、Outlook 或其他常用邮箱；员工通知请在“员工”中单独配置。',
+  'Primary merchant inbox': '商家主通知邮箱', 'Additional merchant inboxes': '其他商家通知邮箱', 'One address per line, up to 8 addresses in total.': '每行填写一个邮箱，最多支持 8 个地址。',
+  'New bookings': '预约成功', 'Changes & reschedules': '预约修改', 'Cancellations': '预约取消',
+  'Customer notifications': '客户通知', 'Choose which appointment emails customers receive.': '选择客户会收到哪些预约邮件。',
+  'Booking confirmation': '预约成功', 'Send a confirmation when a booking is created.': '预约创建成功后向客户发送确认邮件。',
+  'Appointment changes': '预约修改', 'Send an update when the appointment changes.': '预约内容发生变更时向客户发送更新邮件。',
+  'Cancellation': '预约取消', 'Send an email when the appointment is cancelled.': '预约取消时向客户发送通知邮件。',
+  'Pre-appointment reminder': '履约前提醒', 'Send a reminder before the appointment starts.': '在预约开始前发送提醒邮件。',
+  'Merchant notifications': '商家通知', 'Choose which store-wide appointment emails your merchant inbox receives.': '选择商家主邮箱会收到哪些全店预约通知。',
+  'Notify the merchant inbox when a customer books.': '客户完成预约后通知商家主邮箱。', 'Notify the merchant inbox when appointment details change.': '预约内容发生变更时通知商家主邮箱。',
+  'Notify the merchant inbox when an appointment is cancelled.': '预约取消时通知商家主邮箱。', 'Remind the merchant before the appointment starts.': '在预约开始前提醒商家主邮箱。',
+  'Reminder timing': '提醒时间', 'Applies to customer and merchant reminder emails.': '同时应用于客户和商家的履约前提醒邮件。',
+  '3 hours before': '提前 3 小时', '6 hours before': '提前 6 小时', '12 hours before': '提前 12 小时', '24 hours before': '提前 1 天', '48 hours before': '提前 2 天', '72 hours before': '提前 3 天',
+  'Customer reminder': '客户提醒', 'Merchant reminder': '商家提醒', 'Merchant new': '商家新预约', 'Merchant updated': '商家预约修改', 'Merchant cancelled': '商家预约取消', 'Customer changed': '客户改期', 'Store changed': '商家修改',
+  'View {count} more': '查看另外 {count} 条', 'Appointments on {date}': '{date} 的预约', 'appointments on this day': '条当日预约'
 });
 
 const enByZh = new Map(Object.entries(zh).map(([english, chinese]) => [chinese, english]));
@@ -383,7 +402,7 @@ const staffAvatarPresets = ['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunse
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
 function staffPresetImage(preset) {
   const file = staffAvatarFiles[preset] || staffAvatarFiles.aurora;
-  return `<img src="/assets/staff/${file}?v=0.6.0.4" alt="" loading="lazy" decoding="async">`;
+  return `<img src="/assets/staff/${file}?v=0.6.0.5" alt="" loading="lazy" decoding="async">`;
 }
 let staffAvatarDraft = { kind: 'preset', value: 'aurora' };
 
@@ -1565,6 +1584,7 @@ function renderCalendar(bookings) {
     });
     return map;
   }, {});
+  state.calendarDayItems = byDate;
   const headers = days.map(day => `<span class="calendar-weekday">${escapeHtml(t(day).slice(0, state.locale === 'zh-CN' ? 3 : 3))}</span>`).join('');
   const blanks = Array.from({ length: startWeekday }, () => '<div class="calendar-day outside"></div>').join('');
   const cells = Array.from({ length: daysInMonth }, (_, index) => {
@@ -1572,10 +1592,21 @@ function renderCalendar(bookings) {
     const date = `${state.calendarMonth}-${String(day).padStart(2, '0')}`;
     const items = (byDate[date] || []).sort((a, b) => String(a.occurrence.time || '').localeCompare(String(b.occurrence.time || '')));
     const visible = items.slice(0, 3);
-    return `<div class="calendar-day ${items.length ? 'has-bookings' : ''}"><strong>${day}</strong><div class="calendar-events">${visible.map(({ booking, occurrence }) => `<button type="button" class="calendar-event ${booking.status}" data-calendar-booking="${booking._id}"><span>${escapeHtml((booking.bookingMode || 'slot') === 'all_day' ? t('All day') : occurrence.time)}</span><b>${escapeHtml(booking.productTitle)}</b></button>`).join('')}${items.length > 3 ? `<span class="calendar-more">+${items.length - 3}</span>` : ''}</div></div>`;
+    return `<div class="calendar-day ${items.length ? 'has-bookings' : ''}"><strong>${day}</strong><div class="calendar-events">${visible.map(({ booking, occurrence }) => `<button type="button" class="calendar-event ${booking.status}" data-calendar-booking="${booking._id}"><span>${escapeHtml((booking.bookingMode || 'slot') === 'all_day' ? t('All day') : occurrence.time)}</span><b>${escapeHtml(booking.productTitle)}</b></button>`).join('')}${items.length > 3 ? `<button type="button" class="calendar-more" data-calendar-more="${date}">${escapeHtml(t('View {count} more', { count: String(items.length - 3) }))}</button>` : ''}</div></div>`;
   }).join('');
   root.innerHTML = `<div class="calendar-grid">${headers}${blanks}${cells}</div>`;
   $$('[data-calendar-booking]').forEach(button => button.addEventListener('click', () => openBookingFlow(state.bookings.find(booking => booking._id === button.dataset.calendarBooking))));
+  $$('[data-calendar-more]').forEach(button => button.addEventListener('click', () => openCalendarDay(button.dataset.calendarMore)));
+}
+
+function openCalendarDay(date) {
+  const items = state.calendarDayItems?.[date] || []; if (!items.length) return;
+  const parsed = new Date(`${date}T12:00:00Z`); const dateLabel = parsed.toLocaleDateString(state.locale === 'zh-CN' ? 'zh-CN' : 'en', { year:'numeric',month:'long',day:'numeric',weekday:'short',timeZone:'UTC' });
+  $('#calendarDayTitle').textContent = t('Appointments on {date}', { date: dateLabel });
+  $('#calendarDaySubtitle').textContent = `${items.length} ${t('appointments on this day')}`;
+  $('#calendarDayList').innerHTML = items.map(({ booking, occurrence }) => { const when=(booking.bookingMode||'slot')==='all_day'?t('All-day'):occurrence.time; const assignment=booking.staff||t('Any staff'); return `<button type="button" class="calendar-day-booking" data-calendar-day-booking="${booking._id}"><span class="calendar-day-time">${escapeHtml(when)}</span><span class="calendar-day-copy"><strong>${escapeHtml(booking.productTitle)}</strong><small>${escapeHtml(booking.customer?.name || t('Customer'))} · ${escapeHtml(assignment)}</small></span><span class="status-badge ${booking.status}">${bookingStatusLabel(booking.status)}</span></button>`; }).join('');
+  $$('[data-calendar-day-booking]').forEach(button => button.addEventListener('click', () => { $('#calendarDayDialog').close(); openBookingFlow(state.bookings.find(booking => booking._id === button.dataset.calendarDayBooking)); }));
+  $('#calendarDayDialog').showModal();
 }
 
 function setBookingView(view) {
@@ -1743,9 +1774,15 @@ function renderEmailStudio() {
   $('#emailReplyTo').value = state.emailSettings.replyToEmail;
   $('#merchantNotificationEmail').value = state.emailSettings.merchantNotificationEmail || '';
   $('#merchantNotificationAdditional').value = (state.emailSettings.additionalMerchantNotificationEmails || []).join('\n');
+  $('#emailReminderLeadHours').value = String(state.emailSettings.reminderLeadHours || 24);
+  $('#customerNotifyConfirmation').checked = state.emailSettings.customerNotifications?.confirmation !== false;
+  $('#customerNotifyChanged').checked = state.emailSettings.customerNotifications?.bookingChanged !== false;
+  $('#customerNotifyCancelled').checked = state.emailSettings.customerNotifications?.bookingCancelled !== false;
+  $('#customerNotifyReminder').checked = state.emailSettings.customerNotifications?.upcomingReminder !== false;
   $('#merchantNotifyNew').checked = state.emailSettings.merchantNotifications?.newBooking !== false;
   $('#merchantNotifyChanged').checked = state.emailSettings.merchantNotifications?.bookingChanged !== false;
   $('#merchantNotifyCancelled').checked = state.emailSettings.merchantNotifications?.bookingCancelled !== false;
+  $('#merchantNotifyReminder').checked = state.emailSettings.merchantNotifications?.upcomingReminder !== false;
   selectTemplate(state.activeTemplate);
 }
 
@@ -1758,11 +1795,9 @@ function emailSettingsPayload() {
     replyToEmail: $('#emailReplyTo').value,
     merchantNotificationEmail: $('#merchantNotificationEmail').value,
     additionalMerchantNotificationEmails: $('#merchantNotificationAdditional').value.split(/\n|,|;/).map(value => value.trim()).filter(Boolean),
-    merchantNotifications: {
-      newBooking: $('#merchantNotifyNew').checked,
-      bookingChanged: $('#merchantNotifyChanged').checked,
-      bookingCancelled: $('#merchantNotifyCancelled').checked
-    },
+    reminderLeadHours: Number($('#emailReminderLeadHours').value || 24),
+    customerNotifications: { confirmation: $('#customerNotifyConfirmation').checked, bookingChanged: $('#customerNotifyChanged').checked, bookingCancelled: $('#customerNotifyCancelled').checked, upcomingReminder: $('#customerNotifyReminder').checked },
+    merchantNotifications: { newBooking: $('#merchantNotifyNew').checked, bookingChanged: $('#merchantNotifyChanged').checked, bookingCancelled: $('#merchantNotifyCancelled').checked, upcomingReminder: $('#merchantNotifyReminder').checked },
     templates: state.emailSettings.templates
   };
 }
@@ -1985,6 +2020,7 @@ function bind() {
   $$('[data-close-product-dialog]').forEach(button => button.addEventListener('click', () => $('#productDialog').close()));
   $$('[data-close-booking-dialog]').forEach(button => button.addEventListener('click', () => $('#bookingDialog').close()));
   $$('[data-close-flow-dialog]').forEach(button => button.addEventListener('click', () => $('#bookingFlowDialog').close()));
+  $$('[data-close-calendar-day]').forEach(button => button.addEventListener('click', () => $('#calendarDayDialog').close()));
   $('#ruleForm').addEventListener('submit', saveRule);
   $('#bookingForm').addEventListener('submit', saveBooking);
   $('#addQuestion').addEventListener('click', () => addQuestion());

@@ -6,10 +6,18 @@ const emailTemplateSchema = new mongoose.Schema({
   body: { type: String, maxlength: 3000 }
 }, { _id: false });
 
+const customerNotificationSchema = new mongoose.Schema({
+  confirmation: { type: Boolean, default: true },
+  bookingChanged: { type: Boolean, default: true },
+  bookingCancelled: { type: Boolean, default: true },
+  upcomingReminder: { type: Boolean, default: true }
+}, { _id: false });
+
 const merchantNotificationSchema = new mongoose.Schema({
   newBooking: { type: Boolean, default: true },
   bookingChanged: { type: Boolean, default: true },
-  bookingCancelled: { type: Boolean, default: true }
+  bookingCancelled: { type: Boolean, default: true },
+  upcomingReminder: { type: Boolean, default: true }
 }, { _id: false });
 
 const emailSettingsSchema = new mongoose.Schema({
@@ -19,15 +27,19 @@ const emailSettingsSchema = new mongoose.Schema({
   replyToEmail: { type: String, maxlength: 254, default: '' },
   merchantNotificationEmail: { type: String, maxlength: 254, default: '' },
   additionalMerchantNotificationEmails: { type: [String], default: [] },
+  reminderLeadHours: { type: Number, enum: [3, 6, 12, 24, 48, 72], default: 24 },
+  customerNotifications: { type: customerNotificationSchema, default: () => ({}) },
   merchantNotifications: { type: merchantNotificationSchema, default: () => ({}) },
   templates: {
     confirmation: { type: emailTemplateSchema, default: () => ({}) },
     rescheduled: { type: emailTemplateSchema, default: () => ({}) },
     merchantUpdated: { type: emailTemplateSchema, default: () => ({}) },
     cancelled: { type: emailTemplateSchema, default: () => ({}) },
+    reminder: { type: emailTemplateSchema, default: () => ({}) },
     merchantNewBooking: { type: emailTemplateSchema, default: () => ({}) },
     merchantBookingUpdated: { type: emailTemplateSchema, default: () => ({}) },
-    merchantBookingCancelled: { type: emailTemplateSchema, default: () => ({}) }
+    merchantBookingCancelled: { type: emailTemplateSchema, default: () => ({}) },
+    merchantReminder: { type: emailTemplateSchema, default: () => ({}) }
   }
 }, { _id: false });
 

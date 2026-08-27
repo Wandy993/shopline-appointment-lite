@@ -6,6 +6,7 @@ import { BookingReservation } from './models/BookingReservation.js';
 import { Staff } from './models/Staff.js';
 import { StaffReservation } from './models/StaffReservation.js';
 import { CalendarConnection } from './models/CalendarConnection.js';
+import { EmailReminderDelivery } from './models/EmailReminderDelivery.js';
 
 async function dropIndexIfPresent(collection, name) {
   const indexes = await collection.indexes();
@@ -100,10 +101,12 @@ export async function ensureOperationalIndexes() {
     { shopId: 1, ruleId: 1, slotKey: 1, slotPosition: 1 },
     { unique: true, partialFilterExpression: { status: 'confirmed' }, name: 'capacity_position_per_slot' }
   );
+  await Booking.collection.createIndex({ status: 1, date: 1 }, { name: 'upcoming_reminder_scan' });
   await BookingReservation.syncIndexes();
   await Staff.syncIndexes();
   await StaffReservation.syncIndexes();
   await CalendarConnection.syncIndexes();
+  await EmailReminderDelivery.syncIndexes();
 }
 
 export async function connectDatabase() {
