@@ -1,6 +1,8 @@
 const HEX_COLOR_PATTERN = /^#[0-9a-f]{6}$/i;
 const BUTTON_WIDTHS = new Set(['content', 'full']);
 const BUTTON_ALIGNMENTS = new Set(['left', 'center', 'right']);
+const PRIMARY_BUTTON_WIDTHS = new Set(['content', 'full']);
+const PRIMARY_BUTTON_ALIGNMENTS = new Set(['left', 'center', 'right']);
 
 export const DEFAULT_STOREFRONT_SETTINGS = Object.freeze({
   button: Object.freeze({
@@ -15,6 +17,8 @@ export const DEFAULT_STOREFRONT_SETTINGS = Object.freeze({
     title: 'Book an appointment',
     accentColor: '#2F6FED',
     primaryTextColor: '#FFFFFF',
+    primaryButtonWidth: 'content',
+    primaryButtonAlignment: 'right',
     showServiceSummary: true,
     showTimezoneSelector: true,
     showPhone: true,
@@ -42,6 +46,8 @@ export function normalizeStorefrontSettings(input = {}) {
       title: text(input.modal?.title, 80) || DEFAULT_STOREFRONT_SETTINGS.modal.title,
       accentColor: color(input.modal?.accentColor, DEFAULT_STOREFRONT_SETTINGS.modal.accentColor),
       primaryTextColor: color(input.modal?.primaryTextColor, DEFAULT_STOREFRONT_SETTINGS.modal.primaryTextColor),
+      primaryButtonWidth: PRIMARY_BUTTON_WIDTHS.has(input.modal?.primaryButtonWidth) ? input.modal.primaryButtonWidth : DEFAULT_STOREFRONT_SETTINGS.modal.primaryButtonWidth,
+      primaryButtonAlignment: PRIMARY_BUTTON_ALIGNMENTS.has(input.modal?.primaryButtonAlignment) ? input.modal.primaryButtonAlignment : DEFAULT_STOREFRONT_SETTINGS.modal.primaryButtonAlignment,
       showServiceSummary: booleanValue(input.modal?.showServiceSummary, DEFAULT_STOREFRONT_SETTINGS.modal.showServiceSummary),
       showTimezoneSelector: booleanValue(input.modal?.showTimezoneSelector, DEFAULT_STOREFRONT_SETTINGS.modal.showTimezoneSelector),
       showPhone: booleanValue(input.modal?.showPhone, DEFAULT_STOREFRONT_SETTINGS.modal.showPhone),
@@ -63,5 +69,7 @@ export function validateStorefrontSettings(input = {}) {
   if (!text(input.modal?.title, 80)) errors.push('Booking dialog title is required.');
   if (input.modal?.accentColor && !HEX_COLOR_PATTERN.test(String(input.modal.accentColor))) errors.push('Booking dialog accent color must be a six-digit hex color.');
   if (input.modal?.primaryTextColor && !HEX_COLOR_PATTERN.test(String(input.modal.primaryTextColor))) errors.push('Booking dialog button text color must be a six-digit hex color.');
+  if (input.modal?.primaryButtonWidth && !PRIMARY_BUTTON_WIDTHS.has(input.modal.primaryButtonWidth)) errors.push('Choose a supported booking action width.');
+  if (input.modal?.primaryButtonAlignment && !PRIMARY_BUTTON_ALIGNMENTS.has(input.modal.primaryButtonAlignment)) errors.push('Choose a supported booking action alignment.');
   return { errors: [...new Set(errors)], value };
 }

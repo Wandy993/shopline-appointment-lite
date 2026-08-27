@@ -33,3 +33,22 @@
 .success-calendar-actions .calendar-link:hover .calendar-link-arrow{transform:translateX(2px)}
 
 .staff-avatar.customer.preset-nova{background:linear-gradient(145deg,#477dbb,#4fa08c)}
+
+/* v0.6.12 — Storefront CTA Layout Polish */
+.booking-actions{display:flex;flex-direction:column;gap:0}
+.booking-actions .form-error{width:100%;align-self:stretch}
+.booking-actions[data-cta-width="content"] .primary{width:auto;min-width:190px;max-width:100%}
+.booking-actions[data-cta-width="full"] .primary{width:100%;align-self:stretch}
+.booking-actions[data-cta-width="content"][data-cta-align="left"]{align-items:flex-start}
+.booking-actions[data-cta-width="content"][data-cta-align="center"]{align-items:center}
+.booking-actions[data-cta-width="content"][data-cta-align="right"]{align-items:flex-end}
+.booking-actions[data-cta-width="content"][data-cta-align="left"] p{text-align:left}
+.booking-actions[data-cta-width="content"][data-cta-align="center"] p{text-align:center}
+.booking-actions[data-cta-width="content"][data-cta-align="right"] p{text-align:right}
+.booking-actions[data-cta-width="content"] p{max-width:520px}
+.booking-actions[data-cta-width="full"] p{align-self:stretch;text-align:center}
+@media(max-width:620px){
+  .booking-actions,.booking-actions[data-cta-width="content"][data-cta-align="left"],.booking-actions[data-cta-width="content"][data-cta-align="center"],.booking-actions[data-cta-width="content"][data-cta-align="right"]{align-items:stretch}
+  .booking-actions[data-cta-width="content"] .primary,.booking-actions[data-cta-width="full"] .primary{width:100%;min-width:0;align-self:stretch}
+  .booking-actions[data-cta-width="content"] p,.booking-actions[data-cta-width="full"] p{max-width:none;text-align:center}
+}

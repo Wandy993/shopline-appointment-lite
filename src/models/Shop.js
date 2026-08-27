@@ -59,6 +59,8 @@ const storefrontModalSettingsSchema = new mongoose.Schema({
   title: { type: String, maxlength: 80, default: 'Book an appointment' },
   accentColor: { type: String, match: /^#[0-9a-f]{6}$/i, default: '#2F6FED' },
   primaryTextColor: { type: String, match: /^#[0-9a-f]{6}$/i, default: '#FFFFFF' },
+  primaryButtonWidth: { type: String, enum: ['content', 'full'], default: 'content' },
+  primaryButtonAlignment: { type: String, enum: ['left', 'center', 'right'], default: 'right' },
   showServiceSummary: { type: Boolean, default: true },
   showTimezoneSelector: { type: Boolean, default: true },
   showPhone: { type: Boolean, default: true },

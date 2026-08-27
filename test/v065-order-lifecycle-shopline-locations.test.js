@@ -92,7 +92,7 @@ test('v0.6.5 stores order shipping address for purchase-first customer-address a
 test('current release versions stay aligned without stale hard-coded asset versions', async () => {
   const packageJson = JSON.parse(await source('package.json'));
   const version = packageJson.version;
-  assert.equal(version, '0.6.11');
+  assert.equal(version, '0.6.12');
   const [health, admin, book, theme] = await Promise.all([
     source('src/app.js'), source('src/views/admin.js'), source('src/views/book.js'), source('theme-extension-source/public/appointment-lite.js')
   ]);

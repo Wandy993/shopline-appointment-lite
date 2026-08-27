@@ -212,3 +212,22 @@ body.al-dialog-open{position:fixed!important;top:var(--al-dialog-scroll-y,0)!imp
 
 /* v0.6.9 — merchant storefront design controls */
 .al-ui-hidden{display:none!important}
+
+/* v0.6.12 — Storefront CTA Layout Polish */
+.al-booking-dialog .al-actions{display:flex;flex-direction:column;gap:0}
+.al-booking-dialog .al-actions .al-error{width:100%;align-self:stretch}
+.al-booking-dialog[data-al-primary-width="content"] .al-actions .al-submit{width:auto;min-width:190px;max-width:100%}
+.al-booking-dialog[data-al-primary-width="full"] .al-actions .al-submit{width:100%;align-self:stretch}
+.al-booking-dialog[data-al-primary-width="content"][data-al-primary-align="left"] .al-actions{align-items:flex-start}
+.al-booking-dialog[data-al-primary-width="content"][data-al-primary-align="center"] .al-actions{align-items:center}
+.al-booking-dialog[data-al-primary-width="content"][data-al-primary-align="right"] .al-actions{align-items:flex-end}
+.al-booking-dialog[data-al-primary-width="content"][data-al-primary-align="left"] .al-action-note{text-align:left}
+.al-booking-dialog[data-al-primary-width="content"][data-al-primary-align="center"] .al-action-note{text-align:center}
+.al-booking-dialog[data-al-primary-width="content"][data-al-primary-align="right"] .al-action-note{text-align:right}
+.al-booking-dialog[data-al-primary-width="content"] .al-action-note{max-width:520px}
+.al-booking-dialog[data-al-primary-width="full"] .al-action-note{align-self:stretch;text-align:center}
+@media(max-width:540px){
+  .al-booking-dialog .al-actions,.al-booking-dialog[data-al-primary-width="content"][data-al-primary-align="left"] .al-actions,.al-booking-dialog[data-al-primary-width="content"][data-al-primary-align="center"] .al-actions,.al-booking-dialog[data-al-primary-width="content"][data-al-primary-align="right"] .al-actions{align-items:stretch}
+  .al-booking-dialog[data-al-primary-width="content"] .al-actions .al-submit,.al-booking-dialog[data-al-primary-width="full"] .al-actions .al-submit{width:100%;min-width:0;align-self:stretch}
+  .al-booking-dialog[data-al-primary-width="content"] .al-action-note,.al-booking-dialog[data-al-primary-width="full"] .al-action-note{max-width:none;text-align:center}
+}

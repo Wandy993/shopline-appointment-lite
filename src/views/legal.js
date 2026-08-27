@@ -49,7 +49,7 @@ function legalShell({ locale, type, title, lead, body }) {
   <link rel="canonical" href="${esc(canonical)}">
   <link rel="alternate" hreflang="zh-CN" href="${esc(`${config.appUrl}/zh-cn/${type}`)}">
   <link rel="alternate" hreflang="en" href="${esc(`${config.appUrl}/en/${type}`)}">
-  <link rel="stylesheet" href="/legal/assets/styles.css?v=0.6.11">
+  <link rel="stylesheet" href="/legal/assets/styles.css?v=0.6.12">
   <title>${pageTitle}</title>
 </head>
 <body>
@@ -69,7 +69,7 @@ function legalShell({ locale, type, title, lead, body }) {
   ${body}
   <footer class="legal-footer"><div class="legal-footer-inner"><span>© 2026 Appointment Lite</span><span>${zh ? '面向 SHOPLINE 商家的预约与服务管理应用' : 'Scheduling and service management for SHOPLINE merchants'}</span></div></footer>
 </div>
-${type === 'faq' ? '<script src="/legal/assets/faq.js?v=0.6.11" defer></script>' : ''}
+${type === 'faq' ? '<script src="/legal/assets/faq.js?v=0.6.12" defer></script>' : ''}
 </body>
 </html>`;
 }

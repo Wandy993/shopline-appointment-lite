@@ -1,5 +1,20 @@
 # Appointment Lite
 
+> v0.6.12 — Storefront CTA Layout Polish
+
+Appointment Lite v0.6.12 makes the final booking action more compact on desktop and keeps mobile booking actions easy to tap.
+
+## v0.6.12 Storefront CTA Layout Polish
+
+- Changes the hosted/direct booking page **Confirm booking** action from full width to **Fit content + Right** by default on desktop.
+- Applies the same compact action layout to the Theme App Block booking dialog and paid-booking **Continue to checkout** action.
+- Forces the primary action back to full width on mobile for a safe touch target.
+- Adds **Primary action width** and **Primary action alignment** controls to Storefront Setup.
+- Lets merchants choose Fit content / Full width and Left / Center / Right desktop alignment.
+- Updates the live storefront preview to mirror the chosen action layout.
+
+See [Storefront CTA Layout Polish](docs/V0612_STOREFRONT_CTA_LAYOUT_POLISH.md).
+
 > v0.6.11 — Email Template Polish
 
 Appointment Lite v0.6.11 polishes transactional email branding and gives Google Calendar actions a clear Google identity across real emails and Email Studio preview.

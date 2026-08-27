@@ -31,7 +31,7 @@ const commerceModeLabels = { standalone_free: 'Standalone · no payment', standa
 const activeCommerceModes = new Set(['standalone_free', 'standalone_paid', 'product_pre_purchase', 'product_post_purchase']);
 const defaultStorefrontSettings = Object.freeze({
   button: Object.freeze({ label: 'Book an appointment', backgroundColor: '#2F6FED', textColor: '#FFFFFF', width: 'content', alignment: 'left', borderRadius: 8 }),
-  modal: Object.freeze({ title: 'Book an appointment', accentColor: '#2F6FED', primaryTextColor: '#FFFFFF', showServiceSummary: true, showTimezoneSelector: true, showPhone: true, showNotes: true, showFooterNote: true })
+  modal: Object.freeze({ title: 'Book an appointment', accentColor: '#2F6FED', primaryTextColor: '#FFFFFF', primaryButtonWidth: 'content', primaryButtonAlignment: 'right', showServiceSummary: true, showTimezoneSelector: true, showPhone: true, showNotes: true, showFooterNote: true })
 });
 const productStatusLabels = { active: 'Published', draft: 'Draft' };
 const $ = selector => document.querySelector(selector);
@@ -456,7 +456,10 @@ Object.assign(zh, {
   'Fit content avoids an oversized full-width button.': '根据内容自适应宽度，避免按钮横向铺满过长。', 'Fit content': '适应内容', 'Full width': '占满宽度',
   'Alignment': '对齐方式', 'Used when the button is not full width.': '按钮非占满宽度时生效。', 'Left': '左侧', 'Center': '居中', 'Right': '右侧',
   'Corner radius': '圆角', 'Booking dialog': '预约弹窗', 'Choose the accent and which optional customer-facing elements are visible.': '设置弹窗主题色，并控制可选的客户前台元素是否展示。',
-  'Dialog title': '弹窗标题', 'Primary button text': '主按钮文字颜色', 'Service summary': '服务摘要',
+  'Dialog title': '弹窗标题', 'Primary button text': '主按钮文字颜色', 'Primary action width': '主操作按钮宽度',
+  'Fit content keeps Confirm booking compact on desktop.': '桌面端使用适应内容宽度，让确认预约按钮更紧凑。',
+  'Primary action alignment': '主操作按钮对齐', 'Controls the desktop position. Mobile remains full width.': '控制桌面端按钮位置；移动端仍保持全宽，方便点击。',
+  'Service summary': '服务摘要',
   'Duration, location, staff and service time zone.': '展示时长、地点、员工和服务时区。', 'Time zone selector': '时区选择器',
   'Let customers view appointment times in another time zone.': '允许客户切换时区查看预约时间。', 'Phone field': '手机号字段',
   'Collect an optional customer phone number.': '收集客户可选的手机号。', 'Notes field': '备注字段', 'Show the service notes prompt and textarea.': '展示服务备注提示和文本输入框。',
@@ -518,7 +521,7 @@ const staffAvatarPresets = ['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunse
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
 function staffPresetImage(preset) {
   const file = staffAvatarFiles[preset] || staffAvatarFiles.aurora;
-  return `<img src="/assets/staff/${file}?v=0.6.11" alt="" loading="lazy" decoding="async">`;
+  return `<img src="/assets/staff/${file}?v=0.6.12" alt="" loading="lazy" decoding="async">`;
 }
 let staffAvatarDraft = { kind: 'preset', value: 'aurora' };
 
@@ -2168,6 +2171,22 @@ function setStorefrontButtonAlignment(value, { render = true } = {}) {
   if (render) renderStorefrontPreview();
 }
 
+function setStorefrontPrimaryWidth(value, { render = true } = {}) {
+  const next = value === 'full' ? 'full' : 'content';
+  $('#storefrontPrimaryWidth').value = next;
+  $$('#storefrontPrimaryWidthOptions [data-storefront-primary-width]').forEach(button => button.classList.toggle('active', button.dataset.storefrontPrimaryWidth === next));
+  const full = next === 'full';
+  $$('#storefrontPrimaryAlignmentOptions [data-storefront-primary-alignment]').forEach(button => { button.disabled = full; });
+  if (render) renderStorefrontPreview();
+}
+
+function setStorefrontPrimaryAlignment(value, { render = true } = {}) {
+  const next = ['left', 'center', 'right'].includes(value) ? value : 'right';
+  $('#storefrontPrimaryAlignment').value = next;
+  $$('#storefrontPrimaryAlignmentOptions [data-storefront-primary-alignment]').forEach(button => button.classList.toggle('active', button.dataset.storefrontPrimaryAlignment === next));
+  if (render) renderStorefrontPreview();
+}
+
 function syncStorefrontColor(colorId, hexId, source = 'color') {
   const colorInput = $(`#${colorId}`);
   const hexInput = $(`#${hexId}`);
@@ -2192,6 +2211,8 @@ function storefrontSettingsFromForm() {
       title: $('#storefrontModalTitle').value.trim() || defaultStorefrontSettings.modal.title,
       accentColor: hex('storefrontModalAccentHex', defaultStorefrontSettings.modal.accentColor),
       primaryTextColor: hex('storefrontModalTextColorHex', defaultStorefrontSettings.modal.primaryTextColor),
+      primaryButtonWidth: $('#storefrontPrimaryWidth').value === 'full' ? 'full' : 'content',
+      primaryButtonAlignment: ['left', 'center', 'right'].includes($('#storefrontPrimaryAlignment').value) ? $('#storefrontPrimaryAlignment').value : 'right',
       showServiceSummary: $('#storefrontShowSummary').checked,
       showTimezoneSelector: $('#storefrontShowTimezone').checked,
       showPhone: $('#storefrontShowPhone').checked,
@@ -2219,6 +2240,8 @@ function renderStorefrontPreview() {
   $('#storefrontPhonePreview').classList.toggle('hidden', !modal.showPhone);
   $('#storefrontNotesPreview').classList.toggle('hidden', !modal.showNotes);
   $('#storefrontFooterPreview').classList.toggle('hidden', !modal.showFooterNote);
+  const actionWrap = document.querySelector('.storefront-dialog-preview-actions');
+  actionWrap.className = `storefront-dialog-preview-actions ${modal.primaryButtonWidth === 'full' ? 'full' : `align-${modal.primaryButtonAlignment}`}`;
   const modalButton = $('#storefrontModalButtonPreview');
   modalButton.style.background = modal.accentColor;
   modalButton.style.color = modal.primaryTextColor;
@@ -2242,6 +2265,8 @@ function renderStorefrontSettings(settings = state.storefrontSettings) {
   $('#storefrontModalAccentHex').value = value.modal.accentColor;
   $('#storefrontModalTextColor').value = value.modal.primaryTextColor;
   $('#storefrontModalTextColorHex').value = value.modal.primaryTextColor;
+  setStorefrontPrimaryWidth(value.modal.primaryButtonWidth, { render: false });
+  setStorefrontPrimaryAlignment(value.modal.primaryButtonAlignment, { render: false });
   $('#storefrontShowSummary').checked = value.modal.showServiceSummary;
   $('#storefrontShowTimezone').checked = value.modal.showTimezoneSelector;
   $('#storefrontShowPhone').checked = value.modal.showPhone;
@@ -2751,6 +2776,8 @@ function bind() {
   $('#saveStorefrontSettings')?.addEventListener('click', saveStorefrontSettings);
   $$('#storefrontButtonWidthOptions [data-storefront-width]').forEach(button => button.addEventListener('click', () => setStorefrontButtonWidth(button.dataset.storefrontWidth)));
   $$('#storefrontButtonAlignmentOptions [data-storefront-alignment]').forEach(button => button.addEventListener('click', () => { if (!button.disabled) setStorefrontButtonAlignment(button.dataset.storefrontAlignment); }));
+  $$('#storefrontPrimaryWidthOptions [data-storefront-primary-width]').forEach(button => button.addEventListener('click', () => setStorefrontPrimaryWidth(button.dataset.storefrontPrimaryWidth)));
+  $$('#storefrontPrimaryAlignmentOptions [data-storefront-primary-alignment]').forEach(button => button.addEventListener('click', () => { if (!button.disabled) setStorefrontPrimaryAlignment(button.dataset.storefrontPrimaryAlignment); }));
   ['storefrontButtonLabel', 'storefrontButtonRadius', 'storefrontModalTitle', 'storefrontShowSummary', 'storefrontShowTimezone', 'storefrontShowPhone', 'storefrontShowNotes', 'storefrontShowFooterNote'].forEach(id => $(`#${id}`)?.addEventListener('input', renderStorefrontPreview));
   [['storefrontButtonColor','storefrontButtonColorHex'],['storefrontButtonTextColor','storefrontButtonTextColorHex'],['storefrontModalAccent','storefrontModalAccentHex'],['storefrontModalTextColor','storefrontModalTextColorHex']].forEach(([colorId, hexId]) => {
     $(`#${colorId}`)?.addEventListener('input', () => syncStorefrontColor(colorId, hexId, 'color'));

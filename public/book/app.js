@@ -9,7 +9,7 @@ let selectedStaffId = '';
 let brand = { name: 'Appointment Lite', accentColor: '#2F6FED' };
 const defaultStorefrontSettings = Object.freeze({
   button: { label: 'Book an appointment', backgroundColor: '#2F6FED', textColor: '#FFFFFF', width: 'content', alignment: 'left', borderRadius: 8 },
-  modal: { title: 'Book an appointment', accentColor: '#2F6FED', primaryTextColor: '#FFFFFF', showServiceSummary: true, showTimezoneSelector: true, showPhone: true, showNotes: true, showFooterNote: true }
+  modal: { title: 'Book an appointment', accentColor: '#2F6FED', primaryTextColor: '#FFFFFF', primaryButtonWidth: 'content', primaryButtonAlignment: 'right', showServiceSummary: true, showTimezoneSelector: true, showPhone: true, showNotes: true, showFooterNote: true }
 });
 let storefront = defaultStorefrontSettings;
 
@@ -31,6 +31,8 @@ function normalizeStorefrontSettings(input = {}) {
       ...(input.modal || {}),
       accentColor: hex(input.modal?.accentColor, defaultStorefrontSettings.modal.accentColor),
       primaryTextColor: hex(input.modal?.primaryTextColor, defaultStorefrontSettings.modal.primaryTextColor),
+      primaryButtonWidth: ['content', 'full'].includes(input.modal?.primaryButtonWidth) ? input.modal.primaryButtonWidth : defaultStorefrontSettings.modal.primaryButtonWidth,
+      primaryButtonAlignment: ['left', 'center', 'right'].includes(input.modal?.primaryButtonAlignment) ? input.modal.primaryButtonAlignment : defaultStorefrontSettings.modal.primaryButtonAlignment,
       showServiceSummary: input.modal?.showServiceSummary !== false,
       showTimezoneSelector: input.modal?.showTimezoneSelector !== false,
       showPhone: input.modal?.showPhone !== false,
@@ -182,7 +184,7 @@ function setupTimezonePicker() {
 
 const staffPresetClasses = new Set(['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose', 'nova']);
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
-function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="/assets/staff/${file}?v=0.6.11" alt="" loading="lazy" decoding="async">`;}
+function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="/assets/staff/${file}?v=0.6.12" alt="" loading="lazy" decoding="async">`;}
 
 function staffAvatarMarkup(item, className = '') {
   const avatar = item?.avatar || {};
@@ -390,6 +392,11 @@ function renderService(payload) {
   $('#phoneField')?.classList.toggle('hidden', !storefront.modal.showPhone);
   $('#notesField')?.classList.toggle('hidden', !storefront.modal.showNotes);
   $('#bookingFooterNote')?.classList.toggle('hidden', !storefront.modal.showFooterNote);
+  const bookingActions = document.querySelector('.booking-actions');
+  if (bookingActions) {
+    bookingActions.dataset.ctaWidth = storefront.modal.primaryButtonWidth;
+    bookingActions.dataset.ctaAlign = storefront.modal.primaryButtonAlignment;
+  }
   const today = payload.storeDate || new Date().toISOString().slice(0, 10);
   minBookableDate = rule.dateFrom && rule.dateFrom > today ? rule.dateFrom : today;
   const maxByWindow = rule.bookingWindowUntil || '';

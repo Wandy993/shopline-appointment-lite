@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = '0.6.11';
+  const VERSION = '0.6.12';
   const API_BASE = 'https://appointment.toolkit.fans';
   const CACHE_TTL = 5 * 60 * 1000;
   const RULE_CACHE = new Map();
@@ -38,7 +38,7 @@
 
   const defaultStorefrontSettings = {
     button: { label: 'Book an appointment', backgroundColor: '#2F6FED', textColor: '#FFFFFF', width: 'content', alignment: 'left', borderRadius: 8 },
-    modal: { title: 'Book an appointment', accentColor: '#2F6FED', primaryTextColor: '#FFFFFF', showServiceSummary: true, showTimezoneSelector: true, showPhone: true, showNotes: true, showFooterNote: true }
+    modal: { title: 'Book an appointment', accentColor: '#2F6FED', primaryTextColor: '#FFFFFF', primaryButtonWidth: 'content', primaryButtonAlignment: 'right', showServiceSummary: true, showTimezoneSelector: true, showPhone: true, showNotes: true, showFooterNote: true }
   };
 
   function storefrontSettings(input = {}) {
@@ -57,6 +57,8 @@
         title: String(input.modal?.title || defaultStorefrontSettings.modal.title).trim().slice(0, 80) || defaultStorefrontSettings.modal.title,
         accentColor: hex(input.modal?.accentColor, defaultStorefrontSettings.modal.accentColor),
         primaryTextColor: hex(input.modal?.primaryTextColor, defaultStorefrontSettings.modal.primaryTextColor),
+        primaryButtonWidth: input.modal?.primaryButtonWidth === 'full' ? 'full' : 'content',
+        primaryButtonAlignment: ['left', 'center', 'right'].includes(input.modal?.primaryButtonAlignment) ? input.modal.primaryButtonAlignment : 'right',
         showServiceSummary: input.modal?.showServiceSummary !== false,
         showTimezoneSelector: input.modal?.showTimezoneSelector !== false,
         showPhone: input.modal?.showPhone !== false,
@@ -135,7 +137,7 @@
 
   const staffPresetClasses = new Set(['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose', 'nova']);
   const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
-  function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="${API_BASE}/assets/staff/${file}?v=0.6.11" alt="" loading="lazy" decoding="async">`;}
+  function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="${API_BASE}/assets/staff/${file}?v=0.6.12" alt="" loading="lazy" decoding="async">`;}
 
   function staffAvatar(item, className = '') {
     const avatar = item?.avatar || {};
@@ -462,6 +464,10 @@
     dialog.className = ['al-dialog', variant].filter(Boolean).join(' ');
     dialog.style.setProperty('--al-accent', settings.modal.accentColor);
     dialog.style.setProperty('--al-primary-text', settings.modal.primaryTextColor);
+    if (variant === 'al-booking-dialog') {
+      dialog.dataset.alPrimaryWidth = settings.modal.primaryButtonWidth;
+      dialog.dataset.alPrimaryAlign = settings.modal.primaryButtonAlignment;
+    }
     document.body.append(dialog);
     dialog.showModal();
     lockPageForDialog();

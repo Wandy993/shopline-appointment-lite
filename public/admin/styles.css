@@ -865,3 +865,16 @@ button{min-height:38px;padding:8px 14px;border-color:var(--border-strong);border
 .preview-calendar-card>strong{display:block;margin:0 0 10px;color:#344861;font-size:10px;font-weight:720}
 .preview-google-calendar-button{width:max-content;max-width:100%;min-height:38px;padding:8px 13px;display:inline-flex;align-items:center;gap:9px;border:1px solid #dadce0;border-radius:8px;background:#fff;color:#3c4043;font-size:10px;font-weight:650;line-height:1.2;box-shadow:0 1px 2px rgba(60,64,67,.08)}
 .preview-google-calendar-button .google-g.small{width:18px;height:18px;flex:0 0 auto}
+
+/* v0.6.12 — Storefront CTA Layout Polish */
+.storefront-dialog-preview-actions{display:flex;flex-direction:column}
+.storefront-dialog-preview-actions:not(.full) button{width:auto;min-width:118px;max-width:100%}
+.storefront-dialog-preview-actions.full button{width:100%;align-self:stretch}
+.storefront-dialog-preview-actions.align-left{align-items:flex-start}
+.storefront-dialog-preview-actions.align-center{align-items:center}
+.storefront-dialog-preview-actions.align-right{align-items:flex-end}
+.storefront-dialog-preview-actions.align-left small{text-align:left}
+.storefront-dialog-preview-actions.align-center small{text-align:center}
+.storefront-dialog-preview-actions.align-right small{text-align:right}
+.storefront-dialog-preview-actions:not(.full) small{max-width:220px}
+.storefront-dialog-preview-actions.full small{align-self:stretch;text-align:center}

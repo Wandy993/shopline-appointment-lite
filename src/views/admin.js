@@ -39,7 +39,7 @@ export function adminPage() {
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light">
   <title>Appointment Lite</title>
-  <link rel="stylesheet" href="/admin/styles.css?v=0.6.11">
+  <link rel="stylesheet" href="/admin/styles.css?v=0.6.12">
 </head>
 <body>
   <div class="app-shell">
@@ -206,6 +206,8 @@ export function adminPage() {
                     <div class="field color-field"><label for="storefrontModalAccent">Accent color</label><div><input id="storefrontModalAccent" type="color" value="#2F6FED"><input id="storefrontModalAccentHex" maxlength="7" value="#2F6FED"></div></div>
                     <div class="field color-field"><label for="storefrontModalTextColor">Primary button text</label><div><input id="storefrontModalTextColor" type="color" value="#FFFFFF"><input id="storefrontModalTextColorHex" maxlength="7" value="#FFFFFF"></div></div>
                   </div>
+                  <div class="storefront-option-row"><div><strong>Primary action width</strong><small>Fit content keeps Confirm booking compact on desktop.</small></div><div class="segmented storefront-segmented" id="storefrontPrimaryWidthOptions"><button type="button" data-storefront-primary-width="content" class="active">Fit content</button><button type="button" data-storefront-primary-width="full">Full width</button></div><input id="storefrontPrimaryWidth" type="hidden" value="content"></div>
+                  <div class="storefront-option-row"><div><strong>Primary action alignment</strong><small>Controls the desktop position. Mobile remains full width.</small></div><div class="segmented storefront-segmented" id="storefrontPrimaryAlignmentOptions"><button type="button" data-storefront-primary-alignment="left">Left</button><button type="button" data-storefront-primary-alignment="center">Center</button><button type="button" data-storefront-primary-alignment="right" class="active">Right</button></div><input id="storefrontPrimaryAlignment" type="hidden" value="right"></div>
                   <div class="storefront-element-grid">
                     <label class="toggle-row storefront-toggle"><input id="storefrontShowSummary" type="checkbox" checked><span class="toggle"><i></i></span><span><strong>Service summary</strong><small>Duration, location, staff and service time zone.</small></span></label>
                     <label class="toggle-row storefront-toggle"><input id="storefrontShowTimezone" type="checkbox" checked><span class="toggle"><i></i></span><span><strong>Time zone selector</strong><small>Let customers view appointment times in another time zone.</small></span></label>
@@ -349,7 +351,7 @@ export function adminPage() {
   </dialog>
 
   <dialog id="confirmDialog" class="confirm-modal"><div class="confirm-icon">!</div><div class="confirm-copy"><h2 id="confirmTitle">Please confirm</h2><p id="confirmMessage"></p></div><div class="modal-actions"><button id="confirmNo" class="secondary">Keep it</button><button id="confirmYes" class="danger">Confirm</button></div></dialog>
-  <script type="module" src="/admin/app.js?v=0.6.11"></script>
+  <script type="module" src="/admin/app.js?v=0.6.12"></script>
 </body>
 </html>`;
 }
