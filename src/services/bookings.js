@@ -220,6 +220,7 @@ export async function createBookingAtomic({ shop, rule, input, BookingModel = Bo
   const document = {
     _id: bookingId,
     shopId: shop._id, ruleId: rule._id, bookingSource: rule.bookingSource || (rule.sourceType === 'standalone' ? 'direct' : 'product'),
+    commerceMode: rule.commerceMode || ((rule.bookingSource || (rule.sourceType === 'standalone' ? 'direct' : 'product')) === 'direct' && !rule.productId ? 'standalone_free' : 'product_pre_purchase'),
     sourceType: rule.sourceType || 'product', serviceType: rule.serviceType === 'product' ? 'appointment' : (rule.serviceType || 'appointment'),
     bookingMode: mode,
     productId: rule.productId || '', productTitle: rule.serviceTitle || rule.productTitle,
@@ -261,6 +262,9 @@ export async function createBookingForStore({ shopId, handle, productId, ruleId,
   }
   if (!shop) throw Object.assign(new Error('Store is not available.'), { code: 'NOT_FOUND' });
   if (!rule) throw Object.assign(new Error('Appointments are not enabled for this service.'), { code: 'NOT_FOUND' });
+  const commerceMode = rule.commerceMode || ((rule.bookingSource || (rule.sourceType === 'standalone' ? 'direct' : 'product')) === 'direct' && !rule.productId ? 'standalone_free' : 'product_pre_purchase');
+  if (commerceMode === 'standalone_paid') throw Object.assign(new Error('Paid appointment checkout is not enabled for this service yet.'), { code: 'COMMERCE_FLOW_NOT_READY' });
+  if (commerceMode === 'product_post_purchase') throw Object.assign(new Error('This appointment will be scheduled from an eligible paid order.'), { code: 'COMMERCE_FLOW_NOT_READY' });
   return createBookingAtomic({ shop, rule, input });
 }
 

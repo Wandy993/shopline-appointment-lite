@@ -4,6 +4,8 @@ const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 const BOOKING_SOURCES = new Set(['product', 'direct', 'both']);
 const SERVICE_TYPES = new Set(['appointment', 'product', 'in_store', 'onsite', 'consultation', 'class', 'other']);
 const BOOKING_MODES = new Set(['slot', 'all_day', 'multi_slot']);
+const COMMERCE_MODES = new Set(['standalone_free', 'standalone_paid', 'product_pre_purchase', 'product_post_purchase']);
+const ACTIVE_COMMERCE_MODES = new Set(['standalone_free', 'product_pre_purchase']);
 const STAFF_ASSIGNMENT_MODES = new Set(['none', 'any', 'customer_choice', 'fixed']);
 const OBJECT_ID_PATTERN = /^[a-f\d]{24}$/i;
 
@@ -30,9 +32,16 @@ function legacyBookingSource(body) {
   return 'product';
 }
 
+function legacyCommerceMode(body, bookingSource) {
+  if (COMMERCE_MODES.has(body.commerceMode)) return body.commerceMode;
+  if (bookingSource === 'direct' && !String(body.productId || '').trim()) return 'standalone_free';
+  return 'product_pre_purchase';
+}
+
 export function validateRuleInput(body) {
   const errors = [];
   const bookingSource = BOOKING_SOURCES.has(body.bookingSource) ? body.bookingSource : legacyBookingSource(body);
+  const commerceMode = legacyCommerceMode(body, bookingSource);
   const rawServiceType = SERVICE_TYPES.has(body.serviceType) ? body.serviceType : 'appointment';
   const serviceType = rawServiceType === 'product' ? 'appointment' : rawServiceType;
   const bookingMode = BOOKING_MODES.has(body.bookingMode) ? body.bookingMode : 'slot';
@@ -48,8 +57,9 @@ export function validateRuleInput(body) {
   const bookingWindowDays = Number(body.bookingWindowDays ?? 90);
   const timezone = text(body.timezone, 80);
   const usesProductPage = bookingSource === 'product' || bookingSource === 'both';
-  const productId = usesProductPage ? text(body.productId, 100) : '';
-  const productTitle = usesProductPage ? text(body.productTitle, 255) : '';
+  const needsProductBinding = usesProductPage || ['standalone_paid', 'product_pre_purchase', 'product_post_purchase'].includes(commerceMode);
+  const productId = needsProductBinding ? text(body.productId, 100) : '';
+  const productTitle = needsProductBinding ? text(body.productTitle, 255) : '';
   const serviceTitle = text(body.serviceTitle || body.productTitle, 255);
   const rawStaffAssignment = body.staffAssignment && typeof body.staffAssignment === 'object' ? body.staffAssignment : {};
   const staffAssignmentMode = STAFF_ASSIGNMENT_MODES.has(rawStaffAssignment.mode) ? rawStaffAssignment.mode : 'none';
@@ -58,9 +68,14 @@ export function validateRuleInput(body) {
   if (['any', 'customer_choice'].includes(staffAssignmentMode) && staffIds.length < 1) errors.push('Choose at least one staff member for this assignment mode.');
 
   if (!serviceTitle) errors.push('Service name is required.');
+  if (!ACTIVE_COMMERCE_MODES.has(commerceMode)) {
+    errors.push(commerceMode === 'standalone_paid'
+      ? 'Paid appointment checkout is defined but not enabled in this release.'
+      : 'Post-purchase appointment scheduling is defined but not enabled in this release.');
+  }
   if (!validTimeZone(timezone)) errors.push('Choose a valid IANA service time zone.');
-  if (usesProductPage && !productId) errors.push('Product is required for product-page booking.');
-  if (usesProductPage && !productTitle) errors.push('Product title is required for product-page booking.');
+  if (needsProductBinding && !productId) errors.push('Product is required for this booking flow.');
+  if (needsProductBinding && !productTitle) errors.push('Product title is required for this booking flow.');
   if (bookingMode !== 'all_day' && (!Number.isInteger(duration) || duration < 5 || duration > 480)) errors.push('Duration must be 5–480 minutes.');
   if (bookingMode !== 'all_day' && (!Number.isInteger(buffer) || buffer < 0 || buffer > 240)) errors.push('Buffer must be 0–240 minutes.');
   if (!Number.isInteger(capacity) || capacity < 1 || capacity > 100) errors.push(bookingMode === 'all_day' ? 'Capacity must be 1–100 bookings per day.' : 'Capacity must be 1–100 bookings per time slot.');
@@ -103,9 +118,9 @@ export function validateRuleInput(body) {
   })).filter(question => question.label);
 
   return { errors: [...new Set(errors)], value: {
-    bookingSource, sourceType, serviceType, bookingMode, sessionsRequired, serviceTitle, timezone,
+    bookingSource, commerceMode, sourceType, serviceType, bookingMode, sessionsRequired, serviceTitle, timezone,
     productId, productTitle,
-    productHandle: usesProductPage ? text(body.productHandle, 255) : '',
+    productHandle: needsProductBinding ? text(body.productHandle, 255) : '',
     serviceDescription: text(body.serviceDescription, 500),
     duration, buffer, capacity, minimumNoticeMinutes, bookingWindowDays,
     dateFrom, dateUntil, weeklyAvailability, availabilityExceptions,

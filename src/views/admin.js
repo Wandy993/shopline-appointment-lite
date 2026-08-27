@@ -39,7 +39,7 @@ export function adminPage() {
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light">
   <title>Appointment Lite</title>
-  <link rel="stylesheet" href="/admin/styles.css?v=0.6.0.6">
+  <link rel="stylesheet" href="/admin/styles.css?v=0.6.1">
 </head>
 <body>
   <div class="app-shell">
@@ -200,9 +200,9 @@ export function adminPage() {
       <div class="modal-head"><div><span class="eyebrow">SERVICE CONFIGURATION</span><h2 id="ruleDialogTitle">New appointment service</h2><p id="ruleDialogSubtitle">Choose how customers will book this service.</p></div><button type="button" class="icon-button" data-close-dialog aria-label="Close">${icons.close}</button></div>
       <div class="wizard-steps booking-mode-wizard"><button type="button" class="active" data-rule-step-button="0"><span>1</span>Service</button><i></i><button type="button" data-rule-step-button="1"><span>2</span>Booking mode</button><i></i><button type="button" data-rule-step-button="2"><span>3</span>Availability</button><i></i><button type="button" data-rule-step-button="3"><span>4</span>Experience</button></div>
       <div class="modal-body">
-        <input type="hidden" id="ruleId"><input type="hidden" id="productSelect"><input type="hidden" id="serviceType" value="appointment"><input type="hidden" id="bookingSource" value="product"><input type="hidden" id="sourceType" value="product"><input type="hidden" id="bookingMode" value="slot">
+        <input type="hidden" id="ruleId"><input type="hidden" id="productSelect"><input type="hidden" id="serviceType" value="appointment"><input type="hidden" id="commerceMode" value="product_pre_purchase"><input type="hidden" id="bookingSource" value="product"><input type="hidden" id="sourceType" value="product"><input type="hidden" id="bookingMode" value="slot">
         <section class="rule-step" data-rule-step="0">
-          <div class="step-intro"><h3>Define the appointment service</h3><p>Choose the service type first, then decide where customers can start the booking flow.</p></div>
+          <div class="step-intro"><h3>Define the appointment service</h3><p>Choose the service type, how it relates to a purchase, and where customers enter the booking flow.</p></div>
           <div class="field"><label for="serviceTitle">Service name</label><input id="serviceTitle" maxlength="255" placeholder="e.g. Home installation service" required><p class="hint">Describe the service customers are booking, independent of the linked product.</p></div>
           <fieldset class="choice-fieldset"><legend>Service type</legend><div id="serviceTypeGrid" class="service-type-grid">
             <button type="button" class="service-type-option selected" data-service-type="appointment"><strong>Appointment</strong><span>General service appointments and product consultations.</span></button>
@@ -212,12 +212,18 @@ export function adminPage() {
             <button type="button" class="service-type-option" data-service-type="class"><strong>Class / course</strong><span>Lessons, workshops, group sessions, and classes.</span></button>
             <button type="button" class="service-type-option" data-service-type="other"><strong>Other service</strong><span>Use a flexible service category for other appointment scenarios.</span></button>
           </div></fieldset>
-          <fieldset class="choice-fieldset"><legend>Booking source</legend><div id="bookingSourceGrid" class="booking-source-grid">
-            <button type="button" class="booking-source-option selected" data-booking-source="product"><strong>Product page only</strong><span>Display on the linked SHOPLINE product with the App Block.</span></button>
-            <button type="button" class="booking-source-option" data-booking-source="direct"><strong>Booking page only</strong><span>Use a direct booking page that can be shared anywhere.</span></button>
-            <button type="button" class="booking-source-option" data-booking-source="both"><strong>Both</strong><span>Use both the product page and a shareable direct booking page.</span></button>
+          <fieldset class="choice-fieldset commerce-fieldset"><legend>Booking & purchase relationship</legend><div id="commerceModeGrid" class="commerce-mode-grid">
+            <button type="button" class="commerce-mode-option" data-commerce-mode="standalone_free"><span class="commerce-option-head"><strong>Standalone · no payment</strong><em class="commerce-state ready">Ready</em></span><span>Customers book the service directly without checkout.</span><small>Free consultations, free measurements, or appointment-only service pages.</small></button>
+            <button type="button" class="commerce-mode-option" data-commerce-mode="standalone_paid" disabled aria-disabled="true"><span class="commerce-option-head"><strong>Standalone · payment required</strong><em class="commerce-state planned">Checkout next</em></span><span>Customers choose a time first, then complete SHOPLINE checkout.</span><small>Paid classes, massage, photography, or professional sessions.</small></button>
+            <button type="button" class="commerce-mode-option selected" data-commerce-mode="product_pre_purchase"><span class="commerce-option-head"><strong>Product + appointment</strong><em class="commerce-state ready">Ready</em></span><span>Keep the normal product purchase flow and add appointment booking as another action.</span><small>Design consultations, showroom visits, measurement, or pre-sale services.</small></button>
+            <button type="button" class="commerce-mode-option" data-commerce-mode="product_post_purchase" disabled aria-disabled="true"><span class="commerce-option-head"><strong>Purchase first · schedule after</strong><em class="commerce-state planned">Order flow next</em></span><span>Customers buy first, then schedule the included service from an eligible order.</span><small>Installation, delivery setup, onboarding, or post-purchase service.</small></button>
+          </div><div id="commerceGuidance" class="commerce-guidance"></div></fieldset>
+          <fieldset class="choice-fieldset"><legend>Booking entry</legend><div id="bookingSourceGrid" class="booking-source-grid">
+            <button type="button" class="booking-source-option selected" data-booking-source="product"><strong>Product page only</strong><span>Display the Appointment Lite action on the linked SHOPLINE product.</span></button>
+            <button type="button" class="booking-source-option" data-booking-source="direct"><strong>Booking page only</strong><span>Use a shareable Appointment Lite booking page.</span></button>
+            <button type="button" class="booking-source-option" data-booking-source="both"><strong>Both</strong><span>Use both the linked product page and a shareable booking page.</span></button>
           </div></fieldset>
-          <div id="productSourceFields"><div class="field"><label>Linked SHOPLINE product</label><div id="productPicker" class="custom-select"><button id="productPickerButton" type="button" aria-haspopup="dialog"><span id="productPickerLabel">Select a product</span>${icons.chevron}</button></div><p class="hint">The App Block uses this product binding to find the correct appointment service on the storefront.</p></div></div>
+          <div id="productSourceFields"><div class="field"><label>Linked SHOPLINE product</label><div id="productPicker" class="custom-select"><button id="productPickerButton" type="button" aria-haspopup="dialog"><span id="productPickerLabel">Select a product</span>${icons.chevron}</button></div><p id="productBindingHint" class="hint">Choose the SHOPLINE product connected to this appointment experience.</p></div></div>
         </section>
         <section class="rule-step hidden" data-rule-step="1">
           <div class="step-intro"><h3>How should customers book time?</h3><p>Choose a booking mode. Appointment Lite will only show settings that apply to that mode.</p><small id="bookingModeRecommendation" class="mode-recommendation"></small></div>
@@ -292,7 +298,7 @@ export function adminPage() {
   </dialog>
 
   <dialog id="confirmDialog" class="confirm-modal"><div class="confirm-icon">!</div><div class="confirm-copy"><h2 id="confirmTitle">Please confirm</h2><p id="confirmMessage"></p></div><div class="modal-actions"><button id="confirmNo" class="secondary">Keep it</button><button id="confirmYes" class="danger">Confirm</button></div></dialog>
-  <script type="module" src="/admin/app.js?v=0.6.0.6"></script>
+  <script type="module" src="/admin/app.js?v=0.6.1"></script>
 </body>
 </html>`;
 }

@@ -1,7 +1,7 @@
 {
   "name": "appointment-lite",
-  "version": "0.6.0.6",
-  "description": "SHOPLINE appointment scheduling with polished customer/merchant email notification controls, pre-appointment reminders, expandable booking calendars, a bundled staff portrait library, and optional business Google Calendar sync.",
+  "version": "0.6.1",
+  "description": "SHOPLINE appointment scheduling with a four-path booking commerce architecture, free appointment flows, product-related pre-purchase bookings, notification controls, staff scheduling, and optional business Google Calendar sync.",
   "type": "module",
   "engines": {
     "node": ">=20"

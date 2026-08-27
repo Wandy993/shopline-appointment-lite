@@ -1,5 +1,26 @@
 # Appointment Lite
 
+> v0.6.1 — Booking Commerce Architecture
+
+Appointment Lite now separates **what customers are booking**, **how the booking relates to a purchase**, and **where the booking entry appears**. This keeps free appointments, product-linked consultations, future paid bookings, and future post-purchase service scheduling on one compatible data model without hiding SHOPLINE purchase buttons through theme DOM hacks.
+
+## v0.6.1 Booking Commerce Architecture
+
+Four customer journeys are modeled:
+
+1. **Standalone · no payment** — active in v0.6.1. Free consultations, measurements, or appointment-only service pages.
+2. **Standalone · payment required** — schema/UI architecture reserved; checkout activation intentionally follows in the paid-booking milestone.
+3. **Product + appointment** — active in v0.6.1. Keep SHOPLINE Add to cart / Buy now and add Appointment Lite as a separate booking action.
+4. **Purchase first · schedule after** — schema/UI architecture reserved; order verification and post-purchase entry follow in the order-linked milestone.
+
+`bookingSource` remains a separate presentation choice (`product`, `direct`, `both`) so the commerce relationship does not get confused with the place where customers enter the booking flow. Existing records without `commerceMode` are mapped safely: direct services without a product become `standalone_free`, while existing product-linked services keep their current behavior as `product_pre_purchase`.
+
+### Theme guidance
+
+Appointment Lite does **not** remove SHOPLINE purchase buttons with JavaScript. For appointment-only products, merchants should assign a dedicated product template without native purchase buttons. Product + appointment services keep the normal product template and purchase actions.
+
+# Appointment Lite
+
 > v0.6.0.6 — Email Design UI Polish
 
 Appointment Lite uses one optional **Business Google Calendar** per store, independent merchant/staff email notifications, and configurable customer communication. Staff do not need Google access: merchants add staff email addresses for assignment notifications.

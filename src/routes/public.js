@@ -28,6 +28,7 @@ function publicBooking(booking) {
   return {
     id: booking._id, serviceTitle: booking.productTitle, productTitle: booking.productTitle,
     bookingSource: booking.bookingSource || (booking.sourceType === 'standalone' ? 'direct' : 'product'),
+    commerceMode: booking.commerceMode || ((booking.bookingSource || (booking.sourceType === 'standalone' ? 'direct' : 'product')) === 'direct' && !booking.productId ? 'standalone_free' : 'product_pre_purchase'),
     sourceType: booking.sourceType || 'product', serviceType: booking.serviceType === 'product' ? 'appointment' : (booking.serviceType || 'appointment'),
     bookingMode, occurrences,
     date: booking.date, time: bookingMode === 'all_day' ? '' : booking.time, timezone, storeDate: zonedNow(timezone).date,
@@ -42,6 +43,7 @@ function serializeRule(rule, timezone, staffMeta = { mode: 'none', options: [] }
   const bookingWindowDays = Number(rule.bookingWindowDays || 90);
   return {
     id: rule._id, bookingSource: rule.bookingSource || (rule.sourceType === 'standalone' ? 'direct' : 'product'),
+    commerceMode: rule.commerceMode || ((rule.bookingSource || (rule.sourceType === 'standalone' ? 'direct' : 'product')) === 'direct' && !rule.productId ? 'standalone_free' : 'product_pre_purchase'),
     sourceType: rule.sourceType || 'product', serviceType: rule.serviceType === 'product' ? 'appointment' : (rule.serviceType || 'appointment'),
     bookingMode: bookingModeFor(rule), sessionsRequired: Number(rule.sessionsRequired || 3), timezone,
     productId: rule.productId || '', productTitle: rule.productTitle || '', serviceTitle: rule.serviceTitle || rule.productTitle,

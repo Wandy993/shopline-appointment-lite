@@ -27,6 +27,8 @@ const sample = {
 const variables = ['customer_name', 'product_title', 'date', 'time', 'timezone', 'location', 'staff', 'store_name'];
 const serviceTypeLabels = { appointment: 'Appointment', product: 'Appointment', in_store: 'In-store appointment', onsite: 'Home / onsite service', consultation: 'Consultation', class: 'Class / course', other: 'Other service' };
 const bookingSourceLabels = { product: 'Product page', direct: 'Booking page', both: 'Product page + booking link' };
+const commerceModeLabels = { standalone_free: 'Standalone · no payment', standalone_paid: 'Standalone · payment required', product_pre_purchase: 'Product + appointment', product_post_purchase: 'Purchase first · schedule after' };
+const activeCommerceModes = new Set(['standalone_free', 'product_pre_purchase']);
 const productStatusLabels = { active: 'Published', draft: 'Draft' };
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -287,6 +289,39 @@ Object.assign(zh, {
   'Recommended mode': '推荐预约方式', 'For this service type, {mode} is a good starting point. You can still choose another mode.': '根据当前服务类型，建议优先使用「{mode}」，你仍然可以选择其他预约方式。'
 });
 
+
+Object.assign(zh, {
+  'Booking & purchase relationship': '预约与购买关系', 'Booking entry': '预约入口', 'Customer journey': '客户流程',
+  'Choose the service type, how it relates to a purchase, and where customers enter the booking flow.': '选择服务类型、与购买的关系，以及客户从哪里进入预约流程。',
+  'Standalone · no payment': '纯预约 · 无需付款', 'Standalone · payment required': '纯预约 · 需要付款', 'Product + appointment': '商品 + 预约', 'Purchase first · schedule after': '先购买 · 后预约',
+  'Ready': '可使用', 'Checkout next': '下一阶段接入支付', 'Order flow next': '下一阶段接入订单',
+  'Customers book the service directly without checkout.': '客户直接预约服务，无需进入结账。',
+  'Free consultations, free measurements, or appointment-only service pages.': '适合免费咨询、免费测量或仅提供预约的服务页面。',
+  'Customers choose a time first, then complete SHOPLINE checkout.': '客户先选择预约时间，再完成 SHOPLINE 结账。',
+  'Paid classes, massage, photography, or professional sessions.': '适合付费课程、按摩、摄影或专业服务。',
+  'Keep the normal product purchase flow and add appointment booking as another action.': '保留商品正常购买流程，同时增加预约入口。',
+  'Design consultations, showroom visits, measurement, or pre-sale services.': '适合设计咨询、到店体验、测量或售前服务。',
+  'Customers buy first, then schedule the included service from an eligible order.': '客户先完成购买，再基于符合条件的订单预约配套服务。',
+  'Installation, delivery setup, onboarding, or post-purchase service.': '适合安装、配送调试、上门配置或售后服务。',
+  'No checkout is required. If you use a SHOPLINE product page, use a dedicated appointment-only template so other products keep their normal purchase buttons.': '无需结账。如果使用 SHOPLINE 商品页，请为纯预约商品使用独立的预约模板，避免影响其他商品的正常购买按钮。',
+  'Customers will select a slot before checkout. The checkout activation is intentionally reserved for the paid-booking milestone.': '客户将先选择预约时段，再进入结账；支付确认将在后续付费预约版本中启用。',
+  'Keep SHOPLINE Add to cart / Buy now actions. Appointment Lite appears as an additional booking action before purchase.': '保留 SHOPLINE 的加入购物车 / 立即购买按钮，Appointment Lite 作为购买前的额外预约入口。',
+  'Keep the normal purchase flow. Scheduling will open from an eligible paid order once order-linked booking is activated.': '保留正常购买流程；订单关联预约启用后，客户将从符合条件的已付款订单进入预约。',
+  'Display the Appointment Lite action on the linked SHOPLINE product.': '在关联的 SHOPLINE 商品页展示 Appointment Lite 预约入口。',
+  'Use a shareable Appointment Lite booking page.': '使用可分享的 Appointment Lite 独立预约页。',
+  'Use both the linked product page and a shareable booking page.': '同时使用关联商品页和可分享的独立预约页。',
+  'Choose the SHOPLINE product connected to this appointment experience.': '选择与此预约体验关联的 SHOPLINE 商品。',
+  'This product keeps its normal purchase actions; Appointment Lite adds a separate booking action.': '该商品继续保留正常购买按钮，Appointment Lite 额外增加预约入口。',
+  'This product will be used to verify which paid orders can schedule the service.': '该商品将用于识别哪些已付款订单可以预约对应服务。',
+  'This product will provide the SHOPLINE price and checkout for the paid appointment.': '该商品将为付费预约提供 SHOPLINE 价格与结账能力。',
+  'No SHOPLINE product is required for a standalone direct booking page.': '纯预约的独立预约页无需关联 SHOPLINE 商品。',
+  'Use a dedicated appointment-only product template if you do not want native purchase buttons on this service product.': '如果该服务商品不需要原生购买按钮，请使用独立的纯预约商品模板。',
+  'Keep the SHOPLINE purchase actions and show Appointment Lite as an additional booking option.': '保留 SHOPLINE 商品购买按钮，并将 Appointment Lite 作为额外预约选项。',
+  'For appointment-only product pages, use a dedicated SHOPLINE product template without native purchase buttons.': '对于纯预约商品页，请使用独立的 SHOPLINE 商品模板并移除该模板中的原生购买按钮。',
+  'Paid appointment checkout is defined but not enabled in this release.': '付费预约结构已预留，但当前版本暂未启用支付流程。',
+  'Post-purchase appointment scheduling is defined but not enabled in this release.': '购买后预约结构已预留，但当前版本暂未启用订单关联预约。'
+});
+
 Object.assign(zh, {
   'STAFF OPERATIONS': '员工运营', 'Team schedule': '员工排期', 'Review who is assigned today or jump to another date.': '查看当天员工预约安排，也可以切换到其他日期。',
   'Loading team schedule…': '正在加载员工排期…', 'No team appointments on this date': '这一天没有员工预约', 'Confirmed staff assignments will appear here.': '已确认并分配员工的预约会显示在这里。',
@@ -410,7 +445,7 @@ const staffAvatarPresets = ['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunse
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
 function staffPresetImage(preset) {
   const file = staffAvatarFiles[preset] || staffAvatarFiles.aurora;
-  return `<img src="/assets/staff/${file}?v=0.6.0.6" alt="" loading="lazy" decoding="async">`;
+  return `<img src="/assets/staff/${file}?v=0.6.1" alt="" loading="lazy" decoding="async">`;
 }
 let staffAvatarDraft = { kind: 'preset', value: 'aurora' };
 
@@ -1105,14 +1140,48 @@ function setServiceType(type = 'appointment') {
 }
 
 
+function commerceModeNeedsProduct(mode = $('#commerceMode')?.value, bookingSource = $('#bookingSource')?.value) {
+  return ['standalone_paid', 'product_pre_purchase', 'product_post_purchase'].includes(mode) || ['product', 'both'].includes(bookingSource);
+}
+
+function legacyCommerceMode(rule = {}) {
+  if (commerceModeLabels[rule.commerceMode]) return rule.commerceMode;
+  const bookingSource = rule.bookingSource || (rule.sourceType === 'standalone' ? 'direct' : 'product');
+  return bookingSource === 'direct' && !rule.productId ? 'standalone_free' : 'product_pre_purchase';
+}
+
+function setCommerceMode(mode = 'product_pre_purchase') {
+  const normalized = commerceModeLabels[mode] ? mode : 'product_pre_purchase';
+  $('#commerceMode').value = normalized;
+  $$('#commerceModeGrid [data-commerce-mode]').forEach(button => button.classList.toggle('selected', button.dataset.commerceMode === normalized));
+  const guidance = {
+    standalone_free: 'No checkout is required. If you use a SHOPLINE product page, use a dedicated appointment-only template so other products keep their normal purchase buttons.',
+    standalone_paid: 'Customers will select a slot before checkout. The checkout activation is intentionally reserved for the paid-booking milestone.',
+    product_pre_purchase: 'Keep SHOPLINE Add to cart / Buy now actions. Appointment Lite appears as an additional booking action before purchase.',
+    product_post_purchase: 'Keep the normal purchase flow. Scheduling will open from an eligible paid order once order-linked booking is activated.'
+  }[normalized];
+  $('#commerceGuidance').innerHTML = `<strong>${t(commerceModeLabels[normalized])}</strong><span>${t(guidance)}</span>`;
+  setBookingSource($('#bookingSource').value || 'product');
+}
+
 function setBookingSource(source = 'product') {
   const normalized = ['product', 'direct', 'both'].includes(source) ? source : 'product';
   $('#bookingSource').value = normalized;
   $('#sourceType').value = normalized === 'direct' ? 'standalone' : 'product';
   $$('#bookingSourceGrid [data-booking-source]').forEach(button => button.classList.toggle('selected', button.dataset.bookingSource === normalized));
-  const needsProduct = normalized === 'product' || normalized === 'both';
+  const commerceMode = $('#commerceMode')?.value || 'product_pre_purchase';
+  const needsProduct = commerceModeNeedsProduct(commerceMode, normalized);
   $('#productSourceFields').classList.toggle('hidden', !needsProduct);
+  $('#productBindingHint').textContent = t(
+    commerceMode === 'product_pre_purchase' ? 'This product keeps its normal purchase actions; Appointment Lite adds a separate booking action.' :
+    commerceMode === 'product_post_purchase' ? 'This product will be used to verify which paid orders can schedule the service.' :
+    commerceMode === 'standalone_paid' ? 'This product will provide the SHOPLINE price and checkout for the paid appointment.' :
+    normalized === 'direct' ? 'No SHOPLINE product is required for a standalone direct booking page.' :
+    'Use a dedicated appointment-only product template if you do not want native purchase buttons on this service product.'
+  );
   $('#serviceActiveHint').textContent = t(
+    commerceMode === 'product_pre_purchase' ? 'Keep the SHOPLINE purchase actions and show Appointment Lite as an additional booking option.' :
+    commerceMode === 'standalone_free' && normalized !== 'direct' ? 'For appointment-only product pages, use a dedicated SHOPLINE product template without native purchase buttons.' :
     normalized === 'product' ? 'Show this service on the linked SHOPLINE product page.' :
     normalized === 'both' ? 'Show this service on the linked product page and a shareable booking page.' :
     'Use a shareable booking page without requiring a SHOPLINE product.'
@@ -1205,9 +1274,11 @@ function setRuleStep(step) {
 function validateRuleStep(step) {
   let message = '';
   const bookingSource = $('#bookingSource').value;
+  const commerceMode = $('#commerceMode').value;
   const mode = $('#bookingMode').value;
   if (step === 0 && !$('#serviceTitle').value.trim()) message = 'Service name is required before continuing.';
-  if (step === 0 && ['product', 'both'].includes(bookingSource) && !$('#productSelect').value) message = 'Select a SHOPLINE product before continuing.';
+  if (step === 0 && !activeCommerceModes.has(commerceMode)) message = commerceMode === 'standalone_paid' ? 'Paid appointment checkout is defined but not enabled in this release.' : 'Post-purchase appointment scheduling is defined but not enabled in this release.';
+  if (step === 0 && commerceModeNeedsProduct(commerceMode, bookingSource) && !$('#productSelect').value) message = 'Select a SHOPLINE product before continuing.';
   if (step === 1 && mode !== 'all_day' && (!$('#duration').checkValidity() || !$('#buffer').checkValidity() || !$('#capacity').checkValidity())) message = 'Enter valid duration, buffer, and capacity.';
   if (step === 1 && mode === 'all_day' && !$('#allDayCapacityMirror').checkValidity()) message = 'Enter valid duration, buffer, and capacity.';
   if (step === 1 && mode === 'multi_slot' && !$('#sessionsRequired').checkValidity()) message = 'Choose 2–12 sessions per booking.';
@@ -1255,12 +1326,14 @@ async function openRule(rule = null) {
   $('#enabled').checked = rule?.enabled !== false;
   setServiceType(rule?.serviceType || 'appointment');
   const bookingSource = rule?.bookingSource || (rule?.sourceType === 'standalone' ? 'direct' : 'product');
+  const commerceMode = legacyCommerceMode(rule || {});
+  setCommerceMode(commerceMode);
   setBookingSource(bookingSource);
   setBookingMode(rule?.bookingMode || 'slot', { touched: false });
   renderSchedule(rule?.weeklyAvailability || [1, 2, 3, 4, 5].map(weekday => ({ weekday, enabled: true, windows: [{ start: '09:00', end: '17:00' }] })));
   renderExceptions(rule?.availabilityExceptions || []);
   setBookingMode(rule?.bookingMode || 'slot', { touched: false });
-  if (['product', 'both'].includes(bookingSource)) {
+  if (commerceModeNeedsProduct(commerceMode, bookingSource)) {
     await ensureProducts();
     if (rule?.productId && !state.products.some(product => product.id === rule.productId)) state.products.push({ id: rule.productId, title: rule.productTitle || rule.serviceTitle, handle: rule.productHandle || '' });
     selectProduct(rule?.productId || '');
@@ -1281,13 +1354,15 @@ async function openRule(rule = null) {
 
 function rulePayload() {
   const bookingSource = $('#bookingSource').value;
+  const commerceMode = $('#commerceMode').value;
   const bookingMode = $('#bookingMode').value;
-  const usesProduct = ['product', 'both'].includes(bookingSource);
+  const usesProduct = commerceModeNeedsProduct(commerceMode, bookingSource);
   const product = state.products.find(item => item.id === $('#productSelect').value);
   const allDay = bookingMode === 'all_day';
   const capacity = allDay ? Number($('#allDayCapacityMirror').value) : Number($('#capacity').value);
   return {
     bookingSource,
+    commerceMode,
     sourceType: bookingSource === 'direct' ? 'standalone' : 'product',
     serviceType: $('#serviceType').value,
     bookingMode,
@@ -1357,7 +1432,7 @@ function renderRules() {
   const query = $('#ruleSearch').value.trim().toLowerCase();
   const rules = state.rules.filter(rule => {
     const managedNames = (rule.staffAssignment?.staffIds || []).map(id => state.staff.find(item => String(item._id) === String(id))?.name).filter(Boolean);
-    return !query || [rule.serviceTitle, rule.productTitle, rule.staff, rule.location, serviceTypeLabels[rule.serviceType] || '', ...managedNames].some(value => String(value || '').toLowerCase().includes(query));
+    return !query || [rule.serviceTitle, rule.productTitle, rule.staff, rule.location, serviceTypeLabels[rule.serviceType] || '', commerceModeLabels[legacyCommerceMode(rule)] || '', ...managedNames].some(value => String(value || '').toLowerCase().includes(query));
   });
   $('#ruleResultCount').textContent = state.locale === 'zh-CN' ? `${rules.length} 项服务` : `${rules.length} service${rules.length === 1 ? '' : 's'}`;
   const root = $('#rulesList');
@@ -1370,6 +1445,8 @@ function renderRules() {
     const typeLabel = t(serviceTypeLabels[rule.serviceType] || 'Appointment');
     const bookingSource = rule.bookingSource || (rule.sourceType === 'standalone' ? 'direct' : 'product');
     const sourceLabel = t(bookingSourceLabels[bookingSource] || 'Product page');
+    const commerceMode = legacyCommerceMode(rule);
+    const commerceLabel = t(commerceModeLabels[commerceMode] || 'Product + appointment');
     const productLine = rule.productId && rule.productTitle ? `<span class="service-product-line">${t('Linked product')}: ${escapeHtml(rule.productTitle)}</span>` : '';
     const linkActions = ['direct', 'both'].includes(bookingSource) && rule.bookingUrl ? `<button class="secondary small" data-copy-link="${escapeHtml(rule.bookingUrl)}">${t('Copy link')}</button><a class="button-link secondary-link small" href="${escapeHtml(rule.bookingUrl)}" target="_blank" rel="noopener noreferrer">${t('Open booking page')}</a>` : '';
     const mode = rule.bookingMode || 'slot';
@@ -1377,7 +1454,7 @@ function renderRules() {
     const bookingCount = Number(rule.bookingCount || 0);
     return `<article class="panel service-card service-list-row">
       <div class="service-main"><div class="service-avatar">${escapeHtml(serviceTitle.slice(0, 1).toUpperCase())}</div><div class="service-copy"><div class="service-title-row"><strong title="${escapeHtml(serviceTitle)}">${escapeHtml(serviceTitle)}</strong><span class="service-type-badge">${escapeHtml(typeLabel)}</span><span class="service-mode-badge">${escapeHtml(t(({slot:'Minute / hour',all_day:'All day',multi_slot:'Multiple sessions'})[rule.bookingMode || 'slot']))}</span></div><span>${timing}</span>${productLine}</div></div>
-      <div class="service-channel"><span>${t('Booking source')}</span><strong>${escapeHtml(sourceLabel)}</strong></div>
+      <div class="service-channel"><span>${t('Customer journey')}</span><strong>${escapeHtml(commerceLabel)}</strong><small>${escapeHtml(sourceLabel)}</small></div>
       <div class="service-count"><span>${t('Bookings')}</span><strong>${bookingCount}</strong></div>
       <div class="service-status"><span class="status-badge ${rule.enabled ? 'enabled' : 'disabled'}">${t(rule.enabled ? 'Active' : 'Paused')}</span></div>
       <div class="service-actions"><div class="service-link-actions">${linkActions}</div><div class="service-edit-actions"><button class="secondary small" data-edit="${rule._id}">${t('Edit service')}</button><button class="secondary small" data-delete="${rule._id}">${t('Delete')}</button></div></div>
@@ -2133,6 +2210,7 @@ function bind() {
   $('#exportBookings')?.addEventListener('click', exportBookingsCsv);
   $('#addException')?.addEventListener('click', () => addException());
   $$('#serviceTypeGrid [data-service-type]').forEach(button => button.addEventListener('click', () => setServiceType(button.dataset.serviceType)));
+  $$('#commerceModeGrid [data-commerce-mode]').forEach(button => button.addEventListener('click', () => { if (!button.disabled) setCommerceMode(button.dataset.commerceMode); }));
   $$('#bookingSourceGrid [data-booking-source]').forEach(button => button.addEventListener('click', () => setBookingSource(button.dataset.bookingSource)));
   $$('#bookingModeGrid [data-booking-mode]').forEach(button => button.addEventListener('click', () => setBookingMode(button.dataset.bookingMode)));
   $('#allDayCapacityMirror')?.addEventListener('input', event => { $('#capacity').value = event.target.value; });

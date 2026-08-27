@@ -34,6 +34,9 @@ const appointmentRuleSchema = new mongoose.Schema({
   // v0.3.1: booking channel is independent from the kind of service.
   // sourceType remains as a compatibility field for older records and clients.
   bookingSource: { type: String, enum: ['product', 'direct', 'both'], default: 'product', index: true },
+  // v0.6.1: commercial relationship is independent from where the booking entry is rendered.
+  // The paid and post-purchase paths are modeled now but remain gated until checkout/order linking is enabled.
+  commerceMode: { type: String, enum: ['standalone_free', 'standalone_paid', 'product_pre_purchase', 'product_post_purchase'], default: 'product_pre_purchase', index: true },
   sourceType: { type: String, enum: ['product', 'standalone'], default: 'product', index: true },
   serviceType: { type: String, enum: ['appointment', 'product', 'in_store', 'onsite', 'consultation', 'class', 'other'], default: 'appointment' },
   bookingMode: { type: String, enum: ['slot', 'all_day', 'multi_slot'], default: 'slot', index: true },

@@ -161,3 +161,15 @@ Customer guest invitations are disabled by live synchronization. `Booking.calend
 ### Customer calendar links
 
 Customer-facing confirmation surfaces expose one **Add to Google Calendar** link generated from the canonical booking snapshot. The signed `.ics` route remains available internally for backward compatibility, but v0.6.0.3 no longer presents it as a customer download button.
+
+
+## v0.6.1 Booking commerce architecture
+
+`AppointmentRule.commerceMode` is one of:
+
+- `standalone_free`
+- `standalone_paid`
+- `product_pre_purchase`
+- `product_post_purchase`
+
+The field is independent from `bookingSource`. `Booking.commerceMode` snapshots the rule value so historical bookings retain their commercial context. `standalone_paid` and `product_post_purchase` are modeled but intentionally gated until SHOPLINE checkout confirmation and paid-order verification are implemented.

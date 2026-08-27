@@ -274,9 +274,10 @@ adminRouter.get('/rules', async (req, res) => {
   const counts = new Map(bookingCounts.map(item => [String(item._id), { count: Number(item.count || 0), confirmedCount: Number(item.confirmedCount || 0) }]));
   res.json({ rules: rules.map(rule => {
     const bookingSource = rule.bookingSource || (rule.sourceType === 'standalone' ? 'direct' : 'product');
+    const commerceMode = rule.commerceMode || (bookingSource === 'direct' && !rule.productId ? 'standalone_free' : 'product_pre_purchase');
     return {
       ...rule,
-      bookingSource,
+      bookingSource, commerceMode,
       serviceTitle: rule.serviceTitle || rule.productTitle,
       bookingCount: counts.get(String(rule._id))?.count || 0,
       confirmedBookingCount: counts.get(String(rule._id))?.confirmedCount || 0,
