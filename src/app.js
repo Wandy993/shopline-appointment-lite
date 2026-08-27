@@ -11,7 +11,7 @@ import { errorHandler, notFound } from './middleware/errors.js';
 import { adminPage } from './views/admin.js';
 import { managePage } from './views/manage.js';
 import { bookingPage } from './views/book.js';
-import { privacyPage, faqPage, preferredLegalLocale } from './views/legal.js';
+import { homePage, privacyPage, termsPage, faqPage, preferredLegalLocale } from './views/legal.js';
 import { shoplinePaidBookingWebhook } from './routes/shopline-webhooks.js';
 
 export function createApp() {
@@ -34,17 +34,28 @@ export function createApp() {
   app.use('/integration-assets', express.static('public/integrations', { maxAge: config.nodeEnv === 'production' ? '1h' : 0 }));
   app.use('/legal/assets', express.static('public/legal', { maxAge: config.nodeEnv === 'production' ? '1h' : 0 }));
 
-  app.get('/health', (req, res) => res.json({ ok: true, service: 'appointment-lite', version: '0.6.12' }));
+  app.get('/health', (req, res) => res.json({ ok: true, service: 'appointment-lite', version: '0.6.13' }));
   const legalHeaders = { 'Cache-Control': 'public, max-age=3600', 'Referrer-Policy': 'strict-origin-when-cross-origin' };
   app.get('/privacy', (req, res) => res.redirect(302, `/${preferredLegalLocale(req.get('accept-language'))}/privacy`));
+  app.get('/terms', (req, res) => res.redirect(302, `/${preferredLegalLocale(req.get('accept-language'))}/terms`));
   app.get('/faq', (req, res) => res.redirect(302, `/${preferredLegalLocale(req.get('accept-language'))}/faq`));
+  app.get('/zh-cn', (req, res) => res.set(legalHeaders).type('html').send(homePage('zh-cn')));
+  app.get('/en', (req, res) => res.redirect(302, '/')); 
   app.get('/zh-cn/privacy', (req, res) => res.set(legalHeaders).type('html').send(privacyPage('zh-cn')));
   app.get('/en/privacy', (req, res) => res.set(legalHeaders).type('html').send(privacyPage('en')));
+  app.get('/zh-cn/terms', (req, res) => res.set(legalHeaders).type('html').send(termsPage('zh-cn')));
+  app.get('/en/terms', (req, res) => res.set(legalHeaders).type('html').send(termsPage('en')));
   app.get('/zh-cn/faq', (req, res) => res.set(legalHeaders).type('html').send(faqPage('zh-cn')));
   app.get('/en/faq', (req, res) => res.set(legalHeaders).type('html').send(faqPage('en')));
+  app.get('/robots.txt', (req, res) => res.set(legalHeaders).type('text').send(`User-agent: *\nAllow: /\nSitemap: ${config.appUrl}/sitemap.xml\n`));
+  app.get('/sitemap.xml', (req, res) => {
+    const paths = ['/', '/en/privacy', '/en/terms', '/en/faq', '/zh-cn', '/zh-cn/privacy', '/zh-cn/terms', '/zh-cn/faq'];
+    const urls = paths.map(path => `<url><loc>${config.appUrl}${path}</loc></url>`).join('');
+    res.set(legalHeaders).type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}</urlset>`);
+  });
   app.get('/', (req, res) => {
     if (req.query.handle || req.query.appkey) return res.redirect(`/auth/install?${new URLSearchParams(req.query)}`);
-    res.type('html').send('<!doctype html><title>Appointment Lite</title><h1>Appointment Lite is running</h1><p>Open this app from SHOPLINE Admin to continue.</p>');
+    res.set(legalHeaders).type('html').send(homePage('en'));
   });
   app.use('/auth', authRouter);
   app.use('/integrations', integrationsRouter);

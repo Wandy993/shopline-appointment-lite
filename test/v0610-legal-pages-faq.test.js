@@ -85,11 +85,11 @@ test('v0.6.10 release version and legal page cache markers stay aligned', async 
   const [pkgText, app, adminView, bookView, theme, release] = await Promise.all([
     source('package.json'), source('src/app.js'), source('src/views/admin.js'), source('src/views/book.js'), source('theme-extension-source/public/appointment-lite.js'), source('scripts/build-release.sh')
   ]);
-  assert.equal(JSON.parse(pkgText).version, '0.6.12');
-  assert.match(app, /version: '0\.6\.12'/);
-  assert.match(adminView, /styles\.css\?v=0\.6\.12/);
-  assert.match(bookView, /styles\.css\?v=0\.6\.12/);
-  assert.match(theme, /const VERSION = '0\.6\.12'/);
-  assert.match(release, /RELEASE_VERSION="0\.6\.12"/);
-  assert.match(release, /storefront-cta-layout-polish/);
+  assert.equal(JSON.parse(pkgText).version, '0.6.13');
+  assert.match(app, /version: '0\.6\.13'/);
+  assert.match(adminView, /styles\.css\?v=0\.6\.13/);
+  assert.match(bookView, /styles\.css\?v=0\.6\.13/);
+  assert.match(theme, /const VERSION = '0\.6\.13'/);
+  assert.match(release, /RELEASE_VERSION="0\.6\.13"/);
+  assert.match(release, /google-oauth-verification-readiness/);
 });

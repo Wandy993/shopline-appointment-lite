@@ -1,5 +1,22 @@
 # Appointment Lite
 
+> v0.6.13 — Google OAuth Verification Readiness
+
+Appointment Lite v0.6.13 turns the production root domain into a public product homepage and completes the public legal surface needed for Google OAuth brand verification.
+
+## v0.6.13 Google OAuth Verification Readiness
+
+- Replaces the root runtime placeholder with a public English Appointment Lite homepage at `https://appointment.toolkit.fans/`.
+- Adds a public Chinese homepage at `/zh-cn` and keeps language switching across public pages.
+- Adds bilingual Terms of Service at `/en/terms` and `/zh-cn/terms`.
+- Links Home, Privacy, Terms, and FAQ consistently from the public header and footer.
+- Describes Google Calendar data use on the public homepage using the same owned-calendar model implemented by the app.
+- Adds `robots.txt` and `sitemap.xml` for the public verification surface.
+- Preserves SHOPLINE install behavior when the root URL carries `handle` or `appkey`.
+- Keeps the production Google callback at `https://appointment.toolkit.fans/integrations/google/callback` and does not broaden Calendar scopes.
+
+See [Google OAuth Verification Readiness](docs/V0613_GOOGLE_OAUTH_VERIFICATION_READINESS.md).
+
 > v0.6.12 — Storefront CTA Layout Polish
 
 Appointment Lite v0.6.12 makes the final booking action more compact on desktop and keeps mobile booking actions easy to tap.

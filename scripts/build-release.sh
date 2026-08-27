@@ -2,8 +2,8 @@
 set -u
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd -P)"
-RELEASE_VERSION="0.6.12"
-NAME="appointment-lite-v${RELEASE_VERSION}-storefront-cta-layout-polish"
+RELEASE_VERSION="0.6.13"
+NAME="appointment-lite-v${RELEASE_VERSION}-google-oauth-verification-readiness"
 DIST_DIR="$ROOT_DIR/dist"
 STAGE_DIR="${TMPDIR:-/tmp}/${NAME}.$$"
 OUTPUT="$DIST_DIR/${NAME}.zip"

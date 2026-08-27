@@ -29,16 +29,26 @@ function calendarIcon() {
   return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 3v3M17 3v3M4.5 9h15M6.8 5h10.4A2.8 2.8 0 0 1 20 7.8v9.4a2.8 2.8 0 0 1-2.8 2.8H6.8A2.8 2.8 0 0 1 4 17.2V7.8A2.8 2.8 0 0 1 6.8 5Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`;
 }
 
+function localizedPublicPath(locale, type) {
+  if (type === 'home') return locale === 'en' ? '/' : `/${locale}`;
+  return `/${locale}/${type}`;
+}
+
 function legalShell({ locale, type, title, lead, body }) {
   const zh = locale === 'zh-cn';
-  const privacyHref = `/${locale}/privacy`;
-  const faqHref = `/${locale}/faq`;
+  const homeHref = localizedPublicPath(locale, 'home');
+  const privacyHref = localizedPublicPath(locale, 'privacy');
+  const termsHref = localizedPublicPath(locale, 'terms');
+  const faqHref = localizedPublicPath(locale, 'faq');
   const alternateLocale = zh ? 'en' : 'zh-cn';
-  const alternateHref = `/${alternateLocale}/${type}`;
+  const alternateHref = localizedPublicPath(alternateLocale, type);
   const alternateLabel = zh ? 'English' : '简体中文';
   const description = esc(lead);
-  const pageTitle = `${esc(title)} · Appointment Lite`;
-  const canonical = `${config.appUrl}/${locale}/${type}`;
+  const pageTitle = type === 'home' ? `Appointment Lite · ${esc(title)}` : `${esc(title)} · Appointment Lite`;
+  const currentPath = localizedPublicPath(locale, type);
+  const canonical = `${config.appUrl}${currentPath}`;
+  const alternateZh = `${config.appUrl}${localizedPublicPath('zh-cn', type)}`;
+  const alternateEn = `${config.appUrl}${localizedPublicPath('en', type)}`;
   return `<!doctype html>
 <html lang="${zh ? 'zh-CN' : 'en'}">
 <head>
@@ -46,30 +56,39 @@ function legalShell({ locale, type, title, lead, body }) {
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="description" content="${description}">
   <meta name="robots" content="index,follow">
+  <meta name="theme-color" content="#ffffff">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Appointment Lite">
+  <meta property="og:title" content="${pageTitle}">
+  <meta property="og:description" content="${description}">
+  <meta property="og:url" content="${esc(canonical)}">
   <link rel="canonical" href="${esc(canonical)}">
-  <link rel="alternate" hreflang="zh-CN" href="${esc(`${config.appUrl}/zh-cn/${type}`)}">
-  <link rel="alternate" hreflang="en" href="${esc(`${config.appUrl}/en/${type}`)}">
-  <link rel="stylesheet" href="/legal/assets/styles.css?v=0.6.12">
+  <link rel="alternate" hreflang="zh-CN" href="${esc(alternateZh)}">
+  <link rel="alternate" hreflang="en" href="${esc(alternateEn)}">
+  <link rel="alternate" hreflang="x-default" href="${esc(`${config.appUrl}/`)}">
+  <link rel="stylesheet" href="/legal/assets/styles.css?v=0.6.13">
   <title>${pageTitle}</title>
 </head>
 <body>
-<div class="legal-shell">
+<div class="legal-shell ${type === 'home' ? 'home-shell' : ''}">
   <header class="legal-topbar">
     <div class="legal-topbar-inner">
-      <a class="brand" href="/${locale}/faq" aria-label="Appointment Lite">
+      <a class="brand" href="${homeHref}" aria-label="Appointment Lite">
         <span class="brand-mark">${calendarIcon()}</span><span>Appointment Lite</span>
       </a>
       <nav class="legal-nav" aria-label="${zh ? '页面导航' : 'Page navigation'}">
+        <a href="${homeHref}" class="${type === 'home' ? 'active' : ''}">${zh ? '首页' : 'Home'}</a>
         <a href="${privacyHref}" class="${type === 'privacy' ? 'active' : ''}">${zh ? '隐私政策' : 'Privacy'}</a>
+        <a href="${termsHref}" class="${type === 'terms' ? 'active' : ''}">${zh ? '服务条款' : 'Terms'}</a>
         <a href="${faqHref}" class="${type === 'faq' ? 'active' : ''}">FAQ</a>
         <a class="lang" href="${alternateHref}">${alternateLabel}</a>
       </nav>
     </div>
   </header>
   ${body}
-  <footer class="legal-footer"><div class="legal-footer-inner"><span>© 2026 Appointment Lite</span><span>${zh ? '面向 SHOPLINE 商家的预约与服务管理应用' : 'Scheduling and service management for SHOPLINE merchants'}</span></div></footer>
+  <footer class="legal-footer"><div class="legal-footer-inner"><span>© 2026 Appointment Lite</span><span class="footer-links"><a href="${privacyHref}">${zh ? '隐私政策' : 'Privacy'}</a><a href="${termsHref}">${zh ? '服务条款' : 'Terms'}</a><a href="${faqHref}">FAQ</a></span><span>${zh ? '面向 SHOPLINE 商家的预约与服务管理应用' : 'Scheduling and service management for SHOPLINE merchants'}</span></div></footer>
 </div>
-${type === 'faq' ? '<script src="/legal/assets/faq.js?v=0.6.12" defer></script>' : ''}
+${type === 'faq' ? '<script src="/legal/assets/faq.js?v=0.6.13" defer></script>' : ''}
 </body>
 </html>`;
 }
@@ -299,6 +318,110 @@ const faqEn = [
   ]]
 ];
 
+function homeBody(locale) {
+  const zh = locale === 'zh-cn';
+  const supportEmail = String(config.legal.supportEmail || '').trim();
+  const support = supportEmail
+    ? `<a class="home-link" href="mailto:${esc(supportEmail)}">${esc(supportEmail)}</a>`
+    : (zh ? '请通过 SHOPLINE App Store 中 Appointment Lite 的官方支持联系方式联系我们。' : 'Please use the official Appointment Lite support contact listed in the SHOPLINE App Store.');
+  return `
+<main class="home-main">
+  <section class="home-hero">
+    <div class="home-hero-copy">
+      <p class="eyebrow">Appointment Lite · SHOPLINE Scheduling</p>
+      <h1>${zh ? '把 SHOPLINE 商品、订单与服务预约连接起来' : 'Connect SHOPLINE commerce with service scheduling'}</h1>
+      <p class="home-lead">${zh ? 'Appointment Lite 帮助商家创建商品预约、独立预约、付费预约和购买后预约，并在同一个工作空间中管理员工、地点、通知与 Google Calendar。' : 'Appointment Lite helps merchants run product appointments, standalone bookings, paid bookings, and post-purchase scheduling while managing staff, locations, notifications, and Google Calendar from one workspace.'}</p>
+      <div class="home-actions"><a class="primary-link" href="/${locale}/faq">${zh ? '查看 FAQ' : 'View FAQ'}</a><a class="secondary-link" href="/${locale}/privacy">${zh ? '隐私政策' : 'Privacy Policy'}</a></div>
+    </div>
+    <div class="home-product-card" aria-label="${zh ? 'Appointment Lite 功能摘要' : 'Appointment Lite capability summary'}">
+      <div class="mini-brand"><span class="brand-mark">${calendarIcon()}</span><div><strong>Appointment Lite</strong><span>${zh ? '预约与服务管理' : 'Scheduling & service management'}</span></div></div>
+      <div class="mini-flow"><span>${zh ? 'SHOPLINE 商品 / 订单' : 'SHOPLINE product / order'}</span><b>→</b><span>${zh ? '预约时间' : 'Appointment time'}</span><b>→</b><span>${zh ? '员工 / 地点 / 日历' : 'Staff / location / calendar'}</span></div>
+    </div>
+  </section>
+
+  <section class="home-section">
+    <div class="section-heading"><p class="eyebrow">${zh ? '核心能力' : 'Core capabilities'}</p><h2>${zh ? '为服务型业务提供灵活的预约流程' : 'Flexible booking flows for service-based businesses'}</h2></div>
+    <div class="feature-grid">
+      <article class="feature-card"><span class="feature-icon">01</span><h3>${zh ? '多种预约模式' : 'Multiple booking modes'}</h3><p>${zh ? '支持直接预约、商品关联预约、付费预约和购买后预约，并可配置服务时长、容量、缓冲时间及特殊排班。' : 'Support direct bookings, product-linked appointments, paid bookings, and post-purchase scheduling with configurable duration, capacity, buffers, and special availability.'}</p></article>
+      <article class="feature-card"><span class="feature-icon">02</span><h3>${zh ? '员工与服务地点' : 'Staff and service locations'}</h3><p>${zh ? '管理员工工作时间和服务分配，并使用 SHOPLINE Location、客户地址、线上服务或自定义地点安排履约。' : 'Manage staff working hours and service assignments, and schedule fulfillment using SHOPLINE Locations, customer addresses, online services, or custom locations.'}</p></article>
+      <article class="feature-card"><span class="feature-icon">03</span><h3>${zh ? '订单与预约生命周期' : 'Order and booking lifecycle'}</h3><p>${zh ? '对于购买后预约，分别跟踪 SHOPLINE 付款状态和预约状态，让订单履约过程更加清晰。' : 'For post-purchase scheduling, track SHOPLINE payment progress separately from appointment progress for clearer service fulfillment.'}</p></article>
+      <article class="feature-card"><span class="feature-icon">04</span><h3>${zh ? '品牌化前台体验' : 'Brand-aware storefront experience'}</h3><p>${zh ? '自定义预约按钮、主题色、CTA 布局以及可选表单字段，使预约体验更自然地融入商家主题。' : 'Customize booking buttons, accent colors, CTA layout, and optional form fields so the booking experience fits the merchant storefront.'}</p></article>
+    </div>
+  </section>
+
+  <section class="home-section integration-panel">
+    <div><p class="eyebrow">Google Calendar</p><h2>${zh ? '由商家主动连接的 Business Google Calendar' : 'Merchant-authorized Business Google Calendar'}</h2><p>${zh ? 'Appointment Lite 仅在商家主动连接后使用 Google Calendar，用于读取商家拥有的可用日历列表，并在所选日历中创建、更新或删除与预约对应的事件。客户无需 Gmail 才能完成预约。' : 'Appointment Lite uses Google Calendar only after the merchant explicitly connects it. The App reads the list of calendars owned by the account and creates, updates, or deletes appointment events on the selected owned calendar. Customers do not need Gmail to complete a booking.'}</p></div>
+    <div class="integration-points"><span>${zh ? '商家主动授权' : 'Merchant initiated authorization'}</span><span>${zh ? '仅用于预约日历同步' : 'Used only for appointment calendar sync'}</span><span>${zh ? '可随时断开或撤销' : 'Can be disconnected or revoked'}</span></div>
+  </section>
+
+  <section class="home-section trust-grid">
+    <article class="trust-card"><h2>${zh ? '隐私与数据处理' : 'Privacy and data handling'}</h2><p>${zh ? '了解 Appointment Lite 如何处理 SHOPLINE 店铺、商品、订单、预约、员工、地点和 Google Calendar 相关信息。' : 'Learn how Appointment Lite processes information related to SHOPLINE stores, products, orders, bookings, staff, locations, and Google Calendar.'}</p><a href="/${locale}/privacy">${zh ? '阅读隐私政策 →' : 'Read Privacy Policy →'}</a></article>
+    <article class="trust-card"><h2>${zh ? '使用条款' : 'Terms of Service'}</h2><p>${zh ? '查看商家使用 Appointment Lite 时适用的服务范围、责任、第三方服务和终止规则。' : 'Review the service scope, merchant responsibilities, third-party services, and termination rules that apply when using Appointment Lite.'}</p><a href="/${locale}/terms">${zh ? '阅读服务条款 →' : 'Read Terms of Service →'}</a></article>
+    <article class="trust-card"><h2>${zh ? '帮助与支持' : 'Help and support'}</h2><p>${zh ? 'FAQ 覆盖安装、预约、员工、Location、订单、Google Calendar、通知以及数据删除等常见问题。' : 'The FAQ covers installation, bookings, staff, Locations, orders, Google Calendar, notifications, data deletion, and other common topics.'}</p><a href="/${locale}/faq">${zh ? '打开 FAQ →' : 'Open FAQ →'}</a></article>
+  </section>
+
+  <section class="home-support"><div><p class="eyebrow">${zh ? '支持' : 'Support'}</p><h2>${zh ? '需要帮助？' : 'Need help?'}</h2><p>${zh ? '如遇到安装、预约、员工、订单、Google Calendar 或通知问题，请联系我们。' : 'Contact us for help with installation, bookings, staff, orders, Google Calendar, or notifications.'}</p></div><div>${support}</div></section>
+</main>`;
+}
+
+const termsZh = `
+<main class="legal-main">
+  <div class="legal-hero">
+    <p class="eyebrow">Appointment Lite · Legal</p>
+    <h1>服务条款</h1>
+    <p class="lead">本条款说明 SHOPLINE 商家安装和使用 Appointment Lite 时适用的基本规则、服务范围和责任。</p>
+    <div class="meta"><span><strong>生效日期</strong>：2026 年 8 月 27 日</span><span><strong>最后更新</strong>：2026 年 8 月 27 日</span></div>
+  </div>
+  <article class="legal-card privacy-card terms-card">
+    <p>欢迎使用 Appointment Lite。安装、授权、访问或使用本应用，即表示您代表相关 SHOPLINE 店铺同意遵守本服务条款。如果您无权代表该店铺接受本条款，请勿安装或使用 Appointment Lite。</p>
+    <section><h2>1. 服务范围</h2><p>Appointment Lite 是面向 SHOPLINE 商家的预约和服务管理应用，可提供商品预约、独立预约、付费预约、购买后预约、员工排班、服务地点、邮件通知、Google Calendar 同步及店铺前台预约体验等功能。具体可用功能可能随版本、商家配置和第三方平台能力而变化。</p></section>
+    <section><h2>2. SHOPLINE 安装与授权</h2><p>商家需要通过 SHOPLINE 的授权流程安装应用，并授予 Appointment Lite 提供所选功能所必需的权限。商家应确保其拥有管理相关 SHOPLINE 店铺和授权应用的合法权限。</p><p>如果店铺授权被撤销、店铺被冻结、关闭或应用被卸载，部分或全部功能可能立即停止工作。</p></section>
+    <section><h2>3. 商家责任</h2><p>商家负责其服务内容、价格、预约规则、员工排班、地点、客户沟通以及实际履约。商家还应确保其通过 Appointment Lite 收集和使用客户信息的方式符合适用法律及其自己的隐私政策。</p><p>商家应维护准确的服务和排班配置，并及时处理因订单、付款、员工或履约变化产生的预约问题。</p></section>
+    <section><h2>4. 客户预约</h2><p>Appointment Lite 根据商家配置帮助客户选择服务、日期、时间、员工和地点。预约是否最终履约，以及因商家服务产生的取消、退款、改期或争议，应由商家按照其业务政策和适用法律处理。</p></section>
+    <section><h2>5. SHOPLINE 商品、订单与付款</h2><p>Appointment Lite 可以根据商家配置将预约与 SHOPLINE 商品和订单关联，并读取授权范围内的订单及付款状态，用于判断预约资格或展示订单生命周期。</p><p>除非未来明确提供并获得相应授权，Appointment Lite 不会通过正常预约功能修改、取消、退款或删除 SHOPLINE 订单。SHOPLINE 的结账、支付、退款及订单规则由 SHOPLINE 和商家各自适用的条款控制。</p></section>
+    <section><h2>6. Google Calendar</h2><p>商家可以选择连接 Business Google Calendar。只有在商家主动完成 Google OAuth 授权后，Appointment Lite 才会使用相关 Google Calendar 权限，以读取账号拥有的日历列表，并在商家选定的自有日历中创建、更新或删除预约事件。</p><p>商家可以随时在 Appointment Lite 中断开连接，或通过 Google Account 撤销授权。Google 服务本身受 Google 的条款和政策约束。</p></section>
+    <section><h2>7. 邮件通知</h2><p>如果商家启用通知，Appointment Lite 可以发送预约确认、变更、取消、提醒、员工通知或购买后预约链接等事务性邮件。商家应确保其使用通知功能符合适用的电子通信和营销法律。</p></section>
+    <section><h2>8. 第三方服务</h2><p>Appointment Lite 依赖 SHOPLINE、云托管、数据库、邮件服务、Google Calendar 等第三方服务。第三方服务中断、接口变更、账户限制或政策变化可能影响部分功能。我们会在合理范围内维护兼容性，但无法保证第三方服务始终可用。</p></section>
+    <section><h2>9. 可接受使用</h2><p>您不得利用 Appointment Lite 从事违法、欺诈、侵权、骚扰、未经授权访问、恶意自动化、破坏平台安全或其他可能损害客户、SHOPLINE、第三方或本应用正常运行的活动。</p></section>
+    <section><h2>10. 服务可用性与变更</h2><p>我们可能为了安全、稳定性、合规、第三方接口变化或产品改进而更新、限制、暂停或调整部分功能。我们会尽合理努力保持服务可用，但不保证应用在任何时间均无中断或无错误。</p></section>
+    <section><h2>11. 费用与订阅</h2><p>如 Appointment Lite 提供付费套餐、试用或订阅，其价格、计费周期、试用和取消规则以 SHOPLINE App Store、应用内订阅页面或购买时展示的信息为准。SHOPLINE 可能负责相应的应用计费和订阅处理。</p></section>
+    <section><h2>12. 数据与隐私</h2><p>我们如何收集、使用、存储和处理数据，以 Appointment Lite 的<a href="/zh-cn/privacy">隐私政策</a>为准。商家仍需为其自身对客户数据的处理和隐私告知承担责任。</p></section>
+    <section><h2>13. 知识产权</h2><p>Appointment Lite 的软件、界面、品牌、文档和相关内容中的知识产权归其合法权利人所有。除正常使用应用所必需的有限权利外，本条款不向商家转让任何知识产权。</p></section>
+    <section><h2>14. 免责声明与责任限制</h2><p>在适用法律允许的最大范围内，Appointment Lite 按“现状”和“可用”基础提供。我们不对第三方平台故障、商家错误配置、客户提供错误信息、网络中断或超出我们合理控制范围的事件承担保证责任。</p><p>任何责任限制均受适用法律约束，本条款不会排除法律不得排除的责任。</p></section>
+    <section><h2>15. 暂停、卸载与终止</h2><p>商家可以通过 SHOPLINE 卸载 Appointment Lite。我们也可能在存在安全风险、违法或严重违反本条款的情况下限制或暂停访问。卸载或终止后的数据处理按照隐私政策执行。</p></section>
+    <section><h2>16. 条款更新与联系我们</h2><p>我们可能随产品、法律或第三方平台变化更新本条款。更新版本将在本页面公布并标注最后更新日期。继续使用更新后的 Appointment Lite 可能构成对更新条款的接受，但适用法律另有要求的除外。</p><div class="contact-box">${contactDetails('zh-cn')}</div></section>
+  </article>
+</main>`;
+
+const termsEn = `
+<main class="legal-main">
+  <div class="legal-hero">
+    <p class="eyebrow">Appointment Lite · Legal</p>
+    <h1>Terms of Service</h1>
+    <p class="lead">These Terms describe the basic rules, service scope, and responsibilities that apply when a SHOPLINE merchant installs and uses Appointment Lite.</p>
+    <div class="meta"><span><strong>Effective date</strong>: August 27, 2026</span><span><strong>Last updated</strong>: August 27, 2026</span></div>
+  </div>
+  <article class="legal-card privacy-card terms-card">
+    <p>Welcome to Appointment Lite. By installing, authorizing, accessing, or using the App, you agree to these Terms of Service on behalf of the applicable SHOPLINE store. If you are not authorized to accept these Terms for that store, do not install or use Appointment Lite.</p>
+    <section><h2>1. Service Scope</h2><p>Appointment Lite is a scheduling and service management application for SHOPLINE merchants. Features may include product appointments, standalone bookings, paid bookings, post-purchase scheduling, staff availability, service locations, email notifications, Google Calendar synchronization, and storefront booking experiences. Available functionality may change based on product versions, merchant configuration, and third-party platform capabilities.</p></section>
+    <section><h2>2. SHOPLINE Installation and Authorization</h2><p>Merchants install Appointment Lite through SHOPLINE and grant permissions required for the selected functionality. You are responsible for ensuring that you are authorized to manage the applicable SHOPLINE store and authorize applications on its behalf.</p><p>If store authorization is revoked, the store is frozen or closed, or the App is uninstalled, some or all functionality may stop immediately.</p></section>
+    <section><h2>3. Merchant Responsibilities</h2><p>Merchants are responsible for their services, pricing, appointment rules, staff schedules, locations, customer communications, and actual service fulfillment. Merchants are also responsible for ensuring that their collection and use of customer information through Appointment Lite complies with applicable law and their own privacy notices.</p><p>Merchants should maintain accurate service and availability settings and address booking issues caused by changes to orders, payments, staff availability, or fulfillment.</p></section>
+    <section><h2>4. Customer Bookings</h2><p>Appointment Lite helps customers select services, dates, times, staff, and locations according to merchant configuration. Actual fulfillment and any cancellation, refund, rescheduling, or service dispute remain the merchant responsibility under its business policies and applicable law.</p></section>
+    <section><h2>5. SHOPLINE Products, Orders, and Payments</h2><p>Appointment Lite may associate bookings with SHOPLINE products and orders and may read authorized order and payment status information to determine booking eligibility or display lifecycle progress.</p><p>Unless a future feature expressly provides otherwise with appropriate authorization, normal Appointment Lite booking functionality does not modify, cancel, refund, or delete SHOPLINE orders. Checkout, payment, refund, and order handling remain subject to SHOPLINE and merchant terms that apply to those activities.</p></section>
+    <section><h2>6. Google Calendar</h2><p>Merchants may choose to connect a Business Google Calendar. Appointment Lite uses Google Calendar permissions only after the merchant explicitly completes Google OAuth authorization, in order to read the calendars owned by the account and create, update, or delete appointment events on the selected owned calendar.</p><p>Merchants may disconnect the integration in Appointment Lite or revoke authorization through their Google Account. Google services are also subject to Google terms and policies.</p></section>
+    <section><h2>7. Email Notifications</h2><p>When enabled by the merchant, Appointment Lite may send transactional booking confirmations, changes, cancellations, reminders, staff notifications, or private post-purchase scheduling links. Merchants are responsible for using notification features in accordance with applicable electronic communications and marketing laws.</p></section>
+    <section><h2>8. Third-Party Services</h2><p>Appointment Lite relies on third-party services such as SHOPLINE, cloud hosting, databases, email delivery providers, and Google Calendar. Outages, API changes, account restrictions, or policy changes at those providers may affect functionality. We will make reasonable efforts to maintain compatibility but cannot guarantee uninterrupted availability of third-party services.</p></section>
+    <section><h2>9. Acceptable Use</h2><p>You may not use Appointment Lite for unlawful, fraudulent, infringing, harassing, unauthorized-access, malicious automation, security-disrupting, or other activities that could harm customers, SHOPLINE, third parties, or the normal operation of the App.</p></section>
+    <section><h2>10. Availability and Changes</h2><p>We may update, limit, suspend, or adjust functionality for security, reliability, compliance, third-party API changes, or product improvement. We will make reasonable efforts to keep the service available but do not guarantee that Appointment Lite will be uninterrupted or error-free at all times.</p></section>
+    <section><h2>11. Fees and Subscriptions</h2><p>If Appointment Lite offers paid plans, trials, or subscriptions, pricing, billing periods, trial conditions, and cancellation terms are those presented in the SHOPLINE App Store, the App subscription interface, or at the time of purchase. SHOPLINE may process applicable app billing and subscription transactions.</p></section>
+    <section><h2>12. Data and Privacy</h2><p>Our collection, use, storage, and processing of information is described in the Appointment Lite <a href="/en/privacy">Privacy Policy</a>. Merchants remain responsible for their own customer data processing and privacy disclosures.</p></section>
+    <section><h2>13. Intellectual Property</h2><p>Intellectual property rights in the Appointment Lite software, interface, branding, documentation, and related content remain with their lawful owners. These Terms provide only the limited rights necessary to use the App and do not transfer intellectual property ownership to merchants.</p></section>
+    <section><h2>14. Disclaimers and Limitation of Liability</h2><p>To the maximum extent permitted by applicable law, Appointment Lite is provided on an “as is” and “as available” basis. We do not warrant against failures caused by third-party platforms, merchant misconfiguration, inaccurate customer information, network outages, or events outside our reasonable control.</p><p>Any limitation of liability remains subject to applicable law, and these Terms do not exclude liability that cannot legally be excluded.</p></section>
+    <section><h2>15. Suspension, Uninstallation, and Termination</h2><p>Merchants may uninstall Appointment Lite through SHOPLINE. We may also restrict or suspend access where necessary to address security risks, unlawful use, or material violations of these Terms. Data handling after uninstallation or termination is governed by the Privacy Policy.</p></section>
+    <section><h2>16. Changes to These Terms and Contact</h2><p>We may update these Terms as the product, law, or third-party platforms change. Updated Terms will be published on this page with a revised Last Updated date. Continued use of Appointment Lite after an update may constitute acceptance where permitted by applicable law.</p><div class="contact-box">${contactDetails('en')}</div></section>
+  </article>
+</main>`;
+
 function faqBody(locale) {
   const zh = locale === 'zh-cn';
   const groups = zh ? faqZh : faqEn;
@@ -322,6 +445,17 @@ function faqBody(locale) {
 </main>`;
 }
 
+export function homePage(locale = 'en') {
+  const normalized = locale === 'zh-cn' ? 'zh-cn' : 'en';
+  return legalShell({
+    locale: normalized,
+    type: 'home',
+    title: normalized === 'zh-cn' ? 'SHOPLINE 预约与服务管理' : 'Scheduling for SHOPLINE stores',
+    lead: normalized === 'zh-cn' ? 'Appointment Lite 将 SHOPLINE 商品、订单与服务预约连接起来，并提供员工、地点、通知和 Google Calendar 管理。' : 'Appointment Lite connects SHOPLINE products and orders with service scheduling, staff, locations, notifications, and Google Calendar.',
+    body: homeBody(normalized)
+  });
+}
+
 export function privacyPage(locale = 'en') {
   const normalized = locale === 'zh-cn' ? 'zh-cn' : 'en';
   return legalShell({
@@ -330,6 +464,17 @@ export function privacyPage(locale = 'en') {
     title: normalized === 'zh-cn' ? '隐私政策' : 'Privacy Policy',
     lead: normalized === 'zh-cn' ? 'Appointment Lite 隐私政策与数据处理说明。' : 'Appointment Lite privacy policy and data processing information.',
     body: normalized === 'zh-cn' ? privacyZh : privacyEn
+  });
+}
+
+export function termsPage(locale = 'en') {
+  const normalized = locale === 'zh-cn' ? 'zh-cn' : 'en';
+  return legalShell({
+    locale: normalized,
+    type: 'terms',
+    title: normalized === 'zh-cn' ? '服务条款' : 'Terms of Service',
+    lead: normalized === 'zh-cn' ? 'Appointment Lite 服务范围、商家责任与第三方集成使用条款。' : 'Appointment Lite service scope, merchant responsibilities, and third-party integration terms.',
+    body: normalized === 'zh-cn' ? termsZh : termsEn
   });
 }
 
