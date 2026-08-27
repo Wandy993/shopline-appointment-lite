@@ -129,6 +129,7 @@ const bookingSchema = new mongoose.Schema({
     failureReason: { type: String, default: '', maxlength: 500 }
   },
   status: { type: String, enum: ['pending_payment', 'confirmed', 'cancelled', 'completed', 'no_show', 'payment_expired', 'payment_conflict'], default: 'confirmed', index: true },
+  adminDeletedAt: { type: Date, default: null, index: true },
   cancelledAt: Date,
   completedAt: Date,
   noShowAt: Date,

@@ -1,8 +1,20 @@
 # Appointment Lite
 
-> v0.6.5 — Order Lifecycle + SHOPLINE Locations
+> v0.6.6 — Booking Admin UX Polish
 
-Appointment Lite v0.6.5 makes commerce bookings operationally visible from the SHOPLINE order stage onward and lets services reuse locations managed in SHOPLINE Admin instead of maintaining duplicate addresses.
+Appointment Lite v0.6.6 polishes the merchant-facing booking workflow on top of v0.6.5, with a cleaner purchase-first explanation, a native-looking Appointment Lite location picker, newest-record-first ordering, and safe record deletion.
+
+## v0.6.6 Booking Admin UX Polish
+
+- Replaces the oversized purchase-first scheduling explanation with a compact information card that matches the service editor hierarchy.
+- Replaces the browser-native SHOPLINE location `<select>` with an Appointment Lite custom picker, including address context and a default-location badge.
+- Reorders Booking record columns so **Date & time** and **Assignment** appear before **Payment** and **Appointment** status.
+- Sorts order-backed records by the SHOPLINE order creation timestamp when available, falling back to the original Appointment Lite record creation timestamp instead of mutable `updatedAt`.
+- Adds a destructive **Delete** action to booking records with Appointment Lite's custom confirmation dialog.
+- Uses soft deletion for booking records so operational history is not physically removed from MongoDB; active appointments release capacity and Google Calendar mappings are cleaned up.
+- Allows merchants to remove order-lifecycle rows while leaving the SHOPLINE order itself untouched and revoking remaining private scheduling access for that removed lifecycle record.
+
+See [Booking admin UX polish](docs/V066_BOOKING_ADMIN_UX_POLISH.md).
 
 ## v0.6.5 Order Lifecycle + SHOPLINE Locations
 

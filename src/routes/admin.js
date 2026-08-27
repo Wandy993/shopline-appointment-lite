@@ -11,7 +11,7 @@ import { validateAdminBookingInput, validateBookingStatus, validateRuleInput, va
 import { requireAdmin, requireCsrf } from '../middleware/auth.js';
 import { ensureBookingCommerceWebhooks, reauthorizationUrlForShop, shoplineGet, shoplineLocationAccessStatus, shoplineOrderAccessStatus, syncShopMetadata } from '../services/shopline.js';
 import { getProductVariants, syncProductCatalog } from '../services/product-catalog.js';
-import { cancelBookingByMerchant, setBookingStatusByMerchant, updateBookingByMerchant } from '../services/bookings.js';
+import { cancelBookingByMerchant, deleteBookingByMerchant, setBookingStatusByMerchant, updateBookingByMerchant } from '../services/bookings.js';
 import { emailStatus, sendTestEmail } from '../services/email.js';
 import { zonedNow } from '../lib/slots.js';
 import { normalizeEmailSettings, validateEmailSettings, validateTestEmailRecipient } from '../lib/email-settings.js';
@@ -99,6 +99,7 @@ adminRouter.get('/bootstrap', async (req, res) => {
   const storeNow = zonedNow(req.shop.timezone || 'UTC');
   const upcomingFilter = {
     shopId: req.shop._id,
+    adminDeletedAt: null,
     status: 'confirmed',
     $or: [
       { bookingMode: 'all_day', date: { $gte: storeNow.date } },
@@ -110,7 +111,7 @@ adminRouter.get('/bootstrap', async (req, res) => {
   const [ruleCount, activeRuleCount, bookingCount, upcomingCount, upcomingCandidates, firstActiveRule, commerceRuleCount] = await Promise.all([
     AppointmentRule.countDocuments({ shopId: req.shop._id }),
     AppointmentRule.countDocuments({ shopId: req.shop._id, enabled: true }),
-    Booking.countDocuments({ shopId: req.shop._id }),
+    Booking.countDocuments({ shopId: req.shop._id, adminDeletedAt: null }),
     Booking.countDocuments(upcomingFilter),
     Booking.find(upcomingFilter)
       .sort({ date: 1, time: 1 }).limit(100).select('productTitle date time bookingMode occurrences timezone location staff customer.name').lean(),
@@ -359,6 +360,12 @@ function appointmentStatusForBooking(booking = {}) {
   return booking.status || 'scheduled';
 }
 
+function bookingRecordTimestamp(record = {}) {
+  const value = record.recordSortAt || record.createdAt;
+  const parsed = value ? new Date(value).getTime() : 0;
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 function orderLifecycleRecord(entitlement, rule, handle) {
   const eligible = Math.max(1, Number(entitlement.eligibleQuantity || 1));
   const used = Math.max(0, Number(entitlement.usedBookings || 0));
@@ -384,6 +391,7 @@ function orderLifecycleRecord(entitlement, rule, handle) {
     schedulingProgress: { eligible, used, remaining },
     notificationSentAt: entitlement.notificationSentAt || null,
     orderStatus: entitlement.orderStatus || '',
+    recordSortAt: entitlement.orderCreatedAt || entitlement.createdAt,
     createdAt: entitlement.createdAt, updatedAt: entitlement.updatedAt,
     shoplineOrder: orderId ? { id: orderId, name: entitlement.orderName || orderId, adminUrl: `https://${handle}.myshopline.com/admin/orders/${encodeURIComponent(orderId)}` } : null
   };
@@ -502,7 +510,7 @@ adminRouter.post('/commerce/reconcile', async (req, res, next) => {
 });
 
 adminRouter.get('/bookings', async (req, res) => {
-  const filter = { shopId: req.shop._id };
+  const filter = { shopId: req.shop._id, adminDeletedAt: null };
   if (req.query.status && ['pending_payment', 'confirmed', 'cancelled', 'completed', 'no_show', 'payment_expired', 'payment_conflict'].includes(req.query.status)) filter.status = req.query.status;
   if (req.query.ruleId) filter.ruleId = req.query.ruleId;
   if (req.query.staffId) filter.staffId = req.query.staffId;
@@ -518,21 +526,29 @@ adminRouter.get('/bookings', async (req, res) => {
   const ruleIds = [...new Set(entitlements.map(item => String(item.ruleId || '')).filter(Boolean))];
   const rules = ruleIds.length ? await AppointmentRule.find({ _id: { $in: ruleIds }, shopId: req.shop._id }).select('_id serviceTitle productTitle productId location').lean() : [];
   const ruleMap = new Map(rules.map(rule => [String(rule._id), rule]));
-  const bookingRows = bookings.map(booking => ({
-    ...withBookingHistory(booking),
-    recordType: 'booking',
-    paymentStatus: paymentStatusForBooking(booking),
-    appointmentStatus: appointmentStatusForBooking(booking),
-    shoplineOrder: orderLinkForBooking(booking, req.shop.handle)
-  }));
+  const entitlementMap = new Map(entitlements.map(item => [String(item._id), item]));
+  const bookingRows = bookings.map(booking => {
+    const entitlement = booking.postPurchase?.entitlementId ? entitlementMap.get(String(booking.postPurchase.entitlementId)) : null;
+    return {
+      ...withBookingHistory(booking),
+      recordType: 'booking',
+      recordSortAt: entitlement?.orderCreatedAt || entitlement?.createdAt || booking.createdAt,
+      paymentStatus: paymentStatusForBooking(booking),
+      appointmentStatus: appointmentStatusForBooking(booking),
+      shoplineOrder: orderLinkForBooking(booking, req.shop.handle)
+    };
+  });
   const lifecycleRows = entitlements
     .filter(item => {
+      if (item.adminDeletedAt) return false;
       const eligible = Math.max(1, Number(item.eligibleQuantity || 1));
       const used = Math.max(0, Number(item.usedBookings || 0));
       return item.status === 'pending_payment' || item.status === 'revoked' || used < eligible;
     })
     .map(item => orderLifecycleRecord(item, ruleMap.get(String(item.ruleId)), req.shop.handle));
-  const rows = [...bookingRows, ...lifecycleRows].sort((a, b) => String(b.updatedAt || b.createdAt || '').localeCompare(String(a.updatedAt || a.createdAt || ''))).slice(0, 1200);
+  const rows = [...bookingRows, ...lifecycleRows]
+    .sort((a, b) => bookingRecordTimestamp(b) - bookingRecordTimestamp(a))
+    .slice(0, 1200);
   res.json({ bookings: rows });
 });
 
@@ -590,6 +606,33 @@ adminRouter.put('/bookings/:id', async (req, res, next) => {
 adminRouter.post('/bookings/:id/cancel', async (req, res, next) => {
   try {
     const result = await cancelBookingByMerchant({ shopObjectId: req.shop._id, bookingId: req.params.id });
+    res.json(result);
+  } catch (error) { next(error); }
+});
+
+adminRouter.delete('/bookings/lifecycle/:id', async (req, res, next) => {
+  try {
+    const now = new Date();
+    const entitlement = await PostPurchaseEntitlement.findOneAndUpdate(
+      { _id: req.params.id, shopId: req.shop._id, adminDeletedAt: null },
+      {
+        $set: {
+          status: 'revoked',
+          adminDeletedAt: now,
+          revokedAt: now,
+          revocationReason: 'Removed by merchant from booking records.'
+        }
+      },
+      { new: true }
+    );
+    if (!entitlement) return res.status(404).json({ error: 'NOT_FOUND', message: 'Order scheduling record not found.' });
+    res.json({ deleted: true });
+  } catch (error) { next(error); }
+});
+
+adminRouter.delete('/bookings/:id', async (req, res, next) => {
+  try {
+    const result = await deleteBookingByMerchant({ shopObjectId: req.shop._id, bookingId: req.params.id });
     res.json(result);
   } catch (error) { next(error); }
 });

@@ -29,6 +29,13 @@ function orderNameOf(payload = {}) {
   return cleanText(payload.name || payload.order_number || payload.orderNumber, 100);
 }
 
+function orderCreatedAtOf(payload = {}) {
+  const raw = payload.created_at || payload.createdAt || payload.order_created_at || payload.orderCreatedAt;
+  if (!raw) return undefined;
+  const value = new Date(raw);
+  return Number.isNaN(value.getTime()) ? undefined : value;
+}
+
 function orderStatusOf(payload = {}) {
   return cleanText(payload.status || (payload.cancelled_at ? 'cancelled' : ''), 40).toLowerCase();
 }
@@ -169,6 +176,7 @@ export async function upsertPostPurchaseEntitlementsFromOrder({ shop, payload, p
   const shippingAddress = orderShippingAddress(payload);
   const financialStatus = financialStatusOf(payload);
   const orderStatus = orderStatusOf(payload);
+  const orderCreatedAt = orderCreatedAtOf(payload);
 
   for (const rule of rules) {
     const eligibleQuantity = Math.max(1, Number(quantities.get(String(rule.productId)) || 1));
@@ -180,6 +188,7 @@ export async function upsertPostPurchaseEntitlementsFromOrder({ shop, payload, p
           orderName: orderNameOf(payload), eligibleQuantity, customer, shippingAddress,
           financialStatus: paid ? 'paid' : financialStatus,
           orderStatus,
+          ...(orderCreatedAt ? { orderCreatedAt } : {}),
           lastWebhookId: cleanText(webhookId, 120)
         }
       },

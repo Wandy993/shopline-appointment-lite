@@ -487,7 +487,7 @@ const staffAvatarPresets = ['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunse
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
 function staffPresetImage(preset) {
   const file = staffAvatarFiles[preset] || staffAvatarFiles.aurora;
-  return `<img src="/assets/staff/${file}?v=0.6.5" alt="" loading="lazy" decoding="async">`;
+  return `<img src="/assets/staff/${file}?v=0.6.6" alt="" loading="lazy" decoding="async">`;
 }
 let staffAvatarDraft = { kind: 'preset', value: 'aurora' };
 
@@ -1279,18 +1279,66 @@ function setBookingSource(source = 'product') {
 }
 
 
+function locationAddress(item = {}) {
+  return [item.address1, item.address2, item.city, item.province, item.zip, item.country].filter(Boolean).join(', ');
+}
+
 function locationLabel(item = {}) {
-  const address = [item.address1, item.address2, item.city, item.province, item.zip, item.country].filter(Boolean).join(', ');
+  const address = locationAddress(item);
   return [item.name, address].filter(Boolean).join(' · ');
 }
 
+function closeLocationPicker() {
+  const menu = $('#shoplineLocationMenu');
+  const button = $('#shoplineLocationPickerButton');
+  if (!menu || !button) return;
+  menu.classList.add('hidden');
+  button.setAttribute('aria-expanded', 'false');
+}
+
+function setLocationPickerValue(selectedId = '') {
+  const input = $('#shoplineLocationId');
+  const label = $('#shoplineLocationPickerLabel');
+  const meta = $('#shoplineLocationPickerMeta');
+  const button = $('#shoplineLocationPickerButton');
+  if (!input || !label || !meta || !button) return;
+  input.value = selectedId || '';
+  const selected = state.locations.find(item => String(item.id) === String(selectedId));
+  const missing = selectedId && !selected;
+  if (selected) {
+    label.textContent = selected.name || t('SHOPLINE location');
+    const address = locationAddress(selected);
+    meta.textContent = address || (selected.isDefault ? t('Default location') : t('Managed in SHOPLINE Admin'));
+    button.classList.add('has-value');
+  } else if (missing) {
+    label.textContent = t('Location removed from SHOPLINE');
+    meta.textContent = t('Refresh locations and choose another one.');
+    button.classList.add('has-value', 'missing-value');
+  } else {
+    label.textContent = t('Choose a SHOPLINE location');
+    meta.textContent = t('Select a location managed in SHOPLINE Admin.');
+    button.classList.remove('has-value', 'missing-value');
+  }
+  $$('#shoplineLocationOptions [data-location-id]').forEach(option => {
+    const active = String(option.dataset.locationId || '') === String(selectedId || '');
+    option.classList.toggle('selected', active);
+    option.setAttribute('aria-selected', String(active));
+  });
+}
+
 function renderLocationOptions(selectedId = $('#shoplineLocationId')?.value || '') {
-  const select = $('#shoplineLocationId');
-  if (!select) return;
-  const options = state.locations.map(item => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}${item.isDefault ? ` · ${t('Default')}` : ''}${locationLabel(item).replace(item.name, '') ? ` — ${escapeHtml(locationLabel(item).replace(`${item.name} · `, ''))}` : ''}</option>`).join('');
-  const missing = selectedId && !state.locations.some(item => item.id === selectedId);
-  select.innerHTML = `<option value="">${t('Choose a SHOPLINE location')}</option>${missing ? `<option value="${escapeHtml(selectedId)}">${t('Location removed from SHOPLINE')}</option>` : ''}${options}`;
-  select.value = selectedId || '';
+  const root = $('#shoplineLocationOptions');
+  if (!root) return;
+  const options = state.locations.map(item => {
+    const address = locationAddress(item);
+    return `<button type="button" class="location-picker-option" data-location-id="${escapeHtml(item.id)}" role="option"><span><strong>${escapeHtml(item.name || t('SHOPLINE location'))}</strong><small>${escapeHtml(address || t('Managed in SHOPLINE Admin'))}</small></span>${item.isDefault ? `<em>${escapeHtml(t('Default'))}</em>` : ''}</button>`;
+  }).join('');
+  root.innerHTML = options || `<div class="location-picker-empty"><strong>${t('No SHOPLINE locations found')}</strong><span>${t('Create a location in SHOPLINE Admin, then refresh this list.')}</span></div>`;
+  root.querySelectorAll('[data-location-id]').forEach(option => option.addEventListener('click', () => {
+    setLocationPickerValue(option.dataset.locationId || '');
+    closeLocationPicker();
+  }));
+  setLocationPickerValue(selectedId || '');
 }
 
 async function loadLocations({ force = false, selectedId = '' } = {}) {
@@ -1784,6 +1832,24 @@ async function markBookingStatus(booking, status) {
   );
 }
 
+function deleteBookingRecord(booking) {
+  if (!booking) return;
+  const lifecycle = booking.recordType === 'order_lifecycle';
+  confirmAction(
+    lifecycle ? 'Delete this order scheduling record?' : 'Delete this booking record?',
+    lifecycle
+      ? 'This removes the order-linked scheduling record from Appointment Lite and revokes any remaining private scheduling access. The SHOPLINE order is not deleted.'
+      : 'This removes the record from Appointment Lite. If the appointment is still active, its time will be released and calendar events will be removed. The SHOPLINE order is not deleted.',
+    'Delete record',
+    async () => {
+      const endpoint = lifecycle ? `/bookings/lifecycle/${booking._id}` : `/bookings/${booking._id}`;
+      await api(endpoint, { method: 'DELETE' });
+      toast(t('Booking record deleted.'));
+      await Promise.all([loadBookings(), loadBootstrap()]);
+    }
+  );
+}
+
 function bindBookingRows() {
   $$('[data-flow-booking]').forEach(button => button.addEventListener('click', () => openBookingFlow(state.bookings.find(booking => booking._id === button.dataset.flowBooking))));
   $$('[data-edit-booking]').forEach(button => button.addEventListener('click', () => openBooking(state.bookings.find(booking => booking._id === button.dataset.editBooking))));
@@ -1794,6 +1860,7 @@ function bindBookingRows() {
     toast(t(payload.notification?.skipped ? 'Booking cancelled. Email delivery is not configured.' : payload.notification?.failed ? 'Booking cancelled, but the customer email failed.' : 'Booking cancelled and customer email sent.'), payload.notification?.failed ? 'error' : 'success');
     await Promise.all([loadBookings(), loadBootstrap()]);
   })));
+  $$('[data-delete-booking]').forEach(button => button.addEventListener('click', () => deleteBookingRecord(state.bookings.find(booking => booking._id === button.dataset.deleteBooking))));
 }
 
 function renderBookingList(bookings) {
@@ -1813,10 +1880,11 @@ function renderBookingList(bookings) {
     const appointmentStatus = booking.appointmentStatus || booking.status;
     const progress = booking.schedulingProgress;
     const appointmentMeta = progress ? `<small>${escapeHtml(`${progress.used}/${progress.eligible} ${t('appointments scheduled')}`)}</small>` : '';
+    const deleteAction = `<button class="small booking-action delete" data-delete-booking="${booking._id}">${t('Delete')}</button>`;
     const actions = isLifecycle
-      ? `${booking.shoplineOrder?.adminUrl ? `<a class="small booking-action activity button-link" href="${escapeHtml(booking.shoplineOrder.adminUrl)}" target="_blank" rel="noopener noreferrer">${t('Open order')} ↗</a>` : ''}`
-      : `<button class="small booking-action activity" data-flow-booking="${booking._id}">${t('Activity')}</button>${booking.status === 'confirmed' ? `${canDirectEdit ? `<button class="small booking-action edit" data-edit-booking="${booking._id}">${t('Edit')}</button>` : ''}<button class="small booking-action complete" data-complete="${booking._id}">${t('Mark complete')}</button><button class="small booking-action no-show" data-no-show="${booking._id}">${t('No-show')}</button><button class="small booking-action cancel" data-cancel="${booking._id}">${t('Cancel')}</button>` : ''}`;
-    return `<div class="booking-row ${isLifecycle ? 'order-lifecycle-row' : ''}"><div class="booking-primary"><strong>${escapeHtml(booking.productTitle)}</strong><span>${escapeHtml(booking.customer?.name || t('Customer'))}${booking.customer?.email ? ` · ${escapeHtml(booking.customer.email)}` : ''}</span>${isLifecycle && booking.notificationSentAt ? `<small>${t('Private link sent')}</small>` : ''}</div><div class="booking-order-column">${orderCell}</div><div class="booking-status-cell"><span class="status-badge payment-${escapeHtml(paymentStatus)}">${escapeHtml(paymentStatusLabel(paymentStatus))}</span></div><div class="booking-status-cell"><span class="status-badge appointment-${escapeHtml(appointmentStatus)}">${escapeHtml(appointmentStatusLabel(appointmentStatus))}</span>${appointmentMeta}</div><div class="booking-cell"><strong>${escapeHtml(when.primary)}</strong><span>${escapeHtml(when.secondary)}</span></div><div class="booking-cell"><strong>${escapeHtml(booking.staff || (isLifecycle ? t('Not scheduled yet') : t('Any staff')))}</strong><span>${escapeHtml(booking.location || t('No location'))}</span></div><div class="row-actions">${actions}</div></div>`;
+      ? `${booking.shoplineOrder?.adminUrl ? `<a class="small booking-action activity button-link" href="${escapeHtml(booking.shoplineOrder.adminUrl)}" target="_blank" rel="noopener noreferrer">${t('Open order')} ↗</a>` : ''}${deleteAction}`
+      : `<button class="small booking-action activity" data-flow-booking="${booking._id}">${t('Activity')}</button>${booking.status === 'confirmed' ? `${canDirectEdit ? `<button class="small booking-action edit" data-edit-booking="${booking._id}">${t('Edit')}</button>` : ''}<button class="small booking-action complete" data-complete="${booking._id}">${t('Mark complete')}</button><button class="small booking-action no-show" data-no-show="${booking._id}">${t('No-show')}</button><button class="small booking-action cancel" data-cancel="${booking._id}">${t('Cancel')}</button>` : ''}${deleteAction}`;
+    return `<div class="booking-row ${isLifecycle ? 'order-lifecycle-row' : ''}"><div class="booking-primary"><strong>${escapeHtml(booking.productTitle)}</strong><span>${escapeHtml(booking.customer?.name || t('Customer'))}${booking.customer?.email ? ` · ${escapeHtml(booking.customer.email)}` : ''}</span>${isLifecycle && booking.notificationSentAt ? `<small>${t('Private link sent')}</small>` : ''}</div><div class="booking-order-column">${orderCell}</div><div class="booking-cell"><strong>${escapeHtml(when.primary)}</strong><span>${escapeHtml(when.secondary)}</span></div><div class="booking-cell"><strong>${escapeHtml(booking.staff || (isLifecycle ? t('Not scheduled yet') : t('Any staff')))}</strong><span>${escapeHtml(booking.location || t('No location'))}</span></div><div class="booking-status-cell"><span class="status-badge payment-${escapeHtml(paymentStatus)}">${escapeHtml(paymentStatusLabel(paymentStatus))}</span></div><div class="booking-status-cell"><span class="status-badge appointment-${escapeHtml(appointmentStatus)}">${escapeHtml(appointmentStatusLabel(appointmentStatus))}</span>${appointmentMeta}</div><div class="row-actions">${actions}</div></div>`;
   }).join('');
   bindBookingRows();
 }
@@ -2331,6 +2399,13 @@ function bind() {
   $('#bookingForm').addEventListener('submit', saveBooking);
   $('#addQuestion').addEventListener('click', () => addQuestion());
   $$('#locationModeGrid [data-location-mode]').forEach(button => button.addEventListener('click', () => setLocationMode(button.dataset.locationMode)));
+  $('#shoplineLocationPickerButton')?.addEventListener('click', () => {
+    const menu = $('#shoplineLocationMenu');
+    const button = $('#shoplineLocationPickerButton');
+    const opening = menu.classList.contains('hidden');
+    menu.classList.toggle('hidden', !opening);
+    button.setAttribute('aria-expanded', String(opening));
+  });
   $('#refreshLocations')?.addEventListener('click', () => loadLocations({ force: true, selectedId: $('#shoplineLocationId')?.value || '' }).catch(showError));
   $('#ruleNext').addEventListener('click', () => { if (validateRuleStep(state.ruleStep)) setRuleStep(state.ruleStep + 1); });
   $('#ruleBack').addEventListener('click', () => setRuleStep(state.ruleStep - 1));
@@ -2363,6 +2438,7 @@ function bind() {
       $('#languageMenu').classList.add('hidden');
       $('#languageButton').setAttribute('aria-expanded', 'false');
     }
+    if ($('#shoplineLocationPicker') && !$('#shoplineLocationPicker').contains(event.target)) closeLocationPicker();
   });
   $('#ruleSearch').addEventListener('input', renderRules);
   $('#newStaffButton')?.addEventListener('click', () => openStaff());
@@ -2480,4 +2556,24 @@ Object.assign(zh, {
   'Customers who pay for this product receive a private scheduling link for the included service.': '购买并支付该商品的客户，会收到用于预约随订单服务的私密链接。',
   'No booking button is shown before purchase. The buyer schedules from the private order email after payment.': '购买前不会显示预约按钮。付款成功后，买家通过订单邮件中的私密链接进行预约。',
   'Private order link': '订单私密链接'
+});
+
+
+Object.assign(zh, {
+  'AFTER PAYMENT': '付款后',
+  'Appointment Lite waits for a paid SHOPLINE order, then emails the buyer a private scheduling link.': 'Appointment Lite 会等待 SHOPLINE 订单付款成功，然后向买家发送私密预约链接。',
+  '1 purchased unit = 1 appointment': '每购买 1 件商品可预约 1 次',
+  'SHOPLINE order stays unchanged': '不会修改 SHOPLINE 订单',
+  'Select a location managed in SHOPLINE Admin.': '选择一个在 SHOPLINE 后台维护的地点。',
+  'Managed in SHOPLINE Admin': '由 SHOPLINE 后台维护',
+  'Default location': '默认地点',
+  'Refresh locations and choose another one.': '请刷新地点并重新选择。',
+  'No SHOPLINE locations found': '未找到 SHOPLINE 地点',
+  'Create a location in SHOPLINE Admin, then refresh this list.': '请先在 SHOPLINE 后台创建地点，然后刷新此列表。',
+  'Delete this order scheduling record?': '删除这条订单预约记录？',
+  'Delete this booking record?': '删除这条预约记录？',
+  'This removes the order-linked scheduling record from Appointment Lite and revokes any remaining private scheduling access. The SHOPLINE order is not deleted.': '删除后，这条订单关联预约记录会从 Appointment Lite 中移除，并停止剩余的私密预约权限；SHOPLINE 订单不会被删除。',
+  'This removes the record from Appointment Lite. If the appointment is still active, its time will be released and calendar events will be removed. The SHOPLINE order is not deleted.': '删除后，这条记录会从 Appointment Lite 中移除；如果预约仍然有效，将释放对应时段并移除日历事件。SHOPLINE 订单不会被删除。',
+  'Delete record': '删除记录',
+  'Booking record deleted.': '预约记录已删除。'
 });

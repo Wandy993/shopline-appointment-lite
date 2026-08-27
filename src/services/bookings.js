@@ -12,7 +12,7 @@ import {
 } from './email.js';
 import { findInstalledShop } from './shops.js';
 import { normalizedStaffAssignment, releaseStaffReservations, reserveStaffForBooking, staffAvailabilityForDate } from './staffing.js';
-import { queueBookingGoogleCalendarSync } from './calendar-sync.js';
+import { queueBookingGoogleCalendarSync, reconcileBookingGoogleCalendar } from './calendar-sync.js';
 import { buildPaidBookingCheckoutUrl } from '../lib/paid-checkout.js';
 import { attachBookingToPostPurchaseEntitlement, claimPostPurchaseEntitlement, getPostPurchaseEntitlement, releasePostPurchaseEntitlementClaim, restorePostPurchaseEntitlementForBooking } from './post-purchase.js';
 
@@ -651,6 +651,56 @@ export async function cancelBookingByMerchant({ shopObjectId, bookingId, Booking
     queueBookingGoogleCalendarSync(booking._id, 'merchant_cancelled');
   }
   return { booking, notification };
+}
+
+export async function deleteBookingByMerchant({
+  shopObjectId,
+  bookingId,
+  BookingModel = Booking,
+  ReservationModel,
+  StaffReservationModel,
+  notify = sendBookingCancelledNotification,
+  now = new Date()
+}) {
+  const current = await BookingModel.findOne({ _id: bookingId, shopId: shopObjectId, adminDeletedAt: null });
+  if (!current) throw Object.assign(new Error('Booking record not found.'), { code: 'NOT_FOUND' });
+
+  const active = ['confirmed', 'pending_payment'].includes(current.status);
+  const wasConfirmed = current.status === 'confirmed';
+  const update = { $set: { adminDeletedAt: now } };
+  if (active) {
+    update.$set.status = 'cancelled';
+    update.$set.cancelledAt = now;
+    update.$push = {
+      events: {
+        type: 'merchant_cancelled', actor: 'merchant', at: now,
+        from: bookingSnapshot(current), to: bookingSnapshot(current, { status: 'cancelled' })
+      }
+    };
+  }
+
+  const booking = await BookingModel.findOneAndUpdate(
+    { _id: bookingId, shopId: shopObjectId, adminDeletedAt: null },
+    update,
+    { new: true }
+  );
+  if (!booking) throw Object.assign(new Error('Booking record not found.'), { code: 'NOT_FOUND' });
+
+  await releaseReservations(reservationModelFor(BookingModel, ReservationModel), booking._id);
+  const activeStaffReservationModel = staffReservationModelFor(BookingModel, StaffReservationModel);
+  if (activeStaffReservationModel) await releaseStaffReservations({ bookingId: booking._id, StaffReservationModel: activeStaffReservationModel });
+
+  let notification = { skipped: true, reason: 'NOT_ACTIVE' };
+  if (wasConfirmed) {
+    notification = await Promise.resolve(notify(booking)).catch(error => ({ skipped: false, attempted: 1, failed: 1, reason: error.message }));
+    if (BookingModel === Booking && booking.staffId) Promise.resolve(sendStaffCancelledNotification(booking)).catch(error => console.error('Staff cancellation email failed', error.message));
+  }
+
+  if (BookingModel === Booking) {
+    await reconcileBookingGoogleCalendar(booking._id).catch(error => console.error('Deleted booking calendar cleanup failed', error.message));
+  }
+
+  return { booking, notification, deleted: true };
 }
 
 export async function setBookingStatusByMerchant({ shopObjectId, bookingId, status, BookingModel = Booking, ReservationModel, StaffReservationModel, now = new Date() }) {

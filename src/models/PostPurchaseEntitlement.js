@@ -25,6 +25,7 @@ const postPurchaseEntitlementSchema = new mongoose.Schema({
   productId: { type: String, required: true, trim: true, index: true },
   orderId: { type: String, required: true, trim: true, maxlength: 100, index: true },
   orderName: { type: String, default: '', trim: true, maxlength: 100 },
+  orderCreatedAt: Date,
   eligibleQuantity: { type: Number, min: 1, max: 100, default: 1 },
   usedBookings: { type: Number, min: 0, max: 100, default: 0 },
   bookingIds: { type: [mongoose.Schema.Types.ObjectId], ref: 'Booking', default: [] },
@@ -39,6 +40,7 @@ const postPurchaseEntitlementSchema = new mongoose.Schema({
   notificationLastAttemptAt: Date,
   notificationError: { type: String, default: '', maxlength: 500 },
   lastWebhookId: { type: String, default: '', maxlength: 120 },
+  adminDeletedAt: { type: Date, default: null, index: true },
   revokedAt: Date,
   revocationReason: { type: String, default: '', maxlength: 240 }
 }, { timestamps: true });

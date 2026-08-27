@@ -60,7 +60,7 @@ test('v0.6.5 records SHOPLINE order lifecycle before scheduling and keeps paymen
   assert.match(route, /appointmentStatus/);
   assert.match(route, /awaiting_schedule/);
   assert.match(route, /partially_scheduled/);
-  assert.match(view, />Payment<\/span><span>Appointment<\/span>/);
+  assert.match(view, />Date & time<\/span><span>Assignment<\/span><span>Payment<\/span><span>Appointment<\/span>/);
   assert.match(admin, /paymentStatusLabel/);
   assert.match(admin, /appointmentStatusLabel/);
   assert.match(admin, /booking-order-cell/);
@@ -89,10 +89,10 @@ test('v0.6.5 stores order shipping address for purchase-first customer-address a
   assert.match(bookings, /claimed\.shippingAddress/);
 });
 
-test('v0.6.5 release versions stay aligned without hard-coded stale test expectations', async () => {
+test('current release versions stay aligned without stale hard-coded asset versions', async () => {
   const packageJson = JSON.parse(await source('package.json'));
   const version = packageJson.version;
-  assert.equal(version, '0.6.5');
+  assert.equal(version, '0.6.6');
   const [health, admin, book, theme] = await Promise.all([
     source('src/app.js'), source('src/views/admin.js'), source('src/views/book.js'), source('theme-extension-source/public/appointment-lite.js')
   ]);
