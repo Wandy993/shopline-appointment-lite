@@ -39,7 +39,7 @@ export function adminPage() {
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light">
   <title>Appointment Lite</title>
-  <link rel="stylesheet" href="/admin/styles.css?v=0.6.3">
+  <link rel="stylesheet" href="/admin/styles.css?v=0.6.4">
 </head>
 <body>
   <div class="app-shell">
@@ -71,6 +71,7 @@ export function adminPage() {
 
       <main class="content">
         <div id="toastRegion" class="toast-region" aria-live="polite"></div>
+        <div id="orderAccessBanner" class="order-access-banner hidden"><div><strong>Order sync needs authorization</strong><span>Allow Appointment Lite to read SHOPLINE orders so paid bookings can be confirmed automatically. Appointment Lite does not modify orders.</span></div><div class="order-access-actions"><button id="authorizeOrderAccess" type="button" class="primary small">Authorize order access</button></div></div>
 
         <section id="dashboardView" class="view">
           <div class="hero-panel">
@@ -98,7 +99,7 @@ export function adminPage() {
         </section>
 
         <section id="bookingsView" class="view hidden">
-          <div class="page-heading"><div><span class="eyebrow">SCHEDULING OPERATIONS</span><h1>Bookings</h1><p>Run your daily schedule in a list or calendar, update status, and export records when needed.</p></div><div class="heading-actions"><div class="timezone-pill">${icons.globe}<span id="bookingTimezone">Store time</span></div><button id="exportBookings" class="secondary" type="button">Export CSV</button></div></div>
+          <div class="page-heading"><div><span class="eyebrow">SCHEDULING OPERATIONS</span><h1>Bookings</h1><p>Run your daily schedule in a list or calendar, update status, and export records when needed.</p></div><div class="heading-actions"><div class="timezone-pill">${icons.globe}<span id="bookingTimezone">Store time</span></div><button id="reconcileOrders" class="secondary hidden" type="button">Sync paid orders</button><button id="exportBookings" class="secondary" type="button">Export CSV</button></div></div>
           <div class="booking-filter-panel panel">
             <div class="booking-filter-main">
               <label class="booking-search">${icons.search}<input id="bookingSearch" type="search" placeholder="Search customer, service, or email"></label>
@@ -155,6 +156,7 @@ export function adminPage() {
                       <label class="notification-option"><input id="customerNotifyChanged" type="checkbox"><span class="notification-option-copy"><strong>Appointment changes</strong><small>Send when appointment details change.</small></span></label>
                       <label class="notification-option"><input id="customerNotifyCancelled" type="checkbox"><span class="notification-option-copy"><strong>Cancellation</strong><small>Send when the appointment is cancelled.</small></span></label>
                       <label class="notification-option"><input id="customerNotifyReminder" type="checkbox"><span class="notification-option-copy"><strong>Pre-appointment reminder</strong><small>Send before the appointment starts.</small></span></label>
+                      <label class="notification-option"><input id="customerNotifyPostPurchase" type="checkbox"><span class="notification-option-copy"><strong>Post-purchase scheduling link</strong><small>Send the private scheduling link after an eligible SHOPLINE order is paid.</small></span></label>
                     </div>
                   </section>
 
@@ -299,7 +301,7 @@ export function adminPage() {
   </dialog>
 
   <dialog id="confirmDialog" class="confirm-modal"><div class="confirm-icon">!</div><div class="confirm-copy"><h2 id="confirmTitle">Please confirm</h2><p id="confirmMessage"></p></div><div class="modal-actions"><button id="confirmNo" class="secondary">Keep it</button><button id="confirmYes" class="danger">Confirm</button></div></dialog>
-  <script type="module" src="/admin/app.js?v=0.6.3"></script>
+  <script type="module" src="/admin/app.js?v=0.6.4"></script>
 </body>
 </html>`;
 }

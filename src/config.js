@@ -10,6 +10,12 @@ function required(name, fallback = '') {
 
 const appUrl = required('APP_URL', 'http://localhost:3000').replace(/\/$/, '');
 
+function mergedShoplineScopes(value = '') {
+  const required = ['read_products', 'read_store_information', 'read_content', 'read_orders'];
+  const requested = String(value || '').split(',').map(item => item.trim()).filter(Boolean);
+  return [...new Set([...requested, ...required])].join(',');
+}
+
 export const config = Object.freeze({
   nodeEnv: process.env.NODE_ENV || 'development',
   port: Number(process.env.PORT || 3000),
@@ -19,7 +25,7 @@ export const config = Object.freeze({
   shopline: {
     appKey: required('SHOPLINE_APP_KEY'),
     appSecret: required('SHOPLINE_APP_SECRET'),
-    scopes: process.env.SHOPLINE_SCOPES || 'read_products,read_store_information,read_content',
+    scopes: mergedShoplineScopes(process.env.SHOPLINE_SCOPES || 'read_products,read_store_information,read_content'),
     apiVersion: process.env.SHOPLINE_API_VERSION || 'v20260301',
     callbackUrl: `${appUrl}${process.env.SHOPLINE_CALLBACK_PATH || '/auth/callback'}`,
     themeExtensionUuid: process.env.SHOPLINE_THEME_EXTENSION_UUID || '',

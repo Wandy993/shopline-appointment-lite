@@ -115,6 +115,10 @@ async function sendScheduleLinkIfNeeded({ entitlement, rule, shop, now = new Dat
   claimed.tokenHash = hashPostPurchaseToken(token);
   await claimed.save();
   const result = await sendPostPurchaseScheduleNotification({ entitlement: claimed, rule, shop, token });
+  if (result?.suppressed) {
+    await EntitlementModel.updateOne({ _id: claimed._id }, { $set: { notificationSentAt: now, notificationClaimedAt: null, notificationError: '' } });
+    return result;
+  }
   if (result?.failed || result?.skipped) {
     await EntitlementModel.updateOne({ _id: claimed._id }, { $set: {
       notificationClaimedAt: null,

@@ -8,7 +8,7 @@ import { StaffReservation } from '../models/StaffReservation.js';
 import { CalendarConnection } from '../models/CalendarConnection.js';
 import { validateAdminBookingInput, validateBookingStatus, validateRuleInput, validateStaffInput } from '../lib/validation.js';
 import { requireAdmin, requireCsrf } from '../middleware/auth.js';
-import { ensureBookingCommerceWebhooks, shoplineGet, syncShopMetadata } from '../services/shopline.js';
+import { ensureBookingCommerceWebhooks, reauthorizationUrlForShop, shoplineGet, shoplineOrderAccessStatus, syncShopMetadata } from '../services/shopline.js';
 import { getProductVariants, syncProductCatalog } from '../services/product-catalog.js';
 import { cancelBookingByMerchant, setBookingStatusByMerchant, updateBookingByMerchant } from '../services/bookings.js';
 import { emailStatus, sendTestEmail } from '../services/email.js';
@@ -17,6 +17,7 @@ import { normalizeEmailSettings, validateEmailSettings, validateTestEmailRecipie
 import { buildThemeAppBlockDeepLink } from '../lib/theme-deep-link.js';
 import { accessTokenForConnection, decryptGoogleRefreshToken, googleCalendarAuthorizationUrl, googleCalendarConfigured, listOwnedGoogleCalendars, publicConnection, revokeGoogleRefreshToken } from '../services/google-calendar.js';
 import { queueUpcomingGoogleCalendarBookingsForBusiness, syncUpcomingGoogleCalendarBookingsForBusiness } from '../services/calendar-sync.js';
+import { reconcileRecentPaidOrdersForShop } from '../services/paid-bookings.js';
 
 export const adminRouter = Router();
 adminRouter.use(requireAdmin, requireCsrf);
@@ -104,14 +105,15 @@ adminRouter.get('/bootstrap', async (req, res) => {
       { bookingMode: { $exists: false }, $or: [{ date: { $gt: storeNow.date } }, { date: storeNow.date, time: { $gt: storeNow.time } }] }
     ]
   };
-  const [ruleCount, activeRuleCount, bookingCount, upcomingCount, upcomingCandidates, firstActiveRule] = await Promise.all([
+  const [ruleCount, activeRuleCount, bookingCount, upcomingCount, upcomingCandidates, firstActiveRule, commerceRuleCount] = await Promise.all([
     AppointmentRule.countDocuments({ shopId: req.shop._id }),
     AppointmentRule.countDocuments({ shopId: req.shop._id, enabled: true }),
     Booking.countDocuments({ shopId: req.shop._id }),
     Booking.countDocuments(upcomingFilter),
     Booking.find(upcomingFilter)
       .sort({ date: 1, time: 1 }).limit(100).select('productTitle date time bookingMode occurrences timezone location staff customer.name').lean(),
-    AppointmentRule.findOne({ shopId: req.shop._id, enabled: true }).sort({ updatedAt: -1 }).select('serviceTitle productTitle productHandle bookingSource sourceType').lean()
+    AppointmentRule.findOne({ shopId: req.shop._id, enabled: true }).sort({ updatedAt: -1 }).select('serviceTitle productTitle productHandle bookingSource sourceType').lean(),
+    AppointmentRule.countDocuments({ shopId: req.shop._id, commerceMode: { $in: ['standalone_paid', 'product_post_purchase'] } })
   ]);
   const nextBookings = upcomingCandidates
     .map(booking => ({ booking, occurrence: nextOccurrenceForDashboard(booking, storeNow) }))
@@ -120,9 +122,16 @@ adminRouter.get('/bootstrap', async (req, res) => {
     .slice(0, 4)
     .map(({ booking, occurrence }) => ({ ...booking, date: occurrence.date, time: occurrence.time }));
   const delivery = emailStatus();
+  const orderAccessState = shoplineOrderAccessStatus(req.shop);
+  const orderAccess = {
+    required: commerceRuleCount > 0,
+    granted: orderAccessState.granted,
+    authorizationUrl: orderAccessState.granted ? '' : reauthorizationUrlForShop(req.shop),
+    reconcileAvailable: orderAccessState.granted
+  };
   res.json({
     shop: { handle: req.shop.handle, storeId: req.shop.shoplineStoreId || '', locale: req.shop.locale, adminLocale: req.shop.adminLocale || 'en', timezone: req.shop.timezone, email: req.shop.email || '' },
-    email: { configured: delivery.configured, from: delivery.from || '' }, emailSettings: normalizeEmailSettings(req.shop.emailSettings || {}), nextBookings,
+    email: { configured: delivery.configured, from: delivery.from || '' }, emailSettings: normalizeEmailSettings(req.shop.emailSettings || {}), nextBookings, orderAccess,
     onboarding: onboardingStatus(req.shop, { ruleCount, activeRuleCount, bookingCount, firstActiveRule }),
     csrfToken: req.csrfToken,
     stats: { ruleCount, activeRuleCount, bookingCount, upcomingCount }
@@ -294,6 +303,14 @@ adminRouter.get('/rules', async (req, res) => {
   }) });
 });
 
+function orderAccessRequiredResponse(req, res) {
+  return res.status(409).json({
+    error: 'ORDER_ACCESS_REQUIRED',
+    message: 'Authorize SHOPLINE order access before enabling paid or post-purchase appointments.',
+    authorizationUrl: reauthorizationUrlForShop(req.shop)
+  });
+}
+
 adminRouter.post('/rules', async (req, res, next) => {
   try {
     const { errors, value } = validateRuleInput(req.body);
@@ -301,6 +318,7 @@ adminRouter.post('/rules', async (req, res, next) => {
     const staffError = await validateManagedStaffSelection(req.shop._id, value);
     if (staffError) return res.status(422).json({ error: 'VALIDATION_ERROR', message: staffError });
     if (['standalone_paid', 'product_post_purchase'].includes(value.commerceMode)) {
+      if (!shoplineOrderAccessStatus(req.shop).granted) return orderAccessRequiredResponse(req, res);
       const webhookResults = await ensureBookingCommerceWebhooks(req.shop._id);
       if (webhookResults.some(item => !item.ok)) {
         console.warn('Booking commerce webhook subscription needs attention', webhookResults);
@@ -324,6 +342,7 @@ adminRouter.put('/rules/:id', async (req, res, next) => {
     const staffError = await validateManagedStaffSelection(req.shop._id, value);
     if (staffError) return res.status(422).json({ error: 'VALIDATION_ERROR', message: staffError });
     if (['standalone_paid', 'product_post_purchase'].includes(value.commerceMode)) {
+      if (!shoplineOrderAccessStatus(req.shop).granted) return orderAccessRequiredResponse(req, res);
       const webhookResults = await ensureBookingCommerceWebhooks(req.shop._id);
       if (webhookResults.some(item => !item.ok)) {
         console.warn('Booking commerce webhook subscription needs attention', webhookResults);
@@ -360,6 +379,28 @@ adminRouter.delete('/rules/:id', async (req, res) => {
   res.json({ deleted: true, preservedBookingCount: bookingCount });
 });
 
+function orderLinkForBooking(booking, handle) {
+  const orderId = String(booking?.payment?.shoplineOrderId || booking?.postPurchase?.shoplineOrderId || '').trim();
+  const orderName = String(booking?.payment?.shoplineOrderName || booking?.postPurchase?.shoplineOrderName || '').trim();
+  if (!orderId) return null;
+  return {
+    id: orderId,
+    name: orderName || orderId,
+    adminUrl: `https://${handle}.myshopline.com/admin/orders/${encodeURIComponent(orderId)}`
+  };
+}
+
+adminRouter.post('/commerce/reconcile', async (req, res, next) => {
+  try {
+    if (!shoplineOrderAccessStatus(req.shop).granted) return orderAccessRequiredResponse(req, res);
+    const webhookResults = await ensureBookingCommerceWebhooks(req.shop._id);
+    const failed = webhookResults.filter(item => !item.ok);
+    if (failed.length) console.warn('Some SHOPLINE booking webhooks could not be prepared during reconciliation', failed);
+    const result = await reconcileRecentPaidOrdersForShop({ shop: req.shop });
+    res.json({ ok: true, result, webhookWarnings: failed.length });
+  } catch (error) { next(error); }
+});
+
 adminRouter.get('/bookings', async (req, res) => {
   const filter = { shopId: req.shop._id };
   if (req.query.status && ['pending_payment', 'confirmed', 'cancelled', 'completed', 'no_show', 'payment_expired', 'payment_conflict'].includes(req.query.status)) filter.status = req.query.status;
@@ -371,7 +412,7 @@ adminRouter.get('/bookings', async (req, res) => {
     if (req.query.to) filter.date.$lte = String(req.query.to).slice(0, 10);
   }
   const bookings = await Booking.find(filter).sort({ date: -1, time: -1 }).limit(1000).lean();
-  res.json({ bookings: bookings.map(withBookingHistory) });
+  res.json({ bookings: bookings.map(booking => ({ ...withBookingHistory(booking), shoplineOrder: orderLinkForBooking(booking, req.shop.handle) })) });
 });
 
 adminRouter.put('/preferences', async (req, res) => {

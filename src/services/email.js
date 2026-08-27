@@ -240,6 +240,9 @@ export async function sendMerchantUpcomingReminder(booking, suppliedSettings = n
 export async function sendPostPurchaseScheduleNotification({ entitlement, rule, shop, token }) {
   if (!entitlement?.customer?.email || !rule?._id || !token) return { skipped: true, provider: selectedProvider().provider, reason: 'Post-purchase scheduling recipient is missing' };
   const settings = normalizeEmailSettings(shop?.emailSettings || {});
+  if (settings.customerNotifications?.postPurchaseScheduleLink === false) {
+    return { skipped: true, suppressed: true, provider: selectedProvider().provider, reason: 'POST_PURCHASE_NOTIFICATION_DISABLED' };
+  }
   const remaining = Math.max(0, Number(entitlement.eligibleQuantity || 0) - Number(entitlement.usedBookings || 0));
   const scheduleUrl = `${config.appUrl}/book/${encodeURIComponent(String(rule._id))}?access=${encodeURIComponent(token)}`;
   const orderLabel = entitlement.orderName ? `Order ${entitlement.orderName}` : 'Your order';

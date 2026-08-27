@@ -7,7 +7,7 @@ import { attachPaidOrderToBooking, confirmPaidBooking } from '../services/bookin
 import { activatePostPurchaseEntitlementsForOrder, revokePostPurchaseEntitlementsForOrder, upsertPostPurchaseEntitlementsFromOrder } from '../services/post-purchase.js';
 import { findInstalledShop } from '../services/shops.js';
 
-const SUPPORTED_TOPICS = new Set(['orders/create', 'order_transactions/create', 'orders/cancelled']);
+const SUPPORTED_TOPICS = new Set(['orders/create', 'orders/paid', 'order_transactions/create', 'orders/cancelled']);
 
 function header(req, name) {
   return String(req.get(name) || '').trim();
@@ -44,17 +44,24 @@ function financialStatusOf(payload = {}) {
   return String(payload.financial_status || payload.financialStatus || '').trim().toLowerCase();
 }
 
+export function orderPayloadIsPaid(payload = {}) {
+  if (financialStatusOf(payload) === 'paid') return true;
+  if (String(payload.pay_status || payload.payStatus || '').trim().toLowerCase() === 'paid') return true;
+  const payments = Array.isArray(payload.payment_details) ? payload.payment_details : Array.isArray(payload.paymentDetails) ? payload.paymentDetails : [];
+  return payments.some(item => String(item?.pay_status || item?.payStatus || '').trim().toLowerCase() === 'paid');
+}
+
 async function paidReceiptExists({ orderId, shoplineStoreId }) {
   if (!orderId) return false;
   return Boolean(await WebhookReceipt.exists({
-    topic: 'order_transactions/create', shoplineStoreId, externalId: orderId, status: 'processed'
+    topic: { $in: ['orders/paid', 'order_transactions/create'] }, shoplineStoreId, externalId: orderId, status: 'processed'
   }));
 }
 
 async function handleOrderCreated({ payload, webhookId, shoplineStoreId, receipt }) {
   const orderId = orderIdOf(payload);
   const financialStatus = financialStatusOf(payload);
-  const paid = financialStatus === 'paid' || await paidReceiptExists({ orderId, shoplineStoreId });
+  const paid = orderPayloadIsPaid(payload) || await paidReceiptExists({ orderId, shoplineStoreId });
   const shop = await findInstalledShop({ shopId: shoplineStoreId });
   const bookingId = appointmentLiteBookingIdFromOrder(payload);
   let paidBooking = { matched: false, confirmed: false, reason: '' };
@@ -80,6 +87,42 @@ async function handleOrderCreated({ payload, webhookId, shoplineStoreId, receipt
   const handled = paidBooking.matched || postPurchase.matched > 0;
   await finishReceipt(receipt, handled ? 'processed' : 'ignored', { externalId: orderId });
   return { ok: true, orderId, paid, paidBooking, postPurchase, ignored: !handled };
+}
+
+async function handleOrderPaid({ payload, webhookId, shoplineStoreId, receipt }) {
+  const orderId = orderIdOf(payload);
+  if (!orderId) {
+    await finishReceipt(receipt, 'ignored');
+    return { ok: true, ignored: true, reason: 'ORDER_ID_MISSING' };
+  }
+  const shop = await findInstalledShop({ shopId: shoplineStoreId });
+  const bookingId = appointmentLiteBookingIdFromOrder(payload);
+  let paidBooking = { matched: false, confirmed: false, reason: '' };
+
+  if (bookingId) {
+    const booking = await Booking.findById(bookingId);
+    if (booking?.commerceMode === 'standalone_paid') {
+      const bookingShop = await findInstalledShop({ objectId: booking.shopId });
+      if (bookingShop && (!shoplineStoreId || String(bookingShop.shoplineStoreId || '') === shoplineStoreId)) {
+        await attachPaidOrderToBooking({ bookingId, orderId, orderName: orderNameOf(payload), financialStatus: 'paid', webhookId });
+        const confirmation = await confirmPaidBooking({ bookingId, orderId, orderName: orderNameOf(payload), financialStatus: 'paid', webhookId });
+        paidBooking = { matched: true, confirmed: Boolean(confirmation?.confirmed), reason: confirmation?.reason || '' };
+      }
+    }
+  } else {
+    const booking = await Booking.findOne({ commerceMode: 'standalone_paid', 'payment.shoplineOrderId': orderId });
+    if (booking) {
+      const confirmation = await confirmPaidBooking({ bookingId: booking._id, orderId, orderName: orderNameOf(payload) || booking.payment?.shoplineOrderName || '', financialStatus: 'paid', webhookId });
+      paidBooking = { matched: true, confirmed: Boolean(confirmation?.confirmed), reason: confirmation?.reason || '' };
+    }
+  }
+
+  const postPurchase = shop
+    ? await upsertPostPurchaseEntitlementsFromOrder({ shop, payload, paid: true, webhookId })
+    : { matched: 0, activated: 0, notified: 0, orderId };
+  const handled = paidBooking.matched || postPurchase.matched > 0;
+  await finishReceipt(receipt, handled ? 'processed' : 'ignored', { externalId: orderId });
+  return { ok: true, orderId, paidBooking, postPurchase, ignored: !handled };
 }
 
 async function handleOrderPayment({ payload, webhookId, shoplineStoreId, receipt }) {
@@ -147,9 +190,11 @@ export async function shoplinePaidBookingWebhook(req, res) {
   try {
     const result = topic === 'orders/create'
       ? await handleOrderCreated({ payload, webhookId, shoplineStoreId, receipt })
-      : topic === 'order_transactions/create'
-        ? await handleOrderPayment({ payload, webhookId, shoplineStoreId, receipt })
-        : await handleOrderCancelled({ payload, webhookId, shoplineStoreId, receipt });
+      : topic === 'orders/paid'
+        ? await handleOrderPaid({ payload, webhookId, shoplineStoreId, receipt })
+        : topic === 'order_transactions/create'
+          ? await handleOrderPayment({ payload, webhookId, shoplineStoreId, receipt })
+          : await handleOrderCancelled({ payload, webhookId, shoplineStoreId, receipt });
     return res.status(200).json(result);
   } catch (error) {
     await finishReceipt(receipt, 'failed', { externalId, error: error.message }).catch(() => {});

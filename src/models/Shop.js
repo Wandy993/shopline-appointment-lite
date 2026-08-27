@@ -10,7 +10,8 @@ const customerNotificationSchema = new mongoose.Schema({
   confirmation: { type: Boolean, default: true },
   bookingChanged: { type: Boolean, default: true },
   bookingCancelled: { type: Boolean, default: true },
-  upcomingReminder: { type: Boolean, default: true }
+  upcomingReminder: { type: Boolean, default: true },
+  postPurchaseScheduleLink: { type: Boolean, default: true }
 }, { _id: false });
 
 const merchantNotificationSchema = new mongoose.Schema({

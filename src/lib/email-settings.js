@@ -10,7 +10,7 @@ export const EMAIL_TEMPLATE_KEYS = Object.freeze([
 export const DEFAULT_EMAIL_SETTINGS = Object.freeze({
   brandName: 'Appointment Lite', logoUrl: '', accentColor: '#2F6FED', replyToEmail: '',
   merchantNotificationEmail: '', additionalMerchantNotificationEmails: Object.freeze([]), reminderLeadHours: 24,
-  customerNotifications: Object.freeze({ confirmation: true, bookingChanged: true, bookingCancelled: true, upcomingReminder: true }),
+  customerNotifications: Object.freeze({ confirmation: true, bookingChanged: true, bookingCancelled: true, upcomingReminder: true, postPurchaseScheduleLink: true }),
   merchantNotifications: Object.freeze({ newBooking: true, bookingChanged: true, bookingCancelled: true, upcomingReminder: true }),
   templates: Object.freeze({
     confirmation: Object.freeze({ subject: 'Your appointment is confirmed — {{product_title}}', heading: 'Appointment confirmed', body: 'Hi {{customer_name}},\n\nYour appointment is confirmed. Review the details below and keep this email for your records.' }),
@@ -44,7 +44,8 @@ export function normalizeEmailSettings(input = {}) {
       confirmation: input.customerNotifications?.confirmation !== false,
       bookingChanged: input.customerNotifications?.bookingChanged !== false,
       bookingCancelled: input.customerNotifications?.bookingCancelled !== false,
-      upcomingReminder: input.customerNotifications?.upcomingReminder !== false
+      upcomingReminder: input.customerNotifications?.upcomingReminder !== false,
+      postPurchaseScheduleLink: input.customerNotifications?.postPurchaseScheduleLink !== false
     },
     merchantNotifications: {
       newBooking: input.merchantNotifications?.newBooking !== false,

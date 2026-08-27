@@ -1,5 +1,6 @@
 import { config } from '../config.js';
-import { hmacHex } from '../lib/signature.js';
+import crypto from 'node:crypto';
+import { hmacHex, signPayload } from '../lib/signature.js';
 import { Shop } from '../models/Shop.js';
 
 function tokenFields(payload) {
@@ -50,6 +51,21 @@ export function authorizationUrl(handle, customField) {
     customField
   });
   return `https://${handle}.myshopline.com/admin/oauth-web/#/oauth/authorize?${query}`;
+}
+
+export const SHOPLINE_ORDER_SCOPE = 'read_orders';
+
+export function shoplineOrderAccessStatus(shop = {}) {
+  const scopes = new Set((shop.scopes || []).map(value => String(value || '').trim()).filter(Boolean));
+  const granted = scopes.has(SHOPLINE_ORDER_SCOPE);
+  return { requiredScope: SHOPLINE_ORDER_SCOPE, granted, missingScopes: granted ? [] : [SHOPLINE_ORDER_SCOPE] };
+}
+
+export function reauthorizationUrlForShop(shop) {
+  const handle = String(shop?.handle || '').toLowerCase();
+  if (!handle) return '';
+  const customField = signPayload({ handle, nonce: crypto.randomUUID(), exp: Date.now() + 10 * 60 * 1000 }, config.sessionSecret);
+  return authorizationUrl(handle, customField);
 }
 
 export function exchangeAuthorizationCode(handle, code) {
@@ -133,7 +149,7 @@ export async function shoplinePost(shopId, endpoint, body = {}) {
 
 export async function ensureBookingCommerceWebhooks(shopId) {
   const address = `${config.appUrl}/webhooks/shopline`;
-  const topics = ['orders/create', 'order_transactions/create', 'orders/cancelled'];
+  const topics = ['orders/create', 'orders/paid', 'order_transactions/create', 'orders/cancelled'];
   const results = [];
 
   let existing = [];

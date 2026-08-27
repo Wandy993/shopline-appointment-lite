@@ -1,6 +1,6 @@
 {
   "name": "appointment-lite",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "description": "SHOPLINE appointment scheduling with paid checkout holds, post-purchase order-linked scheduling, notification controls, staff scheduling, and optional business Google Calendar sync.",
   "type": "module",
   "engines": {

@@ -1,10 +1,18 @@
 # Appointment Lite
 
-> v0.6.3 — Post-purchase Appointment
+> v0.6.4 — Order Sync & Availability Performance
 
-Appointment Lite v0.6.3 activates the **Purchase first · schedule after** commerce path for installation, delivery setup, onboarding, warranty service, and other order-linked appointments. The SHOPLINE order remains the source of purchase eligibility; Appointment Lite creates a private scheduling entitlement only after payment is confirmed.
+Appointment Lite v0.6.4 makes paid and post-purchase booking recovery reliable with SHOPLINE order-read authorization, the orders/paid webhook, recent-order reconciliation, faster batched staff availability checks, clearer order links in Bookings, and an explicit post-purchase scheduling email preference.
 
-## v0.6.3 Post-purchase Appointment
+## v0.6.4 Order Sync & Availability Performance
+
+- Adds required `read_orders` authorization for paid and post-purchase booking modes without requesting order write access.
+- Uses `orders/paid` as the primary payment confirmation webhook and keeps transaction webhooks as a compatibility fallback.
+- Reconciles recent paid orders after reauthorization and on demand from Bookings.
+- Batches staff/reservation reads for storefront availability instead of querying per time slot.
+- Shows linked SHOPLINE orders directly in Booking records.
+- Adds a separate customer preference for post-purchase private scheduling-link email delivery.
+
 
 All four commerce relationships are now active:
 

@@ -3,7 +3,8 @@ import { Router } from 'express';
 import { config } from '../config.js';
 import { readSignedPayload, signPayload, verifyShoplineQuery } from '../lib/signature.js';
 import { Shop } from '../models/Shop.js';
-import { authorizationUrl, exchangeAuthorizationCode, syncShopMetadata } from '../services/shopline.js';
+import { authorizationUrl, ensureBookingCommerceWebhooks, exchangeAuthorizationCode, shoplineOrderAccessStatus, syncShopMetadata } from '../services/shopline.js';
+import { reconcileRecentPaidOrdersForShop } from '../services/paid-bookings.js';
 import { setSessionCookie } from '../middleware/auth.js';
 
 export const authRouter = Router();
@@ -44,6 +45,19 @@ authRouter.get('/callback', async (req, res, next) => {
     try {
       await syncShopMetadata(shop._id);
     } catch (error) { console.warn('Could not enrich shop metadata:', error.message); }
+
+    // Existing installations must reauthorize after order-read access is added.
+    // Once that permission is present, repair webhook subscriptions and reconcile
+    // recently paid orders immediately so an in-flight booking does not have to
+    // wait for the background scheduler. These are best-effort and never block login.
+    if (shoplineOrderAccessStatus(shop).granted) {
+      try {
+        await ensureBookingCommerceWebhooks(shop._id);
+        await reconcileRecentPaidOrdersForShop({ shop });
+      } catch (error) {
+        console.warn('Could not initialize SHOPLINE order reconciliation after authorization:', error.message);
+      }
+    }
     res.redirect('/app');
   } catch (error) { next(error); }
 });

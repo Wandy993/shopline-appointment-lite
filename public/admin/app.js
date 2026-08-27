@@ -2,7 +2,7 @@ const state = {
   csrf: '', shop: null, email: null, emailSettings: null, rules: [], bookings: [], products: [], staff: [], staffOperations: { date: '', timezone: '', staff: [], unassigned: [] }, staffOperationsView: 'list',
   ruleStep: 0, activeTemplate: 'confirmation', emailEditorReady: false, bookingView: 'list', calendarMonth: '',
   locale: 'en', currentView: 'dashboard', themeLinkLoaded: false, bootstrap: null, onboarding: null, lastTestEmail: '', ruleModeTouched: false, editingRule: false,
-  calendarSync: null, calendarStaffId: '', calendarPopup: null, calendarDayItems: {}, paidVariants: []
+  calendarSync: null, calendarStaffId: '', calendarPopup: null, calendarDayItems: {}, paidVariants: [], orderAccess: null
 };
 const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const viewLabels = {
@@ -404,7 +404,15 @@ Object.assign(zh, {
   'Reminder timing': '提醒时间', 'Applies to customer and merchant reminder emails.': '同时应用于客户和商家的履约前提醒邮件。',
   '3 hours before': '提前 3 小时', '6 hours before': '提前 6 小时', '12 hours before': '提前 12 小时', '24 hours before': '提前 1 天', '48 hours before': '提前 2 天', '72 hours before': '提前 3 天',
   'Customer reminder': '客户提醒', 'Merchant reminder': '商家提醒', 'Merchant new': '商家新预约', 'Merchant updated': '商家预约修改', 'Merchant cancelled': '商家预约取消', 'Customer changed': '客户改期', 'Store changed': '商家修改',
-  'View {count} more': '查看另外 {count} 条', 'Appointments on {date}': '{date} 的预约', 'appointments on this day': '条当日预约'
+  'View {count} more': '查看另外 {count} 条', 'Appointments on {date}': '{date} 的预约', 'appointments on this day': '条当日预约',
+  'Order sync needs authorization': '订单同步需要授权',
+  'Allow Appointment Lite to read SHOPLINE orders so paid bookings can be confirmed automatically. Appointment Lite does not modify orders.': '授权 Appointment Lite 读取 SHOPLINE 订单后，付费预约才能自动确认。Appointment Lite 不会修改订单。',
+  'Authorize order access': '授权订单读取权限', 'Sync paid orders': '同步已付款订单',
+  'Order sync authorization is required for this service.': '此服务需要先授权 SHOPLINE 订单读取权限。',
+  'Paid orders synced.': '已同步付款订单。', 'No new paid orders to sync.': '暂无新的已付款订单需要同步。', 'Could not sync paid orders.': '无法同步付款订单，请稍后重试。',
+  'SHOPLINE order': 'SHOPLINE 订单',
+  'Post-purchase scheduling link': '购买后预约链接',
+  'Send the private scheduling link after an eligible SHOPLINE order is paid.': '符合条件的 SHOPLINE 订单付款后，向客户发送私密预约链接。'
 });
 
 const enByZh = new Map(Object.entries(zh).map(([english, chinese]) => [chinese, english]));
@@ -458,7 +466,7 @@ const staffAvatarPresets = ['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunse
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
 function staffPresetImage(preset) {
   const file = staffAvatarFiles[preset] || staffAvatarFiles.aurora;
-  return `<img src="/assets/staff/${file}?v=0.6.3" alt="" loading="lazy" decoding="async">`;
+  return `<img src="/assets/staff/${file}?v=0.6.4" alt="" loading="lazy" decoding="async">`;
 }
 let staffAvatarDraft = { kind: 'preset', value: 'aurora' };
 
@@ -1065,7 +1073,7 @@ function renderRuleStaffOptions(selectedIds = null) {
   const current = selectedIds || $$('#ruleStaffOptions input[type=checkbox]:checked').map(input => input.value);
   const selected = new Set(current.map(String));
   const active = state.staff.filter(item => item.status === 'active');
-  root.innerHTML = active.length ? active.map(item => `<label class="staff-check"><input type="checkbox" value="${item._id}" ${selected.has(String(item._id)) ? 'checked' : ''}>${staffAvatarMarkup(item, 'small')}<span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.email || staffWorkSummary(item))}</small></span></label>`).join('') : `<div class="empty-compact">${t('No active staff yet. Add staff from the Staff page first.')}</div>`;
+  root.innerHTML = active.length ? active.map(item => `<label class="staff-check"><input type="checkbox" value="${item._id}" ${selected.has(String(item._id)) ? 'checked' : ''}>${staffAvatarMarkup(item, 'rule-assignment-avatar')}<span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.email || staffWorkSummary(item))}</small></span></label>`).join('') : `<div class="empty-compact">${t('No active staff yet. Add staff from the Staff page first.')}</div>`;
   root.querySelectorAll('input[type=checkbox]').forEach(input => input.addEventListener('change', () => {
     if ($('#staffAssignmentGrid').dataset.mode === 'fixed' && input.checked) root.querySelectorAll('input[type=checkbox]').forEach(other => { if (other !== input) other.checked = false; });
   }));
@@ -1472,7 +1480,12 @@ async function saveRule(event) {
     toast(t(id ? 'Service rule updated.' : 'Service rule created.'));
     await Promise.all([loadRules(), loadBootstrap()]);
   } catch (error) {
-    $('#formError').textContent = t(error.message);
+    if (error.payload?.error === 'ORDER_ACCESS_REQUIRED' && error.payload?.authorizationUrl) {
+      $('#formError').innerHTML = `${escapeHtml(t('Order sync authorization is required for this service.'))} <button type="button" class="text-button" id="ruleAuthorizeOrderAccess">${escapeHtml(t('Authorize order access'))}</button>`;
+      $('#ruleAuthorizeOrderAccess')?.addEventListener('click', () => openOrderAuthorization(error.payload.authorizationUrl));
+    } else {
+      $('#formError').textContent = t(error.message);
+    }
     $('#formError').classList.remove('hidden');
   } finally { button.disabled = false; }
 }
@@ -1703,7 +1716,8 @@ function renderBookingList(bookings) {
   root.innerHTML = bookings.map(booking => {
     const when = bookingWhenLabel(booking);
     const canDirectEdit = (booking.bookingMode || 'slot') === 'slot';
-    return `<div class="booking-row"><div class="booking-primary"><strong>${escapeHtml(booking.productTitle)}</strong><span>${escapeHtml(booking.customer.name)} · ${escapeHtml(booking.customer.email)}</span></div><div class="booking-cell"><strong>${escapeHtml(when.primary)}</strong><span>${escapeHtml(when.secondary)}</span></div><div class="booking-cell"><strong>${escapeHtml(booking.staff || t('Any staff'))}</strong><span>${escapeHtml(booking.location || t('No location'))}</span></div><span class="status-badge ${booking.status}">${bookingStatusLabel(booking.status)}</span><div class="row-actions"><button class="small booking-action activity" data-flow-booking="${booking._id}">${t('Activity')}</button>${booking.status === 'confirmed' ? `${canDirectEdit ? `<button class="small booking-action edit" data-edit-booking="${booking._id}">${t('Edit')}</button>` : ''}<button class="small booking-action complete" data-complete="${booking._id}">${t('Mark complete')}</button><button class="small booking-action no-show" data-no-show="${booking._id}">${t('No-show')}</button><button class="small booking-action cancel" data-cancel="${booking._id}">${t('Cancel')}</button>` : ''}</div></div>`;
+    const orderLink = booking.shoplineOrder?.adminUrl ? `<a class="booking-order-link" href="${escapeHtml(booking.shoplineOrder.adminUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(t('SHOPLINE order'))} ${escapeHtml(booking.shoplineOrder.name)} ↗</a>` : '';
+    return `<div class="booking-row"><div class="booking-primary"><strong>${escapeHtml(booking.productTitle)}</strong><span>${escapeHtml(booking.customer.name)} · ${escapeHtml(booking.customer.email)}</span>${orderLink}</div><div class="booking-cell"><strong>${escapeHtml(when.primary)}</strong><span>${escapeHtml(when.secondary)}</span></div><div class="booking-cell"><strong>${escapeHtml(booking.staff || t('Any staff'))}</strong><span>${escapeHtml(booking.location || t('No location'))}</span></div><span class="status-badge ${booking.status}">${bookingStatusLabel(booking.status)}</span><div class="row-actions"><button class="small booking-action activity" data-flow-booking="${booking._id}">${t('Activity')}</button>${booking.status === 'confirmed' ? `${canDirectEdit ? `<button class="small booking-action edit" data-edit-booking="${booking._id}">${t('Edit')}</button>` : ''}<button class="small booking-action complete" data-complete="${booking._id}">${t('Mark complete')}</button><button class="small booking-action no-show" data-no-show="${booking._id}">${t('No-show')}</button><button class="small booking-action cancel" data-cancel="${booking._id}">${t('Cancel')}</button>` : ''}</div></div>`;
   }).join('');
   bindBookingRows();
 }
@@ -1842,7 +1856,8 @@ function snapshotLine(snapshot) {
 function openBookingFlow(booking) {
   $('#bookingFlowSummary').textContent = `${booking.productTitle} · ${booking.customer.name}`;
   const events = [...(booking.events || [])].sort((a, b) => new Date(b.at) - new Date(a.at));
-  $('#bookingFlow').innerHTML = events.map(event => {
+  const orderHeader = booking.shoplineOrder?.adminUrl ? `<a class="flow-order-link" href="${escapeHtml(booking.shoplineOrder.adminUrl)}" target="_blank" rel="noopener noreferrer"><span>${escapeHtml(t('SHOPLINE order'))}</span><strong>${escapeHtml(booking.shoplineOrder.name)} ↗</strong></a>` : '';
+  $('#bookingFlow').innerHTML = orderHeader + events.map(event => {
     const [title, description] = eventMeta(event);
     const from = snapshotLine(event.from);
     const to = snapshotLine(event.to);
@@ -1940,6 +1955,7 @@ function renderEmailStudio() {
   $('#customerNotifyChanged').checked = state.emailSettings.customerNotifications?.bookingChanged !== false;
   $('#customerNotifyCancelled').checked = state.emailSettings.customerNotifications?.bookingCancelled !== false;
   $('#customerNotifyReminder').checked = state.emailSettings.customerNotifications?.upcomingReminder !== false;
+  $('#customerNotifyPostPurchase').checked = state.emailSettings.customerNotifications?.postPurchaseScheduleLink !== false;
   $('#merchantNotifyNew').checked = state.emailSettings.merchantNotifications?.newBooking !== false;
   $('#merchantNotifyChanged').checked = state.emailSettings.merchantNotifications?.bookingChanged !== false;
   $('#merchantNotifyCancelled').checked = state.emailSettings.merchantNotifications?.bookingCancelled !== false;
@@ -1957,7 +1973,7 @@ function emailSettingsPayload() {
     merchantNotificationEmail: $('#merchantNotificationEmail').value,
     additionalMerchantNotificationEmails: $('#merchantNotificationAdditional').value.split(/\n|,|;/).map(value => value.trim()).filter(Boolean),
     reminderLeadHours: Number($('#emailReminderLeadHours').value || 24),
-    customerNotifications: { confirmation: $('#customerNotifyConfirmation').checked, bookingChanged: $('#customerNotifyChanged').checked, bookingCancelled: $('#customerNotifyCancelled').checked, upcomingReminder: $('#customerNotifyReminder').checked },
+    customerNotifications: { confirmation: $('#customerNotifyConfirmation').checked, bookingChanged: $('#customerNotifyChanged').checked, bookingCancelled: $('#customerNotifyCancelled').checked, upcomingReminder: $('#customerNotifyReminder').checked, postPurchaseScheduleLink: $('#customerNotifyPostPurchase').checked },
     merchantNotifications: { newBooking: $('#merchantNotifyNew').checked, bookingChanged: $('#merchantNotifyChanged').checked, bookingCancelled: $('#merchantNotifyCancelled').checked, upcomingReminder: $('#merchantNotifyReminder').checked },
     templates: state.emailSettings.templates
   };
@@ -2025,6 +2041,35 @@ function setPreviewLink(id, url, enabled) {
   if (!link) return;
   link.href = enabled && url ? url : '#';
   link.classList.toggle('disabled', !(enabled && url));
+}
+
+function openOrderAuthorization(url = state.orderAccess?.authorizationUrl) {
+  if (!url) return;
+  try { window.top.location.href = url; } catch { window.location.href = url; }
+}
+
+function renderOrderAccess(payload = state.bootstrap?.orderAccess) {
+  state.orderAccess = payload || null;
+  const banner = $('#orderAccessBanner');
+  if (!banner) return;
+  const shouldShow = Boolean(payload?.required && !payload?.granted);
+  banner.classList.toggle('hidden', !shouldShow);
+  const reconcile = $('#reconcileOrders');
+  if (reconcile) reconcile.classList.toggle('hidden', !(payload?.granted && payload?.required));
+}
+
+async function reconcileOrdersNow() {
+  const button = $('#reconcileOrders');
+  if (button) button.disabled = true;
+  try {
+    const payload = await api('/commerce/reconcile', { method: 'POST', body: '{}' });
+    const changed = Number(payload.result?.standaloneConfirmed || 0) + Number(payload.result?.postPurchaseActivated || 0);
+    toast(t(changed ? 'Paid orders synced.' : 'No new paid orders to sync.'));
+    await Promise.all([loadBookings(), loadBootstrap()]);
+  } catch (error) {
+    if (error.payload?.authorizationUrl) openOrderAuthorization(error.payload.authorizationUrl);
+    else toast(t(error.message || 'Could not sync paid orders.'), 'error');
+  } finally { if (button) button.disabled = false; }
 }
 
 function renderOnboarding(payload = state.bootstrap) {
@@ -2097,6 +2142,7 @@ function confirmAction(title, message, actionLabel, action) {
 async function loadBootstrap() {
   const payload = await api('/bootstrap');
   state.bootstrap = payload;
+  renderOrderAccess(payload.orderAccess);
   state.csrf = payload.csrfToken;
   state.shop = payload.shop;
   state.email = payload.email;
@@ -2270,7 +2316,9 @@ function bind() {
     } finally { event.target.value = ''; }
   });
   $$('#staffAssignmentGrid [data-staff-mode]').forEach(button => button.addEventListener('click', () => setStaffAssignmentMode(button.dataset.staffMode)));
-  $('#bookingSearch').addEventListener('input', renderBookings);
+  $('#authorizeOrderAccess')?.addEventListener('click', () => openOrderAuthorization());
+  $('#reconcileOrders')?.addEventListener('click', reconcileOrdersNow);
+    $('#bookingSearch').addEventListener('input', renderBookings);
   ['bookingServiceFilter', 'bookingStaffFilter', 'bookingStatusFilter', 'bookingFrom', 'bookingTo'].forEach(id => $(`#${id}`)?.addEventListener('change', renderBookings));
   $$('[data-booking-view]').forEach(button => button.addEventListener('click', () => setBookingView(button.dataset.bookingView)));
   $('#clearBookingFilters')?.addEventListener('click', () => {

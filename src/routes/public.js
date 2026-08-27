@@ -138,11 +138,12 @@ publicRouter.get('/availability', async (req, res) => {
     const match = value.match(/^(\d{4}-\d{2}-\d{2})T([0-2]\d:[0-5]\d)$/);
     return match ? { date: match[1], time: match[2], slotKey: `${match[1]}T${match[2]}` } : null;
   }).filter(Boolean);
-  const reservations = await BookingReservation.find({ shopId: result.shop._id, ruleId: result.rule._id, date }).select('bookingId time slotPosition').lean();
-  const reservedBookingIds = reservations.map(item => item.bookingId).filter(Boolean);
-  const legacyFilter = { shopId: result.shop._id, ruleId: result.rule._id, date, status: 'confirmed' };
-  if (reservedBookingIds.length) legacyFilter._id = { $nin: reservedBookingIds };
-  const legacyBookings = await Booking.find(legacyFilter).select('time slotPosition').lean();
+  const [reservations, bookingRows] = await Promise.all([
+    BookingReservation.find({ shopId: result.shop._id, ruleId: result.rule._id, date }).select('bookingId time slotPosition').lean(),
+    Booking.find({ shopId: result.shop._id, ruleId: result.rule._id, date, status: 'confirmed' }).select('_id time slotPosition').lean()
+  ]);
+  const reservedBookingIds = new Set(reservations.map(item => String(item.bookingId || '')).filter(Boolean));
+  const legacyBookings = bookingRows.filter(item => !reservedBookingIds.has(String(item._id)));
   res.set('Cache-Control', 'no-store');
   if (mode === 'all_day') {
     const count = reservations.length + legacyBookings.length;

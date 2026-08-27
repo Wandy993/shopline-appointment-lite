@@ -106,21 +106,16 @@ async function reservationRowsForStaff(staffIds, dates, { shopId, StaffReservati
   return StaffReservationModel.find({ shopId, staffId: { $in: staffIds }, date: { $in: dates } }).select('staffId ruleId slotKey date bucketKeys bookingIds').lean();
 }
 
-export async function availableStaffForOccurrences({ shopId, rule, occurrences, requestedStaffId = '', ignoreBookingId = '', StaffModel = Staff, StaffReservationModel = StaffReservation }) {
-  const assignment = normalizedStaffAssignment(rule);
-  if (assignment.mode === 'none' || !assignment.staffIds.length) return [];
-  const active = await assignedActiveStaff(rule, { StaffModel });
-  let candidates = active;
-  if (assignment.mode === 'fixed') candidates = active.filter(item => String(item._id) === assignment.staffIds[0]);
+function candidateStaffForAssignment(assignment, active, requestedStaffId = '') {
+  if (assignment.mode === 'fixed') return active.filter(item => String(item._id) === assignment.staffIds[0]);
   if (assignment.mode === 'customer_choice') {
-    if (!requestedStaffId) return [];
-    if (!assignment.staffIds.includes(String(requestedStaffId))) return [];
-    candidates = active.filter(item => String(item._id) === String(requestedStaffId));
+    if (!requestedStaffId || !assignment.staffIds.includes(String(requestedStaffId))) return [];
+    return active.filter(item => String(item._id) === String(requestedStaffId));
   }
-  if (!candidates.length) return [];
+  return active;
+}
 
-  const dates = [...new Set(occurrences.map(item => item.date).filter(Boolean))];
-  const reservations = await reservationRowsForStaff(candidates.map(item => item._id), dates, { shopId, StaffReservationModel });
+function availableStaffFromContext({ candidates, reservations, rule, occurrences, ignoreBookingId = '' }) {
   return candidates.filter(staff => occurrences.every(occurrence => {
     if (!staffScheduleAllowsOccurrence(staff, rule, occurrence)) return false;
     const buckets = staffBucketsForOccurrence(rule, occurrence);
@@ -132,6 +127,23 @@ export async function availableStaffForOccurrences({ shopId, rule, occurrences, 
       return !sameServiceOccurrence(reservation, rule._id, occurrence) && hasBucketOverlap(reservation, buckets);
     });
   }));
+}
+
+async function availabilityContext({ shopId, rule, occurrences, requestedStaffId = '', StaffModel = Staff, StaffReservationModel = StaffReservation }) {
+  const assignment = normalizedStaffAssignment(rule);
+  if (assignment.mode === 'none' || !assignment.staffIds.length) return { assignment, candidates: [], reservations: [] };
+  const active = await assignedActiveStaff(rule, { StaffModel });
+  const candidates = candidateStaffForAssignment(assignment, active, requestedStaffId);
+  if (!candidates.length) return { assignment, candidates: [], reservations: [] };
+  const dates = [...new Set(occurrences.map(item => item.date).filter(Boolean))];
+  const reservations = await reservationRowsForStaff(candidates.map(item => item._id), dates, { shopId, StaffReservationModel });
+  return { assignment, candidates, reservations };
+}
+
+export async function availableStaffForOccurrences({ shopId, rule, occurrences, requestedStaffId = '', ignoreBookingId = '', StaffModel = Staff, StaffReservationModel = StaffReservation }) {
+  const context = await availabilityContext({ shopId, rule, occurrences, requestedStaffId, StaffModel, StaffReservationModel });
+  if (!context.candidates.length) return [];
+  return availableStaffFromContext({ ...context, rule, occurrences, ignoreBookingId });
 }
 
 async function addBookingToStaffOccurrence({ shopId, staff, rule, occurrence, bookingId, StaffReservationModel = StaffReservation }) {
@@ -200,15 +212,22 @@ export async function staffAvailabilityForDate({ shopId, rule, date, baseSlots =
   if (assignment.mode === 'customer_choice' && !requestedStaffId) return { managed: true, requiresStaffSelection: true, slots: [], availableAllDay: false };
 
   const mode = bookingModeFor(rule);
+  const candidateOccurrences = mode === 'all_day'
+    ? [...selectedOccurrences, { date, time: '', slotKey: `${date}#ALL_DAY` }]
+    : [...selectedOccurrences, ...baseSlots.map(time => ({ date, time, slotKey: `${date}T${time}` }))];
+  const context = await availabilityContext({ shopId, rule, occurrences: candidateOccurrences, requestedStaffId, StaffModel, StaffReservationModel });
+  if (!context.candidates.length) return { managed: true, requiresStaffSelection: false, slots: [], availableAllDay: false };
+
   if (mode === 'all_day') {
     const occurrence = { date, time: '', slotKey: `${date}#ALL_DAY` };
-    const staff = await availableStaffForOccurrences({ shopId, rule, occurrences: [...selectedOccurrences, occurrence], requestedStaffId, ignoreBookingId, StaffModel, StaffReservationModel });
+    const staff = availableStaffFromContext({ ...context, rule, occurrences: [...selectedOccurrences, occurrence], ignoreBookingId });
     return { managed: true, requiresStaffSelection: false, slots: [], availableAllDay: staff.length > 0 };
   }
+
   const slots = [];
   for (const time of baseSlots) {
     const occurrence = { date, time, slotKey: `${date}T${time}` };
-    const staff = await availableStaffForOccurrences({ shopId, rule, occurrences: [...selectedOccurrences, occurrence], requestedStaffId, ignoreBookingId, StaffModel, StaffReservationModel });
+    const staff = availableStaffFromContext({ ...context, rule, occurrences: [...selectedOccurrences, occurrence], ignoreBookingId });
     if (staff.length) slots.push(time);
   }
   return { managed: true, requiresStaffSelection: false, slots, availableAllDay: false };
