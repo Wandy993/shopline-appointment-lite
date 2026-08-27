@@ -1,7 +1,8 @@
 (() => {
-  const VERSION = '0.6.8';
+  const VERSION = '0.6.9';
   const API_BASE = 'https://appointment.toolkit.fans';
   const CACHE_TTL = 5 * 60 * 1000;
+  const RULE_CACHE = new Map();
   const SELECTOR = '[data-appointment-lite]:not([data-al-ready])';
   const PREFIX = '[Appointment Lite]';
   const GOOGLE_G_ICON = `<span class="al-google-g" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill="#4285F4" d="M21.6 12.23c0-.71-.06-1.24-.2-1.8H12v3.28h5.52a4.72 4.72 0 0 1-2.05 3.01l-.02.11 2.98 2.31.21.02c1.93-1.78 3.04-4.4 3.04-6.93Z"/><path fill="#34A853" d="M12 22c2.76 0 5.08-.91 6.78-2.48l-3.23-2.5c-.86.6-2.04 1.01-3.55 1.01a6.17 6.17 0 0 1-5.83-4.26l-.1.01-3.1 2.4-.04.1A10.24 10.24 0 0 0 12 22Z"/><path fill="#FBBC05" d="M6.17 13.77A6.3 6.3 0 0 1 5.83 12c0-.62.12-1.22.33-1.78l-.01-.12-3.14-2.44-.1.05A10 10 0 0 0 1.82 12c0 1.55.38 3.02 1.08 4.29l3.27-2.52Z"/><path fill="#EA4335" d="M12 5.97c1.92 0 3.22.83 3.97 1.52l2.88-2.81C17.08 3.03 14.76 2 12 2a10.24 10.24 0 0 0-9.08 5.71l3.24 2.51A6.19 6.19 0 0 1 12 5.97Z"/></svg></span>`;
@@ -33,6 +34,52 @@
 
   function text(value) {
     return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char]);
+  }
+
+  const defaultStorefrontSettings = {
+    button: { label: 'Book an appointment', backgroundColor: '#2F6FED', textColor: '#FFFFFF', width: 'content', alignment: 'left', borderRadius: 8 },
+    modal: { title: 'Book an appointment', accentColor: '#2F6FED', primaryTextColor: '#FFFFFF', showServiceSummary: true, showTimezoneSelector: true, showPhone: true, showNotes: true, showFooterNote: true }
+  };
+
+  function storefrontSettings(input = {}) {
+    const hex = (value, fallback) => /^#[0-9a-f]{6}$/i.test(String(value || '')) ? String(value).toUpperCase() : fallback;
+    const radius = Number(input.button?.borderRadius);
+    return {
+      button: {
+        label: String(input.button?.label || defaultStorefrontSettings.button.label).trim().slice(0, 60) || defaultStorefrontSettings.button.label,
+        backgroundColor: hex(input.button?.backgroundColor, defaultStorefrontSettings.button.backgroundColor),
+        textColor: hex(input.button?.textColor, defaultStorefrontSettings.button.textColor),
+        width: input.button?.width === 'full' ? 'full' : 'content',
+        alignment: ['left', 'center', 'right'].includes(input.button?.alignment) ? input.button.alignment : 'left',
+        borderRadius: Number.isFinite(radius) ? Math.min(24, Math.max(0, Math.round(radius))) : defaultStorefrontSettings.button.borderRadius
+      },
+      modal: {
+        title: String(input.modal?.title || defaultStorefrontSettings.modal.title).trim().slice(0, 80) || defaultStorefrontSettings.modal.title,
+        accentColor: hex(input.modal?.accentColor, defaultStorefrontSettings.modal.accentColor),
+        primaryTextColor: hex(input.modal?.primaryTextColor, defaultStorefrontSettings.modal.primaryTextColor),
+        showServiceSummary: input.modal?.showServiceSummary !== false,
+        showTimezoneSelector: input.modal?.showTimezoneSelector !== false,
+        showPhone: input.modal?.showPhone !== false,
+        showNotes: input.modal?.showNotes !== false,
+        showFooterNote: input.modal?.showFooterNote !== false
+      }
+    };
+  }
+
+  function applyStorefrontToWidget(widget, settings) {
+    widget.__appointmentLiteStorefront = settings;
+    widget.dataset.alButtonWidth = settings.button.width;
+    widget.dataset.alButtonAlign = settings.button.alignment;
+    widget.style.setProperty('--al-accent', settings.modal.accentColor);
+    widget.style.setProperty('--al-trigger-bg', settings.button.backgroundColor);
+    widget.style.setProperty('--al-trigger-text', settings.button.textColor);
+    widget.style.setProperty('--al-trigger-radius', `${settings.button.borderRadius}px`);
+    const trigger = widget.querySelector('.al-trigger');
+    if (trigger) trigger.textContent = settings.button.label;
+  }
+
+  function storefrontForWidget(widget) {
+    return widget?.__appointmentLiteStorefront || storefrontSettings();
   }
 
 
@@ -88,7 +135,7 @@
 
   const staffPresetClasses = new Set(['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose', 'nova']);
   const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
-  function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="${API_BASE}/assets/staff/${file}?v=0.6.8" alt="" loading="lazy" decoding="async">`;}
+  function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="${API_BASE}/assets/staff/${file}?v=0.6.9" alt="" loading="lazy" decoding="async">`;}
 
   function staffAvatar(item, className = '') {
     const avatar = item?.avatar || {};
@@ -179,22 +226,16 @@
   }
 
   function cachedRule(context) {
-    const key = `al-rule:${VERSION}:${context.shopId}:${context.productId}`;
-    try {
-      const hit = JSON.parse(localStorage.getItem(key));
-      if (hit && Date.now() - hit.at < CACHE_TTL) {
-        info('Rule cache hit.', { ...context, ageMs: Date.now() - hit.at });
-        return Promise.resolve(hit.value);
-      }
-    } catch (error) {
-      warn('Rule cache read failed; continuing without cache.', { message: error.message });
+    const key = `${VERSION}:${context.shopId}:${context.productId}`;
+    const hit = RULE_CACHE.get(key);
+    if (hit && Date.now() - hit.at < CACHE_TTL) {
+      info('Rule cache hit.', { ...context, ageMs: Date.now() - hit.at });
+      return hit.promise;
     }
     info('Rule cache miss.', context);
-    return requestJson(apiUrl('/api/public/rule', context), {}, 'rule').then(value => {
-      try { localStorage.setItem(key, JSON.stringify({ at: Date.now(), value })); }
-      catch (error) { warn('Rule cache write failed.', { message: error.message }); }
-      return value;
-    });
+    const promise = requestJson(apiUrl('/api/public/rule', context), {}, 'rule').catch(error => { RULE_CACHE.delete(key); throw error; });
+    RULE_CACHE.set(key, { at: Date.now(), promise });
+    return promise;
   }
 
   function receiptKey(context) {
@@ -341,7 +382,8 @@
     try {
       const payload = await cachedRule(context);
       const rule = { ...payload.rule, timezone: payload.timezone || 'UTC', storeDate: payload.storeDate || '' };
-      widget.style.setProperty('--al-accent', '#2F6FED');
+      const storefront = storefrontSettings(payload.storefront || {});
+      applyStorefrontToWidget(widget, storefront);
       widget.hidden = false;
       widget.dataset.alStatus = 'ready';
       const trigger = widget.querySelector('.al-trigger');
@@ -416,9 +458,10 @@
     window.scrollTo(0, dialogScrollY);
   }
 
-  function mountDialog(dialog, variant = '') {
+  function mountDialog(dialog, variant = '', settings = storefrontSettings()) {
     dialog.className = ['al-dialog', variant].filter(Boolean).join(' ');
-    dialog.style.setProperty('--al-accent', '#2F6FED');
+    dialog.style.setProperty('--al-accent', settings.modal.accentColor);
+    dialog.style.setProperty('--al-primary-text', settings.modal.primaryTextColor);
     document.body.append(dialog);
     dialog.showModal();
     lockPageForDialog();
@@ -445,7 +488,7 @@
         ? '<div class="al-notice"><strong>One online change available</strong><span>You can change this appointment once. After saving, contact the store for further changes.</span></div><button type="button" class="al-submit al-reschedule">Change date or time</button>'
         : '<div class="al-limit"><strong>Online change already used</strong><span>Please contact the store if you need to change this appointment again.</span></div>';
     dialog.innerHTML = `<div class="al-head"><div><h2>Manage appointment</h2><p>${text(rule.serviceTitle || rule.productTitle)}</p></div><button class="al-close" type="button" aria-label="Close">×</button></div><div class="al-manage">${appointmentDetails(receipt)}<div class="al-error" hidden role="alert"></div><div class="al-manage-actions">${changeControl}<button type="button" class="al-danger al-cancel">Cancel appointment</button></div></div>`;
-    mountDialog(dialog);
+    mountDialog(dialog, '', storefrontForWidget(widget));
     dialog.querySelector('.al-reschedule')?.addEventListener('click', () => {
       dialog.close();
       openReschedule(widget, rule, context, receipt);
@@ -498,7 +541,7 @@
     const today = rule.storeDate || new Date().toISOString().slice(0, 10);
     const minDate = rule.dateFrom && rule.dateFrom > today ? rule.dateFrom : today;
     dialog.innerHTML = `<div class="al-head"><div><button type="button" class="al-back">← Back</button><h2>Change date or time</h2><p>${text(rule.serviceTitle || rule.productTitle)}</p></div><button class="al-close" type="button" aria-label="Close">×</button></div><form class="al-form"><div class="al-form-body">${appointmentDetails(receipt)}<div class="al-notice"><strong>This is your only online change</strong><span>After you save, contact the store if you need another change.</span></div><div class="al-grid"><div class="al-field"><label for="al-reschedule-date">New date</label><input id="al-reschedule-date" name="date" type="date" min="${minDate}" ${maxDateAttribute(rule)} required></div><div><span class="al-legend">New time</span><div class="al-times"><span class="al-muted">Choose a date first.</span></div></div></div><p class="al-muted">All times are shown in the service time zone: ${text(rule.timezone || 'UTC')}.</p></div><div class="al-actions"><div class="al-error" hidden role="alert"></div><button class="al-submit" type="submit">Save changes</button></div></form>`;
-    mountDialog(dialog);
+    mountDialog(dialog, '', storefrontForWidget(widget));
     dialog.querySelector('.al-back').addEventListener('click', () => {
       dialog.close();
       openManage(widget, rule, context, receipt);
@@ -554,9 +597,12 @@
   function open(widget, rule, context) {
     info('Booking dialog opened.', { ...context, ruleId: rule.id, bookingMode: rule.bookingMode || 'slot' });
     const dialog = document.createElement('dialog');
+    const storefront = storefrontForWidget(widget);
+    const modalSettings = storefront.modal;
     const mode = ['slot', 'all_day', 'multi_slot'].includes(rule.bookingMode) ? rule.bookingMode : 'slot';
     const serviceTimezone = validTimeZone(rule.timezone) ? rule.timezone : 'UTC';
-    let customerTimezone = validTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone) ? Intl.DateTimeFormat().resolvedOptions().timeZone : serviceTimezone;
+    const detectedTimezone = validTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone) ? Intl.DateTimeFormat().resolvedOptions().timeZone : serviceTimezone;
+    let customerTimezone = modalSettings.showTimezoneSelector ? detectedTimezone : serviceTimezone;
     const availabilityCache = new Map();
     let availabilityRequestId = 0;
     const today = rule.storeDate || new Date().toISOString().slice(0, 10);
@@ -572,12 +618,17 @@
     const submitLabel = paid ? 'Continue to checkout' : 'Confirm booking';
     const actionNote = paid ? `Your selected time will be held for ${Number(rule.payment?.holdMinutes || 15)} minutes while you complete payment.` : 'You can reschedule or cancel your appointment later.';
     const serviceAddressField = rule.locationMode === 'customer_address' ? `<div class="al-field"><label for="al-service-address">Service address *</label><input id="al-service-address" name="serviceAddress" maxlength="300" autocomplete="street-address" placeholder="Enter the address for this appointment" required></div>` : '';
-    dialog.innerHTML = `<div class="al-head"><div><h2>Book an appointment</h2><p>${text(rule.serviceTitle || rule.productTitle)}</p></div><button class="al-close" type="button" aria-label="Close">×</button></div><form class="al-form"><div class="al-form-body"><div class="al-service-summary">${metaParts.map((value, index) => `<span>${index === 0 ? '◷' : index === 1 ? '⌂' : '◎'} ${text(value)}</span>`).join('<i>·</i>')}<span>◉ ${text(rule.timezone || 'UTC')}</span></div><div class="al-booking-layout"><aside class="al-calendar-column"><div class="al-calendar-card"><div class="al-calendar-toolbar"><button type="button" class="al-calendar-nav al-calendar-prev" aria-label="Previous month">‹</button><strong class="al-calendar-title">Calendar</strong><button type="button" class="al-calendar-nav al-calendar-next" aria-label="Next month">›</button></div><div class="al-calendar-weekdays" aria-hidden="true"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div><div class="al-calendar-grid" role="grid" aria-label="Choose a booking date"></div><input type="hidden" name="date" required></div><div class="al-timezone-note"><span>◷</span><div class="al-timezone-copy"><p class="al-timezone-text"></p><div class="al-timezone-picker"><button class="al-timezone-trigger" type="button" aria-haspopup="listbox" aria-expanded="false"><span class="al-timezone-value"></span><span>⌄</span></button><div class="al-timezone-menu" hidden><input class="al-timezone-search" type="search" placeholder="Search time zones" autocomplete="off"><div class="al-timezone-options" role="listbox"></div></div></div></div></div><div class="al-selected-sessions" hidden></div></aside><section class="al-booking-panel">${staffSelector}<div class="al-time-section"><div class="al-field-label-row"><span>${mode === 'all_day' ? 'Availability' : mode === 'multi_slot' ? 'Available sessions' : 'Available time slots'}</span><small class="al-selected-date-label">Choose a date</small></div><div class="al-times"><span class="al-muted">Choose a date first.</span></div></div><div class="al-details-divider"><span>Your details</span></div><div class="al-grid"><div class="al-field"><label for="al-name">Name *</label><input id="al-name" name="name" autocomplete="name" maxlength="120" placeholder="Enter your name" required></div><div class="al-field"><label for="al-email">Email *</label><input id="al-email" name="email" type="email" autocomplete="email" maxlength="254" placeholder="Enter your email" required></div></div><div class="al-field"><label for="al-phone">Phone (optional)</label><input id="al-phone" name="phone" type="tel" autocomplete="tel" maxlength="40" placeholder="Enter your phone number"></div>${serviceAddressField}<div class="al-field"><label for="al-note">${text(rule.questionLabel || 'Anything we should know?')}</label><textarea id="al-note" name="note" maxlength="2000" placeholder="Add a note for the team"></textarea></div><div class="al-questions"></div></section></div></div><div class="al-actions"><div class="al-error" hidden role="alert"></div><button class="al-submit" type="submit">${text(submitLabel)}</button><p class="al-action-note">${text(actionNote)}</p></div></form>`;
+    const summaryMarkup = modalSettings.showServiceSummary ? `<div class="al-service-summary">${metaParts.map((value, index) => `<span>${index === 0 ? '◷' : index === 1 ? '⌂' : '◎'} ${text(value)}</span>`).join('<i>·</i>')}<span>◉ ${text(rule.timezone || 'UTC')}</span></div>` : '';
+    const phoneField = modalSettings.showPhone ? `<div class="al-field"><label for="al-phone">Phone (optional)</label><input id="al-phone" name="phone" type="tel" autocomplete="tel" maxlength="40" placeholder="Enter your phone number"></div>` : '';
+    const notesField = modalSettings.showNotes ? `<div class="al-field"><label for="al-note">${text(rule.questionLabel || 'Anything we should know?')}</label><textarea id="al-note" name="note" maxlength="2000" placeholder="Add a note for the team"></textarea></div>` : '';
+    const footerNote = modalSettings.showFooterNote ? `<p class="al-action-note">${text(actionNote)}</p>` : '';
+    const timezoneClass = modalSettings.showTimezoneSelector ? '' : ' al-ui-hidden';
+    dialog.innerHTML = `<div class="al-head"><div><h2>${text(modalSettings.title)}</h2><p>${text(rule.serviceTitle || rule.productTitle)}</p></div><button class="al-close" type="button" aria-label="Close">×</button></div><form class="al-form"><div class="al-form-body">${summaryMarkup}<div class="al-booking-layout"><aside class="al-calendar-column"><div class="al-calendar-card"><div class="al-calendar-toolbar"><button type="button" class="al-calendar-nav al-calendar-prev" aria-label="Previous month">‹</button><strong class="al-calendar-title">Calendar</strong><button type="button" class="al-calendar-nav al-calendar-next" aria-label="Next month">›</button></div><div class="al-calendar-weekdays" aria-hidden="true"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div><div class="al-calendar-grid" role="grid" aria-label="Choose a booking date"></div><input type="hidden" name="date" required></div><div class="al-timezone-note${timezoneClass}"><span>◷</span><div class="al-timezone-copy"><p class="al-timezone-text"></p><div class="al-timezone-picker"><button class="al-timezone-trigger" type="button" aria-haspopup="listbox" aria-expanded="false"><span class="al-timezone-value"></span><span>⌄</span></button><div class="al-timezone-menu" hidden><input class="al-timezone-search" type="search" placeholder="Search time zones" autocomplete="off"><div class="al-timezone-options" role="listbox"></div></div></div></div></div><div class="al-selected-sessions" hidden></div></aside><section class="al-booking-panel">${staffSelector}<div class="al-time-section"><div class="al-field-label-row"><span>${mode === 'all_day' ? 'Availability' : mode === 'multi_slot' ? 'Available sessions' : 'Available time slots'}</span><small class="al-selected-date-label">Choose a date</small></div><div class="al-times"><span class="al-muted">Choose a date first.</span></div></div><div class="al-details-divider"><span>Your details</span></div><div class="al-grid"><div class="al-field"><label for="al-name">Name *</label><input id="al-name" name="name" autocomplete="name" maxlength="120" placeholder="Enter your name" required></div><div class="al-field"><label for="al-email">Email *</label><input id="al-email" name="email" type="email" autocomplete="email" maxlength="254" placeholder="Enter your email" required></div></div>${phoneField}${serviceAddressField}${notesField}<div class="al-questions"></div></section></div></div><div class="al-actions"><div class="al-error" hidden role="alert"></div><button class="al-submit" type="submit">${text(submitLabel)}</button>${footerNote}</div></form>`;
     const questions = dialog.querySelector('.al-questions');
     (rule.customQuestions || []).forEach((question, index) => {
       questions.insertAdjacentHTML('beforeend', `<div class="al-field"><label for="al-q-${index}">${text(question.label)}${question.required ? ' *' : ''}</label><input id="al-q-${index}" data-question="${text(question.label)}" maxlength="1000" ${question.required ? 'required' : ''}></div>`);
     });
-    mountDialog(dialog, 'al-booking-dialog');
+    mountDialog(dialog, 'al-booking-dialog', storefront);
 
     const dateInput = dialog.querySelector('[name=date]');
     const times = dialog.querySelector('.al-times');

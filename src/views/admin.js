@@ -39,7 +39,7 @@ export function adminPage() {
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light">
   <title>Appointment Lite</title>
-  <link rel="stylesheet" href="/admin/styles.css?v=0.6.8">
+  <link rel="stylesheet" href="/admin/styles.css?v=0.6.9">
 </head>
 <body>
   <div class="app-shell">
@@ -183,7 +183,55 @@ export function adminPage() {
         </section>
 
         <section id="setupView" class="view hidden">
-          <div class="page-heading"><div><span class="eyebrow">QUICK SETUP</span><h1>Launch Appointment Lite</h1><p>Connect the App Block for product-page services, or use a direct booking page, then test the booking flow.</p></div><span class="status-badge success">Store connected</span></div>
+          <div class="page-heading"><div><span class="eyebrow">STOREFRONT</span><h1>Storefront setup</h1><p>Connect Appointment Lite to your theme and customize the booking entry and dialog to match your storefront.</p></div><span class="status-badge success">Store connected</span></div>
+          <article class="panel storefront-customizer">
+            <div class="storefront-customizer-head"><div><span class="eyebrow">STOREFRONT DESIGN</span><h2>Booking button & dialog</h2><p>Use one global storefront style for product-page App Blocks and direct booking pages. Service schedules and required booking fields remain protected.</p></div><button id="saveStorefrontSettings" class="primary" type="button">Save storefront</button></div>
+            <div class="storefront-customizer-grid">
+              <div class="storefront-customizer-controls">
+                <section class="storefront-config-group">
+                  <div class="storefront-config-title"><span class="section-number">01</span><div><strong>Booking button</strong><small>Control the product-page appointment entry without depending on the theme button color.</small></div></div>
+                  <div class="field"><label for="storefrontButtonLabel">Button text</label><input id="storefrontButtonLabel" maxlength="60" placeholder="Book an appointment"></div>
+                  <div class="field-row storefront-color-row">
+                    <div class="field color-field"><label for="storefrontButtonColor">Button color</label><div><input id="storefrontButtonColor" type="color" value="#2F6FED"><input id="storefrontButtonColorHex" maxlength="7" value="#2F6FED"></div></div>
+                    <div class="field color-field"><label for="storefrontButtonTextColor">Text color</label><div><input id="storefrontButtonTextColor" type="color" value="#FFFFFF"><input id="storefrontButtonTextColorHex" maxlength="7" value="#FFFFFF"></div></div>
+                  </div>
+                  <div class="storefront-option-row"><div><strong>Button width</strong><small>Fit content avoids an oversized full-width button.</small></div><div class="segmented storefront-segmented" id="storefrontButtonWidthOptions"><button type="button" data-storefront-width="content" class="active">Fit content</button><button type="button" data-storefront-width="full">Full width</button></div><input id="storefrontButtonWidth" type="hidden" value="content"></div>
+                  <div class="storefront-option-row"><div><strong>Alignment</strong><small>Used when the button is not full width.</small></div><div class="segmented storefront-segmented" id="storefrontButtonAlignmentOptions"><button type="button" data-storefront-alignment="left" class="active">Left</button><button type="button" data-storefront-alignment="center">Center</button><button type="button" data-storefront-alignment="right">Right</button></div><input id="storefrontButtonAlignment" type="hidden" value="left"></div>
+                  <div class="field storefront-radius-field"><label for="storefrontButtonRadius">Corner radius <span>0–24 px</span></label><div class="input-suffix"><input id="storefrontButtonRadius" type="number" min="0" max="24" step="1" value="8"><span>px</span></div></div>
+                </section>
+                <section class="storefront-config-group">
+                  <div class="storefront-config-title"><span class="section-number">02</span><div><strong>Booking dialog</strong><small>Choose the accent and which optional customer-facing elements are visible.</small></div></div>
+                  <div class="field"><label for="storefrontModalTitle">Dialog title</label><input id="storefrontModalTitle" maxlength="80" placeholder="Book an appointment"></div>
+                  <div class="field-row storefront-color-row">
+                    <div class="field color-field"><label for="storefrontModalAccent">Accent color</label><div><input id="storefrontModalAccent" type="color" value="#2F6FED"><input id="storefrontModalAccentHex" maxlength="7" value="#2F6FED"></div></div>
+                    <div class="field color-field"><label for="storefrontModalTextColor">Primary button text</label><div><input id="storefrontModalTextColor" type="color" value="#FFFFFF"><input id="storefrontModalTextColorHex" maxlength="7" value="#FFFFFF"></div></div>
+                  </div>
+                  <div class="storefront-element-grid">
+                    <label class="toggle-row storefront-toggle"><input id="storefrontShowSummary" type="checkbox" checked><span class="toggle"><i></i></span><span><strong>Service summary</strong><small>Duration, location, staff and service time zone.</small></span></label>
+                    <label class="toggle-row storefront-toggle"><input id="storefrontShowTimezone" type="checkbox" checked><span class="toggle"><i></i></span><span><strong>Time zone selector</strong><small>Let customers view appointment times in another time zone.</small></span></label>
+                    <label class="toggle-row storefront-toggle"><input id="storefrontShowPhone" type="checkbox" checked><span class="toggle"><i></i></span><span><strong>Phone field</strong><small>Collect an optional customer phone number.</small></span></label>
+                    <label class="toggle-row storefront-toggle"><input id="storefrontShowNotes" type="checkbox" checked><span class="toggle"><i></i></span><span><strong>Notes field</strong><small>Show the service notes prompt and textarea.</small></span></label>
+                    <label class="toggle-row storefront-toggle"><input id="storefrontShowFooterNote" type="checkbox" checked><span class="toggle"><i></i></span><span><strong>Footer guidance</strong><small>Show the reschedule, cancellation, or payment guidance below the action.</small></span></label>
+                  </div>
+                  <p class="hint">Name and email stay visible. Customer address stays required for services configured with Customer address, and staff selection stays visible when the customer must choose a staff member.</p>
+                </section>
+              </div>
+              <aside class="storefront-preview-panel">
+                <div class="storefront-preview-toolbar"><div><span class="eyebrow">LIVE STOREFRONT PREVIEW</span><strong>Product page + dialog</strong></div><span>Desktop</span></div>
+                <div class="storefront-preview-canvas">
+                  <div class="storefront-product-preview"><span class="storefront-preview-kicker">SERVICE PRODUCT</span><strong>Private consultation</strong><small>$129.00 USD</small><div id="storefrontButtonPreviewWrap" class="storefront-button-preview-wrap align-left"><button id="storefrontButtonPreview" type="button">Book an appointment</button></div></div>
+                  <div class="storefront-dialog-preview">
+                    <div class="storefront-dialog-preview-head"><div><strong id="storefrontModalTitlePreview">Book an appointment</strong><small>Private consultation</small></div><span>×</span></div>
+                    <div id="storefrontSummaryPreview" class="storefront-summary-preview"><span>◷ 60 minutes</span><span>⌂ Main showroom</span><span>◉ Asia/Shanghai</span></div>
+                    <div class="storefront-dialog-preview-body"><div class="storefront-mini-calendar"><div><span></span><span></span><span class="selected"></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div></div><div class="storefront-mini-form"><div class="storefront-mini-slots"><i></i><i class="selected"></i><i></i></div><div id="storefrontTimezonePreview" class="storefront-mini-timezone">Display time zone · Asia/Shanghai</div><div class="storefront-mini-fields"><span>Name</span><span>Email</span><span id="storefrontPhonePreview">Phone</span><span id="storefrontNotesPreview" class="wide">Anything we should know?</span></div></div></div>
+                    <div class="storefront-dialog-preview-actions"><button id="storefrontModalButtonPreview" type="button">Confirm booking</button><small id="storefrontFooterPreview">You can reschedule or cancel your appointment later.</small></div>
+                  </div>
+                </div>
+                <p class="storefront-preview-footnote">The preview is simplified. Real availability, staff, customer-address fields, custom questions, and payment actions still follow each service configuration.</p>
+              </aside>
+            </div>
+          </article>
+          <div class="setup-section-label"><span class="eyebrow">CONNECTION</span><h2>Theme & launch checklist</h2></div>
           <div class="setup-layout">
             <article class="panel setup-steps">
               <div id="setupBlockStep" class="setup-step"><span>1</span><div><strong>Enable the Appointment Lite App Block</strong><p>Required when a service uses the SHOPLINE product page. Open the product template, add or activate the Appointment Lite App Block, then save the theme. Direct-booking-only services can continue without it.</p><div class="setup-step-actions"><a id="openThemeEditor" class="button-link primary disabled" href="#" target="_blank" rel="noopener noreferrer">Open theme editor ${icons.arrow}</a><button id="confirmAppBlock" class="secondary" type="button">I've enabled the App Block</button></div><p id="themeEditorHint" class="hint">Preparing your theme editor link…</p></div></div>
@@ -301,7 +349,7 @@ export function adminPage() {
   </dialog>
 
   <dialog id="confirmDialog" class="confirm-modal"><div class="confirm-icon">!</div><div class="confirm-copy"><h2 id="confirmTitle">Please confirm</h2><p id="confirmMessage"></p></div><div class="modal-actions"><button id="confirmNo" class="secondary">Keep it</button><button id="confirmYes" class="danger">Confirm</button></div></dialog>
-  <script type="module" src="/admin/app.js?v=0.6.8"></script>
+  <script type="module" src="/admin/app.js?v=0.6.9"></script>
 </body>
 </html>`;
 }

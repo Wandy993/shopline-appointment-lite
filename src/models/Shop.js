@@ -45,6 +45,32 @@ const emailSettingsSchema = new mongoose.Schema({
 }, { _id: false });
 
 
+
+const storefrontButtonSettingsSchema = new mongoose.Schema({
+  label: { type: String, maxlength: 60, default: 'Book an appointment' },
+  backgroundColor: { type: String, match: /^#[0-9a-f]{6}$/i, default: '#2F6FED' },
+  textColor: { type: String, match: /^#[0-9a-f]{6}$/i, default: '#FFFFFF' },
+  width: { type: String, enum: ['content', 'full'], default: 'content' },
+  alignment: { type: String, enum: ['left', 'center', 'right'], default: 'left' },
+  borderRadius: { type: Number, min: 0, max: 24, default: 8 }
+}, { _id: false });
+
+const storefrontModalSettingsSchema = new mongoose.Schema({
+  title: { type: String, maxlength: 80, default: 'Book an appointment' },
+  accentColor: { type: String, match: /^#[0-9a-f]{6}$/i, default: '#2F6FED' },
+  primaryTextColor: { type: String, match: /^#[0-9a-f]{6}$/i, default: '#FFFFFF' },
+  showServiceSummary: { type: Boolean, default: true },
+  showTimezoneSelector: { type: Boolean, default: true },
+  showPhone: { type: Boolean, default: true },
+  showNotes: { type: Boolean, default: true },
+  showFooterNote: { type: Boolean, default: true }
+}, { _id: false });
+
+const storefrontSettingsSchema = new mongoose.Schema({
+  button: { type: storefrontButtonSettingsSchema, default: () => ({}) },
+  modal: { type: storefrontModalSettingsSchema, default: () => ({}) }
+}, { _id: false });
+
 const onboardingSchema = new mongoose.Schema({
   quickstartStartedAt: Date,
   quickstartDismissedAt: Date,
@@ -64,6 +90,7 @@ const shopSchema = new mongoose.Schema({
   timezone: { type: String, default: 'UTC' },
   email: { type: String, default: '' },
   emailSettings: { type: emailSettingsSchema, default: () => ({}) },
+  storefrontSettings: { type: storefrontSettingsSchema, default: () => ({}) },
   onboarding: { type: onboardingSchema, default: () => ({}) },
   installedAt: { type: Date, default: Date.now },
   uninstalledAt: Date

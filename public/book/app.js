@@ -7,6 +7,38 @@ let selectedAllDayDate = '';
 let selectedOccurrences = [];
 let selectedStaffId = '';
 let brand = { name: 'Appointment Lite', accentColor: '#2F6FED' };
+const defaultStorefrontSettings = Object.freeze({
+  button: { label: 'Book an appointment', backgroundColor: '#2F6FED', textColor: '#FFFFFF', width: 'content', alignment: 'left', borderRadius: 8 },
+  modal: { title: 'Book an appointment', accentColor: '#2F6FED', primaryTextColor: '#FFFFFF', showServiceSummary: true, showTimezoneSelector: true, showPhone: true, showNotes: true, showFooterNote: true }
+});
+let storefront = defaultStorefrontSettings;
+
+function normalizeStorefrontSettings(input = {}) {
+  const hex = (value, fallback) => /^#[0-9A-Fa-f]{6}$/.test(String(value || '')) ? String(value).toUpperCase() : fallback;
+  const radius = Number(input.button?.borderRadius);
+  return {
+    button: {
+      ...defaultStorefrontSettings.button,
+      ...(input.button || {}),
+      backgroundColor: hex(input.button?.backgroundColor, defaultStorefrontSettings.button.backgroundColor),
+      textColor: hex(input.button?.textColor, defaultStorefrontSettings.button.textColor),
+      width: ['content', 'full'].includes(input.button?.width) ? input.button.width : defaultStorefrontSettings.button.width,
+      alignment: ['left', 'center', 'right'].includes(input.button?.alignment) ? input.button.alignment : defaultStorefrontSettings.button.alignment,
+      borderRadius: Number.isFinite(radius) ? Math.min(24, Math.max(0, Math.round(radius))) : defaultStorefrontSettings.button.borderRadius
+    },
+    modal: {
+      ...defaultStorefrontSettings.modal,
+      ...(input.modal || {}),
+      accentColor: hex(input.modal?.accentColor, defaultStorefrontSettings.modal.accentColor),
+      primaryTextColor: hex(input.modal?.primaryTextColor, defaultStorefrontSettings.modal.primaryTextColor),
+      showServiceSummary: input.modal?.showServiceSummary !== false,
+      showTimezoneSelector: input.modal?.showTimezoneSelector !== false,
+      showPhone: input.modal?.showPhone !== false,
+      showNotes: input.modal?.showNotes !== false,
+      showFooterNote: input.modal?.showFooterNote !== false
+    }
+  };
+}
 let calendarCursor = '';
 let selectedDate = '';
 let minBookableDate = '';
@@ -134,9 +166,11 @@ function clearTimezonePosition(){const menu=$('#timezonePickerMenu');if(menu){me
 
 function setupTimezonePicker() {
   const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  customerTimezone = validTimeZone(browserTimezone) ? browserTimezone : serviceTimezone;
+  customerTimezone = storefront.modal.showTimezoneSelector && validTimeZone(browserTimezone) ? browserTimezone : serviceTimezone;
+  $('#timezoneNote')?.classList.toggle('hidden', !storefront.modal.showTimezoneSelector);
   renderTimezoneCopy();
   renderTimezoneOptions();
+  if (!storefront.modal.showTimezoneSelector) return;
   $('#timezonePickerButton')?.addEventListener('click', () => {
     const menu = $('#timezonePickerMenu');
     const open = menu.classList.toggle('hidden') === false;
@@ -148,7 +182,7 @@ function setupTimezonePicker() {
 
 const staffPresetClasses = new Set(['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose', 'nova']);
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
-function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="/assets/staff/${file}?v=0.6.8" alt="" loading="lazy" decoding="async">`;}
+function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="/assets/staff/${file}?v=0.6.9" alt="" loading="lazy" decoding="async">`;}
 
 function staffAvatarMarkup(item, className = '') {
   const avatar = item?.avatar || {};
@@ -331,8 +365,11 @@ function renderService(payload) {
   serviceTimezone = payload.timezone || rule.timezone || 'UTC';
   rule.timezone = serviceTimezone;
   brand = payload.brand || brand;
-  document.documentElement.style.setProperty('--brand', brand.accentColor || '#2F6FED');
-  document.documentElement.style.setProperty('--brand-soft', `color-mix(in srgb,${brand.accentColor || '#2F6FED'} 9%,white)`);
+  storefront = normalizeStorefrontSettings(payload.storefront || {});
+  const storefrontAccent = storefront.modal.accentColor || '#2F6FED';
+  document.documentElement.style.setProperty('--brand', storefrontAccent);
+  document.documentElement.style.setProperty('--brand-soft', `color-mix(in srgb,${storefrontAccent} 9%,white)`);
+  document.documentElement.style.setProperty('--brand-text', storefront.modal.primaryTextColor || '#FFFFFF');
   $('#brandName').textContent = brand.name || 'Appointment Lite';
   $('#brandMark').textContent = (brand.name || 'A').slice(0, 1).toUpperCase();
   $('#serviceType').textContent = typeLabels[rule.serviceType] || typeLabels.other;
@@ -349,6 +386,10 @@ function renderService(payload) {
   const orderMeta = payload.postPurchase?.orderName ? `Order ${payload.postPurchase.orderName} verified` : '';
   const meta = [modeMeta, orderMeta, rule.location, managedStaffMeta || rule.staff, rule.capacity > 1 ? `${rule.capacity} ${mode === 'all_day' ? 'bookings per day' : 'spots per time'}` : '', formatNotice(rule.minimumNoticeMinutes)].filter(Boolean);
   $('#serviceMeta').innerHTML = meta.map(value => `<span>${escapeHtml(value)}</span>`).join('');
+  $('#serviceMeta').classList.toggle('hidden', !storefront.modal.showServiceSummary);
+  $('#phoneField')?.classList.toggle('hidden', !storefront.modal.showPhone);
+  $('#notesField')?.classList.toggle('hidden', !storefront.modal.showNotes);
+  $('#bookingFooterNote')?.classList.toggle('hidden', !storefront.modal.showFooterNote);
   const today = payload.storeDate || new Date().toISOString().slice(0, 10);
   minBookableDate = rule.dateFrom && rule.dateFrom > today ? rule.dateFrom : today;
   const maxByWindow = rule.bookingWindowUntil || '';

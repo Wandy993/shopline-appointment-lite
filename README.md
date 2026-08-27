@@ -1,5 +1,21 @@
 # Appointment Lite
 
+> v0.6.9 — Storefront Customizer
+
+Appointment Lite v0.6.9 adds merchant-controlled storefront styling so the booking entry and customer booking UI can match each SHOPLINE theme without changing service scheduling logic.
+
+## v0.6.9 Storefront Customizer
+
+- Adds a live **Storefront setup** editor for booking button text, background/text colors, width, alignment, and corner radius.
+- Changes the default product-page booking entry to **Fit content** instead of forcing a full-width blue button.
+- Adds booking-dialog accent and primary-button text colors, applied to selected dates/times and primary actions.
+- Lets merchants show or hide optional service summary, customer time-zone selector, Phone field, Notes field, and footer guidance.
+- Keeps Name and Email protected; required customer-address and staff-selection fields still follow each service rule and cannot be hidden by storefront styling.
+- Shares the modal appearance and optional-field settings with hosted/direct booking pages.
+- Publishes storefront settings in the public rule/service payload with revalidation instead of a persistent storefront rule cache, so saved design changes are visible after refresh.
+
+See [Storefront customizer](docs/V069_STOREFRONT_CUSTOMIZER.md).
+
 > v0.6.8 — Booking Record Action Menu
 
 Appointment Lite v0.6.8 simplifies booking operations: the list now uses a five-column hierarchy, keeps **Appointment activity** visible, and moves secondary actions into a compact custom **Actions** menu.

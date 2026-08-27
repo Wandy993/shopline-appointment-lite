@@ -15,6 +15,7 @@ import { cancelBookingByMerchant, deleteBookingByMerchant, setBookingStatusByMer
 import { emailStatus, sendTestEmail } from '../services/email.js';
 import { zonedNow } from '../lib/slots.js';
 import { normalizeEmailSettings, validateEmailSettings, validateTestEmailRecipient } from '../lib/email-settings.js';
+import { normalizeStorefrontSettings, validateStorefrontSettings } from '../lib/storefront-settings.js';
 import { buildThemeAppBlockDeepLink } from '../lib/theme-deep-link.js';
 import { accessTokenForConnection, decryptGoogleRefreshToken, googleCalendarAuthorizationUrl, googleCalendarConfigured, listOwnedGoogleCalendars, publicConnection, revokeGoogleRefreshToken } from '../services/google-calendar.js';
 import { queueUpcomingGoogleCalendarBookingsForBusiness, syncUpcomingGoogleCalendarBookingsForBusiness } from '../services/calendar-sync.js';
@@ -134,7 +135,7 @@ adminRouter.get('/bootstrap', async (req, res) => {
   };
   res.json({
     shop: { handle: req.shop.handle, storeId: req.shop.shoplineStoreId || '', locale: req.shop.locale, adminLocale: req.shop.adminLocale || 'en', timezone: req.shop.timezone, email: req.shop.email || '' },
-    email: { configured: delivery.configured, from: delivery.from || '' }, emailSettings: normalizeEmailSettings(req.shop.emailSettings || {}), nextBookings, orderAccess,
+    email: { configured: delivery.configured, from: delivery.from || '' }, emailSettings: normalizeEmailSettings(req.shop.emailSettings || {}), storefrontSettings: normalizeStorefrontSettings(req.shop.storefrontSettings || {}), nextBookings, orderAccess,
     onboarding: onboardingStatus(req.shop, { ruleCount, activeRuleCount, bookingCount, firstActiveRule }),
     csrfToken: req.csrfToken,
     stats: { ruleCount, activeRuleCount, bookingCount, upcomingCount }
@@ -748,6 +749,16 @@ adminRouter.put('/calendar/google/:staffId', retiredStaffCalendarRoute);
 adminRouter.patch('/calendar/google/:staffId/settings', retiredStaffCalendarRoute);
 adminRouter.post('/calendar/google/:staffId/sync', retiredStaffCalendarRoute);
 adminRouter.delete('/calendar/google/:staffId', retiredStaffCalendarRoute);
+
+
+adminRouter.put('/storefront/settings', async (req, res) => {
+  const { errors, value } = validateStorefrontSettings(req.body);
+  if (errors.length) return res.status(422).json({ error: 'VALIDATION_ERROR', message: errors.join(' '), fields: errors });
+  req.shop.storefrontSettings = value;
+  await req.shop.save();
+  res.set('Cache-Control', 'no-store');
+  res.json({ settings: normalizeStorefrontSettings(req.shop.storefrontSettings) });
+});
 
 adminRouter.put('/email/settings', async (req, res) => {
   const { errors, value } = validateEmailSettings(req.body);

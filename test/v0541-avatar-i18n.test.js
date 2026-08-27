@@ -35,7 +35,9 @@ test('admin locale switching can reverse dynamically captured Chinese text back 
   assert.match(admin, /if \(state\.staffOperations\?\.date\) renderStaffOperations\(\)/);
 });
 
-test('theme cache key includes the release version to evict old public staff metadata', async () => {
+test('theme in-memory rule cache includes the release version and avoids stale persistent storefront settings', async () => {
   const theme = await read('../theme-extension-source/public/appointment-lite.js');
-  assert.match(theme, /const key = `al-rule:\$\{VERSION\}:\$\{context\.shopId\}:\$\{context\.productId\}`/);
+  assert.match(theme, /const RULE_CACHE = new Map\(\)/);
+  assert.match(theme, /const key = `\$\{VERSION\}:\$\{context\.shopId\}:\$\{context\.productId\}`/);
+  assert.doesNotMatch(theme, /al-rule:\$\{VERSION\}/);
 });

@@ -2,7 +2,7 @@ const state = {
   csrf: '', shop: null, email: null, emailSettings: null, rules: [], bookings: [], products: [], staff: [], staffOperations: { date: '', timezone: '', staff: [], unassigned: [] }, staffOperationsView: 'list',
   ruleStep: 0, activeTemplate: 'confirmation', emailEditorReady: false, bookingView: 'list', calendarMonth: '',
   locale: 'en', currentView: 'dashboard', themeLinkLoaded: false, bootstrap: null, onboarding: null, lastTestEmail: '', ruleModeTouched: false, editingRule: false,
-  calendarSync: null, calendarStaffId: '', calendarPopup: null, calendarDayItems: {}, paidVariants: [], orderAccess: null, locations: [], locationAccess: null
+  calendarSync: null, calendarStaffId: '', calendarPopup: null, calendarDayItems: {}, paidVariants: [], orderAccess: null, locations: [], locationAccess: null, storefrontSettings: null
 };
 const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const viewLabels = {
@@ -29,6 +29,10 @@ const serviceTypeLabels = { appointment: 'Appointment', product: 'Appointment', 
 const bookingSourceLabels = { product: 'Product page', direct: 'Booking page', both: 'Product page + booking link' };
 const commerceModeLabels = { standalone_free: 'Standalone · no payment', standalone_paid: 'Standalone · payment required', product_pre_purchase: 'Product + appointment', product_post_purchase: 'Purchase first · schedule after' };
 const activeCommerceModes = new Set(['standalone_free', 'standalone_paid', 'product_pre_purchase', 'product_post_purchase']);
+const defaultStorefrontSettings = Object.freeze({
+  button: Object.freeze({ label: 'Book an appointment', backgroundColor: '#2F6FED', textColor: '#FFFFFF', width: 'content', alignment: 'left', borderRadius: 8 }),
+  modal: Object.freeze({ title: 'Book an appointment', accentColor: '#2F6FED', primaryTextColor: '#FFFFFF', showServiceSummary: true, showTimezoneSelector: true, showPhone: true, showNotes: true, showFooterNote: true })
+});
 const productStatusLabels = { active: 'Published', draft: 'Draft' };
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -436,6 +440,28 @@ Object.assign(zh, {
   'Order lifecycle': '订单生命周期', 'Schedule remaining': '继续预约', 'Not scheduled yet': '尚未预约', 'Order created': '订单已创建', 'Open order': '打开订单'
 });
 
+Object.assign(zh, {
+  'STOREFRONT': '店铺前台', 'Storefront setup': '店铺前台设置',
+  'Connect Appointment Lite to your theme and customize the booking entry and dialog to match your storefront.': '连接 Appointment Lite 到店铺主题，并自定义预约入口与弹窗，使其更符合店铺风格。',
+  'STOREFRONT DESIGN': '前台样式', 'Booking button & dialog': '预约按钮与弹窗',
+  'Use one global storefront style for product-page App Blocks and direct booking pages. Service schedules and required booking fields remain protected.': '统一设置商品页 App Block 与独立预约页的前台样式；服务排期和必要预约字段仍由系统保护。',
+  'Save storefront': '保存前台设置', 'Booking button': '预约按钮',
+  'Control the product-page appointment entry without depending on the theme button color.': '单独控制商品页预约入口，不再依赖主题本身的按钮颜色。',
+  'Button text': '按钮文案', 'Button color': '按钮颜色', 'Text color': '文字颜色', 'Button width': '按钮宽度',
+  'Fit content avoids an oversized full-width button.': '根据内容自适应宽度，避免按钮横向铺满过长。', 'Fit content': '适应内容', 'Full width': '占满宽度',
+  'Alignment': '对齐方式', 'Used when the button is not full width.': '按钮非占满宽度时生效。', 'Left': '左侧', 'Center': '居中', 'Right': '右侧',
+  'Corner radius': '圆角', 'Booking dialog': '预约弹窗', 'Choose the accent and which optional customer-facing elements are visible.': '设置弹窗主题色，并控制可选的客户前台元素是否展示。',
+  'Dialog title': '弹窗标题', 'Primary button text': '主按钮文字颜色', 'Service summary': '服务摘要',
+  'Duration, location, staff and service time zone.': '展示时长、地点、员工和服务时区。', 'Time zone selector': '时区选择器',
+  'Let customers view appointment times in another time zone.': '允许客户切换时区查看预约时间。', 'Phone field': '手机号字段',
+  'Collect an optional customer phone number.': '收集客户可选的手机号。', 'Notes field': '备注字段', 'Show the service notes prompt and textarea.': '展示服务备注提示和文本输入框。',
+  'Footer guidance': '底部提示', 'Show the reschedule, cancellation, or payment guidance below the action.': '在确认按钮下展示改期、取消或付款相关提示。',
+  'Name and email stay visible. Customer address stays required for services configured with Customer address, and staff selection stays visible when the customer must choose a staff member.': '姓名和邮箱始终展示。配置为“客户地址”的服务仍会要求填写地址；当服务要求客户选择员工时，员工选择也会保留。',
+  'LIVE STOREFRONT PREVIEW': '前台实时预览', 'Product page + dialog': '商品页 + 弹窗',
+  'The preview is simplified. Real availability, staff, customer-address fields, custom questions, and payment actions still follow each service configuration.': '此处为简化预览。实际可预约时段、员工、客户地址、自定义问题和付款动作仍以每项服务配置为准。',
+  'CONNECTION': '连接配置', 'Theme & launch checklist': '主题与上线检查', 'Storefront settings saved.': '店铺前台设置已保存。'
+});
+
 const enByZh = new Map(Object.entries(zh).map(([english, chinese]) => [chinese, english]));
 
 function t(value, variables = {}) {
@@ -487,7 +513,7 @@ const staffAvatarPresets = ['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunse
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
 function staffPresetImage(preset) {
   const file = staffAvatarFiles[preset] || staffAvatarFiles.aurora;
-  return `<img src="/assets/staff/${file}?v=0.6.8" alt="" loading="lazy" decoding="async">`;
+  return `<img src="/assets/staff/${file}?v=0.6.9" alt="" loading="lazy" decoding="async">`;
 }
 let staffAvatarDraft = { kind: 'preset', value: 'aurora' };
 
@@ -2114,6 +2140,124 @@ function productSkeletons() {
 
 function clone(value) { return JSON.parse(JSON.stringify(value)); }
 
+function normalizeStorefrontClient(input = {}) {
+  return {
+    button: { ...clone(defaultStorefrontSettings.button), ...(input.button || {}) },
+    modal: { ...clone(defaultStorefrontSettings.modal), ...(input.modal || {}) }
+  };
+}
+
+function setStorefrontButtonWidth(value, { render = true } = {}) {
+  const next = value === 'full' ? 'full' : 'content';
+  $('#storefrontButtonWidth').value = next;
+  $$('#storefrontButtonWidthOptions [data-storefront-width]').forEach(button => button.classList.toggle('active', button.dataset.storefrontWidth === next));
+  const full = next === 'full';
+  $$('#storefrontButtonAlignmentOptions [data-storefront-alignment]').forEach(button => { button.disabled = full; });
+  if (render) renderStorefrontPreview();
+}
+
+function setStorefrontButtonAlignment(value, { render = true } = {}) {
+  const next = ['left', 'center', 'right'].includes(value) ? value : 'left';
+  $('#storefrontButtonAlignment').value = next;
+  $$('#storefrontButtonAlignmentOptions [data-storefront-alignment]').forEach(button => button.classList.toggle('active', button.dataset.storefrontAlignment === next));
+  if (render) renderStorefrontPreview();
+}
+
+function syncStorefrontColor(colorId, hexId, source = 'color') {
+  const colorInput = $(`#${colorId}`);
+  const hexInput = $(`#${hexId}`);
+  if (!colorInput || !hexInput) return;
+  if (source === 'color') hexInput.value = colorInput.value.toUpperCase();
+  else if (/^#[0-9a-f]{6}$/i.test(hexInput.value)) colorInput.value = hexInput.value;
+  renderStorefrontPreview();
+}
+
+function storefrontSettingsFromForm() {
+  const hex = (id, fallback) => /^#[0-9a-f]{6}$/i.test($(`#${id}`)?.value || '') ? $(`#${id}`).value.toUpperCase() : fallback;
+  return {
+    button: {
+      label: $('#storefrontButtonLabel').value.trim() || defaultStorefrontSettings.button.label,
+      backgroundColor: hex('storefrontButtonColorHex', defaultStorefrontSettings.button.backgroundColor),
+      textColor: hex('storefrontButtonTextColorHex', defaultStorefrontSettings.button.textColor),
+      width: $('#storefrontButtonWidth').value === 'full' ? 'full' : 'content',
+      alignment: ['left', 'center', 'right'].includes($('#storefrontButtonAlignment').value) ? $('#storefrontButtonAlignment').value : 'left',
+      borderRadius: Math.min(24, Math.max(0, Number($('#storefrontButtonRadius').value || 0)))
+    },
+    modal: {
+      title: $('#storefrontModalTitle').value.trim() || defaultStorefrontSettings.modal.title,
+      accentColor: hex('storefrontModalAccentHex', defaultStorefrontSettings.modal.accentColor),
+      primaryTextColor: hex('storefrontModalTextColorHex', defaultStorefrontSettings.modal.primaryTextColor),
+      showServiceSummary: $('#storefrontShowSummary').checked,
+      showTimezoneSelector: $('#storefrontShowTimezone').checked,
+      showPhone: $('#storefrontShowPhone').checked,
+      showNotes: $('#storefrontShowNotes').checked,
+      showFooterNote: $('#storefrontShowFooterNote').checked
+    }
+  };
+}
+
+function renderStorefrontPreview() {
+  if (!$('#storefrontButtonPreview')) return;
+  const settings = storefrontSettingsFromForm();
+  const button = settings.button;
+  const modal = settings.modal;
+  const buttonWrap = $('#storefrontButtonPreviewWrap');
+  const buttonPreview = $('#storefrontButtonPreview');
+  buttonWrap.className = `storefront-button-preview-wrap ${button.width === 'full' ? 'full' : `align-${button.alignment}`}`;
+  buttonPreview.textContent = button.label;
+  buttonPreview.style.background = button.backgroundColor;
+  buttonPreview.style.color = button.textColor;
+  buttonPreview.style.borderRadius = `${button.borderRadius}px`;
+  $('#storefrontModalTitlePreview').textContent = modal.title;
+  $('#storefrontSummaryPreview').classList.toggle('hidden', !modal.showServiceSummary);
+  $('#storefrontTimezonePreview').classList.toggle('hidden', !modal.showTimezoneSelector);
+  $('#storefrontPhonePreview').classList.toggle('hidden', !modal.showPhone);
+  $('#storefrontNotesPreview').classList.toggle('hidden', !modal.showNotes);
+  $('#storefrontFooterPreview').classList.toggle('hidden', !modal.showFooterNote);
+  const modalButton = $('#storefrontModalButtonPreview');
+  modalButton.style.background = modal.accentColor;
+  modalButton.style.color = modal.primaryTextColor;
+  document.querySelectorAll('.storefront-mini-calendar .selected,.storefront-mini-slots .selected').forEach(element => { element.style.background = modal.accentColor; element.style.borderColor = modal.accentColor; });
+}
+
+function renderStorefrontSettings(settings = state.storefrontSettings) {
+  if (!$('#storefrontButtonLabel')) return;
+  const value = normalizeStorefrontClient(settings || defaultStorefrontSettings);
+  state.storefrontSettings = value;
+  $('#storefrontButtonLabel').value = value.button.label;
+  $('#storefrontButtonColor').value = value.button.backgroundColor;
+  $('#storefrontButtonColorHex').value = value.button.backgroundColor;
+  $('#storefrontButtonTextColor').value = value.button.textColor;
+  $('#storefrontButtonTextColorHex').value = value.button.textColor;
+  $('#storefrontButtonRadius').value = String(value.button.borderRadius);
+  setStorefrontButtonWidth(value.button.width, { render: false });
+  setStorefrontButtonAlignment(value.button.alignment, { render: false });
+  $('#storefrontModalTitle').value = value.modal.title;
+  $('#storefrontModalAccent').value = value.modal.accentColor;
+  $('#storefrontModalAccentHex').value = value.modal.accentColor;
+  $('#storefrontModalTextColor').value = value.modal.primaryTextColor;
+  $('#storefrontModalTextColorHex').value = value.modal.primaryTextColor;
+  $('#storefrontShowSummary').checked = value.modal.showServiceSummary;
+  $('#storefrontShowTimezone').checked = value.modal.showTimezoneSelector;
+  $('#storefrontShowPhone').checked = value.modal.showPhone;
+  $('#storefrontShowNotes').checked = value.modal.showNotes;
+  $('#storefrontShowFooterNote').checked = value.modal.showFooterNote;
+  renderStorefrontPreview();
+}
+
+async function saveStorefrontSettings() {
+  const button = $('#saveStorefrontSettings');
+  button.disabled = true;
+  try {
+    const payload = await api('/storefront/settings', { method: 'PUT', body: JSON.stringify(storefrontSettingsFromForm()) });
+    state.storefrontSettings = normalizeStorefrontClient(payload.settings);
+    if (state.bootstrap) state.bootstrap.storefrontSettings = clone(state.storefrontSettings);
+    renderStorefrontSettings(state.storefrontSettings);
+    toast(t('Storefront settings saved.'));
+  } catch (error) { showError(error); }
+  finally { button.disabled = false; }
+}
+
 function storeCurrentTemplate() {
   if (!state.emailEditorReady || !state.emailSettings?.templates?.[state.activeTemplate]) return;
   state.emailSettings.templates[state.activeTemplate] = { subject: $('#templateSubject').value, heading: $('#templateHeading').value, body: $('#templateBody').value };
@@ -2380,6 +2524,7 @@ async function loadBootstrap() {
   state.shop = payload.shop;
   state.email = payload.email;
   state.emailSettings = clone(payload.emailSettings);
+  state.storefrontSettings = normalizeStorefrontClient(payload.storefrontSettings || defaultStorefrontSettings);
   state.onboarding = payload.onboarding || {};
   $('#shopBadge').textContent = `${payload.shop.handle}.myshopline.com`;
   $('#timezoneBadge').textContent = payload.shop.timezone || 'UTC';
@@ -2396,6 +2541,7 @@ async function loadBootstrap() {
   $('#sendTestEmail').disabled = !payload.email.configured;
   renderDashboard(payload);
   renderEmailStudio();
+  renderStorefrontSettings(state.storefrontSettings);
   renderOnboarding(payload);
   await ensureStaff();
   renderBookingStaffFilter();
@@ -2428,6 +2574,7 @@ async function setLocale(locale, { save = true } = {}) {
   if (state.calendarSync) renderCalendarSync();
   if (state.bootstrap) { renderDashboard(state.bootstrap); renderOnboarding(state.bootstrap); }
   if (state.emailSettings) renderEmailStudio();
+  if (state.storefrontSettings) renderStorefrontSettings(state.storefrontSettings);
   if (save) {
     try { await api('/preferences', { method: 'PUT', body: JSON.stringify({ adminLocale: state.locale }) }); }
     catch (error) { showError(error); }
@@ -2594,6 +2741,14 @@ function bind() {
     pendingConfirm = null;
     $('#confirmDialog').close();
     if (action) try { await action(); } catch (error) { showError(error); }
+  });
+  $('#saveStorefrontSettings')?.addEventListener('click', saveStorefrontSettings);
+  $$('#storefrontButtonWidthOptions [data-storefront-width]').forEach(button => button.addEventListener('click', () => setStorefrontButtonWidth(button.dataset.storefrontWidth)));
+  $$('#storefrontButtonAlignmentOptions [data-storefront-alignment]').forEach(button => button.addEventListener('click', () => { if (!button.disabled) setStorefrontButtonAlignment(button.dataset.storefrontAlignment); }));
+  ['storefrontButtonLabel', 'storefrontButtonRadius', 'storefrontModalTitle', 'storefrontShowSummary', 'storefrontShowTimezone', 'storefrontShowPhone', 'storefrontShowNotes', 'storefrontShowFooterNote'].forEach(id => $(`#${id}`)?.addEventListener('input', renderStorefrontPreview));
+  [['storefrontButtonColor','storefrontButtonColorHex'],['storefrontButtonTextColor','storefrontButtonTextColorHex'],['storefrontModalAccent','storefrontModalAccentHex'],['storefrontModalTextColor','storefrontModalTextColorHex']].forEach(([colorId, hexId]) => {
+    $(`#${colorId}`)?.addEventListener('input', () => syncStorefrontColor(colorId, hexId, 'color'));
+    $(`#${hexId}`)?.addEventListener('input', () => syncStorefrontColor(colorId, hexId, 'hex'));
   });
   $('#saveEmailSettings').addEventListener('click', () => saveEmailSettings());
   $('#sendTestEmail').addEventListener('click', openTestEmailDialog);

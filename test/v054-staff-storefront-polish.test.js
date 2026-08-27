@@ -42,10 +42,10 @@ test('storefront modal fixes selected slots, floating pickers, success sizing, a
   assert.match(themeJs, new RegExp(`const VERSION = '${escapedVersion}'`));
   assert.match(themeJs, /positionTimezoneMenu/);
   assert.match(themeJs, /dialog\.classList\.add\('al-confirmed'\)/);
-  assert.match(themeCss, /\.al-time\[aria-pressed=true\] span\{[^}]*color:#fff!important/);
+  assert.match(themeCss, /\.al-time\[aria-pressed=true\] span\{[^}]*color:var\(--al-primary-text,#fff\)!important/);
   assert.match(themeCss, /\.al-timezone-menu\{position:fixed;z-index:100000/);
   assert.match(themeCss, /\.al-booking-dialog\.al-confirmed\{[^}]*height:auto!important/);
   assert.match(themeCss, /@media\(max-width:540px\)[\s\S]*?\.al-timezone-menu,.al-staff-menu\{position:fixed!important/);
-  assert.match(hostedCss, /\.time-slot\[aria-pressed=true\] span\{[^}]*color:#fff!important/);
+  assert.match(hostedCss, /\.time-slot\[aria-pressed=true\] span\{[^}]*color:var\(--brand-text,#fff\)!important/);
   assert.match(hostedCss, /@media\(max-width:620px\)[\s\S]*?\.timezone-picker-menu,.staff-picker-menu\{position:fixed!important/);
 });

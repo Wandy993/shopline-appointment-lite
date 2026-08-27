@@ -10,6 +10,7 @@ import { validateBookingInput, validateDateInput, validateSlotInput } from '../l
 import { cancelManagedBooking, createBookingForStore, createPaidBookingForStore, createPostPurchaseBookingForStore, getLegacyBookingStatus, getManagedAvailability, getManagedBooking, rescheduleManagedBooking } from '../services/bookings.js';
 import { findInstalledShop, validShopHandle, validShoplineStoreId } from '../services/shops.js';
 import { normalizeEmailSettings } from '../lib/email-settings.js';
+import { normalizeStorefrontSettings } from '../lib/storefront-settings.js';
 import { buildBookingIcs, calendarLinksForBooking, readBookingCalendarToken } from '../lib/calendar-links.js';
 import { getPostPurchaseEntitlement, publicPostPurchaseEntitlement } from '../services/post-purchase.js';
 
@@ -105,8 +106,8 @@ publicRouter.get('/rule', async (req, res) => {
   if (result.error) return res.status(result.error.status).json(result.error.body);
   const timezone = resolveRuleTimezone(result.rule, result.shop.timezone || 'UTC');
   const staffMeta = await publicStaffOptions(result.rule);
-  res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=300');
-  res.json({ rule: serializeRule(result.rule, timezone, staffMeta), timezone, storeDate: zonedNow(timezone).date });
+  res.set('Cache-Control', 'no-cache');
+  res.json({ rule: serializeRule(result.rule, timezone, staffMeta), storefront: normalizeStorefrontSettings(result.shop.storefrontSettings || {}), timezone, storeDate: zonedNow(timezone).date });
 });
 
 publicRouter.get('/service', async (req, res) => {
@@ -119,9 +120,9 @@ publicRouter.get('/service', async (req, res) => {
   const timezone = resolveRuleTimezone(result.rule, result.shop.timezone || 'UTC');
   const emailSettings = normalizeEmailSettings(result.shop.emailSettings || {});
   const staffMeta = await publicStaffOptions(result.rule);
-  res.set('Cache-Control', result.rule.commerceMode === 'product_post_purchase' ? 'no-store' : 'public, max-age=120, stale-while-revalidate=300');
+  res.set('Cache-Control', result.rule.commerceMode === 'product_post_purchase' ? 'no-store' : 'no-cache');
   res.json({
-    rule: serializeRule(result.rule, timezone, staffMeta), timezone, storeDate: zonedNow(timezone).date,
+    rule: serializeRule(result.rule, timezone, staffMeta), storefront: normalizeStorefrontSettings(result.shop.storefrontSettings || {}), timezone, storeDate: zonedNow(timezone).date,
     postPurchase: access.entitlement ? publicPostPurchaseEntitlement(access.entitlement) : null,
     brand: { name: emailSettings.brandName || result.shop.handle || 'Appointment Lite', logoUrl: emailSettings.logoUrl || '', accentColor: emailSettings.accentColor || '#2F6FED' }
   });
