@@ -1,5 +1,21 @@
 # Appointment Lite
 
+> v0.6.15 — Booking Performance & Reliability
+
+Appointment Lite v0.6.15 hardens the customer booking path with faster availability reads, transient-request recovery, bounded SHOPLINE order reconciliation, and retryable background Google Calendar synchronization.
+
+## v0.6.15 Booking Performance & Reliability
+
+- Reuses hot public service/shop context for a few seconds and coalesces identical in-flight availability calculations.
+- Adds compound MongoDB indexes for service/date capacity and staff/date availability reads.
+- Adds timing headers and slow-availability logging so production latency can be diagnosed from real requests.
+- Gives hosted booking and Theme App Block GET requests an 8-second timeout plus one retry for network, 429, and 5xx failures; booking POST requests remain single-attempt.
+- Delays the availability loading overlay by 180ms to remove unnecessary spinner flashes on fast responses.
+- Isolates SHOPLINE reconciliation failures per merchant and adds a bounded 15-minute recent-order recovery sweep for missed webhooks.
+- Retries transient SHOPLINE reads once and retries Google Calendar background sync at 0s / 1.5s / 5s without blocking the appointment itself.
+
+See [Booking Performance & Reliability](docs/V0615_BOOKING_PERFORMANCE_RELIABILITY.md).
+
 > v0.6.14 — Service Editor Picker Polish
 
 Appointment Lite v0.6.14 standardizes the New / Edit appointment service selection experience and fixes the paid-checkout configuration spacing.

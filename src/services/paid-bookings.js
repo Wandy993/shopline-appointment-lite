@@ -88,22 +88,32 @@ export async function reconcilePendingCommercePayments({
     byShop.get(shopId).add(orderId);
   }
 
-  const summary = { shops: 0, ordersChecked: 0, confirmed: 0, activated: 0, notified: 0, skippedNoPermission: 0 };
+  const summary = { shops: 0, ordersChecked: 0, confirmed: 0, activated: 0, notified: 0, skippedNoPermission: 0, errors: 0 };
   for (const [shopId, orderIds] of byShop) {
-    const shop = await ShopModel.findOne({ _id: shopId, uninstalledAt: null }).lean();
-    if (!shop) continue;
-    if (!hasReadOrders(shop)) { summary.skippedNoPermission += 1; continue; }
-    summary.shops += 1;
-    const ids = [...orderIds];
-    for (let index = 0; index < ids.length; index += 100) {
-      const chunk = ids.slice(index, index + 100);
-      const payload = await shoplineGetFn(shop._id, 'orders.json', { ids: chunk.join(','), status: 'any', limit: String(chunk.length) });
-      const orders = orderList(payload);
-      summary.ordersChecked += orders.length;
-      const result = await reconcileOrdersForShop({ shop, orders, BookingModel, EntitlementModel });
-      summary.confirmed += result.standaloneConfirmed;
-      summary.activated += result.postPurchaseActivated;
-      summary.notified += result.postPurchaseNotified;
+    try {
+      const shop = await ShopModel.findOne({ _id: shopId, uninstalledAt: null }).lean();
+      if (!shop) continue;
+      if (!hasReadOrders(shop)) { summary.skippedNoPermission += 1; continue; }
+      summary.shops += 1;
+      const ids = [...orderIds];
+      for (let index = 0; index < ids.length; index += 100) {
+        const chunk = ids.slice(index, index + 100);
+        try {
+          const payload = await shoplineGetFn(shop._id, 'orders.json', { ids: chunk.join(','), status: 'any', limit: String(chunk.length) });
+          const orders = orderList(payload);
+          summary.ordersChecked += orders.length;
+          const result = await reconcileOrdersForShop({ shop, orders, BookingModel, EntitlementModel });
+          summary.confirmed += result.standaloneConfirmed;
+          summary.activated += result.postPurchaseActivated;
+          summary.notified += result.postPurchaseNotified;
+        } catch (error) {
+          summary.errors += 1;
+          console.error('Pending SHOPLINE order reconciliation failed for a shop', { shopId: String(shop._id), message: error.message });
+        }
+      }
+    } catch (error) {
+      summary.errors += 1;
+      console.error('Pending SHOPLINE order reconciliation skipped a shop after an error', { shopId, message: error.message });
     }
   }
   return summary;
@@ -182,17 +192,61 @@ export async function reconcileRecentPaidOrdersForShop({
   return { skipped: false, ordersChecked: orders.length, ...result };
 }
 
-export function startPaidBookingScheduler({ intervalMs = 45_000, initialDelayMs = 8_000 } = {}) {
+export async function reconcileRecentCommerceOrdersForActiveShops({
+  days = 2,
+  orderLimit = 50,
+  shopLimit = 25,
+  ShopModel = Shop,
+  BookingModel = Booking,
+  EntitlementModel = PostPurchaseEntitlement,
+  shoplineGetFn = shoplineGet
+} = {}) {
+  const shops = await ShopModel.find({ uninstalledAt: null, scopes: SHOPLINE_ORDER_SCOPE })
+    .sort({ updatedAt: -1 })
+    .limit(Math.max(1, Math.min(100, Number(shopLimit || 25))))
+    .lean();
+  const summary = { shopsChecked: 0, ordersChecked: 0, confirmed: 0, activated: 0, notified: 0, errors: 0 };
+  for (const shop of shops) {
+    try {
+      const result = await reconcileRecentCommerceOrdersForShop({
+        shop,
+        days,
+        limit: orderLimit,
+        BookingModel,
+        EntitlementModel,
+        shoplineGetFn
+      });
+      if (result.skipped) continue;
+      summary.shopsChecked += 1;
+      summary.ordersChecked += Number(result.ordersChecked || 0);
+      summary.confirmed += Number(result.standaloneConfirmed || 0);
+      summary.activated += Number(result.postPurchaseActivated || 0);
+      summary.notified += Number(result.postPurchaseNotified || 0);
+    } catch (error) {
+      summary.errors += 1;
+      console.error('Recent SHOPLINE order recovery sweep failed for a shop', { shopId: String(shop._id), message: error.message });
+    }
+  }
+  return summary;
+}
+
+export function startPaidBookingScheduler({ intervalMs = 45_000, initialDelayMs = 8_000, recoverySweepEveryMs = 15 * 60_000 } = {}) {
   let stopped = false;
   let running = false;
   let timer;
+  let lastRecoverySweepAt = 0;
 
   const run = async () => {
     if (stopped || running) return;
     running = true;
     try {
       const reconciliation = await reconcilePendingCommercePayments();
-      if (reconciliation.confirmed || reconciliation.activated || reconciliation.notified) console.info('Reconciled SHOPLINE paid orders', reconciliation);
+      if (reconciliation.confirmed || reconciliation.activated || reconciliation.notified || reconciliation.errors) console.info('Reconciled SHOPLINE paid orders', reconciliation);
+      if (Date.now() - lastRecoverySweepAt >= recoverySweepEveryMs) {
+        lastRecoverySweepAt = Date.now();
+        const recovery = await reconcileRecentCommerceOrdersForActiveShops();
+        if (recovery.confirmed || recovery.activated || recovery.notified || recovery.errors) console.info('SHOPLINE order recovery sweep completed', recovery);
+      }
       const result = await expirePendingPaidBookings();
       if (result.expired) console.log('Expired paid booking holds', result);
     } catch (error) {

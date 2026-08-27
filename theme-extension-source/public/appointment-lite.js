@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = '0.6.14';
+  const VERSION = '0.6.15';
   const API_BASE = 'https://appointment.toolkit.fans';
   const CACHE_TTL = 5 * 60 * 1000;
   const RULE_CACHE = new Map();
@@ -137,7 +137,7 @@
 
   const staffPresetClasses = new Set(['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose', 'nova']);
   const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
-  function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="${API_BASE}/assets/staff/${file}?v=0.6.14" alt="" loading="lazy" decoding="async">`;}
+  function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="${API_BASE}/assets/staff/${file}?v=0.6.15" alt="" loading="lazy" decoding="async">`;}
 
   function staffAvatar(item, className = '') {
     const avatar = item?.avatar || {};
@@ -156,24 +156,60 @@
     return target;
   }
 
+  const requestWait = ms => new Promise(resolve => setTimeout(resolve, ms));
+
   async function requestJson(target, options = {}, label = 'request') {
-    const method = options.method || 'GET';
-    info(`${label}: request started.`, { method, url: target.toString() });
-    let response;
-    try {
-      response = await fetch(target, options);
-    } catch (error) {
-      failure(`${label}: network or CORS failure.`, { url: target.toString(), message: error.message });
-      throw error;
+    const method = String(options.method || 'GET').toUpperCase();
+    const attempts = method === 'GET' ? 2 : 1;
+    let lastError;
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      info(`${label}: request started.`, { method, attempt: attempt + 1, url: target.toString() });
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
+      let abortHandler;
+      if (options.signal) {
+        if (options.signal.aborted) controller.abort();
+        else {
+          abortHandler = () => controller.abort();
+          options.signal.addEventListener('abort', abortHandler, { once: true });
+        }
+      }
+      try {
+        const { signal: _ignored, ...requestOptions } = options;
+        const response = await fetch(target, { ...requestOptions, signal: controller.signal });
+        const payload = await response.json().catch(() => ({}));
+        if (response.ok) {
+          info(`${label}: request succeeded.`, { status: response.status, attempt: attempt + 1, url: target.toString() });
+          return payload;
+        }
+        const error = Object.assign(new Error(payload.message || `Request failed with HTTP ${response.status}`), { status: response.status, payload });
+        warn(`${label}: API rejected the request.`, { status: response.status, error: payload.error, message: error.message, url: target.toString() });
+        if (attempt + 1 < attempts && (response.status === 429 || response.status >= 500)) {
+          lastError = error;
+          await requestWait(250 * (attempt + 1));
+          continue;
+        }
+        throw error;
+      } catch (error) {
+        lastError = error;
+        const retryable = error?.name === 'AbortError' || !Number(error?.status) || Number(error?.status) === 429 || Number(error?.status) >= 500;
+        if (attempt + 1 < attempts && retryable) {
+          await requestWait(250 * (attempt + 1));
+          continue;
+        }
+        if (error?.name === 'AbortError') {
+          const timeoutError = Object.assign(new Error('Availability request timed out. Please try again.'), { code: 'REQUEST_TIMEOUT' });
+          failure(`${label}: request timed out.`, { url: target.toString() });
+          throw timeoutError;
+        }
+        failure(`${label}: network or CORS failure.`, { url: target.toString(), message: error.message });
+        throw error;
+      } finally {
+        clearTimeout(timeout);
+        if (options.signal && abortHandler) options.signal.removeEventListener('abort', abortHandler);
+      }
     }
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      const error = Object.assign(new Error(payload.message || `Request failed with HTTP ${response.status}`), { status: response.status, payload });
-      warn(`${label}: API rejected the request.`, { status: response.status, error: payload.error, message: error.message, url: target.toString() });
-      throw error;
-    }
-    info(`${label}: request succeeded.`, { status: response.status, url: target.toString() });
-    return payload;
+    throw lastError || new Error('Request failed.');
   }
 
   function emptyAvailabilityMessage(payload = {}) {
@@ -611,6 +647,7 @@
     let customerTimezone = modalSettings.showTimezoneSelector ? detectedTimezone : serviceTimezone;
     const availabilityCache = new Map();
     let availabilityRequestId = 0;
+    let availabilityLoadingTimer = null;
     const today = rule.storeDate || new Date().toISOString().slice(0, 10);
     const minDate = rule.dateFrom && rule.dateFrom > today ? rule.dateFrom : today;
     const maxDate = bookingMaxDate(rule);
@@ -748,9 +785,16 @@
       times.classList.toggle('al-loading', loading);
       times.setAttribute('aria-busy', String(loading));
       times.querySelectorAll('button').forEach(button => { button.disabled = loading; });
-      let overlay = times.querySelector('.al-slots-loading');
-      if (loading && !overlay) { overlay = document.createElement('div'); overlay.className = 'al-slots-loading'; overlay.innerHTML = '<i></i><i></i><i></i>'; times.appendChild(overlay); }
-      if (!loading) overlay?.remove();
+      clearTimeout(availabilityLoadingTimer);
+      availabilityLoadingTimer = null;
+      if (loading) {
+        availabilityLoadingTimer = setTimeout(() => {
+          if (times.getAttribute('aria-busy') !== 'true' || times.querySelector('.al-slots-loading')) return;
+          const overlay = document.createElement('div'); overlay.className = 'al-slots-loading'; overlay.innerHTML = '<i></i><i></i><i></i>'; times.appendChild(overlay);
+        }, 180);
+      } else {
+        times.querySelector('.al-slots-loading')?.remove();
+      }
     };
     const renderAvailability = (payload, date) => {
       if (payload.requiresStaffSelection) { times.innerHTML = '<span class="al-muted al-availability-empty">Choose a staff member to see available times.</span>'; return; }

@@ -12,6 +12,30 @@ function tokenFields(payload) {
   };
 }
 
+const SHOPLINE_TRANSIENT_STATUSES = new Set([429, 500, 502, 503, 504]);
+function wait(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+
+async function shoplineFetchWithRetry(url, options = {}, { attempts = 2, timeoutMs = 15000 } = {}) {
+  let lastError;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      const response = await fetch(url, { ...options, signal: AbortSignal.timeout(timeoutMs) });
+      if (attempt + 1 < attempts && SHOPLINE_TRANSIENT_STATUSES.has(response.status)) {
+        await response.arrayBuffer().catch(() => {});
+        lastError = Object.assign(new Error(`SHOPLINE transient HTTP ${response.status}`), { status: response.status });
+        await wait(300 * (attempt + 1));
+        continue;
+      }
+      return response;
+    } catch (error) {
+      lastError = error;
+      if (attempt + 1 >= attempts) throw error;
+      await wait(300 * (attempt + 1));
+    }
+  }
+  throw lastError || new Error('SHOPLINE request failed.');
+}
+
 export function signedTokenRequestParts(body, timestamp = String(Date.now())) {
   const hasBody = body !== undefined && body !== null;
   const rawBody = hasBody ? JSON.stringify(body) : '';
@@ -100,9 +124,8 @@ export async function shoplineGetPage(shopId, endpoint, query = {}) {
   const { handle, accessToken } = await accessTokenForShop(shopId);
   const url = new URL(`https://${handle}.myshopline.com/admin/openapi/${config.shopline.apiVersion}/${endpoint}`);
   for (const [key, value] of Object.entries(query)) if (value !== '' && value != null) url.searchParams.set(key, value);
-  const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json', 'Content-Type': 'application/json; charset=utf-8' },
-    signal: AbortSignal.timeout(15000)
+  const response = await shoplineFetchWithRetry(url, {
+    headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json', 'Content-Type': 'application/json; charset=utf-8' }
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(`SHOPLINE API failed (${response.status}): ${payload.message || payload.errors || 'unknown error'}`);
@@ -115,11 +138,10 @@ export async function shoplineGet(shopId, endpoint, query = {}) {
 
 export async function shoplineGraphql(shopId, query, variables = {}) {
   const { handle, accessToken } = await accessTokenForShop(shopId);
-  const response = await fetch(`https://${handle}.myshopline.com/admin/graph/${config.shopline.apiVersion}/graphql.json`, {
+  const response = await shoplineFetchWithRetry(`https://${handle}.myshopline.com/admin/graph/${config.shopline.apiVersion}/graphql.json`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json', 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query, variables }),
-    signal: AbortSignal.timeout(15000)
+    body: JSON.stringify({ query, variables })
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload.errors?.length) {

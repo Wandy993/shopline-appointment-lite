@@ -13,8 +13,12 @@ import { normalizeEmailSettings } from '../lib/email-settings.js';
 import { normalizeStorefrontSettings } from '../lib/storefront-settings.js';
 import { buildBookingIcs, calendarLinksForBooking, readBookingCalendarToken } from '../lib/calendar-links.js';
 import { getPostPurchaseEntitlement, publicPostPurchaseEntitlement } from '../services/post-purchase.js';
+import { TinyTtlCache, createSingleFlight } from '../lib/runtime-cache.js';
 
 export const publicRouter = Router();
+const publicContextCache = new TinyTtlCache({ ttlMs: 4000, maxEntries: 300 });
+const publicStaffCache = new TinyTtlCache({ ttlMs: 4000, maxEntries: 300 });
+const runAvailabilitySingleFlight = createSingleFlight();
 const bookingLimiter = rateLimit({ windowMs: 60_000, limit: 10, standardHeaders: true, legacyHeaders: false, message: { error: 'RATE_LIMITED', message: 'Too many attempts. Please wait a minute.' } });
 
 function validBookingId(value) { return /^[a-f\d]{24}$/i.test(String(value || '')); }
@@ -65,26 +69,51 @@ function serializeRule(rule, timezone, staffMeta = { mode: 'none', options: [] }
   };
 }
 
-async function findPublicRule(req) {
+function publicRuleCacheKey(req) {
   const ruleId = String(req.query.ruleId || '').trim();
+  if (ruleId) return `rule:${ruleId}`;
+  const handle = String(req.query.shop || '').trim().toLowerCase();
+  const shopId = String(req.query.shopId || '').trim();
+  const productId = String(req.query.productId || '').trim();
+  return `product:${shopId || handle}:${productId}`;
+}
+
+async function findPublicRule(req) {
+  const cacheKey = publicRuleCacheKey(req);
+  const cached = publicContextCache.get(cacheKey);
+  if (cached) return cached;
+
+  const ruleId = String(req.query.ruleId || '').trim();
+  let result;
   if (ruleId) {
     if (!validRuleId(ruleId)) return { error: { status: 400, body: { error: 'INVALID_REQUEST', message: 'A valid ruleId is required.' } } };
     const rule = await AppointmentRule.findOne({ _id: ruleId, enabled: true }).lean();
     if (!rule) return { error: { status: 404, body: { error: 'NOT_FOUND', message: 'Appointment service not found.' } } };
     const shop = await findInstalledShop({ objectId: rule.shopId });
     if (!shop) return { error: { status: 404, body: { error: 'NOT_FOUND', message: 'Store not found.' } } };
-    return { rule, shop };
+    result = { rule, shop };
+  } else {
+    const handle = String(req.query.shop || '').toLowerCase();
+    const shopId = String(req.query.shopId || '').trim();
+    const productId = String(req.query.productId || '');
+    if ((!validShoplineStoreId(shopId) && !validShopHandle(handle)) || !productId) return { error: { status: 400, body: { error: 'INVALID_REQUEST', message: 'shopId (or legacy shop) and productId are required.' } } };
+    const shop = await findInstalledShop({ shopId, shop: handle });
+    if (!shop) return { error: { status: 404, body: { error: 'NOT_FOUND', message: 'Store not found.' } } };
+    const rule = await AppointmentRule.findOne({ shopId: shop._id, productId, enabled: true, $or: [{ bookingSource: { $in: ['product', 'both'] } }, { bookingSource: { $exists: false }, sourceType: 'product' }] }).lean();
+    if (!rule) return { error: { status: 404, body: { error: 'NOT_FOUND', message: 'No appointment rule for this product.' } } };
+    result = { rule, shop };
   }
+  publicContextCache.set(cacheKey, result);
+  return result;
+}
 
-  const handle = String(req.query.shop || '').toLowerCase();
-  const shopId = String(req.query.shopId || '').trim();
-  const productId = String(req.query.productId || '');
-  if ((!validShoplineStoreId(shopId) && !validShopHandle(handle)) || !productId) return { error: { status: 400, body: { error: 'INVALID_REQUEST', message: 'shopId (or legacy shop) and productId are required.' } } };
-  const shop = await findInstalledShop({ shopId, shop: handle });
-  if (!shop) return { error: { status: 404, body: { error: 'NOT_FOUND', message: 'Store not found.' } } };
-  const rule = await AppointmentRule.findOne({ shopId: shop._id, productId, enabled: true, $or: [{ bookingSource: { $in: ['product', 'both'] } }, { bookingSource: { $exists: false }, sourceType: 'product' }] }).lean();
-  if (!rule) return { error: { status: 404, body: { error: 'NOT_FOUND', message: 'No appointment rule for this product.' } } };
-  return { rule, shop };
+async function cachedPublicStaffOptions(rule) {
+  const key = String(rule?._id || '');
+  const cached = publicStaffCache.get(key);
+  if (cached) return cached;
+  const value = await publicStaffOptions(rule);
+  publicStaffCache.set(key, value);
+  return value;
 }
 
 
@@ -105,7 +134,7 @@ publicRouter.get('/rule', async (req, res) => {
   const result = await findPublicRule(req);
   if (result.error) return res.status(result.error.status).json(result.error.body);
   const timezone = resolveRuleTimezone(result.rule, result.shop.timezone || 'UTC');
-  const staffMeta = await publicStaffOptions(result.rule);
+  const staffMeta = await cachedPublicStaffOptions(result.rule);
   res.set('Cache-Control', 'no-cache');
   res.json({ rule: serializeRule(result.rule, timezone, staffMeta), storefront: normalizeStorefrontSettings(result.shop.storefrontSettings || {}), timezone, storeDate: zonedNow(timezone).date });
 });
@@ -119,7 +148,7 @@ publicRouter.get('/service', async (req, res) => {
   if (access.error) return res.status(access.error.status).json(access.error.body);
   const timezone = resolveRuleTimezone(result.rule, result.shop.timezone || 'UTC');
   const emailSettings = normalizeEmailSettings(result.shop.emailSettings || {});
-  const staffMeta = await publicStaffOptions(result.rule);
+  const staffMeta = await cachedPublicStaffOptions(result.rule);
   res.set('Cache-Control', result.rule.commerceMode === 'product_post_purchase' ? 'no-store' : 'no-cache');
   res.json({
     rule: serializeRule(result.rule, timezone, staffMeta), storefront: normalizeStorefrontSettings(result.shop.storefrontSettings || {}), timezone, storeDate: zonedNow(timezone).date,
@@ -128,27 +157,16 @@ publicRouter.get('/service', async (req, res) => {
   });
 });
 
-publicRouter.get('/availability', async (req, res) => {
-  const date = String(req.query.date || '');
-  const result = await findPublicRule(req);
-  if (result.error) return res.status(result.error.status).json(result.error.body);
-  const access = await postPurchaseAccessForRequest(result, req.query.access);
-  if (access.error) return res.status(access.error.status).json(access.error.body);
+async function computeAvailabilityPayload({ result, date, requestedStaffId, selectedOccurrences }) {
   const timezone = resolveRuleTimezone(result.rule, result.shop.timezone || 'UTC');
   const mode = bookingModeFor(result.rule);
   const capacity = Number(result.rule.capacity || 1);
-  const requestedStaffId = String(req.query.staffId || '').trim();
-  const selectedOccurrences = String(req.query.selected || '').split(',').map(value => value.trim()).filter(Boolean).slice(0, 12).map(value => {
-    const match = value.match(/^(\d{4}-\d{2}-\d{2})T([0-2]\d:[0-5]\d)$/);
-    return match ? { date: match[1], time: match[2], slotKey: `${match[1]}T${match[2]}` } : null;
-  }).filter(Boolean);
   const [reservations, bookingRows] = await Promise.all([
     BookingReservation.find({ shopId: result.shop._id, ruleId: result.rule._id, date }).select('bookingId time slotPosition').lean(),
-    Booking.find({ shopId: result.shop._id, ruleId: result.rule._id, date, status: 'confirmed' }).select('_id time slotPosition').lean()
+    Booking.find({ shopId: result.shop._id, ruleId: result.rule._id, date, status: 'confirmed', adminDeletedAt: null }).select('_id time slotPosition').lean()
   ]);
   const reservedBookingIds = new Set(reservations.map(item => String(item.bookingId || '')).filter(Boolean));
   const legacyBookings = bookingRows.filter(item => !reservedBookingIds.has(String(item._id)));
-  res.set('Cache-Control', 'no-store');
   if (mode === 'all_day') {
     const count = reservations.length + legacyBookings.length;
     const serviceOpen = isDateAllowed(result.rule, date);
@@ -165,11 +183,11 @@ publicRouter.get('/availability', async (req, res) => {
     else if (!hasCapacity) reason = 'CAPACITY_FULL';
     else if (staffing.requiresStaffSelection) reason = 'STAFF_SELECTION_REQUIRED';
     else if (staffing.managed && !staffing.availableAllDay) reason = 'STAFF_UNAVAILABLE';
-    return res.json({
+    return {
       date, timezone, storeDate: zonedNow(timezone).date, bookingMode: mode,
       available, remaining: Math.max(0, capacity - count), capacity, slots: [], reason,
       requiresStaffSelection: staffing.requiresStaffSelection || false
-    });
+    };
   }
   const serviceSlots = slotsForDate(result.rule, date);
   const allSlots = futureSlotsForDate(result.rule, date, timezone);
@@ -183,11 +201,36 @@ publicRouter.get('/availability', async (req, res) => {
   else if (!capacitySlots.length) reason = 'CAPACITY_FULL';
   else if (staffing.requiresStaffSelection) reason = 'STAFF_SELECTION_REQUIRED';
   else if (staffing.managed && !finalSlots.length) reason = 'STAFF_UNAVAILABLE';
-  res.json({
+  return {
     date, timezone, storeDate: zonedNow(timezone).date, bookingMode: mode,
     slots: finalSlots, capacity, reason,
     requiresStaffSelection: staffing.requiresStaffSelection || false
+  };
+}
+
+publicRouter.get('/availability', async (req, res) => {
+  const startedAt = performance.now();
+  const date = String(req.query.date || '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(422).json({ error: 'VALIDATION_ERROR', message: 'Choose a valid appointment date.' });
+  const result = await findPublicRule(req);
+  if (result.error) return res.status(result.error.status).json(result.error.body);
+  const access = await postPurchaseAccessForRequest(result, req.query.access);
+  if (access.error) return res.status(access.error.status).json(access.error.body);
+  const requestedStaffId = String(req.query.staffId || '').trim();
+  const selectedOccurrences = String(req.query.selected || '').split(',').map(value => value.trim()).filter(Boolean).slice(0, 12).map(value => {
+    const match = value.match(/^(\d{4}-\d{2}-\d{2})T([0-2]\d:[0-5]\d)$/);
+    return match ? { date: match[1], time: match[2], slotKey: `${match[1]}T${match[2]}` } : null;
+  }).filter(Boolean);
+  const flightKey = [String(result.rule._id), date, requestedStaffId, selectedOccurrences.map(item => item.slotKey).sort().join(','), access.required ? String(access.entitlement?._id || '') : 'public'].join('|');
+  const payload = await runAvailabilitySingleFlight(flightKey, () => computeAvailabilityPayload({ result, date, requestedStaffId, selectedOccurrences }));
+  const elapsed = Math.max(0, performance.now() - startedAt);
+  if (elapsed >= 1500) console.warn('Slow storefront availability request', { ruleId: String(result.rule._id), date, staffId: requestedStaffId || '', durationMs: Math.round(elapsed) });
+  res.set({
+    'Cache-Control': 'no-store',
+    'Server-Timing': `availability;dur=${elapsed.toFixed(1)}`,
+    'X-Appointment-Availability-Ms': String(Math.round(elapsed))
   });
+  res.json(payload);
 });
 
 

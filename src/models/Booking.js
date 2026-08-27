@@ -143,5 +143,6 @@ bookingSchema.index(
 
 bookingSchema.index({ 'payment.shoplineOrderId': 1 }, { sparse: true, name: 'paid_booking_order_lookup' });
 bookingSchema.index({ status: 1, 'payment.holdExpiresAt': 1 }, { name: 'paid_booking_hold_expiry' });
+bookingSchema.index({ shopId: 1, ruleId: 1, date: 1, status: 1, adminDeletedAt: 1 }, { name: 'availability_legacy_booking_lookup' });
 
 export const Booking = mongoose.model('Booking', bookingSchema);

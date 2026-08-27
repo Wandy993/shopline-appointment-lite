@@ -49,15 +49,55 @@ let serviceTimezone = 'UTC';
 let customerTimezone = 'UTC';
 const availabilityCache = new Map();
 let availabilityRequestId = 0;
+let availabilityLoadingTimer = null;
 
 const typeLabels = { appointment: 'Appointment', product: 'Appointment', in_store: 'In-store appointment', onsite: 'Home / onsite service', consultation: 'Consultation', class: 'Class / course', other: 'Service appointment' };
 const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
+function wait(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+
 async function api(path, options = {}) {
-  const response = await fetch(path, options);
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw Object.assign(new Error(payload.message || 'Request failed.'), { status: response.status, payload });
-  return payload;
+  const method = String(options.method || 'GET').toUpperCase();
+  const attempts = method === 'GET' ? 2 : 1;
+  let lastError;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    let abortHandler;
+    if (options.signal) {
+      if (options.signal.aborted) controller.abort();
+      else {
+        abortHandler = () => controller.abort();
+        options.signal.addEventListener('abort', abortHandler, { once: true });
+      }
+    }
+    try {
+      const { signal: _ignored, ...requestOptions } = options;
+      const response = await fetch(path, { ...requestOptions, signal: controller.signal });
+      const payload = await response.json().catch(() => ({}));
+      if (response.ok) return payload;
+      const error = Object.assign(new Error(payload.message || 'Request failed.'), { status: response.status, payload });
+      if (attempt + 1 < attempts && (response.status === 429 || response.status >= 500)) {
+        lastError = error;
+        await wait(250 * (attempt + 1));
+        continue;
+      }
+      throw error;
+    } catch (error) {
+      lastError = error;
+      const retryable = error?.name === 'AbortError' || !Number(error?.status) || Number(error?.status) === 429 || Number(error?.status) >= 500;
+      if (attempt + 1 < attempts && retryable) {
+        await wait(250 * (attempt + 1));
+        continue;
+      }
+      if (error?.name === 'AbortError') throw Object.assign(new Error('Availability is taking longer than expected. Please try again.'), { code: 'REQUEST_TIMEOUT' });
+      throw error;
+    } finally {
+      clearTimeout(timeout);
+      if (options.signal && abortHandler) options.signal.removeEventListener('abort', abortHandler);
+    }
+  }
+  throw lastError || new Error('Request failed.');
 }
 
 function showError(message) {
@@ -184,7 +224,7 @@ function setupTimezonePicker() {
 
 const staffPresetClasses = new Set(['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose', 'nova']);
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
-function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="/assets/staff/${file}?v=0.6.14" alt="" loading="lazy" decoding="async">`;}
+function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="/assets/staff/${file}?v=0.6.15" alt="" loading="lazy" decoding="async">`;}
 
 function staffAvatarMarkup(item, className = '') {
   const avatar = item?.avatar || {};
@@ -463,11 +503,16 @@ function setAvailabilityLoading(loading) {
   root.classList.toggle('is-loading', loading);
   root.setAttribute('aria-busy', String(loading));
   root.querySelectorAll('button').forEach(button => { button.disabled = loading; });
-  let overlay = root.querySelector('.slots-loading-overlay');
-  if (loading && !overlay) {
-    overlay = document.createElement('div'); overlay.className = 'slots-loading-overlay'; overlay.innerHTML = '<i></i><i></i><i></i>'; root.appendChild(overlay);
+  clearTimeout(availabilityLoadingTimer);
+  availabilityLoadingTimer = null;
+  if (loading) {
+    availabilityLoadingTimer = setTimeout(() => {
+      if (root.getAttribute('aria-busy') !== 'true' || root.querySelector('.slots-loading-overlay')) return;
+      const overlay = document.createElement('div'); overlay.className = 'slots-loading-overlay'; overlay.innerHTML = '<i></i><i></i><i></i>'; root.appendChild(overlay);
+    }, 180);
+  } else {
+    root.querySelector('.slots-loading-overlay')?.remove();
   }
-  if (!loading) overlay?.remove();
 }
 
 function renderAvailability(payload, date) {

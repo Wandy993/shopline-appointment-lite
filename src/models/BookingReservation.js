@@ -17,5 +17,6 @@ bookingReservationSchema.index(
 );
 
 bookingReservationSchema.index({ ruleId: 1, date: 1 });
+bookingReservationSchema.index({ shopId: 1, ruleId: 1, date: 1 }, { name: 'availability_reservations_by_shop_rule_date' });
 
 export const BookingReservation = mongoose.model('BookingReservation', bookingReservationSchema);

@@ -102,6 +102,10 @@ export async function ensureOperationalIndexes() {
     { unique: true, partialFilterExpression: { status: 'confirmed' }, name: 'capacity_position_per_slot' }
   );
   await Booking.collection.createIndex({ status: 1, date: 1 }, { name: 'upcoming_reminder_scan' });
+  await Booking.collection.createIndex(
+    { shopId: 1, ruleId: 1, date: 1, status: 1, adminDeletedAt: 1 },
+    { name: 'availability_legacy_booking_lookup' }
+  );
   await BookingReservation.syncIndexes();
   await Staff.syncIndexes();
   await StaffReservation.syncIndexes();

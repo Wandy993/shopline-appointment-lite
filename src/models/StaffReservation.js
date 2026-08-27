@@ -27,6 +27,7 @@ staffReservationSchema.index(
 );
 
 staffReservationSchema.index({ staffId: 1, date: 1 });
+staffReservationSchema.index({ shopId: 1, staffId: 1, date: 1 }, { name: 'availability_staff_by_shop_staff_date' });
 staffReservationSchema.index({ bookingIds: 1 });
 
 export const StaffReservation = mongoose.model('StaffReservation', staffReservationSchema);

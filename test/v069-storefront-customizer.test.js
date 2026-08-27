@@ -93,13 +93,13 @@ test('v0.6.9 release versions stay aligned', async () => {
   const [pkgText, adminView, bookView, theme, health, release] = await Promise.all([
     source('package.json'), source('src/views/admin.js'), source('src/views/book.js'), source('theme-extension-source/public/appointment-lite.js'), source('src/app.js'), source('scripts/build-release.sh')
   ]);
-  assert.equal(JSON.parse(pkgText).version, '0.6.14');
-  assert.match(adminView, /styles\.css\?v=0.6.14/);
-  assert.match(adminView, /app\.js\?v=0.6.14/);
-  assert.match(bookView, /styles\.css\?v=0.6.14/);
-  assert.match(bookView, /app\.js\?v=0.6.14/);
-  assert.match(theme, /const VERSION = '0.6.14'/);
-  assert.match(health, /version: '0.6.14'/);
-  assert.match(release, /RELEASE_VERSION="0.6.14"/);
-  assert.match(release, /service-editor-picker-polish/);
+  assert.equal(JSON.parse(pkgText).version, '0.6.15');
+  assert.match(adminView, /styles\.css\?v=0.6.15/);
+  assert.match(adminView, /app\.js\?v=0.6.15/);
+  assert.match(bookView, /styles\.css\?v=0.6.15/);
+  assert.match(bookView, /app\.js\?v=0.6.15/);
+  assert.match(theme, /const VERSION = '0.6.15'/);
+  assert.match(health, /version: '0.6.15'/);
+  assert.match(release, /RELEASE_VERSION="0.6.15"/);
+  assert.match(release, /booking-performance-reliability/);
 });

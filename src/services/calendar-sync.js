@@ -275,9 +275,29 @@ export async function reconcileBookingGoogleCalendar(bookingId) {
   return { bookingId: asString(booking._id), synced: synced.filter(item => item.status === 'synced').length, deleted: deleted.filter(item => item.status === 'deleted').length, errors: errors.length + deleted.filter(item => ['error', 'orphaned'].includes(item.status)).length, skipped: desiredConnections.length === 0 && booking.status === 'confirmed' };
 }
 
+const CALENDAR_RETRY_DELAYS_MS = [0, 1500, 5000];
+
+function wait(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+
+export async function reconcileBookingGoogleCalendarWithRetry(bookingId, { reason = 'booking_changed', delays = CALENDAR_RETRY_DELAYS_MS } = {}) {
+  let lastResult = null;
+  let lastError = null;
+  for (let attempt = 0; attempt < delays.length; attempt += 1) {
+    if (delays[attempt] > 0) await wait(delays[attempt]);
+    try {
+      lastResult = await reconcileBookingGoogleCalendar(bookingId);
+      if (!Number(lastResult?.errors || 0)) return { ...lastResult, attempts: attempt + 1 };
+      lastError = new Error(`Google Calendar sync reported ${lastResult.errors} error(s).`);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw Object.assign(lastError || new Error('Google Calendar sync failed.'), { result: lastResult, reason });
+}
+
 export function queueBookingGoogleCalendarSync(bookingId, reason = 'booking_changed') {
   if (!bookingId) return;
-  setImmediate(() => reconcileBookingGoogleCalendar(bookingId).catch(error => console.error(`Google Calendar booking sync failed (${reason})`, asString(error.message || error))));
+  setImmediate(() => reconcileBookingGoogleCalendarWithRetry(bookingId, { reason }).catch(error => console.error(`Google Calendar booking sync failed after retries (${reason})`, asString(error.message || error))));
 }
 
 async function syncBookingIds(bookings) {
