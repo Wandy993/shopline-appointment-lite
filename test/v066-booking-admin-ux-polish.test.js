@@ -30,7 +30,7 @@ test('v0.6.6 uses an Appointment Lite location picker instead of the browser nat
 test('v0.6.6 keeps payment and appointment status after date and assignment in booking records', async () => {
   const [view, admin] = await Promise.all([source('src/views/admin.js'), source('public/admin/app.js')]);
   assert.match(view, />Date & time<\/span><span>Assignment<\/span><span>Payment<\/span><span>Appointment<\/span>/);
-  assert.match(admin, /booking-order-column[\s\S]*booking-cell[\s\S]*booking-cell[\s\S]*booking-status-cell[\s\S]*booking-status-cell[\s\S]*row-actions/);
+  assert.match(admin, /booking-cell[\s\S]*booking-cell[\s\S]*booking-status-cell[\s\S]*booking-status-cell[\s\S]*row-actions/);
 });
 
 test('v0.6.6 sorts order-backed booking records by order creation time instead of mutable updated time', async () => {
@@ -62,7 +62,7 @@ test('v0.6.6 supports soft deletion with a custom second confirmation for bookin
 
 test('v0.6.6 release version is aligned', async () => {
   const pkg = JSON.parse(await source('package.json'));
-  assert.equal(pkg.version, '0.6.6');
+  assert.equal(pkg.version, '0.6.7');
 });
 
 test('v0.6.6 deleting an active booking soft-deletes it and releases it from active status', async () => {

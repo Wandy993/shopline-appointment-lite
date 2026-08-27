@@ -487,7 +487,7 @@ const staffAvatarPresets = ['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunse
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
 function staffPresetImage(preset) {
   const file = staffAvatarFiles[preset] || staffAvatarFiles.aurora;
-  return `<img src="/assets/staff/${file}?v=0.6.6" alt="" loading="lazy" decoding="async">`;
+  return `<img src="/assets/staff/${file}?v=0.6.7" alt="" loading="lazy" decoding="async">`;
 }
 let staffAvatarDraft = { kind: 'preset', value: 'aurora' };
 
@@ -1873,18 +1873,18 @@ function renderBookingList(bookings) {
     const when = bookingWhenLabel(booking);
     const isLifecycle = booking.recordType === 'order_lifecycle';
     const canDirectEdit = !isLifecycle && (booking.bookingMode || 'slot') === 'slot';
-    const orderCell = booking.shoplineOrder?.adminUrl
-      ? `<a class="booking-order-link booking-order-cell" href="${escapeHtml(booking.shoplineOrder.adminUrl)}" target="_blank" rel="noopener noreferrer"><strong>${escapeHtml(booking.shoplineOrder.name)}</strong><span>${escapeHtml(booking.shoplineOrder.id)}</span><i>↗</i></a>`
-      : `<span class="booking-muted-cell">—</span>`;
+    const orderAction = booking.shoplineOrder?.adminUrl
+      ? `<a class="small booking-action order button-link" href="${escapeHtml(booking.shoplineOrder.adminUrl)}" target="_blank" rel="noopener noreferrer">${t('Open order')} ↗</a>`
+      : '';
     const paymentStatus = booking.paymentStatus || 'not_required';
     const appointmentStatus = booking.appointmentStatus || booking.status;
     const progress = booking.schedulingProgress;
     const appointmentMeta = progress ? `<small>${escapeHtml(`${progress.used}/${progress.eligible} ${t('appointments scheduled')}`)}</small>` : '';
     const deleteAction = `<button class="small booking-action delete" data-delete-booking="${booking._id}">${t('Delete')}</button>`;
     const actions = isLifecycle
-      ? `${booking.shoplineOrder?.adminUrl ? `<a class="small booking-action activity button-link" href="${escapeHtml(booking.shoplineOrder.adminUrl)}" target="_blank" rel="noopener noreferrer">${t('Open order')} ↗</a>` : ''}${deleteAction}`
-      : `<button class="small booking-action activity" data-flow-booking="${booking._id}">${t('Activity')}</button>${booking.status === 'confirmed' ? `${canDirectEdit ? `<button class="small booking-action edit" data-edit-booking="${booking._id}">${t('Edit')}</button>` : ''}<button class="small booking-action complete" data-complete="${booking._id}">${t('Mark complete')}</button><button class="small booking-action no-show" data-no-show="${booking._id}">${t('No-show')}</button><button class="small booking-action cancel" data-cancel="${booking._id}">${t('Cancel')}</button>` : ''}${deleteAction}`;
-    return `<div class="booking-row ${isLifecycle ? 'order-lifecycle-row' : ''}"><div class="booking-primary"><strong>${escapeHtml(booking.productTitle)}</strong><span>${escapeHtml(booking.customer?.name || t('Customer'))}${booking.customer?.email ? ` · ${escapeHtml(booking.customer.email)}` : ''}</span>${isLifecycle && booking.notificationSentAt ? `<small>${t('Private link sent')}</small>` : ''}</div><div class="booking-order-column">${orderCell}</div><div class="booking-cell"><strong>${escapeHtml(when.primary)}</strong><span>${escapeHtml(when.secondary)}</span></div><div class="booking-cell"><strong>${escapeHtml(booking.staff || (isLifecycle ? t('Not scheduled yet') : t('Any staff')))}</strong><span>${escapeHtml(booking.location || t('No location'))}</span></div><div class="booking-status-cell"><span class="status-badge payment-${escapeHtml(paymentStatus)}">${escapeHtml(paymentStatusLabel(paymentStatus))}</span></div><div class="booking-status-cell"><span class="status-badge appointment-${escapeHtml(appointmentStatus)}">${escapeHtml(appointmentStatusLabel(appointmentStatus))}</span>${appointmentMeta}</div><div class="row-actions">${actions}</div></div>`;
+      ? `${orderAction}${deleteAction}`
+      : `<button class="small booking-action activity" data-flow-booking="${booking._id}">${t('Activity')}</button>${orderAction}${booking.status === 'confirmed' ? `${canDirectEdit ? `<button class="small booking-action edit" data-edit-booking="${booking._id}">${t('Edit')}</button>` : ''}<button class="small booking-action complete" data-complete="${booking._id}">${t('Mark complete')}</button><button class="small booking-action no-show" data-no-show="${booking._id}">${t('No-show')}</button><button class="small booking-action cancel" data-cancel="${booking._id}">${t('Cancel')}</button>` : ''}${deleteAction}`;
+    return `<div class="booking-row ${isLifecycle ? 'order-lifecycle-row' : ''}"><div class="booking-primary"><strong>${escapeHtml(booking.productTitle)}</strong><span>${escapeHtml(booking.customer?.name || t('Customer'))}${booking.customer?.email ? ` · ${escapeHtml(booking.customer.email)}` : ''}</span>${isLifecycle && booking.notificationSentAt ? `<small>${t('Private link sent')}</small>` : ''}</div><div class="booking-cell"><strong>${escapeHtml(when.primary)}</strong><span>${escapeHtml(when.secondary)}</span></div><div class="booking-cell"><strong>${escapeHtml(booking.staff || (isLifecycle ? t('Unassigned') : t('Any staff')))}</strong><span>${escapeHtml(booking.location || t('No location'))}</span></div><div class="booking-status-cell"><span class="status-badge payment-${escapeHtml(paymentStatus)}">${escapeHtml(paymentStatusLabel(paymentStatus))}</span></div><div class="booking-status-cell"><span class="status-badge appointment-${escapeHtml(appointmentStatus)}">${escapeHtml(appointmentStatusLabel(appointmentStatus))}</span>${appointmentMeta}</div><div class="row-actions">${actions}</div></div>`;
   }).join('');
   bindBookingRows();
 }

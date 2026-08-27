@@ -43,7 +43,7 @@ test('v0.6.5 exposes order authorization, reconciliation and direct SHOPLINE ord
   assert.match(route, /\/admin\/orders\/\$\{encodeURIComponent\(orderId\)\}/);
   assert.match(view, /orderAccessBanner/);
   assert.match(view, /Sync (?:paid|SHOPLINE) orders/);
-  assert.match(app, /booking-order-link/);
+  assert.match(app, /booking-action order/);
   assert.match(app, /shoplineOrder\.adminUrl/);
 });
 

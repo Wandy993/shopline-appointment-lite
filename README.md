@@ -1,5 +1,21 @@
 # Appointment Lite
 
+> v0.6.7 — Admin Readability + Booking Table Cleanup
+
+Appointment Lite v0.6.7 improves merchant-admin readability and rebuilds the booking-record table so operational information stays aligned, high-contrast, and easy to scan.
+
+## v0.6.7 Admin Readability + Booking Table Cleanup
+
+- Raises the main admin typography contrast from washed-out blue-gray to near-black neutrals while keeping semantic green/amber/red status colors intact.
+- Strengthens secondary copy and small metadata weights so text stays crisp on desktop displays without flattening visual hierarchy.
+- Removes the dedicated **SHOPLINE order number** column from Booking records; linked orders remain accessible through a compact **Open order** action.
+- Rebuilds the Booking record grid as **Customer & service → Date & time → Assignment → Payment → Appointment → Actions**.
+- Centers Payment and Appointment badges and their progress labels for consistent scanning across rows.
+- Gives the actions column more width and keeps responsive/mobile row ordering stable after the order-number column is removed.
+- Uses **Unassigned** for purchase-first lifecycle rows until a staff member is actually selected, avoiding duplicate “Not scheduled yet” labels.
+
+See [Admin readability & booking table cleanup](docs/V067_ADMIN_READABILITY_BOOKING_TABLE.md).
+
 > v0.6.6 — Booking Admin UX Polish
 
 Appointment Lite v0.6.6 polishes the merchant-facing booking workflow on top of v0.6.5, with a cleaner purchase-first explanation, a native-looking Appointment Lite location picker, newest-record-first ordering, and safe record deletion.
