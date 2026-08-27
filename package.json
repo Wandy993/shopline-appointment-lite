@@ -1,7 +1,7 @@
 {
   "name": "appointment-lite",
-  "version": "0.6.10",
-  "description": "SHOPLINE appointment scheduling with public bilingual legal and FAQ pages, merchant-controlled storefront styling, compact booking operations, order lifecycle visibility, SHOPLINE locations, notifications, staff scheduling, and optional business Google Calendar sync.",
+  "version": "0.6.11",
+  "description": "SHOPLINE appointment scheduling with polished branded emails, Google Calendar actions, public bilingual legal and FAQ pages, merchant-controlled storefront styling, compact booking operations, order lifecycle visibility, SHOPLINE locations, notifications, and staff scheduling.",
   "type": "module",
   "engines": {
     "node": ">=20"

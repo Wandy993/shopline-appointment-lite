@@ -856,3 +856,12 @@ button{min-height:38px;padding:8px 14px;border-color:var(--border-strong);border
 .storefront-preview-footnote{margin:10px 2px 0;color:#8492a5;font-size:8.5px;line-height:1.5}.setup-section-label{margin:26px 0 12px}.setup-section-label h2{margin:4px 0 0;color:#344861;font-size:15px}
 @media(max-width:1100px){.storefront-customizer-grid{grid-template-columns:1fr}.storefront-customizer-controls{border-right:0;border-bottom:1px solid #e4ebf3}.storefront-preview-panel{padding:18px}.storefront-preview-canvas{max-width:620px}}
 @media(max-width:720px){.storefront-customizer-head{align-items:stretch;flex-direction:column}.storefront-customizer-head .primary{width:100%}.storefront-customizer-controls{padding:14px}.storefront-preview-panel{padding:14px}.storefront-color-row,.storefront-element-grid{grid-template-columns:1fr}.storefront-option-row{grid-template-columns:1fr}.storefront-segmented{width:100%;min-width:0}.storefront-segmented button{flex:1}.storefront-dialog-preview-body{grid-template-columns:1fr}.storefront-mini-calendar{display:none}}
+
+/* v0.6.11 Email Template Polish */
+.preview-brand{gap:13px;align-items:center}
+.preview-brand .preview-logo{flex:0 0 auto}
+.preview-brand strong{display:block;line-height:1.25;color:#344861;font-weight:720}
+.preview-calendar-card{margin-top:18px;padding:14px 15px;border:1px solid #e2e8f0;border-radius:11px;background:#f8fafc}
+.preview-calendar-card>strong{display:block;margin:0 0 10px;color:#344861;font-size:10px;font-weight:720}
+.preview-google-calendar-button{width:max-content;max-width:100%;min-height:38px;padding:8px 13px;display:inline-flex;align-items:center;gap:9px;border:1px solid #dadce0;border-radius:8px;background:#fff;color:#3c4043;font-size:10px;font-weight:650;line-height:1.2;box-shadow:0 1px 2px rgba(60,64,67,.08)}
+.preview-google-calendar-button .google-g.small{width:18px;height:18px;flex:0 0 auto}

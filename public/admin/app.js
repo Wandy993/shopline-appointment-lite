@@ -10,15 +10,15 @@ const viewLabels = {
   calendar: ['Calendar integrations', 'Calendar Sync'], email: ['Customer communication', 'Email Studio'], setup: ['Configuration', 'Storefront setup']
 };
 const templateMeta = {
-  confirmation: { label: 'Confirmation', manage: true },
-  rescheduled: { label: 'Customer changed', manage: true },
-  merchantUpdated: { label: 'Store changed', manage: false },
-  cancelled: { label: 'Cancelled', manage: false },
-  reminder: { label: 'Customer reminder', manage: false },
-  merchantNewBooking: { label: 'Merchant new', manage: false },
-  merchantBookingUpdated: { label: 'Merchant updated', manage: false },
-  merchantBookingCancelled: { label: 'Merchant cancelled', manage: false },
-  merchantReminder: { label: 'Merchant reminder', manage: false }
+  confirmation: { label: 'Confirmation', manage: true, calendar: true },
+  rescheduled: { label: 'Customer changed', manage: true, calendar: true },
+  merchantUpdated: { label: 'Store changed', manage: false, calendar: true },
+  cancelled: { label: 'Cancelled', manage: false, calendar: false },
+  reminder: { label: 'Customer reminder', manage: false, calendar: true },
+  merchantNewBooking: { label: 'Merchant new', manage: false, calendar: true },
+  merchantBookingUpdated: { label: 'Merchant updated', manage: false, calendar: true },
+  merchantBookingCancelled: { label: 'Merchant cancelled', manage: false, calendar: false },
+  merchantReminder: { label: 'Merchant reminder', manage: false, calendar: true }
 };
 const sample = {
   customer_name: 'Jamie Chen', customer_email: 'jamie@example.com', product_title: 'Private design consultation',
@@ -125,6 +125,11 @@ Object.assign(zh, {
 
 const originalText = new WeakMap();
 const originalAttributes = new WeakMap();
+
+Object.assign(zh, {
+  'Add to calendar': '添加到日历',
+  'Add to Google Calendar': '添加到 Google 日历'
+});
 
 Object.assign(zh, {
   Sunday: '星期日', Monday: '星期一', Tuesday: '星期二', Wednesday: '星期三', Thursday: '星期四', Friday: '星期五', Saturday: '星期六',
@@ -513,7 +518,7 @@ const staffAvatarPresets = ['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunse
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
 function staffPresetImage(preset) {
   const file = staffAvatarFiles[preset] || staffAvatarFiles.aurora;
-  return `<img src="/assets/staff/${file}?v=0.6.10" alt="" loading="lazy" decoding="async">`;
+  return `<img src="/assets/staff/${file}?v=0.6.11" alt="" loading="lazy" decoding="async">`;
 }
 let staffAvatarDraft = { kind: 'preset', value: 'aurora' };
 
@@ -2309,11 +2314,12 @@ function renderEmailPreview() {
   const subject = escapeHtml(interpolate(template.subject || 'Appointment update'));
   const logo = state.emailSettings.logoUrl ? `<img src="${escapeHtml(state.emailSettings.logoUrl)}" alt="">` : escapeHtml(brandName.slice(0, 1).toUpperCase() || 'A');
   const manage = templateMeta[state.activeTemplate].manage ? `<div class="preview-email-button" style="background:${accent}">${t('Manage appointment')}</div>` : '';
+  const calendar = templateMeta[state.activeTemplate].calendar ? `<div class="preview-calendar-card"><strong>${t('Add to calendar')}</strong><div class="preview-google-calendar-button">${googleGMark('small')}<span>${t('Add to Google Calendar')}</span></div></div>` : '';
   $('#emailPreview').innerHTML = `<div class="preview-mail-shell">
     <div class="preview-mail-header"><div class="preview-mail-from"><div class="preview-logo small" style="background:${accent}">${logo}</div><div><strong>${escapeHtml(brandName)}</strong><span>${t('to')} ${escapeHtml(sample.customer_email)}</span></div></div><strong class="preview-mail-subject">${subject}</strong></div>
     <div class="preview-email-card"><div class="preview-brand"><div class="preview-logo" style="background:${accent}">${logo}</div><strong>${escapeHtml(brandName)}</strong></div><h2>${escapeHtml(interpolate(template.heading))}</h2><p>${escapeHtml(interpolate(template.body))}</p>
       <div class="preview-detail-card"><div><span>${t('Service')}</span><strong>${escapeHtml(sample.product_title)}</strong></div><div><span>${t('Date & time')}</span><strong>${escapeHtml(sample.date)} · ${escapeHtml(sample.time)}</strong><small>${escapeHtml(sample.timezone)}</small></div><div><span>${t('Location')}</span><strong>${escapeHtml(sample.location)}</strong></div><div><span>${t('Staff')}</span><strong>${escapeHtml(sample.staff)}</strong></div></div>
-      ${manage}<div class="preview-footer">${t('Sent by')} ${escapeHtml(brandName)}</div></div>
+      ${manage}${calendar}<div class="preview-footer">${t('Sent by')} ${escapeHtml(brandName)}</div></div>
   </div>`;
 }
 

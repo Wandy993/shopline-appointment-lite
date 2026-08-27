@@ -1,5 +1,20 @@
 # Appointment Lite
 
+> v0.6.11 — Email Template Polish
+
+Appointment Lite v0.6.11 polishes transactional email branding and gives Google Calendar actions a clear Google identity across real emails and Email Studio preview.
+
+## v0.6.11 Email Template Polish
+
+- Rebuilds the email brand header with an email-safe presentation table so the logo and brand name stay vertically aligned in Gmail, Outlook, and other clients that do not reliably support flexbox.
+- Adds a fixed 14px brand gap so the logo and merchant brand name no longer touch or drift together.
+- Replaces the merchant-accent Google Calendar button with a neutral Google-style action using the official multicolor Google G asset hosted on `gstatic.com`.
+- Keeps the merchant accent color for Appointment Lite actions such as **Manage appointment**, clearly separating first-party booking actions from the external Google Calendar action.
+- Updates Email Studio live preview to show the same Google Calendar treatment on templates that include calendar actions.
+- Keeps cancellation templates free of calendar actions and preserves existing notification routing and calendar-link behavior.
+
+See [Email Template Polish](docs/V0611_EMAIL_TEMPLATE_POLISH.md).
+
 > v0.6.10 — Legal Pages & FAQ
 
 Appointment Lite v0.6.10 publishes App Store-ready Chinese and English Privacy Policy and FAQ pages as public routes that do not require SHOPLINE admin authentication.

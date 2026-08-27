@@ -122,12 +122,18 @@ function appointmentCard(booking, settings) {
 }
 
 
-function emailDocument(title, body, settings) {
+const GOOGLE_G_ICON_URL = 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg';
+
+function emailBrandHeader(settings) {
   const initial = escapeHtml(settings.brandName.slice(0, 1).toUpperCase() || 'A');
   const logo = settings.logoUrl
     ? `<img src="${escapeHtml(settings.logoUrl)}" width="40" height="40" alt="" style="display:block;width:40px;height:40px;border-radius:10px;object-fit:cover">`
     : `<div style="width:40px;height:40px;border-radius:10px;background:${settings.accentColor};color:#fff;font-size:18px;font-weight:800;line-height:40px;text-align:center">${initial}</div>`;
-  return `<!doctype html><html><body style="margin:0;background:#F3F6FA;color:#172033;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif"><div style="max-width:620px;margin:0 auto;padding:34px 16px"><div style="background:#fff;border:1px solid #E2E8F0;border-radius:16px;overflow:hidden"><div style="padding:22px 26px 18px;display:flex;align-items:center;gap:11px;border-bottom:1px solid #EEF2F6">${logo}<strong style="font-size:15px;color:#344861">${escapeHtml(settings.brandName)}</strong></div><div style="padding:28px 26px 26px"><h1 style="font-size:24px;line-height:1.3;margin:0 0 14px;color:#263A56">${escapeHtml(title)}</h1>${body}<p style="margin:28px 0 0;padding-top:16px;border-top:1px solid #EEF2F6;color:#98A5B5;font-size:11px">Sent by ${escapeHtml(settings.brandName)}</p></div></div></div></body></html>`;
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse"><tr><td width="40" valign="middle" style="width:40px;vertical-align:middle">${logo}</td><td width="14" style="width:14px;font-size:1px;line-height:1px">&nbsp;</td><td valign="middle" style="vertical-align:middle;color:#344861;font-size:15px;font-weight:700;line-height:20px">${escapeHtml(settings.brandName)}</td></tr></table>`;
+}
+
+function emailDocument(title, body, settings) {
+  return `<!doctype html><html><body style="margin:0;background:#F3F6FA;color:#172033;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif"><div style="max-width:620px;margin:0 auto;padding:34px 16px"><div style="background:#fff;border:1px solid #E2E8F0;border-radius:16px;overflow:hidden"><div style="padding:20px 26px;border-bottom:1px solid #EEF2F6">${emailBrandHeader(settings)}</div><div style="padding:28px 26px 26px"><h1 style="font-size:24px;line-height:1.3;margin:0 0 14px;color:#263A56">${escapeHtml(title)}</h1>${body}<p style="margin:28px 0 0;padding-top:16px;border-top:1px solid #EEF2F6;color:#98A5B5;font-size:11px">Sent by ${escapeHtml(settings.brandName)}</p></div></div></div></body></html>`;
 }
 
 function manageButton(url, settings) {
@@ -138,7 +144,7 @@ function calendarButtons(booking, settings, { includeGoogle = true } = {}) {
   if (!booking?._id || booking.status === 'cancelled') return '';
   const links = calendarLinksForBooking(booking);
   if (!includeGoogle || !links.google) return '';
-  const google = `<a href="${escapeHtml(links.google)}" style="display:inline-block;padding:11px 15px;border-radius:9px;background:${settings.accentColor};color:#fff;text-decoration:none;font-size:13px;font-weight:700">Add to Google Calendar</a>`;
+  const google = `<a href="${escapeHtml(links.google)}" style="display:inline-block;padding:10px 14px;border:1px solid #DADCE0;border-radius:8px;background:#FFFFFF;color:#3C4043;text-decoration:none;font-size:13px;font-weight:600;line-height:20px;box-shadow:0 1px 2px rgba(60,64,67,.08)"><img src="${GOOGLE_G_ICON_URL}" width="18" height="18" alt="Google" style="display:inline-block;width:18px;height:18px;margin:0 10px 0 0;vertical-align:middle;border:0"><span style="display:inline-block;vertical-align:middle">Add to Google Calendar</span></a>`;
   return `<div style="margin:22px 0 0;padding:16px;border-radius:12px;background:#F7F9FC;border:1px solid #E3E9F1"><strong style="display:block;margin:0 0 10px;color:#344861;font-size:13px">Add to calendar</strong>${google}</div>`;
 }
 
@@ -343,7 +349,7 @@ export async function sendStaffCancelledNotification(booking, suppliedSettings =
 
 export async function sendTestEmail(to, suppliedSettings = null) {
   const settings = normalizeEmailSettings(suppliedSettings || {});
-  const booking = { productTitle: 'Private consultation', date: '2026-09-08', time: '14:00', timezone: 'Asia/Shanghai', location: 'Main showroom', staff: 'Alex', customer: { name: 'Jamie', email: to } };
-  const message = messageFor(booking, settings, 'confirmation');
+  const booking = { _id: 'email-template-preview', status: 'confirmed', productTitle: 'Private consultation', date: '2026-09-08', time: '14:00', duration: 60, timezone: 'Asia/Shanghai', location: 'Main showroom', staff: 'Alex', customer: { name: 'Jamie', email: to } };
+  const message = messageFor(booking, settings, 'confirmation', calendarButtons(booking, settings));
   return deliverEmail({ to, subject: `[Test] ${message.subject}`, html: message.html, fromName: message.fromName, replyTo: message.replyTo });
 }
