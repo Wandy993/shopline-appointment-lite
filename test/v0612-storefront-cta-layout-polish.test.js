@@ -61,12 +61,12 @@ test('v0.6.12 release version stays aligned across app surfaces', async () => {
   const [pkg, app, adminView, bookView, legalView, theme, release] = await Promise.all([
     source('package.json'), source('src/app.js'), source('src/views/admin.js'), source('src/views/book.js'), source('src/views/legal.js'), source('theme-extension-source/public/appointment-lite.js'), source('scripts/build-release.sh')
   ]);
-  assert.equal(JSON.parse(pkg).version, '0.6.13');
-  assert.match(app, /version: '0\.6\.13'/);
-  assert.match(adminView, /styles\.css\?v=0\.6\.13/);
-  assert.match(bookView, /styles\.css\?v=0\.6\.13/);
-  assert.match(legalView, /styles\.css\?v=0\.6\.13/);
-  assert.match(theme, /const VERSION = '0\.6\.13'/);
-  assert.match(release, /RELEASE_VERSION="0\.6\.13"/);
-  assert.match(release, /google-oauth-verification-readiness/);
+  assert.equal(JSON.parse(pkg).version, '0.6.14');
+  assert.match(app, /version: '0\.6\.14'/);
+  assert.match(adminView, /styles\.css\?v=0\.6\.14/);
+  assert.match(bookView, /styles\.css\?v=0\.6\.14/);
+  assert.match(legalView, /styles\.css\?v=0\.6\.14/);
+  assert.match(theme, /const VERSION = '0\.6\.14'/);
+  assert.match(release, /RELEASE_VERSION="0\.6\.14"/);
+  assert.match(release, /service-editor-picker-polish/);
 });

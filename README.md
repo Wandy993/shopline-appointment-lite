@@ -1,5 +1,20 @@
 # Appointment Lite
 
+> v0.6.14 — Service Editor Picker Polish
+
+Appointment Lite v0.6.14 standardizes the New / Edit appointment service selection experience and fixes the paid-checkout configuration spacing.
+
+## v0.6.14 Service Editor Picker Polish
+
+- Replaces browser-native dropdown presentation throughout the service wizard with Appointment Lite custom pickers.
+- Covers Checkout variant, Payment hold, Minimum notice, and Availability exception selectors.
+- Replaces the Service time zone browser datalist with a searchable Appointment Lite picker while keeping direct IANA time-zone input.
+- Adds automatic drop-up / drop-down positioning, visible-area height limits, keyboard navigation, selected checks, and disabled-state sync.
+- Makes the SHOPLINE Location picker use the same viewport-aware positioning so it does not hide behind the modal footer or other controls.
+- Reworks the Standalone · payment required SHOPLINE checkout explanation into a compact card with clear spacing before checkout settings.
+
+See [Service Editor Picker Polish](docs/V0614_SERVICE_EDITOR_PICKER_POLISH.md).
+
 > v0.6.13 — Google OAuth Verification Readiness
 
 Appointment Lite v0.6.13 turns the production root domain into a public product homepage and completes the public legal surface needed for Google OAuth brand verification.

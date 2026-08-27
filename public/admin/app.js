@@ -49,10 +49,226 @@ function browserTimeZones() {
 }
 
 function populateServiceTimeZones() {
-  const list = $('#serviceTimezoneOptions');
-  if (!list) return;
+  renderServiceTimezoneMenu($('#serviceTimezone')?.value || '');
+}
+
+const ruleSelectRegistry = new WeakMap();
+let activeRuleSelect = null;
+let ruleSelectObserver = null;
+
+function ruleModalBody() {
+  return $('#ruleDialog .modal-body');
+}
+
+function menuPlacement(trigger, menu, { preferredHeight = 260, minHeight = 96 } = {}) {
+  const body = ruleModalBody();
+  if (!body || !trigger || !menu) return { up: false, maxHeight: preferredHeight };
+  const bodyRect = body.getBoundingClientRect();
+  const triggerRect = trigger.getBoundingClientRect();
+  const below = Math.max(0, bodyRect.bottom - triggerRect.bottom - 10);
+  const above = Math.max(0, triggerRect.top - bodyRect.top - 10);
+  const measured = Math.min(preferredHeight, Math.max(minHeight, menu.scrollHeight || preferredHeight));
+  const up = below < Math.min(measured, 150) && above > below;
+  const available = up ? above : below;
+  return { up, maxHeight: Math.max(minHeight, Math.min(preferredHeight, available || minHeight)) };
+}
+
+function closeRuleSelect(select = activeRuleSelect) {
+  if (!select) return;
+  const ui = ruleSelectRegistry.get(select);
+  if (!ui) return;
+  ui.wrapper.classList.remove('open', 'drop-up');
+  ui.menu.classList.add('hidden');
+  ui.trigger.setAttribute('aria-expanded', 'false');
+  if (activeRuleSelect === select) activeRuleSelect = null;
+}
+
+function refreshRuleSelect(select) {
+  const ui = ruleSelectRegistry.get(select);
+  if (!ui) return;
+  const selected = select.options[select.selectedIndex] || null;
+  ui.value.textContent = selected?.textContent?.trim() || t('Select an option');
+  ui.trigger.disabled = select.disabled;
+  ui.trigger.classList.toggle('placeholder', !select.value);
+  ui.menu.innerHTML = [...select.options].map(option => {
+    const active = option.value === select.value;
+    return `<button type="button" class="rule-select-option ${active ? 'selected' : ''}" data-value="${escapeHtml(option.value)}" role="option" aria-selected="${active}" ${option.disabled ? 'disabled' : ''}><span>${escapeHtml(option.textContent.trim())}</span><i aria-hidden="true">✓</i></button>`;
+  }).join('');
+  ui.menu.querySelectorAll('.rule-select-option').forEach(button => button.addEventListener('click', () => {
+    select.value = button.dataset.value || '';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    refreshRuleSelect(select);
+    closeRuleSelect(select);
+    ui.trigger.focus();
+  }));
+}
+
+function openRuleSelect(select) {
+  const ui = ruleSelectRegistry.get(select);
+  if (!ui || select.disabled) return;
+  if (activeRuleSelect && activeRuleSelect !== select) closeRuleSelect(activeRuleSelect);
+  refreshRuleSelect(select);
+  ui.menu.classList.remove('hidden');
+  ui.wrapper.classList.add('open');
+  ui.trigger.setAttribute('aria-expanded', 'true');
+  activeRuleSelect = select;
+  requestAnimationFrame(() => {
+    const placement = menuPlacement(ui.trigger, ui.menu);
+    ui.wrapper.classList.toggle('drop-up', placement.up);
+    ui.menu.style.setProperty('--rule-select-max-height', `${placement.maxHeight}px`);
+    ui.menu.querySelector('.rule-select-option.selected')?.scrollIntoView({ block: 'nearest' });
+  });
+}
+
+function enhanceRuleSelect(select) {
+  if (!select || ruleSelectRegistry.has(select) || !select.closest('#ruleDialog')) return;
+  const wrapper = document.createElement('div');
+  wrapper.className = 'rule-select-ui';
+  select.parentNode.insertBefore(wrapper, select);
+  wrapper.append(select);
+  select.classList.add('rule-select-native');
+  select.tabIndex = -1;
+
+  const trigger = document.createElement('button');
+  trigger.type = 'button';
+  trigger.className = 'rule-select-trigger';
+  trigger.setAttribute('aria-haspopup', 'listbox');
+  trigger.setAttribute('aria-expanded', 'false');
+  const value = document.createElement('span');
+  value.className = 'rule-select-value';
+  const chevron = document.createElement('span');
+  chevron.className = 'picker-chevron';
+  chevron.setAttribute('aria-hidden', 'true');
+  trigger.append(value, chevron);
+
+  const menu = document.createElement('div');
+  menu.className = 'rule-select-menu hidden';
+  menu.setAttribute('role', 'listbox');
+  wrapper.append(trigger, menu);
+
+  const label = select.id ? $(`#ruleDialog label[for="${select.id}"]`) : null;
+  trigger.setAttribute('aria-label', select.getAttribute('aria-label') || label?.textContent?.trim() || t('Select an option'));
+  label?.addEventListener('click', event => { event.preventDefault(); trigger.focus(); });
+  trigger.addEventListener('click', () => activeRuleSelect === select ? closeRuleSelect(select) : openRuleSelect(select));
+  trigger.addEventListener('keydown', event => {
+    if (!['ArrowDown', 'ArrowUp'].includes(event.key)) return;
+    event.preventDefault();
+    openRuleSelect(select);
+    requestAnimationFrame(() => {
+      const options = [...menu.querySelectorAll('.rule-select-option:not(:disabled)')];
+      const selectedOption = menu.querySelector('.rule-select-option.selected');
+      (selectedOption || (event.key === 'ArrowUp' ? options.at(-1) : options[0]))?.focus();
+    });
+  });
+  menu.addEventListener('keydown', event => {
+    const options = [...menu.querySelectorAll('.rule-select-option:not(:disabled)')];
+    const index = options.indexOf(document.activeElement);
+    if (event.key === 'Escape') { event.preventDefault(); closeRuleSelect(select); trigger.focus(); return; }
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key) || !options.length) return;
+    event.preventDefault();
+    let next = index;
+    if (event.key === 'Home') next = 0;
+    else if (event.key === 'End') next = options.length - 1;
+    else if (event.key === 'ArrowDown') next = Math.min(options.length - 1, index < 0 ? 0 : index + 1);
+    else next = Math.max(0, index < 0 ? options.length - 1 : index - 1);
+    options[next]?.focus();
+  });
+  select.addEventListener('change', () => refreshRuleSelect(select));
+  ruleSelectRegistry.set(select, { wrapper, trigger, value, menu });
+  refreshRuleSelect(select);
+}
+
+function refreshRuleSelects() {
+  $$('#ruleDialog select').forEach(select => {
+    enhanceRuleSelect(select);
+    refreshRuleSelect(select);
+  });
+}
+
+function initRuleSelects() {
+  refreshRuleSelects();
+  if (ruleSelectObserver) return;
+  ruleSelectObserver = new MutationObserver(records => {
+    const touched = new Set();
+    for (const record of records) {
+      if (record.target instanceof HTMLSelectElement) touched.add(record.target);
+      record.addedNodes.forEach(node => {
+        if (!(node instanceof Element)) return;
+        if (node.matches('select')) touched.add(node);
+        node.querySelectorAll?.('select').forEach(select => touched.add(select));
+      });
+    }
+    touched.forEach(select => { enhanceRuleSelect(select); refreshRuleSelect(select); });
+  });
+  ruleSelectObserver.observe($('#ruleDialog'), { subtree: true, childList: true, attributes: true, attributeFilter: ['disabled'] });
+}
+
+function serviceTimezoneValues() {
   const storeTimezone = state.shop?.timezone || 'UTC';
-  list.innerHTML = [...new Set([storeTimezone, ...browserTimeZones()])].map(value => `<option value="${escapeHtml(value)}"></option>`).join('');
+  return [...new Set([storeTimezone, ...browserTimeZones()])];
+}
+
+function renderServiceTimezoneMenu(query = '') {
+  const menu = $('#serviceTimezoneMenu');
+  const input = $('#serviceTimezone');
+  if (!menu || !input) return;
+  const storeTimezone = state.shop?.timezone || 'UTC';
+  const normalized = String(query || '').trim().toLowerCase();
+  const values = serviceTimezoneValues().filter(value => !normalized || value.toLowerCase().includes(normalized)).slice(0, 80);
+  const defaultLabel = state.locale === 'zh-CN' ? `店铺默认 · ${storeTimezone}` : `Store default · ${storeTimezone}`;
+  const defaultOption = !normalized || 'store default'.includes(normalized) || '店铺默认'.includes(normalized)
+    ? `<button type="button" class="timezone-picker-option ${!input.value ? 'selected' : ''}" data-timezone="" role="option" aria-selected="${!input.value}"><span><strong>${escapeHtml(defaultLabel)}</strong><small>${escapeHtml(state.locale === 'zh-CN' ? '继承 SHOPLINE 店铺时区' : 'Inherit the SHOPLINE store time zone')}</small></span><i>✓</i></button>`
+    : '';
+  menu.innerHTML = defaultOption + values.map(value => `<button type="button" class="timezone-picker-option ${input.value === value ? 'selected' : ''}" data-timezone="${escapeHtml(value)}" role="option" aria-selected="${input.value === value}"><span><strong>${escapeHtml(value)}</strong>${value === storeTimezone ? `<small>${escapeHtml(state.locale === 'zh-CN' ? '当前店铺时区' : 'Current store time zone')}</small>` : ''}</span><i>✓</i></button>`).join('');
+  if (!menu.innerHTML) menu.innerHTML = `<div class="timezone-picker-empty">${escapeHtml(state.locale === 'zh-CN' ? '没有匹配的时区，你也可以直接输入 IANA 时区。' : 'No matching time zone. You can still type an IANA time zone directly.')}</div>`;
+  menu.querySelectorAll('[data-timezone]').forEach(button => button.addEventListener('click', () => {
+    input.value = button.dataset.timezone || '';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    closeServiceTimezonePicker();
+    input.focus();
+  }));
+}
+
+function closeServiceTimezonePicker() {
+  const picker = $('#serviceTimezonePicker');
+  const menu = $('#serviceTimezoneMenu');
+  const input = $('#serviceTimezone');
+  const toggle = $('#serviceTimezoneToggle');
+  if (!picker || !menu || !input || !toggle) return;
+  picker.classList.remove('open', 'drop-up');
+  menu.classList.add('hidden');
+  input.setAttribute('aria-expanded', 'false');
+  toggle.setAttribute('aria-expanded', 'false');
+}
+
+function openServiceTimezonePicker({ showAll = false } = {}) {
+  const picker = $('#serviceTimezonePicker');
+  const menu = $('#serviceTimezoneMenu');
+  const input = $('#serviceTimezone');
+  const toggle = $('#serviceTimezoneToggle');
+  if (!picker || !menu || !input || !toggle) return;
+  closeRuleSelect();
+  closeLocationPicker();
+  renderServiceTimezoneMenu(showAll ? '' : input.value);
+  menu.classList.remove('hidden');
+  picker.classList.add('open');
+  input.setAttribute('aria-expanded', 'true');
+  toggle.setAttribute('aria-expanded', 'true');
+  requestAnimationFrame(() => {
+    const placement = menuPlacement(picker, menu, { preferredHeight: 280, minHeight: 110 });
+    picker.classList.toggle('drop-up', placement.up);
+    menu.style.setProperty('--timezone-menu-max-height', `${placement.maxHeight}px`);
+  });
+}
+
+function positionLocationPickerMenu() {
+  const picker = $('#shoplineLocationPicker');
+  const trigger = $('#shoplineLocationPickerButton');
+  const menu = $('#shoplineLocationMenu');
+  if (!picker || !trigger || !menu || menu.classList.contains('hidden')) return;
+  const placement = menuPlacement(trigger, menu, { preferredHeight: 260, minHeight: 110 });
+  picker.classList.toggle('drop-up', placement.up);
+  menu.style.setProperty('--location-menu-max-height', `${placement.maxHeight}px`);
 }
 
 const zh = {
@@ -521,7 +737,7 @@ const staffAvatarPresets = ['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunse
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
 function staffPresetImage(preset) {
   const file = staffAvatarFiles[preset] || staffAvatarFiles.aurora;
-  return `<img src="/assets/staff/${file}?v=0.6.13" alt="" loading="lazy" decoding="async">`;
+  return `<img src="/assets/staff/${file}?v=0.6.14" alt="" loading="lazy" decoding="async">`;
 }
 let staffAvatarDraft = { kind: 'preset', value: 'aurora' };
 
@@ -1323,9 +1539,11 @@ function locationLabel(item = {}) {
 }
 
 function closeLocationPicker() {
+  const picker = $('#shoplineLocationPicker');
   const menu = $('#shoplineLocationMenu');
   const button = $('#shoplineLocationPickerButton');
   if (!menu || !button) return;
+  picker?.classList.remove('drop-up');
   menu.classList.add('hidden');
   button.setAttribute('aria-expanded', 'false');
 }
@@ -1475,6 +1693,9 @@ function renderExceptionsMode() {
 }
 
 function setRuleStep(step) {
+  closeRuleSelect();
+  closeServiceTimezonePicker();
+  closeLocationPicker();
   state.ruleStep = Math.max(0, Math.min(3, step));
   $$('[data-rule-step]').forEach(panel => panel.classList.toggle('hidden', Number(panel.dataset.ruleStep) !== state.ruleStep));
   $$('[data-rule-step-button]').forEach(button => button.classList.toggle('active', Number(button.dataset.ruleStepButton) === state.ruleStep));
@@ -1580,6 +1801,8 @@ async function openRule(rule = null) {
   setStaffAssignmentMode(assignment.mode || 'none');
   (rule?.customQuestions || []).forEach(addQuestion);
   setRuleStep(0);
+  refreshRuleSelects();
+  renderServiceTimezoneMenu($('#serviceTimezone').value || '');
   $('#ruleDialog').showModal();
 }
 
@@ -2596,6 +2819,8 @@ async function setLocale(locale, { save = true } = {}) {
   $('#languageLabel').textContent = state.locale === 'zh-CN' ? '简体中文' : 'English';
   $$('[data-locale]').forEach(button => button.classList.toggle('selected', button.dataset.locale === state.locale));
   applyStaticTranslations();
+  refreshRuleSelects();
+  renderServiceTimezoneMenu($('#serviceTimezone')?.value || '');
   switchView(state.currentView);
   renderTemplateTabs();
   if (state.rules.length) renderRules();
@@ -2630,6 +2855,7 @@ async function loadThemeEditorLink() {
 }
 
 function bind() {
+  initRuleSelects();
   document.addEventListener('click', event => { if (!event.target.closest('.booking-action-group')) closeBookingActionMenus(); });
   document.addEventListener('keydown', event => { if (event.key === 'Escape') closeBookingActionMenus(); });
   window.addEventListener('resize', () => closeBookingActionMenus());
@@ -2638,7 +2864,7 @@ function bind() {
   $$('.nav-item').forEach(button => button.addEventListener('click', () => switchView(button.dataset.view)));
   $$('[data-go-view]').forEach(button => button.addEventListener('click', () => switchView(button.dataset.goView)));
   $$('[data-new-rule]').forEach(button => button.addEventListener('click', () => openRule()));
-  $$('[data-close-dialog]').forEach(button => button.addEventListener('click', () => $('#ruleDialog').close()));
+  $$('[data-close-dialog]').forEach(button => button.addEventListener('click', () => { closeRuleSelect(); closeServiceTimezonePicker(); closeLocationPicker(); $('#ruleDialog').close(); }));
   $$('[data-close-product-dialog]').forEach(button => button.addEventListener('click', () => $('#productDialog').close()));
   $$('[data-close-booking-dialog]').forEach(button => button.addEventListener('click', () => $('#bookingDialog').close()));
   $$('[data-close-flow-dialog]').forEach(button => button.addEventListener('click', () => $('#bookingFlowDialog').close()));
@@ -2651,8 +2877,18 @@ function bind() {
     const menu = $('#shoplineLocationMenu');
     const button = $('#shoplineLocationPickerButton');
     const opening = menu.classList.contains('hidden');
+    closeRuleSelect();
+    closeServiceTimezonePicker();
     menu.classList.toggle('hidden', !opening);
     button.setAttribute('aria-expanded', String(opening));
+    if (opening) requestAnimationFrame(positionLocationPickerMenu);
+  });
+  $('#serviceTimezone')?.addEventListener('focus', () => openServiceTimezonePicker());
+  $('#serviceTimezone')?.addEventListener('input', () => openServiceTimezonePicker());
+  $('#serviceTimezoneToggle')?.addEventListener('click', () => {
+    const menu = $('#serviceTimezoneMenu');
+    if (menu?.classList.contains('hidden')) openServiceTimezonePicker({ showAll: true });
+    else closeServiceTimezonePicker();
   });
   $('#refreshLocations')?.addEventListener('click', () => loadLocations({ force: true, selectedId: $('#shoplineLocationId')?.value || '' }).catch(showError));
   $('#ruleNext').addEventListener('click', () => { if (validateRuleStep(state.ruleStep)) setRuleStep(state.ruleStep + 1); });
@@ -2687,7 +2923,18 @@ function bind() {
       $('#languageButton').setAttribute('aria-expanded', 'false');
     }
     if ($('#shoplineLocationPicker') && !$('#shoplineLocationPicker').contains(event.target)) closeLocationPicker();
+    if ($('#serviceTimezonePicker') && !$('#serviceTimezonePicker').contains(event.target)) closeServiceTimezonePicker();
+    if (activeRuleSelect) {
+      const ui = ruleSelectRegistry.get(activeRuleSelect);
+      if (ui && !ui.wrapper.contains(event.target)) closeRuleSelect(activeRuleSelect);
+    }
   });
+  $('#ruleDialog .modal-body')?.addEventListener('scroll', () => {
+    closeRuleSelect();
+    closeServiceTimezonePicker();
+    closeLocationPicker();
+  }, { passive: true });
+  window.addEventListener('resize', () => { closeRuleSelect(); closeServiceTimezonePicker(); closeLocationPicker(); });
   $('#ruleSearch').addEventListener('input', renderRules);
   $('#newStaffButton')?.addEventListener('click', () => openStaff());
   $('#staffSearch')?.addEventListener('input', renderStaff);
