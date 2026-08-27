@@ -1,10 +1,10 @@
 # Appointment Lite
 
-> v0.6.0.5 — Storefront Calendar Button + Staff Avatar Library
+> v0.6.0.6 — Email Design UI Polish
 
-Appointment Lite uses one optional **Business Google Calendar** per store. Staff do not need Google access: merchants add staff email addresses for assignment notifications. Customer confirmation now uses a polished Appointment Lite-style **Add to Google Calendar** action, and the staff editor ships with a clearer nine-portrait built-in avatar library.
+Appointment Lite uses one optional **Business Google Calendar** per store, independent merchant/staff email notifications, and configurable customer communication. Staff do not need Google access: merchants add staff email addresses for assignment notifications.
 
-Release `v0.6.0.5` polishes the customer calendar action and replaces the previous staff avatar presets with nine locally bundled, higher-resolution portraits. Merchant/staff notification architecture and the single Business Google Calendar model remain unchanged.
+Release `v0.6.0.6` reorganizes Email Studio notification controls into clear audience cards with aligned checkboxes, compact titles, readable helper text, and a dedicated reminder-timing control. The layout is optimized for Simplified Chinese and responsive admin widths without exposing implementation details.
 
 Appointment Lite now supports two booking entry models:
 
@@ -19,6 +19,16 @@ Typical scenarios include furniture installation and measurements, showroom visi
 
 
 
+
+
+## v0.6.0.6 Email Design UI Polish
+
+- Rebuilds customer and merchant notification switches as structured option cards with consistent checkbox alignment and separate title/description hierarchy.
+- Shortens notification helper copy so Simplified Chinese no longer crowds or visually merges with option titles.
+- Adds clear context under customer reply-to and merchant inbox fields.
+- Groups reminder timing into a dedicated control that applies to both customer and merchant pre-appointment reminders.
+- Gives the Email Studio editor more usable width and stacks the preview sooner on narrower admin layouts.
+- Keeps the v0.6.0.5 notification behavior, reminder scheduler, calendar overflow, and delivery settings unchanged.
 
 ## v0.6.0.5 Storefront Calendar Button + Staff Avatar Library
 

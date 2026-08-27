@@ -335,6 +335,14 @@ Object.assign(zh, {
   'Manage staff emails': '管理员工邮箱', 'Loading calendar…': '正在加载日历…',
   'New bookings and appointment changes sync automatically after you save.': '保存后，新预约和预约变更会自动同步。',
   'The merchant inbox receives store-wide appointment activity. It can be Gmail, QQ, 163, Outlook, or any normal email address. Staff notifications are configured separately in Staff.': '商家主邮箱用于接收全店预约动态，可使用 Gmail、QQ、163、Outlook 或其他常用邮箱；员工通知请在“员工”中单独配置。',
+  'Choose where appointment emails are delivered and which updates each audience receives.': '设置预约邮件的收件地址，并选择客户和商家分别接收哪些通知。',
+  'Replies from customers will be sent here.': '客户回复预约邮件时会发送到此邮箱。', 'Receives store-wide appointment notifications.': '用于接收全店预约通知。',
+  'Turn each message on or off. Staff assignment emails are managed from Staff.': '可单独开启或关闭每类邮件；员工分配通知请在“员工”中设置。',
+  'Emails sent to the customer who made the appointment.': '发送给提交预约的客户。', 'Store-wide updates sent to the merchant inboxes above.': '发送到上方设置的商家通知邮箱。',
+  'Send after a booking is created.': '预约创建后发送确认邮件。', 'Send when appointment details change.': '预约内容变更时发送更新邮件。',
+  'Send when the appointment is cancelled.': '预约取消时发送通知邮件。', 'Send before the appointment starts.': '预约开始前发送提醒邮件。',
+  'Send after a customer completes a booking.': '客户完成预约后通知商家。',
+  'Used for both customer and merchant pre-appointment reminders.': '同时用于客户和商家的履约前提醒。', 'Send reminder': '发送时间',
   'Primary merchant inbox': '商家主通知邮箱', 'Additional merchant inboxes': '其他商家通知邮箱', 'One address per line, up to 8 addresses in total.': '每行填写一个邮箱，最多支持 8 个地址。',
   'New bookings': '预约成功', 'Changes & reschedules': '预约修改', 'Cancellations': '预约取消',
   'Customer notifications': '客户通知', 'Choose which appointment emails customers receive.': '选择客户会收到哪些预约邮件。',
@@ -402,7 +410,7 @@ const staffAvatarPresets = ['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunse
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
 function staffPresetImage(preset) {
   const file = staffAvatarFiles[preset] || staffAvatarFiles.aurora;
-  return `<img src="/assets/staff/${file}?v=0.6.0.5" alt="" loading="lazy" decoding="async">`;
+  return `<img src="/assets/staff/${file}?v=0.6.0.6" alt="" loading="lazy" decoding="async">`;
 }
 let staffAvatarDraft = { kind: 'preset', value: 'aurora' };
 

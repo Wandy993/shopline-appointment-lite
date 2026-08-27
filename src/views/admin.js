@@ -39,7 +39,7 @@ export function adminPage() {
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light">
   <title>Appointment Lite</title>
-  <link rel="stylesheet" href="/admin/styles.css?v=0.6.0.5">
+  <link rel="stylesheet" href="/admin/styles.css?v=0.6.0.6">
 </head>
 <body>
   <div class="app-shell">
@@ -137,7 +137,43 @@ export function adminPage() {
           <div class="email-studio-grid">
             <div class="email-controls">
               <article class="panel form-section"><div class="section-title"><span class="section-number">01</span><div><h2>Brand identity</h2><p>Choose how your store appears inside appointment emails.</p></div></div><div class="field-row"><div class="field"><label for="emailBrandName">Brand name</label><input id="emailBrandName" maxlength="80" placeholder="Your store name"></div><div class="field color-field"><label for="emailAccentColor">Accent color</label><div><input id="emailAccentColor" type="color" value="#2F6FED"><input id="emailAccentHex" maxlength="7" value="#2F6FED" aria-label="Accent color hex"></div></div></div><div class="field"><label for="emailLogoUrl">Email logo URL <span>optional</span></label><input id="emailLogoUrl" type="url" maxlength="500" placeholder="https://cdn.example.com/logo.png"><p class="hint">Use a square HTTPS image, ideally 160 × 160 px. If empty, your brand initial is shown.</p></div></article>
-              <article class="panel form-section"><div class="section-title"><span class="section-number">02</span><div><h2>Notification recipients</h2><p>The merchant inbox receives store-wide appointment activity. It can be Gmail, QQ, 163, Outlook, or any normal email address. Staff notifications are configured separately in Staff.</p></div></div><div class="field-row"><div class="field"><label for="emailReplyTo">Customer reply-to</label><input id="emailReplyTo" type="email" maxlength="254" placeholder="support@yourstore.com"></div><div class="field"><label for="merchantNotificationEmail">Primary merchant inbox</label><input id="merchantNotificationEmail" type="email" maxlength="254" placeholder="appointments@yourstore.com"></div></div><div class="field"><label for="merchantNotificationAdditional">Additional merchant inboxes <span>optional</span></label><textarea id="merchantNotificationAdditional" rows="3" placeholder="owner@qq.com&#10;ops@163.com"></textarea><p class="hint">One address per line, up to 8 addresses in total.</p></div><div class="notification-preferences"><section class="notification-group"><div class="notification-group-head"><strong>Customer notifications</strong><small>Choose which appointment emails customers receive.</small></div><div class="notification-toggle-grid four"><label class="calendar-sync-toggle"><input id="customerNotifyConfirmation" type="checkbox"><span><strong>Booking confirmation</strong><small>Send a confirmation when a booking is created.</small></span></label><label class="calendar-sync-toggle"><input id="customerNotifyChanged" type="checkbox"><span><strong>Appointment changes</strong><small>Send an update when the appointment changes.</small></span></label><label class="calendar-sync-toggle"><input id="customerNotifyCancelled" type="checkbox"><span><strong>Cancellation</strong><small>Send an email when the appointment is cancelled.</small></span></label><label class="calendar-sync-toggle"><input id="customerNotifyReminder" type="checkbox"><span><strong>Pre-appointment reminder</strong><small>Send a reminder before the appointment starts.</small></span></label></div></section><section class="notification-group"><div class="notification-group-head"><strong>Merchant notifications</strong><small>Choose which store-wide appointment emails your merchant inbox receives.</small></div><div class="notification-toggle-grid four"><label class="calendar-sync-toggle"><input id="merchantNotifyNew" type="checkbox"><span><strong>New bookings</strong><small>Notify the merchant inbox when a customer books.</small></span></label><label class="calendar-sync-toggle"><input id="merchantNotifyChanged" type="checkbox"><span><strong>Changes & reschedules</strong><small>Notify the merchant inbox when appointment details change.</small></span></label><label class="calendar-sync-toggle"><input id="merchantNotifyCancelled" type="checkbox"><span><strong>Cancellations</strong><small>Notify the merchant inbox when an appointment is cancelled.</small></span></label><label class="calendar-sync-toggle"><input id="merchantNotifyReminder" type="checkbox"><span><strong>Pre-appointment reminder</strong><small>Remind the merchant before the appointment starts.</small></span></label></div></section><div class="reminder-timing-row"><div><strong>Reminder timing</strong><small>Applies to customer and merchant reminder emails.</small></div><select id="emailReminderLeadHours"><option value="3">3 hours before</option><option value="6">6 hours before</option><option value="12">12 hours before</option><option value="24">24 hours before</option><option value="48">48 hours before</option><option value="72">72 hours before</option></select></div></div></article>
+              <article class="panel form-section notification-section">
+                <div class="section-title"><span class="section-number">02</span><div><h2>Notification recipients</h2><p>Choose where appointment emails are delivered and which updates each audience receives.</p></div></div>
+                <div class="field-row">
+                  <div class="field"><label for="emailReplyTo">Customer reply-to</label><input id="emailReplyTo" type="email" maxlength="254" placeholder="support@yourstore.com"><p class="field-help">Replies from customers will be sent here.</p></div>
+                  <div class="field"><label for="merchantNotificationEmail">Primary merchant inbox</label><input id="merchantNotificationEmail" type="email" maxlength="254" placeholder="appointments@yourstore.com"><p class="field-help">Receives store-wide appointment notifications.</p></div>
+                </div>
+                <div class="field"><label for="merchantNotificationAdditional">Additional merchant inboxes <span>optional</span></label><textarea id="merchantNotificationAdditional" rows="3" placeholder="owner@qq.com&#10;ops@163.com"></textarea><p class="hint">One address per line, up to 8 addresses in total.</p></div>
+
+                <div class="notification-preferences">
+                  <div class="notification-preferences-head"><div><strong>Email notifications</strong><small>Turn each message on or off. Staff assignment emails are managed from Staff.</small></div></div>
+
+                  <section class="notification-group">
+                    <div class="notification-group-head"><div><strong>Customer notifications</strong><small>Emails sent to the customer who made the appointment.</small></div></div>
+                    <div class="notification-toggle-grid four">
+                      <label class="notification-option"><input id="customerNotifyConfirmation" type="checkbox"><span class="notification-option-copy"><strong>Booking confirmation</strong><small>Send after a booking is created.</small></span></label>
+                      <label class="notification-option"><input id="customerNotifyChanged" type="checkbox"><span class="notification-option-copy"><strong>Appointment changes</strong><small>Send when appointment details change.</small></span></label>
+                      <label class="notification-option"><input id="customerNotifyCancelled" type="checkbox"><span class="notification-option-copy"><strong>Cancellation</strong><small>Send when the appointment is cancelled.</small></span></label>
+                      <label class="notification-option"><input id="customerNotifyReminder" type="checkbox"><span class="notification-option-copy"><strong>Pre-appointment reminder</strong><small>Send before the appointment starts.</small></span></label>
+                    </div>
+                  </section>
+
+                  <section class="notification-group">
+                    <div class="notification-group-head"><div><strong>Merchant notifications</strong><small>Store-wide updates sent to the merchant inboxes above.</small></div></div>
+                    <div class="notification-toggle-grid four">
+                      <label class="notification-option"><input id="merchantNotifyNew" type="checkbox"><span class="notification-option-copy"><strong>New bookings</strong><small>Send after a customer completes a booking.</small></span></label>
+                      <label class="notification-option"><input id="merchantNotifyChanged" type="checkbox"><span class="notification-option-copy"><strong>Changes &amp; reschedules</strong><small>Send when appointment details change.</small></span></label>
+                      <label class="notification-option"><input id="merchantNotifyCancelled" type="checkbox"><span class="notification-option-copy"><strong>Cancellations</strong><small>Send when an appointment is cancelled.</small></span></label>
+                      <label class="notification-option"><input id="merchantNotifyReminder" type="checkbox"><span class="notification-option-copy"><strong>Pre-appointment reminder</strong><small>Send before the appointment starts.</small></span></label>
+                    </div>
+                  </section>
+
+                  <div class="reminder-timing-row">
+                    <div><strong>Reminder timing</strong><small>Used for both customer and merchant pre-appointment reminders.</small></div>
+                    <label class="reminder-select-wrap"><span>Send reminder</span><select id="emailReminderLeadHours"><option value="3">3 hours before</option><option value="6">6 hours before</option><option value="12">12 hours before</option><option value="24">24 hours before</option><option value="48">48 hours before</option><option value="72">72 hours before</option></select></label>
+                  </div>
+                </div>
+              </article>
               <article class="panel form-section template-editor"><div class="section-title"><span class="section-number">03</span><div><h2>Message templates</h2><p>Customize the message while core appointment details remain protected and consistent.</p></div></div><div id="templateTabs" class="template-tabs" role="tablist"></div><div class="field"><label for="templateSubject">Email subject</label><input id="templateSubject" maxlength="180"></div><div class="field"><label for="templateHeading">Email heading</label><input id="templateHeading" maxlength="120"></div><div class="field"><label for="templateBody">Intro message</label><textarea id="templateBody" rows="7" maxlength="3000"></textarea></div><div><span class="field-label">Insert a variable</span><div id="variableChips" class="variable-chips"></div></div></article>
             </div>
             <aside class="email-preview-wrap"><div class="preview-sticky"><div class="preview-toolbar"><div><span class="eyebrow">INBOX PREVIEW</span><strong id="previewTemplateLabel">Confirmation</strong></div><span class="desktop-chip">Desktop</span></div><div class="email-preview-canvas"><div id="emailPreview" class="email-preview"></div></div><p class="preview-footnote">Preview content uses sample appointment data. Customer details are never stored in this editor.</p></div></aside>
@@ -256,7 +292,7 @@ export function adminPage() {
   </dialog>
 
   <dialog id="confirmDialog" class="confirm-modal"><div class="confirm-icon">!</div><div class="confirm-copy"><h2 id="confirmTitle">Please confirm</h2><p id="confirmMessage"></p></div><div class="modal-actions"><button id="confirmNo" class="secondary">Keep it</button><button id="confirmYes" class="danger">Confirm</button></div></dialog>
-  <script type="module" src="/admin/app.js?v=0.6.0.5"></script>
+  <script type="module" src="/admin/app.js?v=0.6.0.6"></script>
 </body>
 </html>`;
 }

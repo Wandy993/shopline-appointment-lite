@@ -2,8 +2,8 @@
 set -u
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd -P)"
-RELEASE_VERSION="0.6.0.5"
-NAME="appointment-lite-v${RELEASE_VERSION}-notification-controls-calendar-overflow"
+RELEASE_VERSION="0.6.0.6"
+NAME="appointment-lite-v${RELEASE_VERSION}-email-design-ui-polish"
 DIST_DIR="$ROOT_DIR/dist"
 STAGE_DIR="${TMPDIR:-/tmp}/${NAME}.$$"
 OUTPUT="$DIST_DIR/${NAME}.zip"

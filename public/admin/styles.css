@@ -603,3 +603,39 @@ button{min-height:38px;padding:8px 14px;border-color:var(--border-strong);border
 .calendar-day-modal{width:min(620px,calc(100vw - 28px))}.calendar-day-list{display:grid;gap:8px}.calendar-day-booking{width:100%;display:grid;grid-template-columns:74px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 13px;border:1px solid #e0e8f2;border-radius:11px;background:#fbfdff;text-align:left;box-shadow:none}.calendar-day-booking:hover{border-color:#bfd0ec;background:#f5f8ff}.calendar-day-time{color:var(--brand-deep);font-size:10px;font-weight:780}.calendar-day-copy{min-width:0}.calendar-day-copy strong,.calendar-day-copy small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.calendar-day-copy strong{color:#344861;font-size:10px}.calendar-day-copy small{margin-top:3px;color:#8391a3;font-size:9px}
 .notification-preferences{display:grid;gap:12px;margin-top:16px}.notification-group{padding:14px;border:1px solid #e3eaf3;border-radius:12px;background:#fbfdff}.notification-group-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:10px}.notification-group-head strong{color:#354861;font-size:11px}.notification-group-head small{max-width:56%;color:#7a899c;font-size:9px;line-height:1.5;text-align:right}.notification-toggle-grid.four{grid-template-columns:repeat(2,minmax(0,1fr));margin-top:0}.reminder-timing-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:13px 14px;border:1px solid #e3eaf3;border-radius:12px;background:#f8fbff}.reminder-timing-row>div strong,.reminder-timing-row>div small{display:block}.reminder-timing-row>div strong{color:#354861;font-size:11px}.reminder-timing-row>div small{margin-top:3px;color:#7a899c;font-size:9px}.reminder-timing-row select{width:180px;min-height:36px}
 @media(max-width:900px){.notification-toggle-grid.four{grid-template-columns:1fr}.notification-group-head{display:block}.notification-group-head small{max-width:none;margin-top:4px;text-align:left}.reminder-timing-row{align-items:flex-start;flex-direction:column}.reminder-timing-row select{width:100%}.calendar-day-booking{grid-template-columns:60px minmax(0,1fr)}.calendar-day-booking .status-badge{grid-column:2}}
+
+/* v0.6.0.6 — Email Design UI Polish */
+.email-studio-grid{grid-template-columns:minmax(620px,1.15fr) minmax(360px,.85fr)}
+.notification-section .field-row{gap:12px}
+.field-help{margin:6px 0 0;color:#8a98aa;font-size:9px;line-height:1.45}
+.notification-preferences{display:grid;gap:12px;margin-top:18px;padding-top:18px;border-top:1px solid #edf2f7}
+.notification-preferences-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.notification-preferences-head strong,.notification-preferences-head small{display:block}
+.notification-preferences-head strong{color:#30425e;font-size:12px;font-weight:720}
+.notification-preferences-head small{margin-top:3px;color:#7d8ca1;font-size:9.5px;line-height:1.5}
+.notification-group{padding:0;border:1px solid #e1e8f1;border-radius:12px;background:#fff;overflow:hidden}
+.notification-group-head{display:block;margin:0;padding:13px 14px 11px;border-bottom:1px solid #e9eef5;background:#f8fbff}
+.notification-group-head>div{min-width:0}
+.notification-group-head strong,.notification-group-head small{display:block}
+.notification-group-head strong{color:#354861;font-size:11px;font-weight:720}
+.notification-group-head small{max-width:none;margin-top:3px;color:#7c8b9f;font-size:9px;line-height:1.45;text-align:left}
+.notification-toggle-grid.four{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0;padding:10px;background:#fff}
+.notification-option{min-width:0;display:grid;grid-template-columns:17px minmax(0,1fr);gap:9px;align-items:flex-start;padding:11px 12px;border:1px solid #e5ebf3;border-radius:10px;background:#fbfdff;cursor:pointer;transition:border-color .14s ease,background .14s ease,box-shadow .14s ease}
+.notification-option:hover{border-color:#c9d8ee;background:#f8fbff}
+.notification-option:focus-within{border-color:#9ab8ec;box-shadow:0 0 0 3px rgba(47,111,237,.07)}
+.notification-option:has(input:checked){border-color:#bfd1ef;background:#f5f8ff}
+.notification-option input{width:16px;height:16px;margin:2px 0 0;accent-color:var(--brand);cursor:pointer}
+.notification-option-copy{min-width:0}
+.notification-option-copy strong,.notification-option-copy small{display:block}
+.notification-option-copy strong{color:#344861;font-size:10.5px;font-weight:700;line-height:1.35}
+.notification-option-copy small{margin-top:3px;color:#7c8b9e;font-size:9px;line-height:1.45}
+.reminder-timing-row{display:grid;grid-template-columns:minmax(0,1fr) 190px;align-items:center;gap:18px;padding:14px 15px;border:1px solid #dfe8f3;border-radius:12px;background:#f7faff}
+.reminder-timing-row>div strong,.reminder-timing-row>div small{display:block}
+.reminder-timing-row>div strong{color:#354861;font-size:11px;font-weight:720}
+.reminder-timing-row>div small{margin-top:3px;color:#7c8b9f;font-size:9px;line-height:1.45}
+.reminder-select-wrap{display:grid;gap:5px;margin:0;color:#78879b;font-size:8.5px;font-weight:700}
+.reminder-select-wrap span{display:block}
+.reminder-select-wrap select{width:100%;min-height:38px;padding:0 10px;border:1px solid #cbd7e7;border-radius:9px;color:#354861;background:#fff;font:inherit;font-size:10px;font-weight:650}
+.reminder-select-wrap select:focus{outline:0;border-color:#8fb1ef;box-shadow:0 0 0 3px rgba(47,111,237,.08)}
+@media(max-width:1180px){.email-studio-grid{grid-template-columns:1fr}.preview-sticky{position:static}.email-preview-canvas{min-height:auto}}
+@media(max-width:720px){.notification-toggle-grid.four{grid-template-columns:1fr}.reminder-timing-row{grid-template-columns:1fr}.reminder-select-wrap{width:100%}.notification-option{padding:11px}.notification-preferences-head{display:block}}

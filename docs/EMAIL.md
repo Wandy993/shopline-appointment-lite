@@ -104,3 +104,7 @@ The private email link is built as `/manage?booking=BOOKING_ID&access=SECRET`. Q
 Managed staff can enable **Email appointment updates** on their staff profile. This setting is opt-in and requires a valid staff email. Existing staff are not automatically enrolled when upgrading.
 
 The staff message includes the current service/date/time, location, and customer contact summary. When a merchant reassigns a booking, the previous staff member receives a reassignment notice and the newly assigned staff member receives an assignment notice. Staff emails do not include customer management tokens or merchant-admin authentication.
+
+## v0.6.0.6 Email Studio layout
+
+Email notification choices are presented as separate customer and merchant option cards. Each option has a short title and helper sentence so Simplified Chinese and English remain readable at normal admin widths. Customer reply-to, merchant notification inboxes, and reminder timing remain independent settings; this release changes presentation only and does not change notification delivery behavior.
