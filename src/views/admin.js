@@ -39,7 +39,7 @@ export function adminPage() {
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light">
   <title>Appointment Lite</title>
-  <link rel="stylesheet" href="/admin/styles.css?v=0.6.7">
+  <link rel="stylesheet" href="/admin/styles.css?v=0.6.8">
 </head>
 <body>
   <div class="app-shell">
@@ -113,7 +113,7 @@ export function adminPage() {
           </div>
           <div id="calendarControls" class="calendar-controls hidden"><button id="calendarPrev" class="secondary icon-only" type="button" aria-label="Previous month">‹</button><strong id="calendarMonthLabel"></strong><button id="calendarNext" class="secondary icon-only" type="button" aria-label="Next month">›</button></div>
           <div id="bookingCalendar" class="booking-calendar panel hidden" aria-live="polite"></div>
-          <div id="bookingTable" class="booking-table panel"><div class="table-head"><span>Customer & service</span><span>Date & time</span><span>Assignment</span><span>Payment</span><span>Appointment</span><span></span></div><div id="bookingsList" aria-live="polite"></div></div>
+          <div id="bookingTable" class="booking-table panel"><div class="table-head"><span>Customer & service</span><span>Booking details</span><span>Payment</span><span>Appointment</span><span>Actions</span></div><div id="bookingsList" aria-live="polite"></div></div>
         </section>
 
         <section id="staffView" class="view hidden">
@@ -301,7 +301,7 @@ export function adminPage() {
   </dialog>
 
   <dialog id="confirmDialog" class="confirm-modal"><div class="confirm-icon">!</div><div class="confirm-copy"><h2 id="confirmTitle">Please confirm</h2><p id="confirmMessage"></p></div><div class="modal-actions"><button id="confirmNo" class="secondary">Keep it</button><button id="confirmYes" class="danger">Confirm</button></div></dialog>
-  <script type="module" src="/admin/app.js?v=0.6.7"></script>
+  <script type="module" src="/admin/app.js?v=0.6.8"></script>
 </body>
 </html>`;
 }

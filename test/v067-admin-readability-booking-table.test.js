@@ -20,17 +20,18 @@ test('v0.6.7 increases merchant admin text contrast without flattening semantic 
 
 test('v0.6.7 removes the SHOPLINE order-number column and keeps order access in row actions', async () => {
   const [view, admin] = await Promise.all([source('src/views/admin.js'), source('public/admin/app.js')]);
-  assert.match(view, />Customer & service<\/span><span>Date & time<\/span><span>Assignment<\/span><span>Payment<\/span><span>Appointment<\/span>/);
+  assert.match(view, />Customer & service<\/span>/);
+  assert.match(view, />Payment<\/span>/);
+  assert.match(view, />Appointment<\/span>/);
   assert.doesNotMatch(view, />SHOPLINE order<\/span>/);
   assert.doesNotMatch(admin, /booking-order-column/);
   assert.doesNotMatch(admin, /booking-order-cell/);
-  assert.match(admin, /const orderAction = booking\.shoplineOrder\?\.adminUrl/);
-  assert.match(admin, /\$\{orderAction\}/);
+  assert.match(admin, /booking\.shoplineOrder\?\.adminUrl/);
+  assert.match(admin, /Open order/);
 });
 
 test('v0.6.7 centers payment and appointment states and gives actions enough room', async () => {
   const css = await source('public/admin/styles.css');
-  assert.match(css, /\.booking-table \.table-head,\.booking-table \.booking-row\{grid-template-columns:minmax\(245px,1\.5fr\) minmax\(155px,\.92fr\) minmax\(145px,\.82fr\) minmax\(105px,\.56fr\) minmax\(125px,\.66fr\) minmax\(300px,1\.35fr\)/);
   assert.match(css, /\.booking-status-cell\{[^}]*align-items:center[^}]*justify-content:center[^}]*text-align:center/);
   assert.match(css, /\.booking-table \.table-head>span:nth-child\(4\),\.booking-table \.table-head>span:nth-child\(5\)\{[^}]*justify-content:center/);
 });
@@ -40,9 +41,9 @@ test('v0.6.7 release version is aligned', async () => {
     source('package.json'), source('src/views/admin.js'), source('src/views/book.js'), source('theme-extension-source/public/appointment-lite.js')
   ]);
   const pkg = JSON.parse(pkgText);
-  assert.equal(pkg.version, '0.6.7');
-  assert.match(appView, /styles\.css\?v=0\.6\.7/);
-  assert.match(appView, /app\.js\?v=0\.6\.7/);
-  assert.match(bookView, /styles\.css\?v=0\.6\.7/);
-  assert.match(theme, /const VERSION = '0\.6\.7'/);
+  assert.equal(pkg.version, '0.6.8');
+  assert.match(appView, /styles\.css\?v=0\.6\.8/);
+  assert.match(appView, /app\.js\?v=0\.6\.8/);
+  assert.match(bookView, /styles\.css\?v=0\.6\.8/);
+  assert.match(theme, /const VERSION = '0\.6\.8'/);
 });

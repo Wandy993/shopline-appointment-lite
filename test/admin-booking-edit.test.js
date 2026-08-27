@@ -40,15 +40,15 @@ test('admin uses designed controls and exposes a per-store Email Studio', async 
 });
 
 
-test('booking actions use text labels and semantic action colors', async () => {
+test('booking actions use text labels and semantic action treatment', async () => {
   const asset = await readFile(new URL('../public/admin/app.js', import.meta.url), 'utf8');
   const stylesheet = await readFile(new URL('../public/admin/styles.css', import.meta.url), 'utf8');
   assert.match(asset, /data-flow-booking=.*\$\{t\('Activity'\)\}/s);
   assert.doesNotMatch(asset, /data-flow-booking=.*>↻<\/button>/s);
-  assert.match(asset, /booking-action complete/);
-  assert.match(asset, /booking-action no-show/);
-  assert.match(asset, /booking-action cancel/);
-  assert.match(stylesheet, /\.booking-action\.complete/);
-  assert.match(stylesheet, /\.booking-action\.no-show/);
-  assert.match(stylesheet, /\.booking-action\.cancel/);
+  assert.match(asset, /data-complete=/);
+  assert.match(asset, /data-no-show=/);
+  assert.match(asset, /class="booking-menu-item menu-warning" data-cancel=/);
+  assert.match(asset, /class="booking-menu-item menu-danger" data-delete-booking=/);
+  assert.match(stylesheet, /\.booking-menu-item\.menu-warning/);
+  assert.match(stylesheet, /\.booking-menu-item\.menu-danger/);
 });

@@ -2,8 +2,8 @@
 set -u
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd -P)"
-RELEASE_VERSION="0.6.7"
-NAME="appointment-lite-v${RELEASE_VERSION}-admin-readability-booking-table"
+RELEASE_VERSION="0.6.8"
+NAME="appointment-lite-v${RELEASE_VERSION}-booking-record-action-menu"
 DIST_DIR="$ROOT_DIR/dist"
 STAGE_DIR="${TMPDIR:-/tmp}/${NAME}.$$"
 OUTPUT="$DIST_DIR/${NAME}.zip"
@@ -21,6 +21,7 @@ rsync -a \
   --exclude='.DS_Store' \
   --exclude='node_modules' \
   --exclude='node_modules/' \
+  --exclude='node_modules.*/' \
   --exclude='dist/' \
   --exclude='theme-app-extension/' \
   --exclude='.shopline-cli.yml' \

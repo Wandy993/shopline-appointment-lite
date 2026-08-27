@@ -1,5 +1,17 @@
 # Appointment Lite
 
+> v0.6.8 — Booking Record Action Menu
+
+Appointment Lite v0.6.8 simplifies booking operations: the list now uses a five-column hierarchy, keeps **Appointment activity** visible, and moves secondary actions into a compact custom **Actions** menu.
+
+## v0.6.8 Booking Record Action Menu
+
+- Booking details group date, time, staff, location, and timezone in one scan-friendly column.
+- Payment and appointment states remain centered and visually stable.
+- Only Appointment activity and Actions stay visible in the operations area.
+- The Actions menu contains SHOPLINE order access, edit, complete, no-show, cancel, and delete when relevant.
+- Delete still requires the existing custom second confirmation.
+
 > v0.6.7 — Admin Readability + Booking Table Cleanup
 
 Appointment Lite v0.6.7 improves merchant-admin readability and rebuilds the booking-record table so operational information stays aligned, high-contrast, and easy to scan.

@@ -65,7 +65,7 @@ const zh = {
   'New service rule': '新建预约服务', '0 services': '0 条预约规则', 'CUSTOMER SCHEDULE': '客户预约',
   'Review appointments, update service details, and keep customers informed.': '查看预约、调整服务信息并及时通知客户。', 'Store time': '店铺时间',
   'All': '全部', 'Confirmed': '已确认', 'Cancelled': '已取消', 'Customer & service': '客户与服务', 'Date & time': '日期与时间',
-  'Assignment': '服务安排', 'Status': '状态', 'CUSTOMER COMMUNICATION': '客户沟通',
+  'Assignment': '服务安排', 'Booking details': '预约安排', 'Actions': '操作', 'Status': '状态', 'CUSTOMER COMMUNICATION': '客户沟通',
   'Give every appointment email a consistent voice and visual identity.': '让每封预约邮件保持一致的品牌表达。', 'Send test': '发送测试',
   'Save email design': '保存邮件设计', 'Checking email notifications…': '正在检查邮件通知…', 'Brand identity': '品牌信息',
   'Choose how your store appears inside appointment emails.': '设置店铺在预约邮件中的展示方式。', 'Brand name': '品牌名称', 'Accent color': '主题色',
@@ -487,7 +487,7 @@ const staffAvatarPresets = ['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunse
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
 function staffPresetImage(preset) {
   const file = staffAvatarFiles[preset] || staffAvatarFiles.aurora;
-  return `<img src="/assets/staff/${file}?v=0.6.7" alt="" loading="lazy" decoding="async">`;
+  return `<img src="/assets/staff/${file}?v=0.6.8" alt="" loading="lazy" decoding="async">`;
 }
 let staffAvatarDraft = { kind: 'preset', value: 'aurora' };
 
@@ -1850,7 +1850,61 @@ function deleteBookingRecord(booking) {
   );
 }
 
+function closeBookingActionMenus(except = null) {
+  $$('.booking-action-group.menu-open').forEach(group => {
+    if (group === except) return;
+    group.classList.remove('menu-open');
+    const toggle = group.querySelector('[data-booking-actions-toggle]');
+    const menu = group.querySelector('.booking-action-menu');
+    if (toggle) toggle.setAttribute('aria-expanded', 'false');
+    if (menu) {
+      menu.classList.add('hidden');
+      menu.style.left = '';
+      menu.style.top = '';
+      menu.style.visibility = '';
+    }
+  });
+}
+
+function positionBookingActionMenu(group) {
+  const toggle = group?.querySelector('[data-booking-actions-toggle]');
+  const menu = group?.querySelector('.booking-action-menu');
+  if (!toggle || !menu) return;
+  menu.classList.remove('hidden');
+  menu.style.visibility = 'hidden';
+  const trigger = toggle.getBoundingClientRect();
+  const bounds = menu.getBoundingClientRect();
+  const margin = 12;
+  const left = Math.max(margin, Math.min(trigger.right - bounds.width, window.innerWidth - bounds.width - margin));
+  let top = trigger.bottom + 6;
+  if (top + bounds.height > window.innerHeight - margin) top = Math.max(margin, trigger.top - bounds.height - 6);
+  menu.style.left = `${Math.round(left)}px`;
+  menu.style.top = `${Math.round(top)}px`;
+  menu.style.visibility = '';
+}
+
+function toggleBookingActionMenu(button) {
+  const group = button.closest('.booking-action-group');
+  if (!group) return;
+  const opening = !group.classList.contains('menu-open');
+  closeBookingActionMenus(group);
+  group.classList.toggle('menu-open', opening);
+  button.setAttribute('aria-expanded', opening ? 'true' : 'false');
+  const menu = group.querySelector('.booking-action-menu');
+  if (!menu) return;
+  if (!opening) {
+    menu.classList.add('hidden');
+    return;
+  }
+  positionBookingActionMenu(group);
+}
+
 function bindBookingRows() {
+  $$('[data-booking-actions-toggle]').forEach(button => button.addEventListener('click', event => {
+    event.stopPropagation();
+    toggleBookingActionMenu(button);
+  }));
+  $$('.booking-action-menu a, .booking-action-menu button').forEach(item => item.addEventListener('click', () => closeBookingActionMenus()));
   $$('[data-flow-booking]').forEach(button => button.addEventListener('click', () => openBookingFlow(state.bookings.find(booking => booking._id === button.dataset.flowBooking))));
   $$('[data-edit-booking]').forEach(button => button.addEventListener('click', () => openBooking(state.bookings.find(booking => booking._id === button.dataset.editBooking))));
   $$('[data-complete]').forEach(button => button.addEventListener('click', () => markBookingStatus(state.bookings.find(booking => booking._id === button.dataset.complete), 'completed')));
@@ -1873,18 +1927,30 @@ function renderBookingList(bookings) {
     const when = bookingWhenLabel(booking);
     const isLifecycle = booking.recordType === 'order_lifecycle';
     const canDirectEdit = !isLifecycle && (booking.bookingMode || 'slot') === 'slot';
-    const orderAction = booking.shoplineOrder?.adminUrl
-      ? `<a class="small booking-action order button-link" href="${escapeHtml(booking.shoplineOrder.adminUrl)}" target="_blank" rel="noopener noreferrer">${t('Open order')} ↗</a>`
-      : '';
     const paymentStatus = booking.paymentStatus || 'not_required';
     const appointmentStatus = booking.appointmentStatus || booking.status;
     const progress = booking.schedulingProgress;
     const appointmentMeta = progress ? `<small>${escapeHtml(`${progress.used}/${progress.eligible} ${t('appointments scheduled')}`)}</small>` : '';
-    const deleteAction = `<button class="small booking-action delete" data-delete-booking="${booking._id}">${t('Delete')}</button>`;
-    const actions = isLifecycle
-      ? `${orderAction}${deleteAction}`
-      : `<button class="small booking-action activity" data-flow-booking="${booking._id}">${t('Activity')}</button>${orderAction}${booking.status === 'confirmed' ? `${canDirectEdit ? `<button class="small booking-action edit" data-edit-booking="${booking._id}">${t('Edit')}</button>` : ''}<button class="small booking-action complete" data-complete="${booking._id}">${t('Mark complete')}</button><button class="small booking-action no-show" data-no-show="${booking._id}">${t('No-show')}</button><button class="small booking-action cancel" data-cancel="${booking._id}">${t('Cancel')}</button>` : ''}${deleteAction}`;
-    return `<div class="booking-row ${isLifecycle ? 'order-lifecycle-row' : ''}"><div class="booking-primary"><strong>${escapeHtml(booking.productTitle)}</strong><span>${escapeHtml(booking.customer?.name || t('Customer'))}${booking.customer?.email ? ` · ${escapeHtml(booking.customer.email)}` : ''}</span>${isLifecycle && booking.notificationSentAt ? `<small>${t('Private link sent')}</small>` : ''}</div><div class="booking-cell"><strong>${escapeHtml(when.primary)}</strong><span>${escapeHtml(when.secondary)}</span></div><div class="booking-cell"><strong>${escapeHtml(booking.staff || (isLifecycle ? t('Unassigned') : t('Any staff')))}</strong><span>${escapeHtml(booking.location || t('No location'))}</span></div><div class="booking-status-cell"><span class="status-badge payment-${escapeHtml(paymentStatus)}">${escapeHtml(paymentStatusLabel(paymentStatus))}</span></div><div class="booking-status-cell"><span class="status-badge appointment-${escapeHtml(appointmentStatus)}">${escapeHtml(appointmentStatusLabel(appointmentStatus))}</span>${appointmentMeta}</div><div class="row-actions">${actions}</div></div>`;
+    const staffLabel = booking.staff || (isLifecycle ? t('Unassigned') : t('Any staff'));
+    const locationLabel = booking.location || t('No location');
+    const scheduleMeta = [staffLabel, locationLabel].filter(Boolean).join(' · ');
+
+    const menuItems = [];
+    if (booking.shoplineOrder?.adminUrl) {
+      menuItems.push(`<a class="booking-menu-item" href="${escapeHtml(booking.shoplineOrder.adminUrl)}" target="_blank" rel="noopener noreferrer"><span>${t('Open order')}</span><i>↗</i></a>`);
+    }
+    if (!isLifecycle && booking.status === 'confirmed') {
+      if (canDirectEdit) menuItems.push(`<button type="button" class="booking-menu-item" data-edit-booking="${booking._id}"><span>${t('Edit')}</span></button>`);
+      menuItems.push(`<button type="button" class="booking-menu-item" data-complete="${booking._id}"><span>${t('Mark complete')}</span></button>`);
+      menuItems.push(`<button type="button" class="booking-menu-item" data-no-show="${booking._id}"><span>${t('No-show')}</span></button>`);
+      menuItems.push(`<button type="button" class="booking-menu-item menu-warning" data-cancel="${booking._id}"><span>${t('Cancel booking')}</span></button>`);
+    }
+    menuItems.push(`<span class="booking-menu-divider" aria-hidden="true"></span><button type="button" class="booking-menu-item menu-danger" data-delete-booking="${booking._id}"><span>${t('Delete record')}</span></button>`);
+
+    const actionGroup = `<div class="booking-action-group"><button type="button" class="small booking-action more" data-booking-actions-toggle="${booking._id}" aria-haspopup="menu" aria-expanded="false">${t('Actions')}<span class="booking-action-chevron" aria-hidden="true"></span></button><div class="booking-action-menu hidden" role="menu">${menuItems.join('')}</div></div>`;
+    const actions = `<button type="button" class="small booking-action activity" data-flow-booking="${booking._id}">${t('Activity')}</button>${actionGroup}`;
+
+    return `<div class="booking-row ${isLifecycle ? 'order-lifecycle-row' : ''}"><div class="booking-primary"><strong>${escapeHtml(booking.productTitle)}</strong><span>${escapeHtml(booking.customer?.name || t('Customer'))}${booking.customer?.email ? ` · ${escapeHtml(booking.customer.email)}` : ''}</span>${isLifecycle && booking.notificationSentAt ? `<small>${t('Private link sent')}</small>` : ''}</div><div class="booking-schedule-cell"><strong>${escapeHtml(when.primary)}</strong><span>${escapeHtml(when.secondary)}</span><small>${escapeHtml(scheduleMeta)}</small></div><div class="booking-status-cell"><span class="status-badge payment-${escapeHtml(paymentStatus)}">${escapeHtml(paymentStatusLabel(paymentStatus))}</span></div><div class="booking-status-cell"><span class="status-badge appointment-${escapeHtml(appointmentStatus)}">${escapeHtml(appointmentStatusLabel(appointmentStatus))}</span>${appointmentMeta}</div><div class="row-actions">${actions}</div></div>`;
   }).join('');
   bindBookingRows();
 }
@@ -2386,6 +2452,10 @@ async function loadThemeEditorLink() {
 }
 
 function bind() {
+  document.addEventListener('click', event => { if (!event.target.closest('.booking-action-group')) closeBookingActionMenus(); });
+  document.addEventListener('keydown', event => { if (event.key === 'Escape') closeBookingActionMenus(); });
+  window.addEventListener('resize', () => closeBookingActionMenus());
+  window.addEventListener('scroll', () => closeBookingActionMenus(), true);
   renderTemplateTabs();
   $$('.nav-item').forEach(button => button.addEventListener('click', () => switchView(button.dataset.view)));
   $$('[data-go-view]').forEach(button => button.addEventListener('click', () => switchView(button.dataset.goView)));

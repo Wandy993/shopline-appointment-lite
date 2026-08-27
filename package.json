@@ -1,7 +1,7 @@
 {
   "name": "appointment-lite",
-  "version": "0.6.7",
-  "description": "SHOPLINE appointment scheduling with order lifecycle visibility, custom SHOPLINE location picking, booking record management, notifications, staff scheduling, and optional business Google Calendar sync.",
+  "version": "0.6.8",
+  "description": "SHOPLINE appointment scheduling with compact booking operations, order lifecycle visibility, SHOPLINE locations, notifications, staff scheduling, and optional business Google Calendar sync.",
   "type": "module",
   "engines": {
     "node": ">=20"
