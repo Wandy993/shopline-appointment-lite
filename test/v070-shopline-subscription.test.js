@@ -47,7 +47,7 @@ test('v0.7.0 access follows SHOPLINE active state and the documented one-day gra
   assert.equal(subscriptionAccessState({ status: 'cancelled' }, { enabled: true, now }).allowed, false);
 });
 
-test('v0.7.0.6 hard-locks subscription activation to the SHOPLINE package page', async () => {
+test('v0.7.0.7 opens SHOPLINE subscription activation in a separate window', async () => {
   const url = shoplineSubscriptionPlanUrl({ handle: 'AppTest' });
   assert.equal(url, 'https://apptest.myshopline.com/admin/app-store/package/c0ced1537654a66c337cd3af4b820b7eac9dd33c');
   const client = await source('public/admin/app.js');
@@ -55,7 +55,9 @@ test('v0.7.0.6 hard-locks subscription activation to the SHOPLINE package page',
   const end = client.indexOf('function openShoplineRenewal()', start);
   const section = client.slice(start, end);
   assert.match(section, /state\.subscription\?\.shoplinePlanUrl/);
-  assert.match(section, /window\.top\.location\.href = packageUrl/);
+  assert.match(section, /window\.open\(packageUrl, '_blank', 'noopener,noreferrer'\)/);
+  assert.match(section, /button\.disabled = false/);
+  assert.match(section, /browser blocked the SHOPLINE subscription window/);
   assert.doesNotMatch(section, /subscription\/checkout/);
   assert.match(section, /SHOPLINE subscription package URL is not configured/);
 });
@@ -78,7 +80,7 @@ test('v0.7.0 Partner Token stays server-side and subscription API routes are wir
   assert.match(publicRoute, /publicSubscriptionUnavailable/);
   assert.match(bookings, /subscriptionAccessAllowed/);
   assert.match(app, /\/subscription/);
-  assert.match(app, /release: 'v0\.7\.0\.6-shopline-package-only'/);
+  assert.match(app, /release: 'v0\.7\.0\.7-shopline-new-window'/);
   assert.match(app, /Cache-Control', 'no-store/);
   const [adminClient, themeClient] = await Promise.all([source('public/admin/app.js'), source('theme-extension-source/public/appointment-lite.js')]);
   assert.doesNotMatch(adminClient, /SHOPLINE_PARTNER_TOKEN/);

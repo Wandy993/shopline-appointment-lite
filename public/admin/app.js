@@ -950,11 +950,13 @@ async function startSubscriptionCheckout() {
   button.disabled = true;
   if (errorBox) errorBox.classList.add('hidden');
   try {
-    // v0.7.0.6: the official SHOPLINE app package page is the only activation
-    // entry. Do not call create_pay.json from the browser or through our backend.
+    // v0.7.0.7: keep Appointment Lite open and launch SHOPLINE billing in a
+    // separate browser tab/window. The package page remains the only activation entry.
     const packageUrl = String(state.subscription?.shoplinePlanUrl || '').trim();
     if (!packageUrl) throw new Error('SHOPLINE subscription package URL is not configured.');
-    try { window.top.location.href = packageUrl; } catch { window.location.href = packageUrl; }
+    const opened = window.open(packageUrl, '_blank', 'noopener,noreferrer');
+    if (!opened) throw new Error('Your browser blocked the SHOPLINE subscription window. Please allow pop-ups and try again.');
+    button.disabled = false;
   } catch (error) {
     if (errorBox) {
       errorBox.textContent = t(error.message || 'Could not open SHOPLINE subscription checkout.');
@@ -967,7 +969,8 @@ async function startSubscriptionCheckout() {
 function openShoplineRenewal() {
   const url = String(state.subscription?.shoplinePlanUrl || '').trim();
   if (url) {
-    try { window.top.location.href = url; } catch { window.location.href = url; }
+    const opened = window.open(url, '_blank', 'noopener,noreferrer');
+    if (!opened) showError(new Error('Your browser blocked the SHOPLINE subscription window. Please allow pop-ups and try again.'));
     return;
   }
   startSubscriptionCheckout();

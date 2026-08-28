@@ -1,3 +1,7 @@
+
+## v0.7.0.7 — SHOPLINE Subscription New Window
+
+SHOPLINE subscription activation and renewal now open the official SHOPLINE package page in a separate browser tab/window, so merchants can keep Appointment Lite open and return to refresh/recover subscription access after completing the SHOPLINE flow.
 # Appointment Lite
 
 ## v0.7.0.6 — SHOPLINE Package-Only Hard Lock
