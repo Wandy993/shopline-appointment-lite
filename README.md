@@ -1,8 +1,13 @@
 # Appointment Lite
 
-> v0.6.15 — Booking Performance & Reliability
+## v0.6.16 — Ops Hub Observability Integration
 
-Appointment Lite v0.6.15 hardens the customer booking path with faster availability reads, transient-request recovery, bounded SHOPLINE order reconciliation, and retryable background Google Calendar synchronization.
+Appointment Lite now supports optional Toolkit Ops Hub telemetry using a MongoDB outbox, timestamp/raw-JSON HMAC signing, lifecycle and active-store events, heartbeat, daily usage summaries, and deduplicated health events. Telemetry excludes customer PII and cannot block booking, webhook, email, or calendar workflows. See `docs/V0616_OPS_HUB_OBSERVABILITY.md`.
+
+
+> v0.6.16 — Ops Hub Observability Integration
+
+Appointment Lite v0.6.16 adds optional Toolkit Ops Hub lifecycle, usage, heartbeat and health telemetry through a privacy-safe MongoDB outbox that never blocks customer booking flows.
 
 ## v0.6.15 Booking Performance & Reliability
 

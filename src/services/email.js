@@ -4,6 +4,7 @@ import { DEFAULT_EMAIL_SETTINGS, interpolateTemplate, merchantNotificationRecipi
 import { calendarLinksForBooking } from '../lib/calendar-links.js';
 import { Shop } from '../models/Shop.js';
 import { Staff } from '../models/Staff.js';
+import { incrementOpsUsage, queueHealthEvent } from './ops-hub.js';
 
 let aliyunSdk;
 let aliyunClient;
@@ -180,15 +181,33 @@ function messageFor(booking, settings, key, extraHtml = '') {
   };
 }
 
-async function sendMany(messages) {
+function reportEmailOutcome(shop, result, operation = 'email_delivery', metadata = {}) {
+  if (!shop || !result) return result;
+  const attempted = Number(result.attempted || (result.skipped ? 0 : 1));
+  const failed = Number(result.failed || 0);
+  const sent = Math.max(0, attempted - failed);
+  if (sent) void incrementOpsUsage(shop, 'external_emails_sent', sent);
+  if (failed) {
+    void incrementOpsUsage(shop, 'external_email_failures', failed);
+    void queueHealthEvent('email.send.failed', {
+      shop, severity: 'error', category: 'email',
+      message: 'One or more appointment emails could not be delivered.',
+      metadata: { ...metadata, operation, count: failed, providerStatus: String(result.provider || 'unknown') }
+    });
+  }
+  return result;
+}
+
+async function sendMany(messages, { shop = null, operation = 'email_delivery', metadata = {} } = {}) {
   const results = await Promise.all(messages.map(deliverEmail));
-  return {
+  const summary = {
     skipped: results.every(result => result.skipped),
     provider: results.find(result => !result.skipped)?.provider || results[0]?.provider || 'none',
     attempted: results.filter(result => !result.skipped).length,
     failed: results.filter(result => result.failed).length,
     results
   };
+  return reportEmailOutcome(shop, summary, operation, metadata);
 }
 
 export async function sendBookingNotifications(booking, merchantEmail = '', managementToken = '', suppliedSettings = null) {
@@ -201,7 +220,7 @@ export async function sendBookingNotifications(booking, merchantEmail = '', mana
   if (settings.merchantNotifications?.newBooking !== false) {
     for (const to of merchantNotificationRecipients(settings, merchantEmail || shopEmail || config.email.merchantTo)) messages.push({ to, ...merchantMessage(booking, settings, 'merchantNewBooking') });
   }
-  return sendMany(messages);
+  return sendMany(messages, { shop: booking.shopId, operation: 'booking_confirmation' });
 }
 
 export async function sendBookingChangedNotification(booking, suppliedSettings = null) {
@@ -209,7 +228,7 @@ export async function sendBookingChangedNotification(booking, suppliedSettings =
   const messages = [];
   if (settings.customerNotifications?.bookingChanged !== false) messages.push({ to: booking.customer?.email, ...messageFor(booking, settings, 'merchantUpdated', calendarButtons(booking, settings)) });
   if (settings.merchantNotifications?.bookingChanged !== false) for (const to of merchantNotificationRecipients(settings, shopEmail || config.email.merchantTo)) messages.push({ to, ...merchantMessage(booking, settings, 'merchantBookingUpdated') });
-  return sendMany(messages);
+  return sendMany(messages, { shop: booking.shopId, operation: 'booking_changed' });
 }
 
 export async function sendCustomerRescheduledNotification(booking, managementToken, suppliedSettings = null) {
@@ -217,7 +236,7 @@ export async function sendCustomerRescheduledNotification(booking, managementTok
   const messages = [];
   if (settings.customerNotifications?.bookingChanged !== false) messages.push({ to: booking.customer?.email, ...messageFor(booking, settings, 'rescheduled', `${manageButton(managementLinkFor(booking, managementToken), settings)}${calendarButtons(booking, settings)}`) });
   if (settings.merchantNotifications?.bookingChanged !== false) for (const to of merchantNotificationRecipients(settings, shopEmail || config.email.merchantTo)) messages.push({ to, ...merchantMessage(booking, settings, 'merchantBookingUpdated') });
-  return sendMany(messages);
+  return sendMany(messages, { shop: booking.shopId, operation: 'booking_rescheduled' });
 }
 
 export async function sendBookingCancelledNotification(booking, suppliedSettings = null) {
@@ -225,13 +244,14 @@ export async function sendBookingCancelledNotification(booking, suppliedSettings
   const messages = [];
   if (settings.customerNotifications?.bookingCancelled !== false) messages.push({ to: booking.customer?.email, ...messageFor(booking, settings, 'cancelled') });
   if (settings.merchantNotifications?.bookingCancelled !== false) for (const to of merchantNotificationRecipients(settings, shopEmail || config.email.merchantTo)) messages.push({ to, ...merchantMessage(booking, settings, 'merchantBookingCancelled') });
-  return sendMany(messages);
+  return sendMany(messages, { shop: booking.shopId, operation: 'booking_cancelled' });
 }
 
 export async function sendCustomerUpcomingReminder(booking, suppliedSettings = null) {
   const { settings } = await bookingEmailContext(booking, suppliedSettings);
   if (settings.customerNotifications?.upcomingReminder === false) return { skipped: true, provider: selectedProvider().provider, reason: 'Customer reminder is disabled' };
-  return deliverEmail({ to: booking.customer?.email, ...messageFor(booking, settings, 'reminder', calendarButtons(booking, settings)) });
+  const result = await deliverEmail({ to: booking.customer?.email, ...messageFor(booking, settings, 'reminder', calendarButtons(booking, settings)) });
+  return reportEmailOutcome(booking.shopId, result, 'customer_reminder', { audience: 'customer' });
 }
 
 export async function sendMerchantUpcomingReminder(booking, suppliedSettings = null, merchantEmail = '') {
@@ -239,7 +259,7 @@ export async function sendMerchantUpcomingReminder(booking, suppliedSettings = n
   if (settings.merchantNotifications?.upcomingReminder === false) return { skipped: true, provider: selectedProvider().provider, reason: 'Merchant reminder is disabled' };
   const recipients = merchantNotificationRecipients(settings, merchantEmail || shopEmail || config.email.merchantTo);
   if (!recipients.length) return { skipped: true, provider: selectedProvider().provider, reason: 'Merchant reminder recipient is missing' };
-  return sendMany(recipients.map(to => ({ to, ...merchantMessage(booking, settings, 'merchantReminder') })));
+  return sendMany(recipients.map(to => ({ to, ...merchantMessage(booking, settings, 'merchantReminder') })), { shop: booking.shopId, operation: 'merchant_reminder', metadata: { audience: 'merchant' } });
 }
 
 
@@ -256,13 +276,14 @@ export async function sendPostPurchaseScheduleNotification({ entitlement, rule, 
   const intro = `<p style="margin:0 0 18px;color:#475467;line-height:1.65">Hi ${escapeHtml(entitlement.customer.name || 'there')},</p><p style="margin:0 0 20px;color:#475467;line-height:1.65">${escapeHtml(orderLabel)} includes <strong>${escapeHtml(rule.serviceTitle || rule.productTitle || 'an appointment service')}</strong>. ${escapeHtml(quantityCopy)} Choose a convenient time using the private scheduling link below.</p>`;
   const orderCard = `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:separate;border-spacing:0;border:1px solid #E3E9F1;border-radius:12px;overflow:hidden;background:#FBFCFE"><tr><td style="padding:10px 12px;color:#8A98AA;font-size:12px;font-weight:600;border-bottom:1px solid #EEF2F6;width:110px">Order</td><td style="padding:10px 12px;color:#344861;font-size:13px;font-weight:600;border-bottom:1px solid #EEF2F6">${escapeHtml(entitlement.orderName || entitlement.orderId || '')}</td></tr><tr><td style="padding:10px 12px;color:#8A98AA;font-size:12px;font-weight:600;width:110px">Service</td><td style="padding:10px 12px;color:#344861;font-size:13px;font-weight:600">${escapeHtml(rule.serviceTitle || rule.productTitle || 'Appointment')}</td></tr></table>`;
   const button = `<p style="margin:24px 0 0"><a href="${escapeHtml(scheduleUrl)}" style="display:inline-block;padding:12px 18px;border-radius:9px;background:${settings.accentColor};color:#fff;text-decoration:none;font-weight:bold">Schedule appointment</a></p><p style="font-size:12px;color:#8A94A6;line-height:1.55">This private link is connected to your paid order. Do not forward it.</p>`;
-  return deliverEmail({
+  const result = await deliverEmail({
     to: entitlement.customer.email,
     subject: `Schedule your ${rule.serviceTitle || rule.productTitle || 'appointment'} — ${entitlement.orderName || 'order confirmed'}`,
     html: emailDocument('Schedule your appointment', `${intro}${orderCard}${button}`, settings),
     fromName: settings.brandName,
     replyTo: settings.replyToEmail || ''
   });
+  return reportEmailOutcome(shop?._id || entitlement.shopId, result, 'post_purchase_schedule_link', { audience: 'customer' });
 }
 
 
@@ -315,7 +336,8 @@ async function deliverStaffNotification(booking, staff, kind, suppliedSettings =
   const copy = staffNotificationCopy(kind, booking, staff.name || '');
   const intro = `<p style="margin:0 0 20px;color:#475467;line-height:1.65">${escapeHtml(copy.body)}</p>`;
   const html = emailDocument(copy.heading, `${intro}${appointmentCard(booking, settings)}${staffCustomerSummary(booking)}${booking.status === 'confirmed' ? calendarButtons(booking, settings) : ''}`, settings);
-  return deliverEmail({ to: staff.email, subject: copy.subject, html, fromName: settings.brandName, replyTo: settings.replyToEmail || '' });
+  const result = await deliverEmail({ to: staff.email, subject: copy.subject, html, fromName: settings.brandName, replyTo: settings.replyToEmail || '' });
+  return reportEmailOutcome(booking.shopId, result, `staff_${kind}`, { audience: 'staff' });
 }
 
 export async function sendStaffAssignedNotification(booking, suppliedSettings = null) {

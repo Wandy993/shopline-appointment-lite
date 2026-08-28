@@ -5,6 +5,7 @@ import { appointmentLiteBookingIdFromOrder } from '../lib/paid-checkout.js';
 import { confirmPaidBooking, expirePendingPaidBookings } from './bookings.js';
 import { upsertPostPurchaseEntitlementsFromOrder } from './post-purchase.js';
 import { shoplineGet, SHOPLINE_ORDER_SCOPE } from './shopline.js';
+import { queueHealthEvent } from './ops-hub.js';
 
 function orderList(payload = {}) {
   const rows = payload.orders ?? payload.data?.orders ?? payload.data ?? [];
@@ -108,11 +109,21 @@ export async function reconcilePendingCommercePayments({
           summary.notified += result.postPurchaseNotified;
         } catch (error) {
           summary.errors += 1;
+          void queueHealthEvent('order.reconciliation.failed', {
+            shop, severity: 'error', category: 'orders',
+            message: 'Pending SHOPLINE order reconciliation failed for a store.',
+            metadata: { operation: 'pending_payment_reconciliation', errorCode: String(error?.code || error?.name || 'ORDER_RECONCILIATION_FAILED') }
+          });
           console.error('Pending SHOPLINE order reconciliation failed for a shop', { shopId: String(shop._id), message: error.message });
         }
       }
     } catch (error) {
       summary.errors += 1;
+      void queueHealthEvent('order.reconciliation.failed', {
+        shop: shopId, severity: 'error', category: 'orders',
+        message: 'Pending SHOPLINE order reconciliation could not load or process a store.',
+        metadata: { operation: 'pending_payment_shop', errorCode: String(error?.code || error?.name || 'ORDER_RECONCILIATION_FAILED') }
+      });
       console.error('Pending SHOPLINE order reconciliation skipped a shop after an error', { shopId, message: error.message });
     }
   }
@@ -224,6 +235,11 @@ export async function reconcileRecentCommerceOrdersForActiveShops({
       summary.notified += Number(result.postPurchaseNotified || 0);
     } catch (error) {
       summary.errors += 1;
+      void queueHealthEvent('order.reconciliation.failed', {
+        shop, severity: 'error', category: 'orders',
+        message: 'Recent SHOPLINE order recovery sweep failed for a store.',
+        metadata: { operation: 'recent_order_recovery', errorCode: String(error?.code || error?.name || 'ORDER_RECOVERY_FAILED') }
+      });
       console.error('Recent SHOPLINE order recovery sweep failed for a shop', { shopId: String(shop._id), message: error.message });
     }
   }
@@ -250,6 +266,11 @@ export function startPaidBookingScheduler({ intervalMs = 45_000, initialDelayMs 
       const result = await expirePendingPaidBookings();
       if (result.expired) console.log('Expired paid booking holds', result);
     } catch (error) {
+      void queueHealthEvent('order.reconciliation.scheduler_failed', {
+        severity: 'error', category: 'orders',
+        message: 'The paid booking reconciliation scheduler failed.',
+        metadata: { operation: 'paid_booking_scheduler', errorCode: String(error?.code || error?.name || 'ORDER_SCHEDULER_FAILED') }
+      });
       console.error('Paid booking scheduler failed', error.message);
     } finally {
       running = false;

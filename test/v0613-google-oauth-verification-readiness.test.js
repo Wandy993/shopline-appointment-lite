@@ -17,7 +17,7 @@ async function withServer(t) {
   return `http://127.0.0.1:${server.address().port}`;
 }
 
-test('v0.6.15 root is a public Google-verification-ready Appointment Lite homepage', async t => {
+test('v0.6.16 root is a public Google-verification-ready Appointment Lite homepage', async t => {
   const base = await withServer(t);
   const response = await fetch(`${base}/`);
   assert.equal(response.status, 200);
@@ -33,7 +33,7 @@ test('v0.6.15 root is a public Google-verification-ready Appointment Lite homepa
   assert.doesNotMatch(html, /Open this app from SHOPLINE Admin/);
 });
 
-test('v0.6.15 keeps SHOPLINE install entry behavior on root query parameters', async t => {
+test('v0.6.16 keeps SHOPLINE install entry behavior on root query parameters', async t => {
   const base = await withServer(t);
   const response = await fetch(`${base}/?handle=merchant-demo&appkey=demo-key`, { redirect: 'manual' });
   assert.equal(response.status, 302);
@@ -43,7 +43,7 @@ test('v0.6.15 keeps SHOPLINE install entry behavior on root query parameters', a
   assert.match(location, /appkey=demo-key/);
 });
 
-test('v0.6.15 exposes bilingual public terms and a Chinese product homepage', async t => {
+test('v0.6.16 exposes bilingual public terms and a Chinese product homepage', async t => {
   const base = await withServer(t);
   for (const route of ['/zh-cn', '/zh-cn/terms', '/en/terms']) {
     const response = await fetch(`${base}${route}`);
@@ -60,7 +60,7 @@ test('v0.6.15 exposes bilingual public terms and a Chinese product homepage', as
   assert.match(enTerms, /SHOPLINE Products, Orders, and Payments/);
 });
 
-test('v0.6.15 terms shortcut follows browser language', async t => {
+test('v0.6.16 terms shortcut follows browser language', async t => {
   const base = await withServer(t);
   const zh = await fetch(`${base}/terms`, { headers: { 'accept-language': 'zh-CN,zh;q=0.9' }, redirect: 'manual' });
   const en = await fetch(`${base}/terms`, { headers: { 'accept-language': 'en-US,en;q=0.9' }, redirect: 'manual' });
@@ -70,7 +70,7 @@ test('v0.6.15 terms shortcut follows browser language', async t => {
   assert.equal(new URL(en.headers.get('location'), base).pathname, '/en/terms');
 });
 
-test('v0.6.15 public site exposes crawler metadata and linked legal navigation', async t => {
+test('v0.6.16 public site exposes crawler metadata and linked legal navigation', async t => {
   const base = await withServer(t);
   const robots = await (await fetch(`${base}/robots.txt`)).text();
   const sitemapResponse = await fetch(`${base}/sitemap.xml`);
@@ -91,7 +91,7 @@ test('v0.6.15 public site exposes crawler metadata and linked legal navigation',
   }
 });
 
-test('v0.6.15 homepage accurately describes current owned-calendar scope behavior', () => {
+test('v0.6.16 homepage accurately describes current owned-calendar scope behavior', () => {
   assert.deepEqual(GOOGLE_CALENDAR_SCOPES, [
     'https://www.googleapis.com/auth/calendar.calendarlist.readonly',
     'https://www.googleapis.com/auth/calendar.events.owned'
@@ -102,7 +102,7 @@ test('v0.6.15 homepage accurately describes current owned-calendar scope behavio
   assert.doesNotMatch(html, /read all calendar events/i);
 });
 
-test('v0.6.15 release documentation lists the production Google Auth Platform values', async () => {
+test('v0.6.16 release documentation lists the production Google Auth Platform values', async () => {
   const [doc, env, app, pkg, adminView, bookView, theme, release] = await Promise.all([
     source('docs/V0613_GOOGLE_OAUTH_VERIFICATION_READINESS.md'),
     source('.env.example'),
@@ -120,11 +120,11 @@ test('v0.6.15 release documentation lists the production Google Auth Platform va
   assert.match(doc, /calendar\.events\.owned/);
   assert.match(env, /Homepage: https:\/\/appointment\.toolkit\.fans\//);
   assert.match(env, /Authorized domain: toolkit\.fans/);
-  assert.equal(JSON.parse(pkg).version, '0.6.15');
-  assert.match(app, /version: '0\.6\.15'/);
-  assert.match(adminView, /styles\.css\?v=0\.6\.15/);
-  assert.match(bookView, /styles\.css\?v=0\.6\.15/);
-  assert.match(theme, /const VERSION = '0\.6\.15'/);
-  assert.match(release, /RELEASE_VERSION="0\.6\.15"/);
-  assert.match(release, /booking-performance-reliability/);
+  assert.equal(JSON.parse(pkg).version, '0.6.16');
+  assert.match(app, /version: '0\.6\.16'/);
+  assert.match(adminView, /styles\.css\?v=0\.6\.16/);
+  assert.match(bookView, /styles\.css\?v=0\.6\.16/);
+  assert.match(theme, /const VERSION = '0\.6\.16'/);
+  assert.match(release, /RELEASE_VERSION="0\.6\.16"/);
+  assert.match(release, /ops-hub-observability-integration/);
 });

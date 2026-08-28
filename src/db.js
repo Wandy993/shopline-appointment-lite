@@ -7,6 +7,8 @@ import { Staff } from './models/Staff.js';
 import { StaffReservation } from './models/StaffReservation.js';
 import { CalendarConnection } from './models/CalendarConnection.js';
 import { EmailReminderDelivery } from './models/EmailReminderDelivery.js';
+import { OpsHubEvent } from './models/OpsHubEvent.js';
+import { OpsUsageDaily } from './models/OpsUsageDaily.js';
 
 async function dropIndexIfPresent(collection, name) {
   const indexes = await collection.indexes();
@@ -111,6 +113,8 @@ export async function ensureOperationalIndexes() {
   await StaffReservation.syncIndexes();
   await CalendarConnection.syncIndexes();
   await EmailReminderDelivery.syncIndexes();
+  await OpsHubEvent.syncIndexes();
+  await OpsUsageDaily.syncIndexes();
 }
 
 export async function connectDatabase() {

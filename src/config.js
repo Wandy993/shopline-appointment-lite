@@ -10,6 +10,12 @@ function required(name, fallback = '') {
 
 const appUrl = required('APP_URL', 'http://localhost:3000').replace(/\/$/, '');
 
+function boundedNumber(name, fallback, { min = 0, max = Number.MAX_SAFE_INTEGER } = {}) {
+  const parsed = Number(process.env[name] ?? fallback);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(max, Math.max(min, Math.round(parsed)));
+}
+
 function mergedShoplineScopes(value = '') {
   const required = ['read_products', 'read_store_information', 'read_content', 'read_orders', 'read_location'];
   const requested = String(value || '').split(',').map(item => item.trim()).filter(Boolean);
@@ -43,6 +49,23 @@ export const config = Object.freeze({
     clientSecret: process.env.GOOGLE_CALENDAR_CLIENT_SECRET || '',
     redirectUri: process.env.GOOGLE_CALENDAR_REDIRECT_URI || `${appUrl}/integrations/google/callback`,
     tokenEncryptionKey: process.env.GOOGLE_TOKEN_ENCRYPTION_KEY || ''
+  },
+  opsHub: {
+    enabled: String(process.env.OPS_HUB_ENABLED || 'false').toLowerCase() === 'true',
+    ingestUrl: process.env.OPS_HUB_INGEST_URL || process.env.OPS_HUB_URL || '',
+    appKey: process.env.OPS_HUB_APP_KEY || 'appointment-lite',
+    ingestSecret: process.env.OPS_HUB_INGEST_SECRET || '',
+    appVersion: process.env.APP_VERSION || '0.6.16',
+    environment: process.env.APP_ENVIRONMENT || process.env.NODE_ENV || 'development',
+    timeoutMs: boundedNumber('OPS_HUB_TIMEOUT_MS', 15000, { min: 1000, max: 60000 }),
+    batchSize: boundedNumber('OPS_HUB_BATCH_SIZE', 10, { min: 1, max: 50 }),
+    workerIntervalMs: boundedNumber('OPS_HUB_WORKER_INTERVAL_MS', 10000, { min: 5000, max: 300000 }),
+    initialSyncDelayMs: boundedNumber('OPS_HUB_INITIAL_SYNC_DELAY_MS', 15000, { min: 1000, max: 300000 }),
+    heartbeatMs: boundedNumber('OPS_HUB_HEARTBEAT_MS', 300000, { min: 60000, max: 3600000 }),
+    activeThrottleMs: boundedNumber('OPS_HUB_ACTIVE_THROTTLE_MS', 86400000, { min: 60000, max: 604800000 }),
+    healthDedupeMs: boundedNumber('OPS_HUB_HEALTH_DEDUPE_MS', 300000, { min: 60000, max: 86400000 }),
+    eventRetentionDays: boundedNumber('OPS_HUB_EVENT_RETENTION_DAYS', 45, { min: 7, max: 365 }),
+    usageRetentionDays: boundedNumber('OPS_HUB_USAGE_RETENTION_DAYS', 120, { min: 30, max: 730 })
   },
   email: {
     provider: (process.env.EMAIL_PROVIDER || 'auto').toLowerCase(),

@@ -7,6 +7,7 @@ import {
   deleteGoogleCalendarEvent,
   patchGoogleCalendarEvent
 } from './google-calendar.js';
+import { incrementOpsUsage, queueHealthEvent } from './ops-hub.js';
 
 const PROVIDER = 'google';
 const MAX_BOOKING_MAPPINGS = 100;
@@ -297,7 +298,21 @@ export async function reconcileBookingGoogleCalendarWithRetry(bookingId, { reaso
 
 export function queueBookingGoogleCalendarSync(bookingId, reason = 'booking_changed') {
   if (!bookingId) return;
-  setImmediate(() => reconcileBookingGoogleCalendarWithRetry(bookingId, { reason }).catch(error => console.error(`Google Calendar booking sync failed after retries (${reason})`, asString(error.message || error))));
+  setImmediate(async () => {
+    const booking = await Booking.findById(bookingId).select('shopId').lean().catch(() => null);
+    try {
+      await reconcileBookingGoogleCalendarWithRetry(bookingId, { reason });
+      if (booking?.shopId) void incrementOpsUsage(booking.shopId, 'external_calendar_syncs', 1);
+    } catch (error) {
+      if (booking?.shopId) void incrementOpsUsage(booking.shopId, 'external_calendar_failures', 1);
+      void queueHealthEvent('google.calendar.sync.failed', {
+        shop: booking?.shopId || null, severity: 'error', category: 'calendar',
+        message: 'Google Calendar booking synchronization failed after retries.',
+        metadata: { bookingId: asString(bookingId), operation: reason, attempts: Number(error?.result?.attempts || CALENDAR_RETRY_DELAYS_MS.length), errorCode: String(error?.code || error?.name || 'GOOGLE_CALENDAR_SYNC_FAILED') }
+      });
+      console.error(`Google Calendar booking sync failed after retries (${reason})`, asString(error.message || error));
+    }
+  });
 }
 
 async function syncBookingIds(bookings) {

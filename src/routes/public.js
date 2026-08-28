@@ -14,6 +14,7 @@ import { normalizeStorefrontSettings } from '../lib/storefront-settings.js';
 import { buildBookingIcs, calendarLinksForBooking, readBookingCalendarToken } from '../lib/calendar-links.js';
 import { getPostPurchaseEntitlement, publicPostPurchaseEntitlement } from '../services/post-purchase.js';
 import { TinyTtlCache, createSingleFlight } from '../lib/runtime-cache.js';
+import { incrementOpsUsage, queueHealthEvent } from '../services/ops-hub.js';
 
 export const publicRouter = Router();
 const publicContextCache = new TinyTtlCache({ ttlMs: 4000, maxEntries: 300 });
@@ -23,6 +24,37 @@ const bookingLimiter = rateLimit({ windowMs: 60_000, limit: 10, standardHeaders:
 
 function validBookingId(value) { return /^[a-f\d]{24}$/i.test(String(value || '')); }
 function validRuleId(value) { return mongoose.isValidObjectId(String(value || '')); }
+
+async function opsShopForBookingInput(input = {}) {
+  try {
+    const ruleId = String(input.ruleId || '').trim();
+    if (validRuleId(ruleId)) {
+      const rule = await AppointmentRule.findById(ruleId).select('shopId').lean();
+      if (rule?.shopId) return rule.shopId;
+    }
+    const shopId = String(input.shopId || '').trim();
+    const handle = String(input.shop || '').trim().toLowerCase();
+    if (validShoplineStoreId(shopId) || validShopHandle(handle)) {
+      return await findInstalledShop({ shopId, handle });
+    }
+  } catch {}
+  return null;
+}
+
+async function reportBookingCreateFailure(input, error) {
+  const statusCode = Number(error?.status || error?.statusCode || 500);
+  if (statusCode < 500) return;
+  const shop = await opsShopForBookingInput(input);
+  void queueHealthEvent('booking.create.failed', {
+    shop, severity: 'error', category: 'booking',
+    message: 'Booking creation failed before a customer confirmation was returned.',
+    metadata: {
+      statusCode,
+      errorCode: String(error?.code || error?.name || 'BOOKING_CREATE_FAILED'),
+      operation: 'booking_create'
+    }
+  });
+}
 
 function publicBooking(booking) {
   const customerRescheduleCount = Number(booking.customerRescheduleCount || 0);
@@ -214,6 +246,7 @@ publicRouter.get('/availability', async (req, res) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(422).json({ error: 'VALIDATION_ERROR', message: 'Choose a valid appointment date.' });
   const result = await findPublicRule(req);
   if (result.error) return res.status(result.error.status).json(result.error.body);
+  void incrementOpsUsage(result.shop, 'app_api_availability_requests', 1);
   const access = await postPurchaseAccessForRequest(result, req.query.access);
   if (access.error) return res.status(access.error.status).json(access.error.body);
   const requestedStaffId = String(req.query.staffId || '').trim();
@@ -224,7 +257,16 @@ publicRouter.get('/availability', async (req, res) => {
   const flightKey = [String(result.rule._id), date, requestedStaffId, selectedOccurrences.map(item => item.slotKey).sort().join(','), access.required ? String(access.entitlement?._id || '') : 'public'].join('|');
   const payload = await runAvailabilitySingleFlight(flightKey, () => computeAvailabilityPayload({ result, date, requestedStaffId, selectedOccurrences }));
   const elapsed = Math.max(0, performance.now() - startedAt);
-  if (elapsed >= 1500) console.warn('Slow storefront availability request', { ruleId: String(result.rule._id), date, staffId: requestedStaffId || '', durationMs: Math.round(elapsed) });
+  if (elapsed >= 1500) {
+    const durationMs = Math.round(elapsed);
+    console.warn('Slow storefront availability request', { ruleId: String(result.rule._id), date, staffId: requestedStaffId || '', durationMs });
+    void incrementOpsUsage(result.shop, 'health_slow_availability_requests', 1);
+    void queueHealthEvent('availability.slow', {
+      shop: result.shop, severity: 'warning', category: 'performance',
+      message: 'Storefront availability exceeded the 1500 ms warning threshold.',
+      metadata: { durationMs, ruleId: String(result.rule._id), date, operation: 'availability' }
+    });
+  }
   res.set({
     'Cache-Control': 'no-store',
     'Server-Timing': `availability;dur=${elapsed.toFixed(1)}`,
@@ -261,6 +303,8 @@ publicRouter.post('/paid-bookings', bookingLimiter, async (req, res, next) => {
     if (!standalone && !value.productId) errors.push('Product is required.');
     if (errors.length) return res.status(422).json({ error: 'VALIDATION_ERROR', message: errors.join(' '), fields: errors });
     const result = await createPaidBookingForStore({ shopId, handle, productId: value.productId, ruleId: value.ruleId, input: value });
+    void incrementOpsUsage(result.booking.shopId, 'app_api_booking_requests', 1);
+    void incrementOpsUsage(result.booking.shopId, 'business_bookings_created', 1);
     res.status(201).json({
       booking: {
         ...publicBooking(result.booking),
@@ -269,7 +313,10 @@ publicRouter.post('/paid-bookings', bookingLimiter, async (req, res, next) => {
       },
       checkoutUrl: result.checkoutUrl
     });
-  } catch (error) { next(error); }
+  } catch (error) {
+    await reportBookingCreateFailure(req.body, error);
+    next(error);
+  }
 });
 
 
@@ -279,8 +326,13 @@ publicRouter.post('/post-purchase-bookings', bookingLimiter, async (req, res, ne
     if (errors.length) return res.status(422).json({ error: 'VALIDATION_ERROR', message: errors.join(' '), fields: errors });
     const entitlementToken = String(req.body.entitlementToken || '').trim();
     const { booking, managementToken, remainingBookings } = await createPostPurchaseBookingForStore({ ruleId: value.ruleId, entitlementToken, input: value });
+    void incrementOpsUsage(booking.shopId, 'app_api_booking_requests', 1);
+    void incrementOpsUsage(booking.shopId, 'business_bookings_created', 1);
     res.status(201).json({ booking: { ...publicBooking(booking), managementToken }, remainingBookings });
-  } catch (error) { next(error); }
+  } catch (error) {
+    await reportBookingCreateFailure(req.body, error);
+    next(error);
+  }
 });
 
 publicRouter.post('/bookings', bookingLimiter, async (req, res, next) => {
@@ -294,8 +346,13 @@ publicRouter.post('/bookings', bookingLimiter, async (req, res, next) => {
     if (!standalone && !value.productId) errors.push('Product is required.');
     if (errors.length) return res.status(422).json({ error: 'VALIDATION_ERROR', message: errors.join(' '), fields: errors });
     const { booking, managementToken } = await createBookingForStore({ shopId, handle, productId: value.productId, ruleId: value.ruleId, input: value });
+    void incrementOpsUsage(booking.shopId, 'app_api_booking_requests', 1);
+    void incrementOpsUsage(booking.shopId, 'business_bookings_created', 1);
     res.status(201).json({ booking: { ...publicBooking(booking), managementToken } });
-  } catch (error) { next(error); }
+  } catch (error) {
+    await reportBookingCreateFailure(req.body, error);
+    next(error);
+  }
 });
 
 publicRouter.post('/bookings/:id/status', bookingLimiter, async (req, res, next) => {
@@ -331,6 +388,7 @@ publicRouter.post('/bookings/:id/cancel', bookingLimiter, async (req, res, next)
   try {
     if (!validBookingId(req.params.id)) return res.status(404).json({ error: 'NOT_FOUND', message: 'Booking not found or management access has expired.' });
     const booking = await cancelManagedBooking({ bookingId: req.params.id, token: req.body.managementToken });
+    void incrementOpsUsage(booking.shopId, 'business_bookings_cancelled', 1);
     res.set('Cache-Control', 'no-store');
     res.json({ booking: publicBooking(booking) });
   } catch (error) { next(error); }
@@ -342,6 +400,7 @@ publicRouter.post('/bookings/:id/reschedule', bookingLimiter, async (req, res, n
     const { errors, value } = validateSlotInput(req.body);
     if (errors.length) return res.status(422).json({ error: 'VALIDATION_ERROR', message: errors.join(' '), fields: errors });
     const booking = await rescheduleManagedBooking({ bookingId: req.params.id, token: req.body.managementToken, date: value.date, time: value.time });
+    void incrementOpsUsage(booking.shopId, 'business_bookings_rescheduled', 1);
     res.set('Cache-Control', 'no-store');
     res.json({ booking: publicBooking(booking) });
   } catch (error) { next(error); }

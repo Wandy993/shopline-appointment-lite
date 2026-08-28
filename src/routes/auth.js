@@ -6,6 +6,7 @@ import { Shop } from '../models/Shop.js';
 import { authorizationUrl, ensureBookingCommerceWebhooks, exchangeAuthorizationCode, shoplineOrderAccessStatus, syncShopMetadata } from '../services/shopline.js';
 import { reconcileRecentCommerceOrdersForShop } from '../services/paid-bookings.js';
 import { setSessionCookie } from '../middleware/auth.js';
+import { queueShopActive, queueShopInstalled } from '../services/ops-hub.js';
 
 export const authRouter = Router();
 
@@ -29,8 +30,10 @@ authRouter.get('/callback', async (req, res, next) => {
     if (!state || state.exp < Date.now() || state.handle !== String(handle).toLowerCase()) return res.status(400).send('OAuth state expired or invalid.');
     const token = await exchangeAuthorizationCode(handle, code);
     if (!token.accessToken) throw new Error('SHOPLINE did not return an access token');
+    const normalizedHandle = String(handle).toLowerCase();
+    const previousShop = await Shop.findOne({ handle: normalizedHandle }).select('_id installedAt uninstalledAt').lean();
     const shop = await Shop.findOneAndUpdate(
-      { handle: String(handle).toLowerCase() },
+      { handle: normalizedHandle },
       {
         $set: {
           accessToken: token.accessToken, tokenExpiresAt: token.expireTime ? new Date(token.expireTime) : undefined,
@@ -45,6 +48,16 @@ authRouter.get('/callback', async (req, res, next) => {
     try {
       await syncShopMetadata(shop._id);
     } catch (error) { console.warn('Could not enrich shop metadata:', error.message); }
+
+    // Ops Hub lifecycle telemetry must never block OAuth. A reauthorization is
+    // activity, while a first install or a return after uninstall is a new install.
+    void Shop.findById(shop._id).lean().then(refreshedShop => {
+      const currentShop = refreshedShop || shop;
+      if (!previousShop || previousShop.uninstalledAt) {
+        return queueShopInstalled(currentShop, { reinstall: Boolean(previousShop?.uninstalledAt) });
+      }
+      return queueShopActive(currentShop);
+    }).catch(error => console.warn('Could not queue Ops Hub install lifecycle:', error.message));
 
     // Existing installations must reauthorize after order-read access is added.
     // Once that permission is present, repair webhook subscriptions and reconcile

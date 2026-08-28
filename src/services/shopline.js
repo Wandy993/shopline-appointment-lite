@@ -2,6 +2,7 @@ import { config } from '../config.js';
 import crypto from 'node:crypto';
 import { hmacHex, signPayload } from '../lib/signature.js';
 import { Shop } from '../models/Shop.js';
+import { incrementOpsUsage, queueHealthEvent } from './ops-hub.js';
 
 function tokenFields(payload) {
   const data = payload?.data || payload || {};
@@ -14,6 +15,23 @@ function tokenFields(payload) {
 
 const SHOPLINE_TRANSIENT_STATUSES = new Set([429, 500, 502, 503, 504]);
 function wait(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+
+function shoplineErrorCode(payload = {}, fallback = 'SHOPLINE_API_FAILED') {
+  return String(payload?.i18nCode || payload?.code || payload?.error?.code || fallback).slice(0, 80);
+}
+
+function reportShoplineFailure(shopId, reason, { statusCode = 0, endpoint = '', method = '', errorCode = '', operation = '' } = {}) {
+  void incrementOpsUsage(shopId, 'shopline_api_failures', 1);
+  void queueHealthEvent(reason, {
+    shop: shopId,
+    severity: 'error',
+    category: 'shopline',
+    message: reason === 'shopline.token.refresh.failed'
+      ? 'SHOPLINE access token refresh failed.'
+      : 'A SHOPLINE API request failed after retry handling.',
+    metadata: { statusCode, endpoint, method, errorCode, operation }
+  });
+}
 
 async function shoplineFetchWithRetry(url, options = {}, { attempts = 2, timeoutMs = 15000 } = {}) {
   let lastError;
@@ -61,7 +79,11 @@ async function signedTokenPost(handle, path, body) {
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || (payload.code && payload.code !== 200)) {
-    throw new Error(`SHOPLINE token request failed (${response.status}): ${payload.message || payload.i18nCode || 'unknown error'}`);
+    throw Object.assign(new Error(`SHOPLINE token request failed (${response.status}): ${payload.message || payload.i18nCode || 'unknown error'}`), {
+      status: response.status,
+      code: shoplineErrorCode(payload, 'SHOPLINE_TOKEN_FAILED'),
+      payload
+    });
   }
   return tokenFields(payload);
 }
@@ -110,8 +132,25 @@ export async function accessTokenForShop(shopId) {
   if (shop.tokenExpiresAt && shop.tokenExpiresAt.getTime() < Date.now() + 5 * 60 * 1000) {
     // SHOPLINE refreshes the access token with a signed POST that has no request body.
     // The current authorization response does not include a separate refresh token.
-    const token = await signedTokenPost(shop.handle, '/admin/oauth/token/refresh');
-    if (!token.accessToken) throw new Error('SHOPLINE did not return an access token while refreshing');
+    let token;
+    try {
+      token = await signedTokenPost(shop.handle, '/admin/oauth/token/refresh');
+    } catch (error) {
+      reportShoplineFailure(shop._id, 'shopline.token.refresh.failed', {
+        statusCode: Number(error?.status || 0),
+        endpoint: '/admin/oauth/token/refresh',
+        method: 'POST',
+        errorCode: String(error?.code || 'SHOPLINE_TOKEN_REFRESH_FAILED'),
+        operation: 'token_refresh'
+      });
+      error.opsHubReported = '1';
+      throw error;
+    }
+    if (!token.accessToken) {
+      const error = Object.assign(new Error('SHOPLINE did not return an access token while refreshing'), { code: 'SHOPLINE_TOKEN_MISSING' });
+      reportShoplineFailure(shop._id, 'shopline.token.refresh.failed', { endpoint: '/admin/oauth/token/refresh', method: 'POST', errorCode: error.code, operation: 'token_refresh' });
+      throw error;
+    }
     shop.accessToken = token.accessToken;
     if (token.expireTime) shop.tokenExpiresAt = new Date(token.expireTime);
     if (token.scope) shop.scopes = String(token.scope).split(',').filter(Boolean);
@@ -121,15 +160,31 @@ export async function accessTokenForShop(shopId) {
 }
 
 export async function shoplineGetPage(shopId, endpoint, query = {}) {
-  const { handle, accessToken } = await accessTokenForShop(shopId);
-  const url = new URL(`https://${handle}.myshopline.com/admin/openapi/${config.shopline.apiVersion}/${endpoint}`);
-  for (const [key, value] of Object.entries(query)) if (value !== '' && value != null) url.searchParams.set(key, value);
-  const response = await shoplineFetchWithRetry(url, {
-    headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json', 'Content-Type': 'application/json; charset=utf-8' }
-  });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(`SHOPLINE API failed (${response.status}): ${payload.message || payload.errors || 'unknown error'}`);
-  return { payload, link: response.headers.get('link') || '' };
+  void incrementOpsUsage(shopId, 'shopline_api_requests', 1);
+  try {
+    const { handle, accessToken } = await accessTokenForShop(shopId);
+    const url = new URL(`https://${handle}.myshopline.com/admin/openapi/${config.shopline.apiVersion}/${endpoint}`);
+    for (const [key, value] of Object.entries(query)) if (value !== '' && value != null) url.searchParams.set(key, value);
+    const response = await shoplineFetchWithRetry(url, {
+      headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json', 'Content-Type': 'application/json; charset=utf-8' }
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw Object.assign(new Error(`SHOPLINE API failed (${response.status}): ${payload.message || payload.errors || 'unknown error'}`), {
+        status: response.status, code: shoplineErrorCode(payload), payload
+      });
+    }
+    return { payload, link: response.headers.get('link') || '' };
+  } catch (error) {
+    if (String(error?.opsHubReported || '') !== '1' && String(error?.code || '') !== 'SHOPLINE_TOKEN_REFRESH_FAILED') {
+      reportShoplineFailure(shopId, 'shopline.api.failed', {
+        statusCode: Number(error?.status || 0), endpoint, method: 'GET',
+        errorCode: String(error?.code || error?.name || 'SHOPLINE_API_FAILED'), operation: 'admin_api_read'
+      });
+      error.opsHubReported = '1';
+    }
+    throw error;
+  }
 }
 
 export async function shoplineGet(shopId, endpoint, query = {}) {
@@ -137,18 +192,32 @@ export async function shoplineGet(shopId, endpoint, query = {}) {
 }
 
 export async function shoplineGraphql(shopId, query, variables = {}) {
-  const { handle, accessToken } = await accessTokenForShop(shopId);
-  const response = await shoplineFetchWithRetry(`https://${handle}.myshopline.com/admin/graph/${config.shopline.apiVersion}/graphql.json`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json', 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query, variables })
-  });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok || payload.errors?.length) {
-    const message = payload.errors?.map(error => error.message).filter(Boolean).join('; ') || payload.message || 'unknown error';
-    throw new Error(`SHOPLINE GraphQL failed (${response.status}): ${message}`);
+  void incrementOpsUsage(shopId, 'shopline_api_requests', 1);
+  try {
+    const { handle, accessToken } = await accessTokenForShop(shopId);
+    const response = await shoplineFetchWithRetry(`https://${handle}.myshopline.com/admin/graph/${config.shopline.apiVersion}/graphql.json`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, variables })
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || payload.errors?.length) {
+      const message = payload.errors?.map(error => error.message).filter(Boolean).join('; ') || payload.message || 'unknown error';
+      throw Object.assign(new Error(`SHOPLINE GraphQL failed (${response.status}): ${message}`), {
+        status: response.status, code: shoplineErrorCode(payload, 'SHOPLINE_GRAPHQL_FAILED'), payload
+      });
+    }
+    return payload.data || {};
+  } catch (error) {
+    if (String(error?.opsHubReported || '') !== '1' && String(error?.code || '') !== 'SHOPLINE_TOKEN_REFRESH_FAILED') {
+      reportShoplineFailure(shopId, 'shopline.api.failed', {
+        statusCode: Number(error?.status || 0), endpoint: 'graphql.json', method: 'POST',
+        errorCode: String(error?.code || error?.name || 'SHOPLINE_GRAPHQL_FAILED'), operation: 'admin_graphql'
+      });
+      error.opsHubReported = '1';
+    }
+    throw error;
   }
-  return payload.data || {};
 }
 
 export async function syncShopMetadata(shopId) {
@@ -165,21 +234,33 @@ export async function syncShopMetadata(shopId) {
 }
 
 export async function shoplinePost(shopId, endpoint, body = {}) {
-  const { handle, accessToken } = await accessTokenForShop(shopId);
-  const response = await fetch(`https://${handle}.myshopline.com/admin/openapi/${config.shopline.apiVersion}/${endpoint}`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json', 'Content-Type': 'application/json; charset=utf-8' },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(15000)
-  });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw Object.assign(new Error(`SHOPLINE API failed (${response.status}): ${payload.message || payload.errors || 'unknown error'}`), { status: response.status, payload });
-  return payload;
+  void incrementOpsUsage(shopId, 'shopline_api_requests', 1);
+  try {
+    const { handle, accessToken } = await accessTokenForShop(shopId);
+    const response = await fetch(`https://${handle}.myshopline.com/admin/openapi/${config.shopline.apiVersion}/${endpoint}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json', 'Content-Type': 'application/json; charset=utf-8' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(15000)
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw Object.assign(new Error(`SHOPLINE API failed (${response.status}): ${payload.message || payload.errors || 'unknown error'}`), { status: response.status, code: shoplineErrorCode(payload), payload });
+    return payload;
+  } catch (error) {
+    if (String(error?.opsHubReported || '') !== '1' && String(error?.code || '') !== 'SHOPLINE_TOKEN_REFRESH_FAILED') {
+      reportShoplineFailure(shopId, 'shopline.api.failed', {
+        statusCode: Number(error?.status || 0), endpoint, method: 'POST',
+        errorCode: String(error?.code || error?.name || 'SHOPLINE_API_FAILED'), operation: 'admin_api_write'
+      });
+      error.opsHubReported = '1';
+    }
+    throw error;
+  }
 }
 
 export async function ensureBookingCommerceWebhooks(shopId) {
   const address = `${config.appUrl}/webhooks/shopline`;
-  const topics = ['orders/create', 'orders/paid', 'order_transactions/create', 'orders/cancelled'];
+  const topics = ['orders/create', 'orders/paid', 'order_transactions/create', 'orders/cancelled', 'apps/installed_uninstalled'];
   const results = [];
 
   let existing = [];

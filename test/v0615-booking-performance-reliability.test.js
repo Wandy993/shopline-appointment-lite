@@ -8,7 +8,7 @@ import { TinyTtlCache, createSingleFlight } from '../src/lib/runtime-cache.js';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const source = relative => readFile(path.join(root, relative), 'utf8');
 
-test('v0.6.15 runtime cache expires entries and single-flight coalesces identical work', async () => {
+test('v0.6.16 runtime cache expires entries and single-flight coalesces identical work', async () => {
   const cache = new TinyTtlCache({ ttlMs: 20, maxEntries: 2 });
   cache.set('a', 1);
   assert.equal(cache.get('a'), 1);
@@ -27,7 +27,7 @@ test('v0.6.15 runtime cache expires entries and single-flight coalesces identica
   assert.equal(runs, 1);
 });
 
-test('v0.6.15 public availability reuses hot rule context and coalesces duplicate requests', async () => {
+test('v0.6.16 public availability reuses hot rule context and coalesces duplicate requests', async () => {
   const route = await source('src/routes/public.js');
   assert.match(route, /new TinyTtlCache\(\{ ttlMs: 4000/);
   assert.match(route, /createSingleFlight\(\)/);
@@ -38,7 +38,7 @@ test('v0.6.15 public availability reuses hot rule context and coalesces duplicat
   assert.match(route, /status: 'confirmed', adminDeletedAt: null/);
 });
 
-test('v0.6.15 adds compound indexes used by availability reads', async () => {
+test('v0.6.16 adds compound indexes used by availability reads', async () => {
   const [booking, reservations, staffReservations, db] = await Promise.all([
     source('src/models/Booking.js'),
     source('src/models/BookingReservation.js'),
@@ -50,7 +50,7 @@ test('v0.6.15 adds compound indexes used by availability reads', async () => {
   assert.match(db, /availability_legacy_booking_lookup/);
 });
 
-test('v0.6.15 storefront availability GETs time out, retry transient failures, and avoid loader flashes', async () => {
+test('v0.6.16 storefront availability GETs time out, retry transient failures, and avoid loader flashes', async () => {
   const [hosted, theme] = await Promise.all([source('public/book/app.js'), source('theme-extension-source/public/appointment-lite.js')]);
   for (const text of [hosted, theme]) {
     assert.match(text, /const attempts = method === 'GET' \? 2 : 1/);
@@ -60,7 +60,7 @@ test('v0.6.15 storefront availability GETs time out, retry transient failures, a
   }
 });
 
-test('v0.6.15 SHOPLINE recovery isolates failures and periodically sweeps recent orders', async () => {
+test('v0.6.16 SHOPLINE recovery isolates failures and periodically sweeps recent orders', async () => {
   const paid = await source('src/services/paid-bookings.js');
   assert.match(paid, /reconcileRecentCommerceOrdersForActiveShops/);
   assert.match(paid, /recoverySweepEveryMs = 15 \* 60_000/);
@@ -69,7 +69,7 @@ test('v0.6.15 SHOPLINE recovery isolates failures and periodically sweeps recent
   assert.match(paid, /errors: 0/);
 });
 
-test('v0.6.15 retries transient SHOPLINE reads and Google Calendar sync without blocking booking creation', async () => {
+test('v0.6.16 retries transient SHOPLINE reads and Google Calendar sync without blocking booking creation', async () => {
   const [shopline, calendar, bookings] = await Promise.all([
     source('src/services/shopline.js'),
     source('src/services/calendar-sync.js'),
@@ -83,16 +83,16 @@ test('v0.6.15 retries transient SHOPLINE reads and Google Calendar sync without 
   assert.match(bookings, /queueBookingGoogleCalendarSync\(booking\._id, 'created'\)/);
 });
 
-test('v0.6.15 release version stays aligned', async () => {
+test('v0.6.16 release version stays aligned', async () => {
   const pkg = JSON.parse(await source('package.json'));
   const [app, admin, book, theme, release] = await Promise.all([
     source('src/app.js'), source('src/views/admin.js'), source('src/views/book.js'),
     source('theme-extension-source/public/appointment-lite.js'), source('scripts/build-release.sh')
   ]);
-  assert.equal(pkg.version, '0.6.15');
-  assert.match(app, /version: '0\.6\.15'/);
-  assert.match(admin, /styles\.css\?v=0\.6\.15/);
-  assert.match(book, /app\.js\?v=0\.6\.15/);
-  assert.match(theme, /const VERSION = '0\.6\.15'/);
-  assert.match(release, /appointment-lite-v\$\{RELEASE_VERSION\}-booking-performance-reliability/);
+  assert.equal(pkg.version, '0.6.16');
+  assert.match(app, /version: '0\.6\.16'/);
+  assert.match(admin, /styles\.css\?v=0\.6\.16/);
+  assert.match(book, /app\.js\?v=0\.6\.16/);
+  assert.match(theme, /const VERSION = '0\.6\.16'/);
+  assert.match(release, /appointment-lite-v\$\{RELEASE_VERSION\}-ops-hub-observability-integration/);
 });

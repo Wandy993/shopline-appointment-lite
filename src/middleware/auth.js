@@ -1,6 +1,7 @@
 import { config } from '../config.js';
 import { hmacHex, readSignedPayload, safeEqual, signPayload } from '../lib/signature.js';
 import { Shop } from '../models/Shop.js';
+import { queueShopActive } from '../services/ops-hub.js';
 
 function parseCookies(header = '') {
   return Object.fromEntries(header.split(';').map(item => item.trim().split('=').map(decodeURIComponent)).filter(parts => parts.length === 2));
@@ -21,6 +22,7 @@ export async function requireAdmin(req, res, next) {
     if (!shop) return res.status(401).json({ error: 'AUTH_REQUIRED', message: 'Shop session is no longer valid.' });
     req.shop = shop;
     req.csrfToken = csrfToken(shop._id);
+    void queueShopActive(shop);
     next();
   } catch (error) { next(error); }
 }

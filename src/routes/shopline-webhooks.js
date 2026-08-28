@@ -2,12 +2,15 @@ import { config } from '../config.js';
 import { verifyShoplineWebhookSignature } from '../lib/shopline-webhook.js';
 import { Booking } from '../models/Booking.js';
 import { WebhookReceipt } from '../models/WebhookReceipt.js';
+import { Shop } from '../models/Shop.js';
 import { appointmentLiteBookingIdFromOrder } from '../lib/paid-checkout.js';
 import { attachPaidOrderToBooking, confirmPaidBooking } from '../services/bookings.js';
 import { activatePostPurchaseEntitlementsForOrder, revokePostPurchaseEntitlementsForOrder, upsertPostPurchaseEntitlementsFromOrder } from '../services/post-purchase.js';
 import { findInstalledShop } from '../services/shops.js';
+import { incrementOpsUsage, queueHealthEvent, queueShopInstalled, queueShopUninstalled } from '../services/ops-hub.js';
 
-const SUPPORTED_TOPICS = new Set(['orders/create', 'orders/paid', 'order_transactions/create', 'orders/cancelled']);
+const LIFECYCLE_TOPIC = 'apps/installed_uninstalled';
+const SUPPORTED_TOPICS = new Set(['orders/create', 'orders/paid', 'order_transactions/create', 'orders/cancelled', LIFECYCLE_TOPIC]);
 
 function header(req, name) {
   return String(req.get(name) || '').trim();
@@ -42,6 +45,26 @@ function orderNameOf(payload = {}) {
 
 function financialStatusOf(payload = {}) {
   return String(payload.financial_status || payload.financialStatus || '').trim().toLowerCase();
+}
+
+function lifecycleActionOf(payload = {}) {
+  const values = [payload.operation, payload.action, payload.status, payload.event, payload.type, payload.event_type, payload.eventType]
+    .map(value => String(value || '').trim().toLowerCase())
+    .filter(Boolean);
+  const combined = values.join(' ');
+  if (/uninstall|uninstalled|remove|removed/.test(combined)) return 'uninstalled';
+  if (/install|installed/.test(combined)) return 'installed';
+  return '';
+}
+
+async function opsShopForWebhook(shoplineStoreId, payload = {}) {
+  const handle = String(payload.handle || payload.shop_handle || payload.shopHandle || '').trim().toLowerCase();
+  if (shoplineStoreId) {
+    const shop = await Shop.findOne({ shoplineStoreId: String(shoplineStoreId) });
+    if (shop) return shop;
+  }
+  if (handle) return Shop.findOne({ handle });
+  return null;
 }
 
 export function orderPayloadIsPaid(payload = {}) {
@@ -167,23 +190,60 @@ async function handleOrderCancelled({ payload, webhookId, shoplineStoreId, recei
   return { ok: true, orderId, postPurchase };
 }
 
+async function handleLifecycle({ payload, shoplineStoreId, receipt }) {
+  const action = lifecycleActionOf(payload);
+  const shop = await opsShopForWebhook(shoplineStoreId, payload);
+  if (!action || !shop) {
+    await finishReceipt(receipt, 'ignored', { externalId: action || '' });
+    return { ok: true, ignored: true, reason: !action ? 'LIFECYCLE_ACTION_UNKNOWN' : 'STORE_NOT_FOUND' };
+  }
+
+  if (action === 'uninstalled') {
+    await Shop.updateOne({ _id: shop._id }, { $set: { uninstalledAt: new Date() } });
+    void queueShopUninstalled(shop, { source: 'shopline_webhook' });
+  } else {
+    await Shop.updateOne({ _id: shop._id }, { $set: { uninstalledAt: null } });
+    const current = await Shop.findById(shop._id).lean();
+    void queueShopInstalled(current || shop, { source: 'shopline_webhook' });
+  }
+  await finishReceipt(receipt, 'processed', { externalId: action });
+  return { ok: true, action };
+}
+
 export async function shoplinePaidBookingWebhook(req, res) {
   const topic = header(req, 'X-Shopline-Topic');
   const webhookId = header(req, 'X-Shopline-Webhook-Id');
   const shoplineStoreId = header(req, 'X-Shopline-Shop-Id');
   const signature = header(req, 'X-Shopline-Hmac-Sha256');
 
-  if (!verifyShoplineWebhookSignature(req.body, signature, config.shopline.appSecret)) return res.status(401).json({ ok: false });
+  if (!verifyShoplineWebhookSignature(req.body, signature, config.shopline.appSecret)) {
+    void queueHealthEvent('shopline.webhook.invalid_signature', {
+      severity: 'warning', category: 'webhook',
+      message: 'A SHOPLINE webhook was rejected because its signature was invalid.',
+      metadata: { topic, errorCode: 'INVALID_SIGNATURE', operation: 'webhook_verify' }
+    });
+    return res.status(401).json({ ok: false });
+  }
   if (!webhookId || !topic) return res.status(400).json({ ok: false });
   if (!SUPPORTED_TOPICS.has(topic)) return res.status(200).json({ ok: true, ignored: true });
 
   let payload;
   try { payload = JSON.parse(req.body.toString('utf8')); }
-  catch { return res.status(400).json({ ok: false }); }
+  catch {
+    void queueHealthEvent('shopline.webhook.invalid_json', {
+      severity: 'warning', category: 'webhook',
+      message: 'A signed SHOPLINE webhook contained invalid JSON.',
+      metadata: { topic, errorCode: 'INVALID_JSON', operation: 'webhook_parse' }
+    });
+    return res.status(400).json({ ok: false });
+  }
+
+  const opsShop = await opsShopForWebhook(shoplineStoreId, payload).catch(() => null);
+  if (opsShop) void incrementOpsUsage(opsShop, 'webhook_received', 1);
 
   const externalId = topic === 'order_transactions/create'
     ? String(payload.order_id || payload.orderId || '')
-    : orderIdOf(payload);
+    : topic === LIFECYCLE_TOPIC ? lifecycleActionOf(payload) : orderIdOf(payload);
   const { receipt, duplicate } = await startReceipt({ webhookId, topic, shoplineStoreId, externalId });
   if (duplicate && receipt?.status !== 'failed') return res.status(200).json({ ok: true, duplicate: true });
 
@@ -194,10 +254,18 @@ export async function shoplinePaidBookingWebhook(req, res) {
         ? await handleOrderPaid({ payload, webhookId, shoplineStoreId, receipt })
         : topic === 'order_transactions/create'
           ? await handleOrderPayment({ payload, webhookId, shoplineStoreId, receipt })
-          : await handleOrderCancelled({ payload, webhookId, shoplineStoreId, receipt });
+          : topic === 'orders/cancelled'
+            ? await handleOrderCancelled({ payload, webhookId, shoplineStoreId, receipt })
+            : await handleLifecycle({ payload, webhookId, shoplineStoreId, receipt });
     return res.status(200).json(result);
   } catch (error) {
     await finishReceipt(receipt, 'failed', { externalId, error: error.message }).catch(() => {});
+    if (opsShop) void incrementOpsUsage(opsShop, 'webhook_failures', 1);
+    void queueHealthEvent(topic === LIFECYCLE_TOPIC ? 'shopline.webhook.failed' : 'order.webhook.failed', {
+      shop: opsShop, severity: 'error', category: 'webhook',
+      message: topic === LIFECYCLE_TOPIC ? 'SHOPLINE lifecycle webhook processing failed.' : 'SHOPLINE order webhook processing failed.',
+      metadata: { topic, errorCode: String(error?.code || error?.name || 'WEBHOOK_PROCESSING_FAILED'), operation: 'webhook_process' }
+    });
     console.error('SHOPLINE booking commerce webhook failed', { topic, webhookId, message: error.message });
     return res.status(500).json({ ok: false });
   }

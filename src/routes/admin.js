@@ -21,9 +21,14 @@ import { accessTokenForConnection, decryptGoogleRefreshToken, googleCalendarAuth
 import { queueUpcomingGoogleCalendarBookingsForBusiness, syncUpcomingGoogleCalendarBookingsForBusiness } from '../services/calendar-sync.js';
 import { reconcileRecentCommerceOrdersForShop } from '../services/paid-bookings.js';
 import { formatLocationSnapshot, listShoplineLocations, resolveShoplineLocation } from '../services/locations.js';
+import { incrementOpsUsage } from '../services/ops-hub.js';
 
 export const adminRouter = Router();
 adminRouter.use(requireAdmin, requireCsrf);
+adminRouter.use((req, res, next) => {
+  void incrementOpsUsage(req.shop, 'app_api_admin_requests', 1);
+  next();
+});
 
 function bookingSnapshot(booking) {
   return { date: booking.date, time: booking.time, location: booking.location || '', staff: booking.staff || '', status: booking.status };

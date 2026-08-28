@@ -95,7 +95,8 @@ const shopSchema = new mongoose.Schema({
   storefrontSettings: { type: storefrontSettingsSchema, default: () => ({}) },
   onboarding: { type: onboardingSchema, default: () => ({}) },
   installedAt: { type: Date, default: Date.now },
-  uninstalledAt: Date
+  uninstalledAt: Date,
+  opsHubLastActiveAt: Date
 }, { timestamps: true });
 
 export const Shop = mongoose.model('Shop', shopSchema);
