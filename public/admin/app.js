@@ -3,7 +3,8 @@ const state = {
   ruleStep: 0, activeTemplate: 'confirmation', emailEditorReady: false, bookingView: 'list', calendarMonth: '',
   locale: 'en', currentView: 'dashboard', themeLinkLoaded: false, bootstrap: null, onboarding: null, lastTestEmail: '', ruleModeTouched: false, editingRule: false,
   calendarSync: null, calendarStaffId: '', calendarPopup: null, calendarDayItems: {}, paidVariants: [], orderAccess: null, locations: [], locationAccess: null, storefrontSettings: null,
-  subscription: null, subscriptionSyncError: '', restricted: false, archiveMode: false, accessMode: 'full'
+  subscription: null, subscriptionSyncError: '', restricted: false, archiveMode: false, accessMode: 'full',
+  subscriptionRecoveryLastCheckAt: 0, subscriptionRecoveryInFlight: false
 };
 const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const viewLabels = {
@@ -709,7 +710,8 @@ Object.assign(zh, {
   'Latest SHOPLINE status': '最新 SHOPLINE 状态', 'No active SHOPLINE subscription was found for this store.': '当前店铺未找到生效中的 SHOPLINE 订阅。',
   'Could not refresh SHOPLINE subscription right now. The last known status is shown.': '暂时无法刷新 SHOPLINE 订阅状态，当前展示的是最近一次已知状态。',
   'SHOPLINE checkout is temporarily unavailable.': 'SHOPLINE 订阅结算页暂时不可用。', 'Could not open SHOPLINE subscription checkout.': '无法打开 SHOPLINE 订阅结算页。',
-  'SHOPLINE subscription refreshed.': 'SHOPLINE 订阅状态已刷新。'
+  'SHOPLINE subscription refreshed.': 'SHOPLINE 订阅状态已刷新。',
+  'SHOPLINE subscription restored. Full access is available again.': 'SHOPLINE 套餐已恢复，Appointment Lite 的完整功能现已重新开放。'
 });
 
 const enByZh = new Map(Object.entries(zh).map(([english, chinese]) => [chinese, english]));
@@ -971,17 +973,42 @@ function openShoplineRenewal() {
 
 async function refreshSubscription() {
   const buttons = [$('#syncSubscriptionGate'), $('#syncSubscriptionBilling')].filter(Boolean);
+  const wasUnavailable = state.accessMode !== 'full';
   buttons.forEach(button => { button.disabled = true; });
   try {
     const payload = await api('/subscription/sync', { method: 'POST', body: '{}' });
     renderSubscriptionStatus(payload.subscription, '');
-    if (payload.subscription?.accessAllowed) await loadBootstrap();
-    else {
+    if (payload.subscription?.accessAllowed && payload.subscription?.adminMode === 'full') {
+      await loadBootstrap({ suppressRecoveryToast: true });
+      toast(t(wasUnavailable || payload.recovery?.recovered
+        ? 'SHOPLINE subscription restored. Full access is available again.'
+        : 'SHOPLINE subscription refreshed.'));
+    } else {
       if (payload.subscription?.adminMode === 'archive') switchView('bookings');
       toast(t('SHOPLINE subscription refreshed.'));
     }
   } catch (error) { showError(error); }
   finally { buttons.forEach(button => { button.disabled = false; }); }
+}
+
+async function recoverSubscriptionIfNeeded({ force = false } = {}) {
+  if (!state.subscription?.enabled || state.accessMode === 'full' || state.subscriptionRecoveryInFlight) return;
+  const now = Date.now();
+  if (!force && now - state.subscriptionRecoveryLastCheckAt < 15_000) return;
+  state.subscriptionRecoveryLastCheckAt = now;
+  state.subscriptionRecoveryInFlight = true;
+  try {
+    const payload = await api('/subscription?refresh=1');
+    renderSubscriptionStatus(payload.subscription, payload.syncError || '');
+    if (payload.subscription?.accessAllowed && payload.subscription?.adminMode === 'full') {
+      await loadBootstrap({ suppressRecoveryToast: true });
+      toast(t('SHOPLINE subscription restored. Full access is available again.'));
+    }
+  } catch (error) {
+    console.warn('Could not refresh SHOPLINE subscription while resuming the app:', error.message);
+  } finally {
+    state.subscriptionRecoveryInFlight = false;
+  }
 }
 
 function switchView(name) {
@@ -2966,7 +2993,7 @@ function confirmAction(title, message, actionLabel, action) {
   $('#confirmDialog').showModal();
 }
 
-async function loadBootstrap() {
+async function loadBootstrap({ suppressRecoveryToast = false } = {}) {
   const returningFromSubscription = new URLSearchParams(window.location.search).get('subscription') === 'return';
   const payload = await api(`/bootstrap${returningFromSubscription ? '?subscription_return=1' : ''}`);
   if (returningFromSubscription) {
@@ -2988,6 +3015,9 @@ async function loadBootstrap() {
   $('#storeAvatar').textContent = payload.shop.handle.slice(0, 1).toUpperCase();
   await setLocale(payload.shop.adminLocale || 'en', { save: false });
   renderSubscriptionStatus(state.subscription, state.subscriptionSyncError);
+  if (payload.subscriptionRecovery?.recovered && !suppressRecoveryToast) {
+    toast(t('SHOPLINE subscription restored. Full access is available again.'));
+  }
   if (state.restricted) return;
   if (state.archiveMode) {
     state.currentView = 'bookings';
@@ -3076,6 +3106,9 @@ function bind() {
   document.addEventListener('keydown', event => { if (event.key === 'Escape') closeBookingActionMenus(); });
   window.addEventListener('resize', () => closeBookingActionMenus());
   window.addEventListener('scroll', () => closeBookingActionMenus(), true);
+  window.addEventListener('focus', () => { void recoverSubscriptionIfNeeded(); });
+  window.addEventListener('pageshow', event => { if (event.persisted) void recoverSubscriptionIfNeeded({ force: true }); });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') void recoverSubscriptionIfNeeded(); });
   renderTemplateTabs();
   $$('.nav-item').forEach(button => button.addEventListener('click', () => switchView(button.dataset.view)));
   $('#startSubscription')?.addEventListener('click', startSubscriptionCheckout);

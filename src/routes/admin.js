@@ -23,7 +23,7 @@ import { queueUpcomingGoogleCalendarBookingsForBusiness, syncUpcomingGoogleCalen
 import { reconcileRecentCommerceOrdersForShop } from '../services/paid-bookings.js';
 import { formatLocationSnapshot, listShoplineLocations, resolveShoplineLocation } from '../services/locations.js';
 import { incrementOpsUsage } from '../services/ops-hub.js';
-import { createSubscriptionCheckout, ensureFreshSubscriptionForShop, publicSubscriptionSnapshot, syncSubscriptionForShop } from '../services/subscription.js';
+import { createSubscriptionCheckout, ensureFreshSubscriptionForShop, publicSubscriptionSnapshot, subscriptionNeedsRecoverySync, syncSubscriptionForShop } from '../services/subscription.js';
 
 export const adminRouter = Router();
 adminRouter.use(requireAdmin, requireCsrf);
@@ -35,32 +35,60 @@ adminRouter.use((req, res, next) => {
 async function adminSubscriptionState(req, { force = false } = {}) {
   let subscription = publicSubscriptionSnapshot(req.shop);
   let syncError = '';
-  if (!config.subscription.enabled) return { subscription, syncError };
+  const previousMode = subscription.adminMode;
+  const recoveryNeeded = config.subscription.enabled && subscriptionNeedsRecoverySync(req.shop);
+  if (!config.subscription.enabled) {
+    return { subscription, syncError, recovery: { attempted: false, recovered: false, fromMode: previousMode, toMode: subscription.adminMode } };
+  }
   try {
     const result = force
-      ? await syncSubscriptionForShop(req.shop, { source: 'admin_force_sync' })
+      ? await syncSubscriptionForShop(req.shop, { source: recoveryNeeded ? 'admin_force_recovery_sync' : 'admin_force_sync' })
       : await ensureFreshSubscriptionForShop(req.shop);
     if (result.shop) req.shop = result.shop;
     subscription = result.subscription || publicSubscriptionSnapshot(req.shop);
+    return {
+      subscription,
+      syncError,
+      recovery: {
+        attempted: Boolean(force || recoveryNeeded || result.recoverySync),
+        recovered: previousMode !== 'full' && subscription.adminMode === 'full',
+        fromMode: previousMode,
+        toMode: subscription.adminMode
+      }
+    };
   } catch (error) {
     syncError = String(error.message || error);
     subscription = publicSubscriptionSnapshot(req.shop);
+    return {
+      subscription,
+      syncError,
+      recovery: { attempted: Boolean(force || recoveryNeeded), recovered: false, fromMode: previousMode, toMode: subscription.adminMode }
+    };
   }
-  return { subscription, syncError };
 }
 
 adminRouter.get('/subscription', async (req, res) => {
-  const { subscription, syncError } = await adminSubscriptionState(req, { force: req.query.refresh === '1' });
+  const { subscription, syncError, recovery } = await adminSubscriptionState(req, { force: req.query.refresh === '1' });
   res.set('Cache-Control', 'no-store');
-  res.json({ subscription, syncError });
+  res.json({ subscription, syncError, recovery });
 });
 
 adminRouter.post('/subscription/sync', async (req, res, next) => {
   try {
+    const previous = publicSubscriptionSnapshot(req.shop);
     const result = await syncSubscriptionForShop(req.shop, { source: 'admin_manual_sync' });
     if (result.shop) req.shop = result.shop;
+    const subscription = result.subscription || publicSubscriptionSnapshot(req.shop);
     res.set('Cache-Control', 'no-store');
-    res.json({ subscription: result.subscription || publicSubscriptionSnapshot(req.shop) });
+    res.json({
+      subscription,
+      recovery: {
+        attempted: true,
+        recovered: previous.adminMode !== 'full' && subscription.adminMode === 'full',
+        fromMode: previous.adminMode,
+        toMode: subscription.adminMode
+      }
+    });
   } catch (error) { next(error); }
 });
 
@@ -139,7 +167,7 @@ async function validateManagedStaffSelection(shopId, ruleValue) {
 }
 
 adminRouter.get('/bootstrap', async (req, res) => {
-  const { subscription, syncError: subscriptionSyncError } = await adminSubscriptionState(req, { force: req.query.subscription_return === '1' });
+  const { subscription, syncError: subscriptionSyncError, recovery: subscriptionRecovery } = await adminSubscriptionState(req, { force: req.query.subscription_return === '1' });
   if (!req.shop.shoplineStoreId) {
     try {
       const metadata = await syncShopMetadata(req.shop._id);
@@ -154,6 +182,7 @@ adminRouter.get('/bootstrap', async (req, res) => {
       archiveMode: false,
       subscription,
       subscriptionSyncError,
+      subscriptionRecovery,
       shop: { handle: req.shop.handle, storeId: req.shop.shoplineStoreId || '', locale: req.shop.locale, adminLocale: req.shop.adminLocale || 'en', timezone: req.shop.timezone, email: req.shop.email || '' },
       csrfToken: req.csrfToken
     });
@@ -166,6 +195,7 @@ adminRouter.get('/bootstrap', async (req, res) => {
       archiveMode: true,
       subscription,
       subscriptionSyncError,
+      subscriptionRecovery,
       shop: { handle: req.shop.handle, storeId: req.shop.shoplineStoreId || '', locale: req.shop.locale, adminLocale: req.shop.adminLocale || 'en', timezone: req.shop.timezone, email: req.shop.email || '' },
       csrfToken: req.csrfToken
     });
@@ -207,7 +237,7 @@ adminRouter.get('/bootstrap', async (req, res) => {
     reconcileAvailable: orderAccessState.granted
   };
   res.json({
-    restricted: false, accessMode: 'full', archiveMode: false, subscription, subscriptionSyncError,
+    restricted: false, accessMode: 'full', archiveMode: false, subscription, subscriptionSyncError, subscriptionRecovery,
     shop: { handle: req.shop.handle, storeId: req.shop.shoplineStoreId || '', locale: req.shop.locale, adminLocale: req.shop.adminLocale || 'en', timezone: req.shop.timezone, email: req.shop.email || '' },
     email: { configured: delivery.configured, from: delivery.from || '' }, emailSettings: normalizeEmailSettings(req.shop.emailSettings || {}), storefrontSettings: normalizeStorefrontSettings(req.shop.storefrontSettings || {}), nextBookings, orderAccess,
     onboarding: onboardingStatus(req.shop, { ruleCount, activeRuleCount, bookingCount, firstActiveRule }),

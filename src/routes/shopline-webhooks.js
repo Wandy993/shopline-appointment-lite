@@ -217,6 +217,12 @@ async function handleSubscriptionCreated({ payload, shoplineStoreId, receipt }) 
     return { ok: true, ignored: true, reason: 'STORE_NOT_FOUND' };
   }
   await applySubscriptionActivatedWebhook(shop, payload);
+  // The signed activation webhook updates the local state immediately, then the
+  // Partner list endpoint reconciles it with SHOPLINE's authoritative record.
+  // A transient Partner API failure must not invalidate a valid webhook.
+  await syncSubscriptionForShop(shop, { source: 'webhook_create_sync' }).catch(error => {
+    console.warn('Could not refresh subscription after activation webhook:', error.message);
+  });
   await finishReceipt(receipt, 'processed', { externalId: subId });
   return { ok: true, subscription: 'active', subId };
 }

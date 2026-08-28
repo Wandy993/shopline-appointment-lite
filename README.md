@@ -1,5 +1,11 @@
 # Appointment Lite
 
+## v0.7.0.3 — Subscription Recovery Hardening
+
+Appointment Lite now force-reconciles any stale inactive subscription with SHOPLINE whenever the admin starts or an archived page is resumed. Renewal recovery no longer waits for the normal subscription cache: signed subscription webhooks, admin bootstrap, manual refresh, browser focus/visibility restore, and BFCache resume all converge on the Partner API as the authority. When SHOPLINE reports valid access again, archive restrictions are removed immediately and the merchant sees a recovery confirmation.
+
+This does not bypass SHOPLINE's own package gate when SHOPLINE redirects the merchant before the embedded app is loaded. See [Subscription Recovery Hardening](docs/V0703_SUBSCRIPTION_RECOVERY_HARDENING.md).
+
 ## v0.7.0 — SHOPLINE Subscription Integration
 
 Appointment Lite now uses SHOPLINE application subscriptions for a single paid **Appointment Lite Pro** plan at **USD 5.99/month**. The **7-day free trial stays fully managed by SHOPLINE**; Appointment Lite does not run a second local trial clock. v0.7.0 adds Partner API subscription sync, SHOPLINE checkout creation, signed subscription webhooks, a merchant Plan & billing experience, server-side admin/storefront access control, and safe data retention when a subscription becomes inactive.

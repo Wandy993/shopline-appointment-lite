@@ -111,6 +111,14 @@ export function subscriptionAccessAllowed(shopOrSubscription, options = {}) {
   return subscriptionAccessState(subscription, options).allowed;
 }
 
+export function subscriptionNeedsRecoverySync(shopOrSubscription, { enabled = config.subscription.enabled, now = new Date() } = {}) {
+  if (!enabled) return false;
+  const subscription = shopOrSubscription?.subscription || shopOrSubscription || {};
+  const status = normalizeStatus(subscription?.status);
+  if (status !== 'active') return true;
+  return !subscriptionAccessState(subscription, { enabled, now }).allowed;
+}
+
 export function subscriptionHasHistoricalAccess(shopOrSubscription) {
   const subscription = shopOrSubscription?.subscription || shopOrSubscription || {};
   const status = normalizeStatus(subscription?.status);
@@ -319,13 +327,18 @@ export async function syncSubscriptionForShop(shopOrId, {
   }
 }
 
-export async function ensureFreshSubscriptionForShop(shop, { maxAgeMs = config.subscription.syncMaxAgeMs, force = false } = {}) {
-  if (!config.subscription.enabled) return { shop, subscription: publicSubscriptionSnapshot(shop), synced: false };
+export async function ensureFreshSubscriptionForShop(shop, { maxAgeMs = config.subscription.syncMaxAgeMs, force = false, now = new Date() } = {}) {
+  if (!config.subscription.enabled) return { shop, subscription: publicSubscriptionSnapshot(shop, { now }), synced: false, recoverySync: false };
+  const recoverySync = subscriptionNeedsRecoverySync(shop, { now });
   const lastSynced = shop?.subscription?.lastSyncedAt ? new Date(shop.subscription.lastSyncedAt).getTime() : 0;
-  if (!force && lastSynced && Date.now() - lastSynced < maxAgeMs) {
-    return { shop, subscription: publicSubscriptionSnapshot(shop), synced: false };
+  if (!force && !recoverySync && lastSynced && now.getTime() - lastSynced < maxAgeMs) {
+    return { shop, subscription: publicSubscriptionSnapshot(shop, { now }), synced: false, recoverySync: false };
   }
-  return syncSubscriptionForShop(shop, { source: force ? 'partner_api_force' : 'partner_api' });
+  const result = await syncSubscriptionForShop(shop, {
+    source: force ? 'partner_api_force' : (recoverySync ? 'partner_api_recovery' : 'partner_api'),
+    now
+  });
+  return { ...result, recoverySync };
 }
 
 export function createSubscriptionTradeNo(handle = 'shop') {
