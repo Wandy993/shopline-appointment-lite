@@ -17,6 +17,7 @@ import {
   opsHubSignature,
   opsStoreIdentity,
   sanitizeOpsMetadata,
+  usageBucketsToHubCounters,
   sendOpsHubPayload
 } from '../src/services/ops-hub.js';
 
@@ -115,11 +116,12 @@ test('v0.6.16 daily usage counters normalize numeric strings and reject unknown 
     currency: 'USD',
     amount: 199
   });
-  assert.equal(payload.eventType, 'usage.daily');
-  assert.equal(payload.date, '2026-08-26');
-  assert.deepEqual(payload.counters, counters);
-  assert.equal('currency' in payload, false);
-  assert.equal('amount' in payload, false);
+  assert.equal(payload.type, 'usage.daily');
+  assert.equal(payload.data.dateKey, '2026-08-26');
+  assert.deepEqual(payload.data.requestBuckets, counters);
+  assert.deepEqual(payload.data.counters, usageBucketsToHubCounters(counters));
+  assert.equal('currency' in payload.data, false);
+  assert.equal('amount' in payload.data, false);
 });
 
 test('v0.6.16 rejects event types outside the strict Ops Hub contract', () => {
@@ -163,9 +165,11 @@ test('v0.6.16 sender posts one normalized signed event without re-stringifying a
   assert.equal(captured.url, runtimeConfig.ingestUrl);
   assert.equal(captured.options.method, 'POST');
   const parsed = JSON.parse(captured.options.body);
-  assert.equal(parsed.eventType, 'health.event');
-  assert.equal(parsed.metadata.reason, 'availability.slow');
-  assert.equal('customerEmail' in parsed.metadata, false);
+  assert.deepEqual(Object.keys(parsed), ['event']);
+  assert.equal(parsed.event.type, 'health.event');
+  assert.equal(parsed.event.data.eventType, 'availability.slow');
+  assert.equal(parsed.event.data.metadata.reason, 'availability.slow');
+  assert.equal('customerEmail' in parsed.event.data.metadata, false);
   const signature = opsHubSignature(captured.options.body, '1760000000000', runtimeConfig.ingestSecret);
   assert.equal(captured.options.headers['X-Ops-Signature'], `sha256=${signature}`);
 });

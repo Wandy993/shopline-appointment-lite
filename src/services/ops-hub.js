@@ -39,7 +39,7 @@ const SAFE_METADATA_KEYS = new Set([
   'reason', 'category', 'severity', 'errorCode', 'statusCode', 'durationMs',
   'ruleId', 'bookingId', 'orderId', 'endpoint', 'method', 'topic', 'audience',
   'operation', 'attempts', 'storeStatus', 'reinstall', 'source', 'date',
-  'count', 'providerStatus'
+  'count', 'providerStatus', 'requestId'
 ]);
 const SENSITIVE_KEY = /(email|phone|address|name|token|secret|password|cookie|authorization|body|payload|customer|note|messagebody|refresh)/i;
 const MAX_COUNTER = 1_000_000_000;
@@ -163,56 +163,202 @@ export function sanitizeOpsMetadata(value = {}) {
 }
 
 export function opsStoreIdentity(shop = {}) {
-  const handle = compactString(shop.handle || shop.shopHandle, 80).toLowerCase();
-  const suppliedDomain = compactString(shop.shopDomain, 180).toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '');
-  // Ops Hub store identity must be stable even when a merchant changes its custom
-  // storefront domain. Prefer the SHOPLINE handle hostname over primaryDomain.
+  const handle = compactString(shop.handle || shop.shopHandle, 200).toLowerCase();
+  const suppliedDomain = compactString(shop.primaryDomain || shop.shopDomain, 300)
+    .toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '');
+  // Keep the local identity stable even if a merchant changes a custom domain.
+  const shopId = compactString(
+    shop.externalStoreId || shop.shoplineStoreId || shop.storeId || shop.shopId || handle || suppliedDomain,
+    200
+  );
   const shopDomain = handle ? `${handle}.myshopline.com` : suppliedDomain;
+  return { shopId, shopHandle: handle, shopDomain };
+}
+
+export function opsHubStoreIdentity(shop = {}) {
+  const identity = opsStoreIdentity(shop);
+  if (!identity.shopId) return null;
+  const primaryDomain = compactString(shop.primaryDomain || shop.shopDomain || identity.shopDomain, 300)
+    .toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '');
+  const shopName = compactString(shop.shopName || shop.name || identity.shopHandle, 300);
   return {
-    shopId: compactString(shop.shoplineStoreId || shop.storeId || shop.shopId || '', 100),
-    shopHandle: handle,
-    shopDomain
+    externalStoreId: identity.shopId,
+    ...(identity.shopHandle ? { handle: identity.shopHandle } : {}),
+    ...(shopName ? { shopName } : {}),
+    ...(primaryDomain ? { primaryDomain } : {})
   };
 }
 
-function commonPayloadFields({ occurredAt = new Date().toISOString(), shop, appVersion, environment } = {}) {
-  const identity = opsStoreIdentity(shop || {});
+function normalizeEventId(value, eventType = 'event') {
+  const candidate = compactString(value, 160);
+  if (candidate.length >= 8 && /^[A-Za-z0-9._:-]+$/.test(candidate)) return candidate;
+  return `appointment-lite:${compactString(eventType, 80) || 'event'}:${crypto.randomUUID()}`;
+}
+
+function normalizeHealthStatus(value) {
+  const status = compactString(value, 20).toLowerCase();
+  if (status === 'error') return 'error';
+  if (status === 'warn' || status === 'warning') return 'warn';
+  return 'ok';
+}
+
+function normalizeHubUsageCounters(value = {}) {
+  const source = value || {};
   return {
-    occurredAt: new Date(occurredAt).toISOString(),
-    appVersion: compactString(appVersion || config.opsHub.appVersion || '0.6.16', 40),
-    environment: compactString(environment || config.opsHub.environment || config.nodeEnv || 'development', 40),
-    ...(identity.shopId ? { shopId: identity.shopId } : {}),
-    ...(identity.shopHandle ? { shopHandle: identity.shopHandle } : {}),
-    ...(identity.shopDomain ? { shopDomain: identity.shopDomain } : {})
+    appApiCalls: normalizeOpsCounter(source.appApiCalls),
+    shoplineApiCalls: normalizeOpsCounter(source.shoplineApiCalls),
+    webhookCalls: normalizeOpsCounter(source.webhookCalls),
+    errors: normalizeOpsCounter(source.errors)
   };
 }
 
-export function normalizeOpsHubPayload(payload = {}) {
-  const eventType = compactString(payload.eventType, 80);
+export function usageBucketsToHubCounters(value = {}) {
+  const buckets = normalizeUsageCounters(value);
+  return {
+    appApiCalls: normalizeOpsCounter(
+      (buckets.app_api_admin_requests || 0)
+      + (buckets.app_api_availability_requests || 0)
+      + (buckets.app_api_booking_requests || 0)
+    ),
+    shoplineApiCalls: normalizeOpsCounter(buckets.shopline_api_requests || 0),
+    webhookCalls: normalizeOpsCounter(buckets.webhook_received || 0),
+    // health_errors is the canonical error total. The specific failure buckets are
+    // retained in requestBuckets so Ops Hub can inspect them without double-counting.
+    errors: normalizeOpsCounter(buckets.health_errors || 0)
+  };
+}
+
+function healthReason({ message = '', metadata = {}, eventType = '' } = {}) {
+  const errorCode = compactString(metadata.errorCode, 120);
+  const statusCode = Number(metadata.statusCode || 0);
+  const durationMs = Number(metadata.durationMs || 0);
+  const parts = [];
+  if (errorCode) parts.push(`code=${errorCode}`);
+  if (statusCode > 0) parts.push(`HTTP ${statusCode}`);
+  if (parts.length) return compactString(parts.join(' · '), 1000);
+  if (durationMs > 0) return compactString(`duration=${Math.round(durationMs)}ms`, 1000);
+  return compactString(message || eventType || 'Appointment Lite health event', 1000);
+}
+
+/**
+ * Normalize either the v0.6.16 legacy internal payload or an already-normalized
+ * Ops Hub event into the exact Toolkit Ops Hub ingest event contract:
+ * { eventId, occurredAt, type, data }.
+ */
+export function normalizeOpsHubPayload(payload = {}, { eventId = '' } = {}) {
+  const contractLike = Boolean(payload?.type && payload?.data && typeof payload.data === 'object');
+  const eventType = compactString(contractLike ? payload.type : payload.eventType, 80);
   if (!SUPPORTED_EVENT_SET.has(eventType)) throw new Error(`Unsupported Ops Hub event type: ${eventType || 'missing'}`);
-  const normalized = {
-    eventType,
-    occurredAt: new Date(payload.occurredAt || Date.now()).toISOString(),
-    appVersion: compactString(payload.appVersion || config.opsHub.appVersion || '0.6.16', 40),
-    environment: compactString(payload.environment || config.opsHub.environment || config.nodeEnv || 'development', 40)
+
+  const occurredAt = new Date(payload.occurredAt || Date.now()).toISOString();
+  const resolvedEventId = normalizeEventId(payload.eventId || eventId, eventType);
+  const source = contractLike ? (payload.data || {}) : payload;
+  const appVersion = compactString(
+    source.version || source.appVersion || payload.appVersion || config.opsHub.appVersion || '0.6.16',
+    100
+  );
+  const environment = compactString(
+    source.environment || payload.environment || config.opsHub.environment || config.nodeEnv || 'development',
+    60
+  );
+
+  let data;
+
+  if (eventType === 'app.heartbeat') {
+    data = {
+      ...(appVersion ? { version: appVersion } : {}),
+      ...(environment ? { environment } : {})
+    };
+  } else if (eventType === 'shop.installed' || eventType === 'shop.uninstalled' || eventType === 'shop.active') {
+    const legacyShop = {
+      externalStoreId: source.shopId || payload.shopId || '',
+      handle: source.shopHandle || payload.shopHandle || '',
+      primaryDomain: source.shopDomain || payload.shopDomain || '',
+      shopName: source.shopName || payload.shopName || ''
+    };
+    const shop = opsHubStoreIdentity(source.shop || payload.shop || legacyShop);
+    if (!shop) throw new Error(`Ops Hub ${eventType} requires a stable SHOPLINE store identity.`);
+    const metadata = sanitizeOpsMetadata(source.metadata || payload.metadata || {});
+
+    if (eventType === 'shop.installed') {
+      const installedAt = source.installedAt || payload.installedAt || payload.shop?.installedAt;
+      data = {
+        shop,
+        ...(installedAt ? { installedAt: new Date(installedAt).toISOString() } : {}),
+        ...(Number.isInteger(Number(source.installCount)) && Number(source.installCount) >= 0
+          ? { installCount: Math.min(100000, Number(source.installCount)) }
+          : {}),
+        ...(Object.keys(metadata).length ? { metadata } : {})
+      };
+    } else if (eventType === 'shop.uninstalled') {
+      const uninstalledAt = source.uninstalledAt || payload.uninstalledAt || payload.shop?.uninstalledAt;
+      data = {
+        shop,
+        ...(uninstalledAt ? { uninstalledAt: new Date(uninstalledAt).toISOString() } : {}),
+        ...(Object.keys(metadata).length ? { metadata } : {})
+      };
+    } else {
+      const requestedSource = compactString(source.source || source.metadata?.source || payload.source || payload.metadata?.source, 20);
+      const activeSource = ['admin', 'storefront', 'api', 'webhook'].includes(requestedSource) ? requestedSource : 'admin';
+      const lastSeenAt = source.lastSeenAt || payload.lastSeenAt || occurredAt;
+      data = {
+        shop,
+        source: activeSource,
+        lastSeenAt: new Date(lastSeenAt).toISOString(),
+        ...(Object.keys(metadata).length ? { metadata } : {})
+      };
+    }
+  } else if (eventType === 'usage.daily') {
+    const dateKey = /^\d{4}-\d{2}-\d{2}$/.test(String(source.dateKey || source.date || payload.date || ''))
+      ? String(source.dateKey || source.date || payload.date)
+      : usageDate(occurredAt);
+    const requestBuckets = normalizeUsageCounters(source.requestBuckets || payload.requestBuckets || source.counters || payload.counters || {});
+    const counters = source.requestBuckets || payload.requestBuckets
+      ? normalizeHubUsageCounters(source.counters || payload.counters || {})
+      : usageBucketsToHubCounters(requestBuckets);
+    data = {
+      dateKey,
+      counters,
+      ...(Object.keys(requestBuckets).length ? { requestBuckets } : {})
+    };
+  } else {
+    const metadata = sanitizeOpsMetadata(source.metadata || payload.metadata || {});
+    const legacyShop = {
+      externalStoreId: source.shopId || payload.shopId || '',
+      handle: source.shopHandle || payload.shopHandle || '',
+      primaryDomain: source.shopDomain || payload.shopDomain || '',
+      shopName: source.shopName || payload.shopName || ''
+    };
+    const shop = opsHubStoreIdentity(source.shop || payload.shop || legacyShop);
+    const category = compactString(source.category || metadata.category || 'runtime', 80) || 'runtime';
+    const healthEventType = compactString(source.healthEventType || (contractLike ? source.eventType : '') || metadata.reason || 'runtime.event', 160) || 'runtime.event';
+    const status = normalizeHealthStatus(source.status || source.severity || metadata.severity || 'error');
+    const message = compactString(source.message || payload.message || healthEventType, 500);
+    const durationRaw = source.durationMs ?? metadata.durationMs;
+    const durationNumber = Number(durationRaw);
+    const durationMs = Number.isFinite(durationNumber) && durationNumber >= 0
+      ? Math.min(86_400_000, durationNumber)
+      : null;
+    const requestId = compactString(source.requestId || metadata.requestId, 160);
+    data = {
+      ...(shop ? { shop } : {}),
+      category,
+      eventType: healthEventType,
+      status,
+      ...(message ? { message } : {}),
+      reason: compactString(source.reason || healthReason({ message, metadata, eventType: healthEventType }), 1000),
+      ...(durationMs !== null ? { durationMs } : {}),
+      ...(requestId ? { requestId } : {}),
+      ...(Object.keys(metadata).length ? { metadata } : {})
+    };
+  }
+
+  return {
+    eventId: resolvedEventId,
+    occurredAt,
+    type: eventType,
+    data
   };
-  for (const key of ['shopId', 'shopHandle', 'shopDomain']) {
-    const value = compactString(payload[key], key === 'shopDomain' ? 180 : 100);
-    if (value) normalized[key] = value;
-  }
-  if (eventType === 'usage.daily') {
-    const date = /^\d{4}-\d{2}-\d{2}$/.test(String(payload.date || '')) ? String(payload.date) : usageDate(payload.occurredAt || new Date());
-    normalized.date = date;
-    normalized.counters = normalizeUsageCounters(payload.counters || {});
-  } else if (eventType === 'health.event') {
-    const message = compactString(payload.message || payload.metadata?.reason || 'Appointment Lite health event', 500);
-    if (message) normalized.message = message;
-    normalized.metadata = sanitizeOpsMetadata(payload.metadata || {});
-  }
-  // The Hub validates each event type with a strict object schema. Heartbeat and
-  // shop lifecycle/activity events intentionally use only the shared contract
-  // fields above. Rich diagnostic context belongs exclusively in health.event.
-  return normalized;
 }
 
 export function opsHubRetryDelayMs(attempt = 1, random = Math.random) {
@@ -235,7 +381,8 @@ export async function sendOpsHubPayload(payload, {
 } = {}) {
   if (!opsHubConfigured(runtimeConfig)) return { skipped: true, reason: 'OPS_HUB_DISABLED' };
   const normalized = normalizeOpsHubPayload(payload);
-  const rawBody = JSON.stringify(normalized);
+  const requestBody = { event: normalized };
+  const rawBody = JSON.stringify(requestBody);
   const timestamp = String(now());
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(new Error('OPS_HUB_TIMEOUT')), Number(runtimeConfig.timeoutMs || 15000));
@@ -254,13 +401,13 @@ export async function sendOpsHubPayload(payload, {
       const detail = opsHubResponseDetail(responsePayload);
       const suffix = detail ? `: ${detail}` : '';
       throw Object.assign(new Error(`Ops Hub ingest rejected with HTTP ${response.status}${suffix}`), {
-        code: 'OPS_HUB_HTTP_ERROR', status: response.status, response: responsePayload, eventType: normalized.eventType
+        code: 'OPS_HUB_HTTP_ERROR', status: response.status, response: responsePayload, eventType: normalized.type
       });
     }
-    return { ok: true, status: response.status, payload: responsePayload, eventType: normalized.eventType };
+    return { ok: true, status: response.status, payload: responsePayload, eventType: normalized.type };
   } catch (error) {
     if (error?.name === 'AbortError' || String(error?.message || '').includes('OPS_HUB_TIMEOUT')) {
-      throw Object.assign(new Error('OPS_HUB_TIMEOUT'), { code: 'OPS_HUB_TIMEOUT', status: 0, eventType: normalized.eventType });
+      throw Object.assign(new Error('OPS_HUB_TIMEOUT'), { code: 'OPS_HUB_TIMEOUT', status: 0, eventType: normalized.type });
     }
     throw error;
   } finally {
@@ -287,10 +434,13 @@ export async function queueOpsEvent(eventType, {
   if (!opsHubConfigured()) return null;
   try {
     const resolvedShop = await resolveShop(shop);
-    const common = commonPayloadFields({ occurredAt, shop: resolvedShop || shop || {} });
     const payload = normalizeOpsHubPayload({
+      eventId: `appointment-lite:${eventType}:${crypto.randomUUID()}`,
       eventType,
-      ...common,
+      occurredAt,
+      appVersion: config.opsHub.appVersion || '0.6.16',
+      environment: config.opsHub.environment || config.nodeEnv || 'development',
+      ...(resolvedShop || shop ? { shop: resolvedShop || shop } : {}),
       ...(message ? { message } : {}),
       ...(metadata ? { metadata } : {}),
       ...(eventType === 'usage.daily' ? { date, counters } : {})
@@ -401,48 +551,101 @@ export function queueHeartbeat() {
 
 export async function queueDailyUsageSnapshots({ date = previousUsageDate() } = {}) {
   if (!opsHubConfigured()) return { queued: 0, date };
-  const rows = await OpsUsageDaily.find({ date, queuedAt: null }).limit(500).lean();
-  let queued = 0;
+  // Ops Hub v0.2.x expects one app-level usage.daily snapshot per UTC day.
+  // Appointment Lite may accumulate detailed counters per shop internally, so we
+  // aggregate all rows into one Hub row and preserve the detail in requestBuckets.
+  const rows = await OpsUsageDaily.find({ date }).lean();
+  if (!rows.length || !rows.some(row => !row.queuedAt)) return { queued: 0, date };
+
+  const requestBuckets = {};
   for (const row of rows) {
     const counters = normalizeUsageCounters(row.counters || {});
-    if (!Object.keys(counters).length) {
-      await OpsUsageDaily.updateOne({ _id: row._id, queuedAt: null }, { $set: { queuedAt: new Date() } });
-      continue;
-    }
-    const shop = await Shop.findById(row.shopId).lean();
-    if (!shop) continue;
-    const event = await queueOpsEvent('usage.daily', {
-      shop,
-      date: row.date,
-      counters,
-      dedupeKey: `usage:${row.date}:${String(row.shopId)}`,
-      sourceUsageId: row._id
-    });
-    if (event) {
-      const result = await OpsUsageDaily.updateOne({ _id: row._id, queuedAt: null }, { $set: { queuedAt: new Date() } });
-      if (result.modifiedCount) queued += 1;
+    for (const [key, value] of Object.entries(counters)) {
+      requestBuckets[key] = normalizeOpsCounter((requestBuckets[key] || 0) + value);
     }
   }
-  return { queued, date };
+
+  if (!Object.keys(requestBuckets).length) {
+    await OpsUsageDaily.updateMany({ date, queuedAt: null }, { $set: { queuedAt: new Date() } });
+    return { queued: 0, date };
+  }
+
+  const event = await queueOpsEvent('usage.daily', {
+    date,
+    counters: requestBuckets,
+    dedupeKey: `usage:${date}:__all__`
+  });
+  if (!event) return { queued: 0, date };
+
+  await OpsUsageDaily.updateMany({ date, queuedAt: null }, { $set: { queuedAt: new Date() } });
+  return { queued: 1, date };
 }
 
 export async function requeueRecoverableOutboxEvents({ staleMs = 5 * 60_000, includeSchemaRejected = true } = {}) {
-  if (!opsHubConfigured()) return { modified: 0, staleLocks: 0, schemaRejected: 0 };
+  if (!opsHubConfigured()) return { modified: 0, staleLocks: 0, schemaRejected: 0, usageSuperseded: 0 };
   const stale = new Date(Date.now() - staleMs);
   const staleResult = await OpsHubEvent.updateMany(
     { status: 'sending', lockedAt: { $lt: stale }, attempts: { $lt: MAX_OUTBOX_ATTEMPTS } },
     { $set: { status: 'failed', nextAttemptAt: new Date(), lastError: 'Recovered stale sending lock.' }, $unset: { lockedAt: 1 } }
   );
+
   let schemaRejected = 0;
+  let usageSuperseded = 0;
   if (includeSchemaRejected) {
+    // v0.6.16/hotfix.1 wrote per-shop usage rows using an older guessed contract.
+    // Do not resend those as individual app-level snapshots because the Hub would
+    // overwrite the same __all__ day row repeatedly. Reopen the source day and let
+    // queueDailyUsageSnapshots emit one correctly aggregated replacement.
+    const rejectedUsage = await OpsHubEvent.find({
+      eventType: 'usage.daily',
+      status: 'failed',
+      lastStatusCode: 422,
+      attempts: { $lt: MAX_OUTBOX_ATTEMPTS }
+    }).select('_id payload').lean();
+    if (rejectedUsage.length) {
+      const dates = new Set();
+      for (const item of rejectedUsage) {
+        const raw = item?.payload || {};
+        const date = raw?.data?.dateKey || raw?.date || raw?.dateKey;
+        if (/^\d{4}-\d{2}-\d{2}$/.test(String(date || ''))) dates.add(String(date));
+      }
+      if (dates.size) {
+        await OpsUsageDaily.updateMany({ date: { $in: [...dates] } }, { $set: { queuedAt: null } });
+      }
+      const ids = rejectedUsage.map(item => item._id);
+      const superseded = await OpsHubEvent.updateMany(
+        { _id: { $in: ids } },
+        {
+          $set: {
+            status: 'failed',
+            attempts: MAX_OUTBOX_ATTEMPTS,
+            lastError: 'Superseded by v0.6.16-hotfix.2 app-level usage.daily contract alignment.'
+          },
+          $unset: { lockedAt: 1 }
+        }
+      );
+      usageSuperseded = superseded.modifiedCount || 0;
+    }
+
     const schemaResult = await OpsHubEvent.updateMany(
-      { status: 'failed', lastStatusCode: 422, attempts: { $lt: MAX_OUTBOX_ATTEMPTS } },
-      { $set: { nextAttemptAt: new Date(), lastError: 'Retrying after Ops Hub payload compatibility normalization.' } }
+      {
+        eventType: { $ne: 'usage.daily' },
+        status: 'failed',
+        lastStatusCode: 422,
+        attempts: { $lt: MAX_OUTBOX_ATTEMPTS }
+      },
+      { $set: { nextAttemptAt: new Date(), lastError: 'Retrying after Ops Hub payload compatibility normalization and v0.2.x contract alignment.' } }
     );
     schemaRejected = schemaResult.modifiedCount || 0;
   }
+
   const staleLocks = staleResult.modifiedCount || 0;
-  return { modified: staleLocks + schemaRejected, staleLocks, schemaRejected };
+  return {
+    modified: staleLocks + schemaRejected + usageSuperseded,
+    staleLocks,
+    schemaRejected,
+    usageSuperseded
+  };
 }
 
 async function claimNextOutboxEvent() {
@@ -471,7 +674,7 @@ export async function flushOpsHubOutbox({ limit = config.opsHub.batchSize, sende
     try {
       // Normalize persisted payloads again at send time so old or malformed fields
       // can never poison a later batch after the Hub contract becomes stricter.
-      const normalized = normalizeOpsHubPayload(event.payload || {});
+      const normalized = normalizeOpsHubPayload(event.payload || {}, { eventId: `appointment-lite:${String(event._id)}` });
       const result = await sender(normalized);
       if (result?.skipped) {
         await OpsHubEvent.updateOne({ _id: event._id }, { $set: { status: 'failed', nextAttemptAt: new Date(Date.now() + 60_000), lastError: result.reason || 'OPS_HUB_DISABLED' }, $unset: { lockedAt: 1 } });

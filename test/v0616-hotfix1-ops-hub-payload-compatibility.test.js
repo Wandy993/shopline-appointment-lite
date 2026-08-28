@@ -23,7 +23,7 @@ const runtimeConfig = Object.freeze({
   timeoutMs: 100
 });
 
-test('v0.6.16-hotfix.1 strips metadata from strict heartbeat and shop event schemas', () => {
+test('v0.6.16-hotfix.1 legacy payloads are upgraded into the strict Hub event envelope', () => {
   const heartbeat = normalizeOpsHubPayload({
     eventType: 'app.heartbeat',
     occurredAt: '2026-08-28T01:11:48.000Z',
@@ -31,12 +31,10 @@ test('v0.6.16-hotfix.1 strips metadata from strict heartbeat and shop event sche
     environment: 'production',
     metadata: { operation: 'heartbeat', durationMs: 12345 }
   });
-  assert.deepEqual(heartbeat, {
-    eventType: 'app.heartbeat',
-    occurredAt: '2026-08-28T01:11:48.000Z',
-    appVersion: '0.6.16',
-    environment: 'production'
-  });
+  assert.equal(heartbeat.type, 'app.heartbeat');
+  assert.equal(heartbeat.occurredAt, '2026-08-28T01:11:48.000Z');
+  assert.match(heartbeat.eventId, /^appointment-lite:app\.heartbeat:/);
+  assert.deepEqual(heartbeat.data, { version: '0.6.16', environment: 'production' });
 
   for (const eventType of ['shop.installed', 'shop.uninstalled', 'shop.active']) {
     const payload = normalizeOpsHubPayload({
@@ -47,10 +45,12 @@ test('v0.6.16-hotfix.1 strips metadata from strict heartbeat and shop event sche
       shopId: 'shopline-store-123',
       shopHandle: 'apptest',
       shopDomain: 'apptest.myshopline.com',
-      metadata: { reinstall: true, source: 'oauth' }
+      metadata: { reinstall: true, source: 'admin' }
     });
-    assert.equal('metadata' in payload, false, `${eventType} must not send arbitrary metadata`);
-    assert.equal(payload.shopHandle, 'apptest');
+    assert.equal(payload.type, eventType);
+    assert.equal(payload.data.shop.externalStoreId, 'shopline-store-123');
+    assert.equal(payload.data.shop.handle, 'apptest');
+    if (eventType === 'shop.active') assert.equal(payload.data.source, 'admin');
   }
 });
 
@@ -63,8 +63,9 @@ test('v0.6.16-hotfix.1 keeps rich metadata only in health.event', () => {
     message: 'availability.slow',
     metadata: { reason: 'availability.slow', category: 'performance', severity: 'warning', durationMs: 1800 }
   });
-  assert.equal(health.metadata.reason, 'availability.slow');
-  assert.equal(health.metadata.durationMs, 1800);
+  assert.equal(health.data.eventType, 'availability.slow');
+  assert.equal(health.data.status, 'warn');
+  assert.equal(health.data.metadata.durationMs, 1800);
 });
 
 test('v0.6.16-hotfix.1 exposes safe 422 schema issues instead of only Invalid ingest payload', async () => {
@@ -122,7 +123,7 @@ test('v0.6.16-hotfix.1 startup retries prior 422 outbox rows after send-time nor
   ]);
   assert.match(opsHub, /lastStatusCode:\s*422/);
   assert.match(opsHub, /Retrying after Ops Hub payload compatibility normalization/);
-  assert.match(opsHub, /normalizeOpsHubPayload\(event\.payload \|\| \{\}\)/);
+  assert.match(opsHub, /normalizeOpsHubPayload\(event\.payload \|\| \{\}, \{ eventId:/);
   assert.match(syncJob, /requeueRecoverableOutboxEvents/);
 });
 
@@ -134,7 +135,7 @@ test('v0.6.16-hotfix.1 heartbeat queue no longer attaches metadata and health ex
   ]);
   assert.match(opsHub, /return queueOpsEvent\('app\.heartbeat'\);/);
   assert.doesNotMatch(opsHub, /operation:\s*'heartbeat'/);
-  assert.match(app, /build:\s*'0\.6\.16-hotfix\.1'/);
-  assert.match(release, /RELEASE_BUILD="hotfix\.1"/);
+  assert.match(app, /build:\s*'0\.6\.16-hotfix\.[12]'/);
+  assert.match(release, /RELEASE_BUILD="hotfix\.[12]"/);
   assert.match(release, /ops-hub-payload-compatibility/);
 });
