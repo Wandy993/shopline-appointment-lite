@@ -1,11 +1,5 @@
 # Appointment Lite
 
-## v0.7.0.4 — SHOPLINE Checkout Body Fix
-
-Fixes SHOPLINE `create_pay.json` checkout creation by sending `app_key`, `currency`, and `handle` at the request-body root while keeping `spu_key` and checkout order fields inside `application_charge`, matching SHOPLINE's documented request hierarchy. This resolves the HTTP 400 `app_key` / `handle` missing error without changing subscription sync, archive mode, recovery behavior, or the SHOPLINE-managed seven-day trial.
-
-See [SHOPLINE Checkout Body Fix](docs/V0704_SHOPLINE_CHECKOUT_BODY_FIX.md).
-
 ## v0.7.0.3 — Subscription Recovery Hardening
 
 Appointment Lite now force-reconciles any stale inactive subscription with SHOPLINE whenever the admin starts or an archived page is resumed. Renewal recovery no longer waits for the normal subscription cache: signed subscription webhooks, admin bootstrap, manual refresh, browser focus/visibility restore, and BFCache resume all converge on the Partner API as the authority. When SHOPLINE reports valid access again, archive restrictions are removed immediately and the merchant sees a recovery confirmation.
