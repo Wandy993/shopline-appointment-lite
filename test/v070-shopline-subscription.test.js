@@ -47,12 +47,21 @@ test('v0.7.0 access follows SHOPLINE active state and the documented one-day gra
   assert.equal(subscriptionAccessState({ status: 'cancelled' }, { enabled: true, now }).allowed, false);
 });
 
-test('v0.7.0 checkout body uses one SHOPLINE application plan and does not implement a local trial', () => {
+test('v0.7.0.4 checkout body follows SHOPLINE create_pay root/application_charge hierarchy', () => {
   const body = buildSubscriptionCheckoutBody({ handle: 'Demo-Shop' }, { outTradeNo: 'al_demo_1', returnUrl: 'https://example.test/subscription/return?trade=al_demo_1' });
-  assert.deepEqual(body, { application_charge: {
-    count: '1', out_trade_no: 'al_demo_1', return_url: 'https://example.test/subscription/return?trade=al_demo_1',
-    spu_key: config.subscription.spuKey, app_key: config.shopline.appKey, currency: 'USD', handle: 'demo-shop'
-  } });
+  assert.deepEqual(body, {
+    app_key: config.shopline.appKey,
+    currency: 'USD',
+    handle: 'demo-shop',
+    application_charge: {
+      count: '1',
+      out_trade_no: 'al_demo_1',
+      return_url: 'https://example.test/subscription/return?trade=al_demo_1',
+      spu_key: config.subscription.spuKey
+    }
+  });
+  assert.equal('app_key' in body.application_charge, false);
+  assert.equal('handle' in body.application_charge, false);
   assert.equal('trial_days' in body.application_charge, false);
 });
 

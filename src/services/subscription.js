@@ -348,14 +348,14 @@ export function createSubscriptionTradeNo(handle = 'shop') {
 
 export function buildSubscriptionCheckoutBody(shop, { outTradeNo, returnUrl } = {}) {
   return {
+    app_key: config.shopline.appKey,
+    currency: 'USD',
+    handle: asString(shop?.handle).toLowerCase(),
     application_charge: {
       count: '1',
       out_trade_no: asString(outTradeNo),
       return_url: asString(returnUrl),
-      spu_key: config.subscription.spuKey,
-      app_key: config.shopline.appKey,
-      currency: 'USD',
-      handle: asString(shop?.handle).toLowerCase()
+      spu_key: config.subscription.spuKey
     }
   };
 }
