@@ -44,7 +44,6 @@ const SAFE_METADATA_KEYS = new Set([
 const SENSITIVE_KEY = /(email|phone|address|name|token|secret|password|cookie|authorization|body|payload|customer|note|messagebody|refresh)/i;
 const MAX_COUNTER = 1_000_000_000;
 const MAX_OUTBOX_ATTEMPTS = 12;
-const APP_START_AT = Date.now();
 
 function expiresInDays(days) {
   return new Date(Date.now() + Math.max(1, Number(days || 1)) * 24 * 60 * 60 * 1000);
@@ -62,6 +61,49 @@ function previousUsageDate(date = new Date()) {
 
 function compactString(value, max = 500) {
   return String(value ?? '').replace(/[\r\n\t]+/g, ' ').trim().slice(0, max);
+}
+
+function summarizeOpsHubIssue(issue) {
+  if (typeof issue === 'string') return compactString(issue, 500);
+  if (!issue || typeof issue !== 'object' || Array.isArray(issue)) return '';
+  const parts = [];
+  if (issue.code) parts.push(`code=${compactString(issue.code, 80)}`);
+  if (Array.isArray(issue.path) && issue.path.length) parts.push(`path=${issue.path.map(item => compactString(item, 80)).join('.')}`);
+  else if (issue.path) parts.push(`path=${compactString(issue.path, 240)}`);
+  if (Array.isArray(issue.keys) && issue.keys.length) parts.push(`keys=${issue.keys.map(item => compactString(item, 80)).join(',')}`);
+  if (issue.expected !== undefined) parts.push(`expected=${compactString(issue.expected, 120)}`);
+  if (issue.received !== undefined) parts.push(`received=${compactString(issue.received, 120)}`);
+  if (issue.message) parts.push(compactString(issue.message, 500));
+  return parts.join(' ');
+}
+
+export function opsHubResponseDetail(payload) {
+  if (typeof payload === 'string') return compactString(payload, 1800);
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return '';
+  const parts = [];
+  const primary = payload.message || payload.error || payload.detail;
+  if (primary && typeof primary !== 'object') parts.push(compactString(primary, 500));
+  for (const key of ['issues', 'details', 'errors']) {
+    const value = payload[key];
+    if (!value) continue;
+    const items = Array.isArray(value) ? value : [value];
+    const summaries = items.map(summarizeOpsHubIssue).filter(Boolean).slice(0, 8);
+    if (summaries.length) parts.push(`${key}: ${summaries.join(' | ')}`);
+  }
+  return compactString(parts.join(' | '), 1800);
+}
+
+export function opsHubDiagnosticLine(event, fields = {}) {
+  const safe = {
+    level: compactString(fields.level || 'warn', 16),
+    event: compactString(event || 'ops_hub.event', 100),
+    eventType: compactString(fields.eventType || '', 80),
+    statusCode: Number(fields.statusCode || 0),
+    attempt: Number(fields.attempt || 0),
+    code: compactString(fields.code || '', 100),
+    message: compactString(fields.message || '', 1000)
+  };
+  return JSON.stringify(safe);
 }
 
 export function opsHubConfigured(runtimeConfig = config.opsHub) {
@@ -166,10 +208,10 @@ export function normalizeOpsHubPayload(payload = {}) {
     const message = compactString(payload.message || payload.metadata?.reason || 'Appointment Lite health event', 500);
     if (message) normalized.message = message;
     normalized.metadata = sanitizeOpsMetadata(payload.metadata || {});
-  } else if (payload.metadata && typeof payload.metadata === 'object') {
-    const metadata = sanitizeOpsMetadata(payload.metadata);
-    if (Object.keys(metadata).length) normalized.metadata = metadata;
   }
+  // The Hub validates each event type with a strict object schema. Heartbeat and
+  // shop lifecycle/activity events intentionally use only the shared contract
+  // fields above. Rich diagnostic context belongs exclusively in health.event.
   return normalized;
 }
 
@@ -209,10 +251,9 @@ export async function sendOpsHubPayload(payload, {
     let responsePayload = null;
     try { responsePayload = text ? JSON.parse(text) : null; } catch { responsePayload = text.slice(0, 500); }
     if (!response.ok) {
-      const detail = typeof responsePayload === 'string'
-        ? responsePayload
-        : (responsePayload?.message || responsePayload?.error || JSON.stringify(responsePayload || {}));
-      throw Object.assign(new Error(`Ops Hub ingest rejected with HTTP ${response.status}: ${compactString(detail, 500)}`), {
+      const detail = opsHubResponseDetail(responsePayload);
+      const suffix = detail ? `: ${detail}` : '';
+      throw Object.assign(new Error(`Ops Hub ingest rejected with HTTP ${response.status}${suffix}`), {
         code: 'OPS_HUB_HTTP_ERROR', status: response.status, response: responsePayload, eventType: normalized.eventType
       });
     }
@@ -355,12 +396,7 @@ export async function queueShopActive(shop) {
 }
 
 export function queueHeartbeat() {
-  return queueOpsEvent('app.heartbeat', {
-    metadata: {
-      operation: 'heartbeat',
-      durationMs: Date.now() - APP_START_AT
-    }
-  });
+  return queueOpsEvent('app.heartbeat');
 }
 
 export async function queueDailyUsageSnapshots({ date = previousUsageDate() } = {}) {
@@ -390,14 +426,23 @@ export async function queueDailyUsageSnapshots({ date = previousUsageDate() } = 
   return { queued, date };
 }
 
-export async function requeueRecoverableOutboxEvents({ staleMs = 5 * 60_000 } = {}) {
-  if (!opsHubConfigured()) return { modified: 0 };
+export async function requeueRecoverableOutboxEvents({ staleMs = 5 * 60_000, includeSchemaRejected = true } = {}) {
+  if (!opsHubConfigured()) return { modified: 0, staleLocks: 0, schemaRejected: 0 };
   const stale = new Date(Date.now() - staleMs);
-  const result = await OpsHubEvent.updateMany(
+  const staleResult = await OpsHubEvent.updateMany(
     { status: 'sending', lockedAt: { $lt: stale }, attempts: { $lt: MAX_OUTBOX_ATTEMPTS } },
     { $set: { status: 'failed', nextAttemptAt: new Date(), lastError: 'Recovered stale sending lock.' }, $unset: { lockedAt: 1 } }
   );
-  return { modified: result.modifiedCount || 0 };
+  let schemaRejected = 0;
+  if (includeSchemaRejected) {
+    const schemaResult = await OpsHubEvent.updateMany(
+      { status: 'failed', lastStatusCode: 422, attempts: { $lt: MAX_OUTBOX_ATTEMPTS } },
+      { $set: { nextAttemptAt: new Date(), lastError: 'Retrying after Ops Hub payload compatibility normalization.' } }
+    );
+    schemaRejected = schemaResult.modifiedCount || 0;
+  }
+  const staleLocks = staleResult.modifiedCount || 0;
+  return { modified: staleLocks + schemaRejected, staleLocks, schemaRejected };
 }
 
 async function claimNextOutboxEvent() {
@@ -444,7 +489,16 @@ export async function flushOpsHubOutbox({ limit = config.opsHub.batchSize, sende
         lastError: compactString(error?.message || 'Ops Hub delivery failed.', 1000),
         lastStatusCode: status
       }, $unset: { lockedAt: 1 } });
-      console.warn('Ops Hub delivery failed', { eventType: event.eventType, statusCode: status, attempt: event.attempts, message: compactString(error?.message, 500) });
+      // Keep this on stdout as a structured single line. Railway otherwise
+      // splits console.warn object output and can surface a lone `}` as an error.
+      console.log(opsHubDiagnosticLine('ops_hub.delivery_failed', {
+        level: 'warn',
+        eventType: event.eventType,
+        statusCode: status,
+        attempt: event.attempts,
+        code: error?.code || '',
+        message: error?.message || 'Ops Hub delivery failed.'
+      }));
       failed += 1;
     }
   }

@@ -3,7 +3,8 @@ set -u
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd -P)"
 RELEASE_VERSION="0.6.16"
-NAME="appointment-lite-v${RELEASE_VERSION}-ops-hub-observability-integration"
+RELEASE_BUILD="hotfix.1"
+NAME="appointment-lite-v${RELEASE_VERSION}-ops-hub-observability-integration-${RELEASE_BUILD}-ops-hub-payload-compatibility"
 DIST_DIR="$ROOT_DIR/dist"
 STAGE_DIR="${TMPDIR:-/tmp}/${NAME}.$$"
 OUTPUT="$DIST_DIR/${NAME}.zip"
