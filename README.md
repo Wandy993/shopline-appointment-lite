@@ -661,3 +661,8 @@ Staff schedule exceptions now explicitly explain that they only change the emplo
 - Email Studio now gives merchants independent customer and merchant switches for confirmations/new bookings, changes, cancellations, and pre-appointment reminders.
 - Pre-appointment reminders can be scheduled 3, 6, 12, 24, 48, or 72 hours before the appointment. A lightweight Mongo-backed delivery ledger prevents duplicate reminder sends and handles each multi-session occurrence independently.
 - Storefront confirmation copy no longer promises that an email was sent when the merchant has disabled customer confirmation emails.
+
+### v0.7.0.1 trial-day display hotfix
+
+- Prevents a SHOPLINE 7-day trial from displaying as 8 days when `end_at` is rounded slightly beyond an exact 7 x 24-hour interval.
+- Keeps SHOPLINE `end_at` unchanged for real access control.

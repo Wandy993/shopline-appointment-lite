@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { buildSubscriptionCheckoutBody, pickCurrentSubscription, shoplineTimestampToDate, subscriptionAccessState } from '../src/services/subscription.js';
+import { buildSubscriptionCheckoutBody, pickCurrentSubscription, publicSubscriptionSnapshot, shoplineTimestampToDate, subscriptionAccessState } from '../src/services/subscription.js';
 import { config } from '../src/config.js';
 
 const source = path => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
@@ -23,6 +23,20 @@ test('v0.7.0 chooses the current target plan instead of a future preorder', () =
   assert.equal(current.subId, 'current');
   assert.equal(current.isTrial, true);
   assert.equal(current.type, 'trial');
+});
+
+test('v0.7.0.1 trial day display never exceeds the configured SHOPLINE trial term', () => {
+  const now = new Date('2026-08-28T12:54:00.000Z');
+  const snapshot = publicSubscriptionSnapshot({
+    status: 'active',
+    type: 'trial',
+    isTrial: true,
+    startedAt: new Date('2026-08-28T12:54:00.000Z'),
+    // SHOPLINE may round end_at to a billing boundary, making the duration a few minutes over 7 days.
+    expiresAt: new Date('2026-09-04T13:00:00.000Z')
+  }, { now });
+  assert.equal(config.subscription.trialDays, 7);
+  assert.equal(snapshot.trialDaysRemaining, 7);
 });
 
 test('v0.7.0 access follows SHOPLINE active state and the documented one-day grace period', () => {

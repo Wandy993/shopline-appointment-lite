@@ -115,7 +115,15 @@ function remainingTrialDays(subscription, now = new Date()) {
   if (!subscription?.isTrial || !subscription?.expiresAt) return null;
   const end = new Date(subscription.expiresAt).getTime();
   if (!Number.isFinite(end)) return null;
-  return Math.max(0, Math.ceil((end - now.getTime()) / 86_400_000));
+
+  // SHOPLINE can normalize a trial end timestamp to a billing boundary (for example,
+  // the top of an hour). That can make a seven-day trial a few minutes longer than
+  // exactly 7 * 24 hours. Using Math.ceil() directly would then display "8 days"
+  // even though the configured trial is seven days. Keep SHOPLINE's exact end_at for
+  // access control, but cap the merchant-facing day count to the configured trial term.
+  const calculatedDays = Math.max(0, Math.ceil((end - now.getTime()) / 86_400_000));
+  const configuredDays = Math.max(0, Number(config.subscription.trialDays || 0));
+  return configuredDays > 0 ? Math.min(configuredDays, calculatedDays) : calculatedDays;
 }
 
 export function publicSubscriptionSnapshot(shopOrSubscription, { now = new Date() } = {}) {
