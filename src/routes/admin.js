@@ -9,6 +9,7 @@ import { StaffReservation } from '../models/StaffReservation.js';
 import { CalendarConnection } from '../models/CalendarConnection.js';
 import { validateAdminBookingInput, validateBookingStatus, validateRuleInput, validateStaffInput } from '../lib/validation.js';
 import { requireAdmin, requireCsrf } from '../middleware/auth.js';
+import { requireActiveSubscription } from '../middleware/subscription.js';
 import { ensureBookingCommerceWebhooks, reauthorizationUrlForShop, shoplineGet, shoplineLocationAccessStatus, shoplineOrderAccessStatus, syncShopMetadata } from '../services/shopline.js';
 import { getProductVariants, syncProductCatalog } from '../services/product-catalog.js';
 import { cancelBookingByMerchant, deleteBookingByMerchant, setBookingStatusByMerchant, updateBookingByMerchant } from '../services/bookings.js';
@@ -22,12 +23,54 @@ import { queueUpcomingGoogleCalendarBookingsForBusiness, syncUpcomingGoogleCalen
 import { reconcileRecentCommerceOrdersForShop } from '../services/paid-bookings.js';
 import { formatLocationSnapshot, listShoplineLocations, resolveShoplineLocation } from '../services/locations.js';
 import { incrementOpsUsage } from '../services/ops-hub.js';
+import { createSubscriptionCheckout, ensureFreshSubscriptionForShop, publicSubscriptionSnapshot, syncSubscriptionForShop } from '../services/subscription.js';
 
 export const adminRouter = Router();
 adminRouter.use(requireAdmin, requireCsrf);
 adminRouter.use((req, res, next) => {
   void incrementOpsUsage(req.shop, 'app_api_admin_requests', 1);
   next();
+});
+
+async function adminSubscriptionState(req, { force = false } = {}) {
+  let subscription = publicSubscriptionSnapshot(req.shop);
+  let syncError = '';
+  if (!config.subscription.enabled) return { subscription, syncError };
+  try {
+    const result = force
+      ? await syncSubscriptionForShop(req.shop, { source: 'admin_force_sync' })
+      : await ensureFreshSubscriptionForShop(req.shop);
+    if (result.shop) req.shop = result.shop;
+    subscription = result.subscription || publicSubscriptionSnapshot(req.shop);
+  } catch (error) {
+    syncError = String(error.message || error);
+    subscription = publicSubscriptionSnapshot(req.shop);
+  }
+  return { subscription, syncError };
+}
+
+adminRouter.get('/subscription', async (req, res) => {
+  const { subscription, syncError } = await adminSubscriptionState(req, { force: req.query.refresh === '1' });
+  res.set('Cache-Control', 'no-store');
+  res.json({ subscription, syncError });
+});
+
+adminRouter.post('/subscription/sync', async (req, res, next) => {
+  try {
+    const result = await syncSubscriptionForShop(req.shop, { source: 'admin_manual_sync' });
+    if (result.shop) req.shop = result.shop;
+    res.set('Cache-Control', 'no-store');
+    res.json({ subscription: result.subscription || publicSubscriptionSnapshot(req.shop) });
+  } catch (error) { next(error); }
+});
+
+adminRouter.post('/subscription/checkout', async (req, res, next) => {
+  try {
+    const synced = await syncSubscriptionForShop(req.shop, { source: 'checkout_preflight' });
+    if (synced.shop) req.shop = synced.shop;
+    const checkout = await createSubscriptionCheckout(req.shop);
+    res.json(checkout);
+  } catch (error) { next(error); }
 });
 
 function bookingSnapshot(booking) {
@@ -96,11 +139,22 @@ async function validateManagedStaffSelection(shopId, ruleValue) {
 }
 
 adminRouter.get('/bootstrap', async (req, res) => {
+  const { subscription, syncError: subscriptionSyncError } = await adminSubscriptionState(req, { force: req.query.subscription_return === '1' });
   if (!req.shop.shoplineStoreId) {
     try {
       const metadata = await syncShopMetadata(req.shop._id);
       Object.assign(req.shop, metadata);
     } catch (error) { console.warn('Could not refresh shop metadata:', error.message); }
+  }
+  if (config.subscription.enabled && !subscription.accessAllowed) {
+    res.set('Cache-Control', 'no-store');
+    return res.json({
+      restricted: true,
+      subscription,
+      subscriptionSyncError,
+      shop: { handle: req.shop.handle, storeId: req.shop.shoplineStoreId || '', locale: req.shop.locale, adminLocale: req.shop.adminLocale || 'en', timezone: req.shop.timezone, email: req.shop.email || '' },
+      csrfToken: req.csrfToken
+    });
   }
   const storeNow = zonedNow(req.shop.timezone || 'UTC');
   const upcomingFilter = {
@@ -139,6 +193,7 @@ adminRouter.get('/bootstrap', async (req, res) => {
     reconcileAvailable: orderAccessState.granted
   };
   res.json({
+    restricted: false, subscription, subscriptionSyncError,
     shop: { handle: req.shop.handle, storeId: req.shop.shoplineStoreId || '', locale: req.shop.locale, adminLocale: req.shop.adminLocale || 'en', timezone: req.shop.timezone, email: req.shop.email || '' },
     email: { configured: delivery.configured, from: delivery.from || '' }, emailSettings: normalizeEmailSettings(req.shop.emailSettings || {}), storefrontSettings: normalizeStorefrontSettings(req.shop.storefrontSettings || {}), nextBookings, orderAccess,
     onboarding: onboardingStatus(req.shop, { ruleCount, activeRuleCount, bookingCount, firstActiveRule }),
@@ -146,6 +201,8 @@ adminRouter.get('/bootstrap', async (req, res) => {
     stats: { ruleCount, activeRuleCount, bookingCount, upcomingCount }
   });
 });
+
+adminRouter.use(requireActiveSubscription);
 
 adminRouter.get('/products', async (req, res, next) => {
   try {

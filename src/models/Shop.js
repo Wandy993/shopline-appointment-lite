@@ -80,6 +80,25 @@ const onboardingSchema = new mongoose.Schema({
   themeEditorOpenedAt: Date
 }, { _id: false });
 
+const subscriptionSchema = new mongoose.Schema({
+  spuKey: { type: String, default: '', trim: true, maxlength: 160 },
+  subId: { type: String, default: '', trim: true, maxlength: 180 },
+  status: { type: String, enum: ['none', 'pending', 'active', 'expired', 'unactive', 'cancelled', 'locked'], default: 'none' },
+  type: { type: String, enum: ['', 'trial', 'paid', 'preorder'], default: '' },
+  isTrial: { type: Boolean, default: false },
+  autoRecurring: { type: Boolean, default: false },
+  startedAt: Date,
+  expiresAt: Date,
+  everActivatedAt: Date,
+  expirationType: Number,
+  lastSyncedAt: Date,
+  lastWebhookAt: Date,
+  lastSource: { type: String, default: '', maxlength: 80 },
+  lastPaymentStatus: { type: String, enum: ['', 'paid', 'cancelled', 'failed'], default: '' },
+  lastPaymentAt: Date,
+  lastPaymentTradeNo: { type: String, default: '', maxlength: 120 }
+}, { _id: false });
+
 const shopSchema = new mongoose.Schema({
   handle: { type: String, required: true, unique: true, lowercase: true, trim: true, index: true },
   shoplineStoreId: { type: String, unique: true, sparse: true, trim: true, index: true },
@@ -94,6 +113,7 @@ const shopSchema = new mongoose.Schema({
   emailSettings: { type: emailSettingsSchema, default: () => ({}) },
   storefrontSettings: { type: storefrontSettingsSchema, default: () => ({}) },
   onboarding: { type: onboardingSchema, default: () => ({}) },
+  subscription: { type: subscriptionSchema, default: () => ({}) },
   installedAt: { type: Date, default: Date.now },
   uninstalledAt: Date,
   opsHubLastActiveAt: Date

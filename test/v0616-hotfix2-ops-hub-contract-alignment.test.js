@@ -202,12 +202,10 @@ test('v0.6.16-hotfix.2 preserves old 422 recovery but supersedes legacy per-shop
   assert.match(opsHub, /const requestBody = \{ event: normalized \}/);
 });
 
-test('v0.6.16-hotfix.2 release identity preserves v0.6.16 lineage and exposes the contract alignment build', async () => {
+test('current release identity advances without regressing the Ops Hub contract alignment', async () => {
   const [app, release] = await Promise.all([source('src/app.js'), source('scripts/build-release.sh')]);
-  assert.match(app, /build:\s*'0\.6\.16-hotfix\.2'/);
-  assert.match(release, /RELEASE_VERSION="0\.6\.16"/);
-  assert.match(release, /RELEASE_BUILD="hotfix\.2"/);
-  assert.match(release, /ops-hub-observability-integration/);
-  assert.match(release, /ops-hub-payload-compatibility/);
-  assert.match(release, /ops-hub-contract-alignment/);
+  assert.match(app, /build:\s*'0\.7\.0-subscription\.1'/);
+  assert.match(release, /RELEASE_VERSION="0\.7\.0"/);
+  assert.match(release, /RELEASE_BUILD="subscription\.1"/);
+  assert.match(release, /shopline-subscription-integration/);
 });

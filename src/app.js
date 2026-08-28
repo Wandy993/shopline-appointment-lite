@@ -13,6 +13,7 @@ import { managePage } from './views/manage.js';
 import { bookingPage } from './views/book.js';
 import { homePage, privacyPage, termsPage, faqPage, preferredLegalLocale } from './views/legal.js';
 import { shoplinePaidBookingWebhook } from './routes/shopline-webhooks.js';
+import { subscriptionRouter } from './routes/subscription.js';
 
 export function createApp() {
   const app = express();
@@ -34,7 +35,7 @@ export function createApp() {
   app.use('/integration-assets', express.static('public/integrations', { maxAge: config.nodeEnv === 'production' ? '1h' : 0 }));
   app.use('/legal/assets', express.static('public/legal', { maxAge: config.nodeEnv === 'production' ? '1h' : 0 }));
 
-  app.get('/health', (req, res) => res.json({ ok: true, service: 'appointment-lite', version: '0.6.16', build: '0.6.16-hotfix.2' }));
+  app.get('/health', (req, res) => res.json({ ok: true, service: 'appointment-lite', version: '0.7.0', build: '0.7.0-subscription.1' }));
   const legalHeaders = { 'Cache-Control': 'public, max-age=3600', 'Referrer-Policy': 'strict-origin-when-cross-origin' };
   app.get('/privacy', (req, res) => res.redirect(302, `/${preferredLegalLocale(req.get('accept-language'))}/privacy`));
   app.get('/terms', (req, res) => res.redirect(302, `/${preferredLegalLocale(req.get('accept-language'))}/terms`));
@@ -58,6 +59,7 @@ export function createApp() {
     res.set(legalHeaders).type('html').send(homePage('en'));
   });
   app.use('/auth', authRouter);
+  app.use('/subscription', subscriptionRouter);
   app.use('/integrations', integrationsRouter);
   app.get('/app', requireAdmin, (req, res) => res.type('html').send(adminPage()));
   app.get('/manage', (req, res) => res.set({ 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' }).type('html').send(managePage()));

@@ -254,7 +254,7 @@ export function normalizeOpsHubPayload(payload = {}, { eventId = '' } = {}) {
   const resolvedEventId = normalizeEventId(payload.eventId || eventId, eventType);
   const source = contractLike ? (payload.data || {}) : payload;
   const appVersion = compactString(
-    source.version || source.appVersion || payload.appVersion || config.opsHub.appVersion || '0.6.16',
+    source.version || source.appVersion || payload.appVersion || config.opsHub.appVersion || '0.7.0',
     100
   );
   const environment = compactString(
@@ -438,7 +438,7 @@ export async function queueOpsEvent(eventType, {
       eventId: `appointment-lite:${eventType}:${crypto.randomUUID()}`,
       eventType,
       occurredAt,
-      appVersion: config.opsHub.appVersion || '0.6.16',
+      appVersion: config.opsHub.appVersion || '0.7.0',
       environment: config.opsHub.environment || config.nodeEnv || 'development',
       ...(resolvedShop || shop ? { shop: resolvedShop || shop } : {}),
       ...(message ? { message } : {}),

@@ -1,5 +1,14 @@
 # Appointment Lite
 
+## v0.7.0 — SHOPLINE Subscription Integration
+
+Appointment Lite now uses SHOPLINE application subscriptions for a single paid **Appointment Lite Pro** plan at **USD 5.99/month**. The **7-day free trial stays fully managed by SHOPLINE**; Appointment Lite does not run a second local trial clock. v0.7.0 adds Partner API subscription sync, SHOPLINE checkout creation, signed subscription webhooks, a merchant Plan & billing experience, server-side admin/storefront access control, and safe data retention when a subscription becomes inactive.
+
+Roll out with `SHOPLINE_SUBSCRIPTION_ENABLED=false` first, configure the Partner Token + real SPU key + webhooks, validate on a test store, then enable enforcement.
+
+See [SHOPLINE Subscription Integration](docs/V070_SHOPLINE_SUBSCRIPTION.md) and [v0.7.0 deployment](docs/V070_DEPLOYMENT.md).
+
+
 ## v0.6.16 — Ops Hub Observability Integration
 
 Appointment Lite now supports optional Toolkit Ops Hub telemetry using a MongoDB outbox, timestamp/raw-JSON HMAC signing, lifecycle and active-store events, heartbeat, daily usage summaries, and deduplicated health events. Telemetry excludes customer PII and cannot block booking, webhook, email, or calendar workflows. See `docs/V0616_OPS_HUB_OBSERVABILITY.md`.

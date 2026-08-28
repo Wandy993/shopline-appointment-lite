@@ -8,9 +8,14 @@ import { attachPaidOrderToBooking, confirmPaidBooking } from '../services/bookin
 import { activatePostPurchaseEntitlementsForOrder, revokePostPurchaseEntitlementsForOrder, upsertPostPurchaseEntitlementsFromOrder } from '../services/post-purchase.js';
 import { findInstalledShop } from '../services/shops.js';
 import { incrementOpsUsage, queueHealthEvent, queueShopInstalled, queueShopUninstalled } from '../services/ops-hub.js';
+import { applySubscriptionActivatedWebhook, applySubscriptionExpiredWebhook, recordSubscriptionPaymentWebhook, syncSubscriptionForShop } from '../services/subscription.js';
 
 const LIFECYCLE_TOPIC = 'apps/installed_uninstalled';
-const SUPPORTED_TOPICS = new Set(['orders/create', 'orders/paid', 'order_transactions/create', 'orders/cancelled', LIFECYCLE_TOPIC]);
+const SUBSCRIPTION_CREATED_TOPIC = 'appsubscription/create';
+const SUBSCRIPTION_EXPIRED_TOPIC = 'appsubscription/expiration';
+const SUBSCRIPTION_PAID_TOPIC = 'appsubscription/paid';
+const SUBSCRIPTION_TOPICS = new Set([SUBSCRIPTION_CREATED_TOPIC, SUBSCRIPTION_EXPIRED_TOPIC, SUBSCRIPTION_PAID_TOPIC]);
+const SUPPORTED_TOPICS = new Set(['orders/create', 'orders/paid', 'order_transactions/create', 'orders/cancelled', LIFECYCLE_TOPIC, ...SUBSCRIPTION_TOPICS]);
 
 function header(req, name) {
   return String(req.get(name) || '').trim();
@@ -190,6 +195,74 @@ async function handleOrderCancelled({ payload, webhookId, shoplineStoreId, recei
   return { ok: true, orderId, postPurchase };
 }
 
+async function subscriptionShopForPayload(shoplineStoreId, payload = {}) {
+  const handle = String(payload.handle || '').trim().toLowerCase();
+  return findInstalledShop({ shopId: shoplineStoreId, shop: handle });
+}
+
+function subscriptionPayloadMatchesApp(payload = {}) {
+  const appKey = String(payload.appkey || payload.app_key || '').trim();
+  return !appKey || appKey === config.shopline.appKey;
+}
+
+async function handleSubscriptionCreated({ payload, shoplineStoreId, receipt }) {
+  const subId = String(payload.subId || payload.sub_id || '').trim();
+  if (!subscriptionPayloadMatchesApp(payload)) {
+    await finishReceipt(receipt, 'ignored', { externalId: subId });
+    return { ok: true, ignored: true, reason: 'APP_KEY_MISMATCH' };
+  }
+  const shop = await subscriptionShopForPayload(shoplineStoreId, payload);
+  if (!shop) {
+    await finishReceipt(receipt, 'ignored', { externalId: subId });
+    return { ok: true, ignored: true, reason: 'STORE_NOT_FOUND' };
+  }
+  await applySubscriptionActivatedWebhook(shop, payload);
+  await finishReceipt(receipt, 'processed', { externalId: subId });
+  return { ok: true, subscription: 'active', subId };
+}
+
+async function handleSubscriptionExpired({ payload, shoplineStoreId, receipt }) {
+  const subId = String(payload.subId || payload.sub_id || '').trim();
+  if (!subscriptionPayloadMatchesApp(payload)) {
+    await finishReceipt(receipt, 'ignored', { externalId: subId });
+    return { ok: true, ignored: true, reason: 'APP_KEY_MISMATCH' };
+  }
+  const shop = await subscriptionShopForPayload(shoplineStoreId, payload);
+  if (!shop) {
+    await finishReceipt(receipt, 'ignored', { externalId: subId });
+    return { ok: true, ignored: true, reason: 'STORE_NOT_FOUND' };
+  }
+  await applySubscriptionExpiredWebhook(shop, payload);
+  // The Partner list endpoint is the final authority. A failed refresh must not
+  // make the webhook itself fail because the signed expiration event was valid.
+  await syncSubscriptionForShop(shop, { source: 'webhook_expiration_sync' }).catch(error => {
+    console.warn('Could not refresh subscription after expiration webhook:', error.message);
+  });
+  await finishReceipt(receipt, 'processed', { externalId: subId });
+  return { ok: true, subscription: 'expired', subId };
+}
+
+async function handleSubscriptionPayment({ payload, shoplineStoreId, receipt }) {
+  const externalId = String(payload.bizOrderNo || payload.out_trade_no || payload.subId || '').trim();
+  if (!subscriptionPayloadMatchesApp(payload)) {
+    await finishReceipt(receipt, 'ignored', { externalId });
+    return { ok: true, ignored: true, reason: 'APP_KEY_MISMATCH' };
+  }
+  const shop = await subscriptionShopForPayload(shoplineStoreId, payload);
+  if (!shop) {
+    await finishReceipt(receipt, 'ignored', { externalId });
+    return { ok: true, ignored: true, reason: 'STORE_NOT_FOUND' };
+  }
+  const payment = await recordSubscriptionPaymentWebhook(shop, payload);
+  if (payment.status === 'paid') {
+    await syncSubscriptionForShop(shop, { source: 'webhook_payment_sync' }).catch(error => {
+      console.warn('Could not refresh subscription after payment webhook:', error.message);
+    });
+  }
+  await finishReceipt(receipt, 'processed', { externalId });
+  return { ok: true, payment: payment.status, subId: payment.subId };
+}
+
 async function handleLifecycle({ payload, shoplineStoreId, receipt }) {
   const action = lifecycleActionOf(payload);
   const shop = await opsShopForWebhook(shoplineStoreId, payload);
@@ -241,9 +314,11 @@ export async function shoplinePaidBookingWebhook(req, res) {
   const opsShop = await opsShopForWebhook(shoplineStoreId, payload).catch(() => null);
   if (opsShop) void incrementOpsUsage(opsShop, 'webhook_received', 1);
 
-  const externalId = topic === 'order_transactions/create'
-    ? String(payload.order_id || payload.orderId || '')
-    : topic === LIFECYCLE_TOPIC ? lifecycleActionOf(payload) : orderIdOf(payload);
+  const externalId = SUBSCRIPTION_TOPICS.has(topic)
+    ? String(payload.bizOrderNo || payload.out_trade_no || payload.subId || payload.sub_id || '')
+    : topic === 'order_transactions/create'
+      ? String(payload.order_id || payload.orderId || '')
+      : topic === LIFECYCLE_TOPIC ? lifecycleActionOf(payload) : orderIdOf(payload);
   const { receipt, duplicate } = await startReceipt({ webhookId, topic, shoplineStoreId, externalId });
   if (duplicate && receipt?.status !== 'failed') return res.status(200).json({ ok: true, duplicate: true });
 
@@ -256,14 +331,21 @@ export async function shoplinePaidBookingWebhook(req, res) {
           ? await handleOrderPayment({ payload, webhookId, shoplineStoreId, receipt })
           : topic === 'orders/cancelled'
             ? await handleOrderCancelled({ payload, webhookId, shoplineStoreId, receipt })
-            : await handleLifecycle({ payload, webhookId, shoplineStoreId, receipt });
+            : topic === SUBSCRIPTION_CREATED_TOPIC
+              ? await handleSubscriptionCreated({ payload, webhookId, shoplineStoreId, receipt })
+              : topic === SUBSCRIPTION_EXPIRED_TOPIC
+                ? await handleSubscriptionExpired({ payload, webhookId, shoplineStoreId, receipt })
+                : topic === SUBSCRIPTION_PAID_TOPIC
+                  ? await handleSubscriptionPayment({ payload, webhookId, shoplineStoreId, receipt })
+                  : await handleLifecycle({ payload, webhookId, shoplineStoreId, receipt });
     return res.status(200).json(result);
   } catch (error) {
     await finishReceipt(receipt, 'failed', { externalId, error: error.message }).catch(() => {});
     if (opsShop) void incrementOpsUsage(opsShop, 'webhook_failures', 1);
-    void queueHealthEvent(topic === LIFECYCLE_TOPIC ? 'shopline.webhook.failed' : 'order.webhook.failed', {
+    const healthEventType = topic === LIFECYCLE_TOPIC ? 'shopline.webhook.failed' : SUBSCRIPTION_TOPICS.has(topic) ? 'subscription.webhook.failed' : 'order.webhook.failed';
+    void queueHealthEvent(healthEventType, {
       shop: opsShop, severity: 'error', category: 'webhook',
-      message: topic === LIFECYCLE_TOPIC ? 'SHOPLINE lifecycle webhook processing failed.' : 'SHOPLINE order webhook processing failed.',
+      message: topic === LIFECYCLE_TOPIC ? 'SHOPLINE lifecycle webhook processing failed.' : SUBSCRIPTION_TOPICS.has(topic) ? 'SHOPLINE subscription webhook processing failed.' : 'SHOPLINE order webhook processing failed.',
       metadata: { topic, errorCode: String(error?.code || error?.name || 'WEBHOOK_PROCESSING_FAILED'), operation: 'webhook_process' }
     });
     console.error('SHOPLINE booking commerce webhook failed', { topic, webhookId, message: error.message });

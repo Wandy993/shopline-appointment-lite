@@ -258,17 +258,17 @@ test('v0.6.16 environment template never enables Ops Hub or contains an ingest s
   assert.doesNotMatch(env, /OPS_HUB_INGEST_SECRET=\S+/);
 });
 
-test('v0.6.16 release identity stays aligned and release ZIP slug describes the Ops Hub integration', async () => {
+test('current release identity stays aligned while retaining Ops Hub observability', async () => {
   const [pkgRaw, app, adminView, bookView, theme, release] = await Promise.all([
     source('package.json'), source('src/app.js'), source('src/views/admin.js'), source('src/views/book.js'),
     source('theme-extension-source/public/appointment-lite.js'), source('scripts/build-release.sh')
   ]);
   const pkg = JSON.parse(pkgRaw);
-  assert.equal(pkg.version, '0.6.16');
-  assert.match(app, /version: '0\.6\.16'/);
-  assert.match(adminView, /styles\.css\?v=0\.6\.16/);
-  assert.match(bookView, /app\.js\?v=0\.6\.16/);
-  assert.match(theme, /const VERSION = '0\.6\.16'/);
-  assert.match(release, /RELEASE_VERSION="0\.6\.16"/);
-  assert.match(release, /ops-hub-payload-compatibility/);
+  assert.equal(pkg.version, '0.7.0');
+  assert.match(app, /version: '0\.7\.0'/);
+  assert.match(adminView, /styles\.css\?v=0\.7\.0/);
+  assert.match(bookView, /app\.js\?v=0\.7\.0/);
+  assert.match(theme, /const VERSION = '0\.7\.0'/);
+  assert.match(release, /RELEASE_VERSION="0\.7\.0"/);
+  assert.match(release, /shopline-subscription-integration/);
 });

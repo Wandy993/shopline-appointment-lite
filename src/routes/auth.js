@@ -7,6 +7,7 @@ import { authorizationUrl, ensureBookingCommerceWebhooks, exchangeAuthorizationC
 import { reconcileRecentCommerceOrdersForShop } from '../services/paid-bookings.js';
 import { setSessionCookie } from '../middleware/auth.js';
 import { queueShopActive, queueShopInstalled } from '../services/ops-hub.js';
+import { syncSubscriptionForShop } from '../services/subscription.js';
 
 export const authRouter = Router();
 
@@ -48,6 +49,14 @@ authRouter.get('/callback', async (req, res, next) => {
     try {
       await syncShopMetadata(shop._id);
     } catch (error) { console.warn('Could not enrich shop metadata:', error.message); }
+
+    if (config.subscription.enabled) {
+      try {
+        await syncSubscriptionForShop(shop, { source: 'oauth_callback' });
+      } catch (error) {
+        console.warn('Could not sync SHOPLINE subscription after authorization:', error.message);
+      }
+    }
 
     // Ops Hub lifecycle telemetry must never block OAuth. A reauthorization is
     // activity, while a first install or a return after uninstall is a new install.

@@ -127,7 +127,7 @@ test('v0.6.16-hotfix.1 startup retries prior 422 outbox rows after send-time nor
   assert.match(syncJob, /requeueRecoverableOutboxEvents/);
 });
 
-test('v0.6.16-hotfix.1 heartbeat queue no longer attaches metadata and health exposes build marker', async () => {
+test('heartbeat queue remains metadata-free and current health exposes the active release build', async () => {
   const [opsHub, app, release] = await Promise.all([
     source('src/services/ops-hub.js'),
     source('src/app.js'),
@@ -135,7 +135,7 @@ test('v0.6.16-hotfix.1 heartbeat queue no longer attaches metadata and health ex
   ]);
   assert.match(opsHub, /return queueOpsEvent\('app\.heartbeat'\);/);
   assert.doesNotMatch(opsHub, /operation:\s*'heartbeat'/);
-  assert.match(app, /build:\s*'0\.6\.16-hotfix\.[12]'/);
-  assert.match(release, /RELEASE_BUILD="hotfix\.[12]"/);
-  assert.match(release, /ops-hub-payload-compatibility/);
+  assert.match(app, /build:\s*'0\.7\.0-subscription\.1'/);
+  assert.match(release, /RELEASE_BUILD="subscription\.1"/);
+  assert.match(release, /shopline-subscription-integration/);
 });

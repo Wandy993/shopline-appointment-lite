@@ -15,6 +15,7 @@ import { buildBookingIcs, calendarLinksForBooking, readBookingCalendarToken } fr
 import { getPostPurchaseEntitlement, publicPostPurchaseEntitlement } from '../services/post-purchase.js';
 import { TinyTtlCache, createSingleFlight } from '../lib/runtime-cache.js';
 import { incrementOpsUsage, queueHealthEvent } from '../services/ops-hub.js';
+import { publicSubscriptionUnavailable } from '../middleware/subscription.js';
 
 export const publicRouter = Router();
 const publicContextCache = new TinyTtlCache({ ttlMs: 4000, maxEntries: 300 });
@@ -123,6 +124,7 @@ async function findPublicRule(req) {
     if (!rule) return { error: { status: 404, body: { error: 'NOT_FOUND', message: 'Appointment service not found.' } } };
     const shop = await findInstalledShop({ objectId: rule.shopId });
     if (!shop) return { error: { status: 404, body: { error: 'NOT_FOUND', message: 'Store not found.' } } };
+    if (publicSubscriptionUnavailable(shop)) return { error: { status: 404, body: { error: 'NOT_FOUND', message: 'Appointment service is temporarily unavailable.' } } };
     result = { rule, shop };
   } else {
     const handle = String(req.query.shop || '').toLowerCase();
@@ -131,6 +133,7 @@ async function findPublicRule(req) {
     if ((!validShoplineStoreId(shopId) && !validShopHandle(handle)) || !productId) return { error: { status: 400, body: { error: 'INVALID_REQUEST', message: 'shopId (or legacy shop) and productId are required.' } } };
     const shop = await findInstalledShop({ shopId, shop: handle });
     if (!shop) return { error: { status: 404, body: { error: 'NOT_FOUND', message: 'Store not found.' } } };
+    if (publicSubscriptionUnavailable(shop)) return { error: { status: 404, body: { error: 'NOT_FOUND', message: 'Appointment service is temporarily unavailable.' } } };
     const rule = await AppointmentRule.findOne({ shopId: shop._id, productId, enabled: true, $or: [{ bookingSource: { $in: ['product', 'both'] } }, { bookingSource: { $exists: false }, sourceType: 'product' }] }).lean();
     if (!rule) return { error: { status: 404, body: { error: 'NOT_FOUND', message: 'No appointment rule for this product.' } } };
     result = { rule, shop };

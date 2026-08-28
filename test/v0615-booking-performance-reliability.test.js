@@ -89,10 +89,10 @@ test('v0.6.16 release version stays aligned', async () => {
     source('src/app.js'), source('src/views/admin.js'), source('src/views/book.js'),
     source('theme-extension-source/public/appointment-lite.js'), source('scripts/build-release.sh')
   ]);
-  assert.equal(pkg.version, '0.6.16');
-  assert.match(app, /version: '0\.6\.16'/);
-  assert.match(admin, /styles\.css\?v=0\.6\.16/);
-  assert.match(book, /app\.js\?v=0\.6\.16/);
-  assert.match(theme, /const VERSION = '0\.6\.16'/);
-  assert.match(release, /appointment-lite-v\$\{RELEASE_VERSION\}-ops-hub-observability-integration/);
+  assert.equal(pkg.version, '0.7.0');
+  assert.match(app, /version: '0.7.0'/);
+  assert.match(admin, /styles\.css\?v=0.7.0/);
+  assert.match(book, /app\.js\?v=0.7.0/);
+  assert.match(theme, /const VERSION = '0.7.0'/);
+  assert.match(release, /appointment-lite-v\$\{RELEASE_VERSION\}-shopline-subscription-integration/);
 });

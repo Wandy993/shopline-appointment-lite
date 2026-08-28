@@ -37,6 +37,18 @@ export const config = Object.freeze({
     themeExtensionUuid: process.env.SHOPLINE_THEME_EXTENSION_UUID || '',
     themeBlockHandle: process.env.SHOPLINE_THEME_BLOCK_HANDLE || 'appointment-lite'
   },
+  subscription: {
+    enabled: String(process.env.SHOPLINE_SUBSCRIPTION_ENABLED || 'false').toLowerCase() === 'true',
+    partnerToken: process.env.SHOPLINE_PARTNER_TOKEN || '',
+    partnerApiVersion: process.env.SHOPLINE_PARTNER_API_VERSION || 'v20220901',
+    spuKey: process.env.SHOPLINE_SUBSCRIPTION_SPU_KEY || 'appointment_lite_pro',
+    planName: process.env.SHOPLINE_SUBSCRIPTION_PLAN_NAME || 'Appointment Lite Pro',
+    priceUsd: Number(process.env.SHOPLINE_SUBSCRIPTION_PRICE_USD || 5.99),
+    trialDays: boundedNumber('SHOPLINE_SUBSCRIPTION_TRIAL_DAYS', 7, { min: 0, max: 30 }),
+    gracePeriodMs: boundedNumber('SHOPLINE_SUBSCRIPTION_GRACE_HOURS', 24, { min: 0, max: 168 }) * 60 * 60 * 1000,
+    syncMaxAgeMs: boundedNumber('SHOPLINE_SUBSCRIPTION_SYNC_MAX_AGE_SECONDS', 120, { min: 30, max: 3600 }) * 1000,
+    timeoutMs: boundedNumber('SHOPLINE_SUBSCRIPTION_TIMEOUT_MS', 15000, { min: 1000, max: 60000 })
+  },
   sessionSecret: required('SESSION_SECRET', 'development-only-change-me'),
   cookieSameSite: process.env.COOKIE_SAME_SITE || 'lax',
   publicAllowedOrigins: (process.env.PUBLIC_ALLOWED_ORIGINS || '').split(',').map(v => v.trim()).filter(Boolean),
@@ -55,7 +67,7 @@ export const config = Object.freeze({
     ingestUrl: process.env.OPS_HUB_INGEST_URL || process.env.OPS_HUB_URL || '',
     appKey: process.env.OPS_HUB_APP_KEY || 'appointment-lite',
     ingestSecret: process.env.OPS_HUB_INGEST_SECRET || '',
-    appVersion: process.env.APP_VERSION || '0.6.16',
+    appVersion: process.env.APP_VERSION || '0.7.0',
     environment: process.env.APP_ENVIRONMENT || process.env.NODE_ENV || 'development',
     timeoutMs: boundedNumber('OPS_HUB_TIMEOUT_MS', 15000, { min: 1000, max: 60000 }),
     batchSize: boundedNumber('OPS_HUB_BATCH_SIZE', 10, { min: 1, max: 50 }),
@@ -92,4 +104,6 @@ export function assertProductionConfig() {
     throw new Error('SESSION_SECRET must be at least 32 characters in production');
   }
   if (!config.appUrl.startsWith('https://')) throw new Error('APP_URL must use HTTPS in production');
+  if (config.subscription.enabled && !config.subscription.partnerToken) throw new Error('SHOPLINE_PARTNER_TOKEN is required when SHOPLINE_SUBSCRIPTION_ENABLED=true');
+  if (config.subscription.enabled && !config.subscription.spuKey) throw new Error('SHOPLINE_SUBSCRIPTION_SPU_KEY is required when SHOPLINE_SUBSCRIPTION_ENABLED=true');
 }

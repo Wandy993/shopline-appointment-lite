@@ -2,9 +2,9 @@
 set -u
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd -P)"
-RELEASE_VERSION="0.6.16"
-RELEASE_BUILD="hotfix.2"
-NAME="appointment-lite-v${RELEASE_VERSION}-ops-hub-observability-integration-${RELEASE_BUILD}-ops-hub-payload-compatibility-ops-hub-contract-alignment"
+RELEASE_VERSION="0.7.0"
+RELEASE_BUILD="subscription.1"
+NAME="appointment-lite-v${RELEASE_VERSION}-shopline-subscription-integration"
 DIST_DIR="$ROOT_DIR/dist"
 STAGE_DIR="${TMPDIR:-/tmp}/${NAME}.$$"
 OUTPUT="$DIST_DIR/${NAME}.zip"

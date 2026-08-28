@@ -15,6 +15,7 @@ import { normalizedStaffAssignment, releaseStaffReservations, reserveStaffForBoo
 import { queueBookingGoogleCalendarSync, reconcileBookingGoogleCalendar } from './calendar-sync.js';
 import { buildPaidBookingCheckoutUrl } from '../lib/paid-checkout.js';
 import { attachBookingToPostPurchaseEntitlement, claimPostPurchaseEntitlement, getPostPurchaseEntitlement, releasePostPurchaseEntitlementClaim, restorePostPurchaseEntitlementForBooking } from './post-purchase.js';
+import { subscriptionAccessAllowed } from './subscription.js';
 
 export class SlotConflictError extends Error { constructor() { super('This time is at capacity. Please choose another slot.'); this.code = 'SLOT_CONFLICT'; } }
 
@@ -296,6 +297,7 @@ async function resolveBookingContext({ shopId, handle, productId, ruleId }) {
     if (shop) rule = await AppointmentRule.findOne({ shopId: shop._id, productId, enabled: true, $or: [{ bookingSource: { $in: ['product', 'both'] } }, { bookingSource: { $exists: false }, sourceType: 'product' }] });
   }
   if (!shop) throw Object.assign(new Error('Store is not available.'), { code: 'NOT_FOUND' });
+  if (!subscriptionAccessAllowed(shop)) throw Object.assign(new Error('Appointment service is not available.'), { code: 'NOT_FOUND', status: 404 });
   if (!rule) throw Object.assign(new Error('Appointments are not enabled for this service.'), { code: 'NOT_FOUND' });
   return { shop, rule };
 }

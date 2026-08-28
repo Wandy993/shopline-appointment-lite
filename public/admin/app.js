@@ -2,12 +2,13 @@ const state = {
   csrf: '', shop: null, email: null, emailSettings: null, rules: [], bookings: [], products: [], staff: [], staffOperations: { date: '', timezone: '', staff: [], unassigned: [] }, staffOperationsView: 'list',
   ruleStep: 0, activeTemplate: 'confirmation', emailEditorReady: false, bookingView: 'list', calendarMonth: '',
   locale: 'en', currentView: 'dashboard', themeLinkLoaded: false, bootstrap: null, onboarding: null, lastTestEmail: '', ruleModeTouched: false, editingRule: false,
-  calendarSync: null, calendarStaffId: '', calendarPopup: null, calendarDayItems: {}, paidVariants: [], orderAccess: null, locations: [], locationAccess: null, storefrontSettings: null
+  calendarSync: null, calendarStaffId: '', calendarPopup: null, calendarDayItems: {}, paidVariants: [], orderAccess: null, locations: [], locationAccess: null, storefrontSettings: null,
+  subscription: null, subscriptionSyncError: '', restricted: false
 };
 const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const viewLabels = {
   dashboard: ['Workspace', 'Overview'], rules: ['Service catalog', 'Services & rules'], bookings: ['Customer schedule', 'Bookings'], staff: ['Team scheduling', 'Staff'],
-  calendar: ['Calendar integrations', 'Calendar Sync'], email: ['Customer communication', 'Email Studio'], setup: ['Configuration', 'Storefront setup']
+  billing: ['Subscription', 'Plan & billing'], calendar: ['Calendar integrations', 'Calendar Sync'], email: ['Customer communication', 'Email Studio'], setup: ['Configuration', 'Storefront setup']
 };
 const templateMeta = {
   confirmation: { label: 'Confirmation', manage: true, calendar: true },
@@ -686,6 +687,31 @@ Object.assign(zh, {
   'CONNECTION': '连接配置', 'Theme & launch checklist': '主题与上线检查', 'Storefront settings saved.': '店铺前台设置已保存。'
 });
 
+Object.assign(zh, {
+  'Plan & billing': '套餐与账单', 'Subscription': '订阅', 'PLAN & BILLING': '套餐与账单',
+  'Appointment Lite Pro': 'Appointment Lite 专业版', 'APPOINTMENT LITE PRO': 'APPOINTMENT LITE 专业版',
+  'Everything you need to run appointments.': '完整使用 Appointment Lite 的预约管理能力。',
+  'Activate Appointment Lite through SHOPLINE to continue managing services, staff, calendars, notifications, and storefront bookings.': '通过 SHOPLINE 开通 Appointment Lite 后，即可继续管理服务、员工、日历、通知和店铺前台预约。',
+  '7-day free trial': '7 天免费试用', 'Services & advanced scheduling': '服务与高级排期', 'Staff management & availability': '员工管理与可预约时间',
+  'Google Calendar sync': 'Google 日历同步', 'Customer & staff notifications': '客户与员工通知', 'Booking operations & records': '预约运营与记录', 'Storefront booking experience': '店铺前台预约体验',
+  'Continue with SHOPLINE': '前往 SHOPLINE 开通', 'Refresh subscription': '刷新订阅状态',
+  'The 7-day trial, billing, renewals, and eligibility are managed by SHOPLINE. Your Appointment Lite data stays saved if the subscription becomes inactive.': '7 天试用、扣费、续费和试用资格均由 SHOPLINE 管理。即使订阅失效，Appointment Lite 中已有数据仍会保留。',
+  'Your subscription lifecycle is managed by SHOPLINE. Appointment Lite mirrors the latest SHOPLINE status here.': '订阅生命周期由 SHOPLINE 管理，Appointment Lite 会在这里同步展示最新的 SHOPLINE 状态。',
+  'CURRENT PLAN': '当前套餐', 'SUBSCRIPTION DETAILS': '订阅详情', 'Billing status': '账单状态', 'Status': '状态', 'Access': '应用权限', 'Trial': '试用',
+  'Current period ends': '当前周期结束时间', 'Automatic renewal': '自动续费', 'Last synced': '最后同步时间',
+  'Trial eligibility and conversion are controlled by SHOPLINE.': '试用资格和试用转付费由 SHOPLINE 控制。',
+  'Subscription changes, payment, cancellation, and refunds are managed in SHOPLINE.': '套餐变更、付款、取消订阅和退款均由 SHOPLINE 管理。',
+  'Subscription required': '需要订阅', 'Subscription integration disabled': '订阅功能未启用', 'Free trial active': '免费试用中',
+  '{count} days left in free trial': '免费试用剩余 {count} 天', '{count} days remaining': '剩余 {count} 天', 'Grace period': '宽恕期', 'Active': '生效中',
+  'Payment pending': '等待付款', 'Cancelled': '已取消', 'Expired': '已过期', 'Inactive': '已失效', 'Available': '可使用', 'Paused': '已暂停',
+  'Completed': '已完成', 'Not active': '未生效', 'On': '开启', 'Off': '关闭', 'Not available': '暂无',
+  'SHOPLINE is still processing this subscription. Refresh after payment or trial activation completes.': 'SHOPLINE 正在处理本次订阅，请在付款或试用开通完成后刷新状态。',
+  'Latest SHOPLINE status': '最新 SHOPLINE 状态', 'No active SHOPLINE subscription was found for this store.': '当前店铺未找到生效中的 SHOPLINE 订阅。',
+  'Could not refresh SHOPLINE subscription right now. The last known status is shown.': '暂时无法刷新 SHOPLINE 订阅状态，当前展示的是最近一次已知状态。',
+  'SHOPLINE checkout is temporarily unavailable.': 'SHOPLINE 订阅结算页暂时不可用。', 'Could not open SHOPLINE subscription checkout.': '无法打开 SHOPLINE 订阅结算页。',
+  'SHOPLINE subscription refreshed.': 'SHOPLINE 订阅状态已刷新。'
+});
+
 const enByZh = new Map(Object.entries(zh).map(([english, chinese]) => [chinese, english]));
 
 function t(value, variables = {}) {
@@ -737,7 +763,7 @@ const staffAvatarPresets = ['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunse
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
 function staffPresetImage(preset) {
   const file = staffAvatarFiles[preset] || staffAvatarFiles.aurora;
-  return `<img src="/assets/staff/${file}?v=0.6.16" alt="" loading="lazy" decoding="async">`;
+  return `<img src="/assets/staff/${file}?v=0.7.0" alt="" loading="lazy" decoding="async">`;
 }
 let staffAvatarDraft = { kind: 'preset', value: 'aurora' };
 
@@ -819,7 +845,123 @@ function toast(message, type = 'success') {
 
 function showError(error) { toast(t(error.message || String(error)), 'error'); }
 
+function formatSubscriptionDate(value) {
+  if (!value) return t('Not available');
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return t('Not available');
+  return new Intl.DateTimeFormat(state.locale === 'zh-CN' ? 'zh-CN' : 'en', {
+    dateStyle: 'medium', timeStyle: 'short', timeZone: state.shop?.timezone || 'UTC'
+  }).format(date);
+}
+
+function subscriptionStatusText(subscription = state.subscription) {
+  if (!subscription?.enabled) return t('Subscription integration disabled');
+  if (subscription?.accessAllowed && subscription?.isTrial) {
+    const days = Number(subscription.trialDaysRemaining);
+    return Number.isFinite(days) ? t('{count} days left in free trial', { count: String(days) }) : t('Free trial active');
+  }
+  if (subscription?.accessAllowed && subscription?.accessReason === 'GRACE_PERIOD') return t('Grace period');
+  if (subscription?.accessAllowed) return t('Active');
+  if (subscription?.status === 'pending') return t('Payment pending');
+  if (subscription?.status === 'cancelled') return t('Cancelled');
+  if (subscription?.status === 'expired') return t('Expired');
+  if (subscription?.status === 'unactive') return t('Inactive');
+  return t('Subscription required');
+}
+
+function renderSubscriptionStatus(subscription = state.subscription, syncError = state.subscriptionSyncError) {
+  state.subscription = subscription || null;
+  state.subscriptionSyncError = syncError || '';
+  const restricted = Boolean(subscription?.enabled && !subscription?.accessAllowed);
+  state.restricted = restricted;
+  document.body.classList.toggle('subscription-restricted', restricted);
+  $('#subscriptionGate')?.classList.toggle('hidden', !restricted);
+
+  const sidebarTitle = $('#sidebarStatusTitle');
+  const sidebarProvider = $('#sidebarProvider');
+  if (sidebarTitle) sidebarTitle.textContent = t(restricted ? 'Subscription required' : 'Store connected');
+  if (sidebarProvider) sidebarProvider.textContent = subscription?.enabled
+    ? `${t(subscription?.planName || 'Appointment Lite Pro')} · ${subscriptionStatusText(subscription)}`
+    : sidebarProvider.textContent;
+
+  const gateStatus = $('#subscriptionGateStatus');
+  if (gateStatus) {
+    if (subscription?.status === 'pending') gateStatus.textContent = t('SHOPLINE is still processing this subscription. Refresh after payment or trial activation completes.');
+    else if (subscription?.status && subscription.status !== 'none') gateStatus.textContent = `${t('Latest SHOPLINE status')}: ${subscriptionStatusText(subscription)}`;
+    else gateStatus.textContent = t('No active SHOPLINE subscription was found for this store.');
+  }
+  const gateError = $('#subscriptionGateError');
+  if (gateError) {
+    gateError.textContent = syncError ? t('Could not refresh SHOPLINE subscription right now. The last known status is shown.') : '';
+    gateError.classList.toggle('hidden', !syncError);
+  }
+
+  const statusText = subscriptionStatusText(subscription);
+  if ($('#billingPlanName')) $('#billingPlanName').textContent = subscription?.planName || 'Appointment Lite Pro';
+  if ($('#billingPrice')) $('#billingPrice').textContent = `$${Number(subscription?.price?.amount || 5.99).toFixed(2)}`;
+  if ($('#billingStatus')) $('#billingStatus').textContent = statusText;
+  if ($('#billingAccess')) $('#billingAccess').textContent = t(subscription?.accessAllowed ? 'Available' : 'Paused');
+  if ($('#billingTrial')) $('#billingTrial').textContent = subscription?.isTrial
+    ? (Number.isFinite(Number(subscription.trialDaysRemaining)) ? t('{count} days remaining', { count: String(subscription.trialDaysRemaining) }) : t('Active'))
+    : t(subscription?.type === 'paid' ? 'Completed' : 'Not active');
+  if ($('#billingRenewal')) $('#billingRenewal').textContent = formatSubscriptionDate(subscription?.expiresAt);
+  if ($('#billingAutoRenew')) $('#billingAutoRenew').textContent = t(subscription?.autoRecurring ? 'On' : 'Off');
+  if ($('#billingLastSynced')) $('#billingLastSynced').textContent = formatSubscriptionDate(subscription?.lastSyncedAt);
+  const badge = $('#billingStatusBadge');
+  if (badge) {
+    badge.textContent = statusText;
+    badge.classList.toggle('success', Boolean(subscription?.accessAllowed));
+    badge.classList.toggle('disabled', !subscription?.accessAllowed);
+  }
+
+  if (restricted) {
+    $$('.view').forEach(view => view.classList.add('hidden'));
+    $('#pageEyebrow').textContent = t('Subscription');
+    $('#pageTitle').textContent = t('Appointment Lite Pro');
+  }
+}
+
+async function startSubscriptionCheckout() {
+  const button = $('#startSubscription');
+  const errorBox = $('#subscriptionGateError');
+  if (!button) return;
+  button.disabled = true;
+  if (errorBox) errorBox.classList.add('hidden');
+  try {
+    const payload = await api('/subscription/checkout', { method: 'POST', body: '{}' });
+    if (!payload?.url) throw new Error('SHOPLINE checkout is temporarily unavailable.');
+    try { window.top.location.href = payload.url; } catch { window.location.href = payload.url; }
+  } catch (error) {
+    if (errorBox) {
+      errorBox.textContent = t(error.message || 'Could not open SHOPLINE subscription checkout.');
+      errorBox.classList.remove('hidden');
+    } else showError(error);
+    button.disabled = false;
+  }
+}
+
+async function refreshSubscription() {
+  const buttons = [$('#syncSubscriptionGate'), $('#syncSubscriptionBilling')].filter(Boolean);
+  buttons.forEach(button => { button.disabled = true; });
+  try {
+    const payload = await api('/subscription/sync', { method: 'POST', body: '{}' });
+    renderSubscriptionStatus(payload.subscription, '');
+    if (payload.subscription?.accessAllowed) await loadBootstrap();
+    else toast(t('SHOPLINE subscription refreshed.'));
+  } catch (error) { showError(error); }
+  finally { buttons.forEach(button => { button.disabled = false; }); }
+}
+
 function switchView(name) {
+  if (state.restricted) {
+    state.currentView = 'billing';
+    $$('.view').forEach(view => view.classList.add('hidden'));
+    $('#subscriptionGate')?.classList.remove('hidden');
+    $('#pageEyebrow').textContent = t('Subscription');
+    $('#pageTitle').textContent = t('Appointment Lite Pro');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return;
+  }
   state.currentView = name;
   $$('.view').forEach(view => view.classList.add('hidden'));
   $(`#${name}View`).classList.remove('hidden');
@@ -829,6 +971,7 @@ function switchView(name) {
   if (name === 'rules') loadRules();
   if (name === 'bookings') Promise.all([ensureStaff(), loadRules(), loadBookings()]);
   if (name === 'staff') Promise.all([loadStaff(), loadStaffOperations($('#staffOperationsDate')?.value || '')]);
+  if (name === 'billing') renderSubscriptionStatus();
   if (name === 'calendar') loadCalendarSync();
   if (name === 'email') renderEmailStudio();
   if (name === 'setup') loadThemeEditorLink();
@@ -2771,20 +2914,32 @@ function confirmAction(title, message, actionLabel, action) {
 }
 
 async function loadBootstrap() {
-  const payload = await api('/bootstrap');
+  const returningFromSubscription = new URLSearchParams(window.location.search).get('subscription') === 'return';
+  const payload = await api(`/bootstrap${returningFromSubscription ? '?subscription_return=1' : ''}`);
+  if (returningFromSubscription) {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('subscription');
+    window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+  }
   state.bootstrap = payload;
-  renderOrderAccess(payload.orderAccess);
   state.csrf = payload.csrfToken;
   state.shop = payload.shop;
-  state.email = payload.email;
-  state.emailSettings = clone(payload.emailSettings);
-  state.storefrontSettings = normalizeStorefrontClient(payload.storefrontSettings || defaultStorefrontSettings);
-  state.onboarding = payload.onboarding || {};
+  state.subscription = payload.subscription || null;
+  state.subscriptionSyncError = payload.subscriptionSyncError || '';
+  state.restricted = Boolean(payload.restricted);
   $('#shopBadge').textContent = `${payload.shop.handle}.myshopline.com`;
   $('#timezoneBadge').textContent = payload.shop.timezone || 'UTC';
   $('#bookingTimezone').textContent = payload.shop.timezone || 'UTC';
   $('#storeAvatar').textContent = payload.shop.handle.slice(0, 1).toUpperCase();
   await setLocale(payload.shop.adminLocale || 'en', { save: false });
+  renderSubscriptionStatus(state.subscription, state.subscriptionSyncError);
+  if (payload.restricted) return;
+
+  renderOrderAccess(payload.orderAccess);
+  state.email = payload.email;
+  state.emailSettings = clone(payload.emailSettings);
+  state.storefrontSettings = normalizeStorefrontClient(payload.storefrontSettings || defaultStorefrontSettings);
+  state.onboarding = payload.onboarding || {};
   $('#setupStoreId').textContent = payload.shop.storeId ? `${payload.shop.handle}.myshopline.com` : t('Store details are syncing');
   const statusLabel = payload.email.configured ? 'Email delivery ready' : 'Email delivery needs attention';
   $('#emailStatusTitle').textContent = t(statusLabel);
@@ -2828,7 +2983,8 @@ async function setLocale(locale, { save = true } = {}) {
   if (state.staff.length) { renderStaff(); renderRuleStaffOptions(); renderBookingStaffFilter(); }
   if (state.staffOperations?.date) renderStaffOperations();
   if (state.calendarSync) renderCalendarSync();
-  if (state.bootstrap) { renderDashboard(state.bootstrap); renderOnboarding(state.bootstrap); }
+  if (state.bootstrap && !state.bootstrap.restricted) { renderDashboard(state.bootstrap); renderOnboarding(state.bootstrap); }
+  if (state.subscription) renderSubscriptionStatus(state.subscription, state.subscriptionSyncError);
   if (state.emailSettings) renderEmailStudio();
   if (state.storefrontSettings) renderStorefrontSettings(state.storefrontSettings);
   if (save) {
@@ -2862,6 +3018,9 @@ function bind() {
   window.addEventListener('scroll', () => closeBookingActionMenus(), true);
   renderTemplateTabs();
   $$('.nav-item').forEach(button => button.addEventListener('click', () => switchView(button.dataset.view)));
+  $('#startSubscription')?.addEventListener('click', startSubscriptionCheckout);
+  $('#syncSubscriptionGate')?.addEventListener('click', refreshSubscription);
+  $('#syncSubscriptionBilling')?.addEventListener('click', refreshSubscription);
   $$('[data-go-view]').forEach(button => button.addEventListener('click', () => switchView(button.dataset.goView)));
   $$('[data-new-rule]').forEach(button => button.addEventListener('click', () => openRule()));
   $$('[data-close-dialog]').forEach(button => button.addEventListener('click', () => { closeRuleSelect(); closeServiceTimezonePicker(); closeLocationPicker(); $('#ruleDialog').close(); }));

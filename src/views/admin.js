@@ -7,6 +7,7 @@ const icons = {
   staff: icon('<circle cx="9" cy="8" r="3"/><path d="M3.5 20v-2.2A4.8 4.8 0 0 1 8.3 13h1.4a4.8 4.8 0 0 1 4.8 4.8V20"/><circle cx="17" cy="9" r="2.4"/><path d="M15.5 14.5h1.7a3.8 3.8 0 0 1 3.8 3.8V20"/>'),
   email: icon('<rect x="3" y="5" width="18" height="14" rx="3"/><path d="m4 7 8 6 8-6"/>'),
   calendarSync: icon('<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M16 3v4M8 3v4M3 10h18"/><path d="M8 14h3v3H8zM13 14h3v3h-3z"/>'),
+  billing: icon('<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 9h18"/><path d="M7 15h4"/>'),
   setup: icon('<path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/><circle cx="12" cy="12" r="3"/>'),
   plus: icon('<path d="M12 5v14M5 12h14"/>'),
   arrow: icon('<path d="m9 18 6-6-6-6"/>'),
@@ -39,7 +40,7 @@ export function adminPage() {
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light">
   <title>Appointment Lite</title>
-  <link rel="stylesheet" href="/admin/styles.css?v=0.6.16">
+  <link rel="stylesheet" href="/admin/styles.css?v=0.7.0">
 </head>
 <body>
   <div class="app-shell">
@@ -52,11 +53,12 @@ export function adminPage() {
         ${navButton('bookings', 'Bookings', icons.bookings)}
         ${navButton('staff', 'Staff', icons.staff)}
         <span class="nav-label nav-label-spaced">Configuration</span>
+        ${navButton('billing', 'Plan & billing', icons.billing)}
         ${navButton('calendar', 'Calendar Sync', icons.calendarSync)}
         ${navButton('email', 'Email Studio', icons.email)}
         ${navButton('setup', 'Storefront setup', icons.setup)}
       </nav>
-      <div class="sidebar-status"><span class="pulse"></span><div><strong>Store connected</strong><span id="sidebarProvider">Checking notifications…</span></div></div>
+      <div class="sidebar-status"><span class="pulse"></span><div><strong id="sidebarStatusTitle">Store connected</strong><span id="sidebarProvider">Checking notifications…</span></div></div>
     </aside>
 
     <div class="workspace">
@@ -72,6 +74,23 @@ export function adminPage() {
       <main class="content">
         <div id="toastRegion" class="toast-region" aria-live="polite"></div>
         <div id="orderAccessBanner" class="order-access-banner hidden"><div><strong>Order sync needs authorization</strong><span>Allow Appointment Lite to read SHOPLINE orders so paid bookings can be confirmed automatically. Appointment Lite does not modify orders.</span></div><div class="order-access-actions"><button id="authorizeOrderAccess" type="button" class="primary small">Authorize order access</button></div></div>
+
+        <section id="subscriptionGate" class="subscription-gate hidden" aria-live="polite">
+          <div class="subscription-gate-card">
+            <div class="subscription-plan-intro"><span class="eyebrow">APPOINTMENT LITE PRO</span><h1>Everything you need to run appointments.</h1><p>Activate Appointment Lite through SHOPLINE to continue managing services, staff, calendars, notifications, and storefront bookings.</p></div>
+            <div class="subscription-price-line"><strong>$5.99</strong><span>USD / month</span></div>
+            <div class="subscription-trial-pill">7-day free trial</div>
+            <div class="subscription-feature-grid">
+              <span>${icons.check} Services & advanced scheduling</span><span>${icons.check} Staff management & availability</span>
+              <span>${icons.check} Google Calendar sync</span><span>${icons.check} Customer & staff notifications</span>
+              <span>${icons.check} Booking operations & records</span><span>${icons.check} Storefront booking experience</span>
+            </div>
+            <div id="subscriptionGateStatus" class="subscription-gate-status"></div>
+            <div class="subscription-gate-actions"><button id="startSubscription" type="button" class="primary subscription-primary">Continue with SHOPLINE</button><button id="syncSubscriptionGate" type="button" class="secondary">Refresh subscription</button></div>
+            <p class="subscription-fineprint">The 7-day trial, billing, renewals, and eligibility are managed by SHOPLINE. Your Appointment Lite data stays saved if the subscription becomes inactive.</p>
+            <div id="subscriptionGateError" class="form-error hidden" role="alert"></div>
+          </div>
+        </section>
 
         <section id="dashboardView" class="view">
           <div class="hero-panel">
@@ -121,6 +140,14 @@ export function adminPage() {
           <article class="panel staff-operations-panel"><div class="panel-head staff-operations-head"><div><span class="eyebrow">STAFF OPERATIONS</span><h2>Team schedule</h2><p>Review staff appointments in a compact list or daily calendar.</p></div><div class="staff-operations-controls"><div class="segmented staff-ops-segmented" role="group" aria-label="Schedule view"><button type="button" class="active" data-staff-ops-view="list">List</button><button type="button" data-staff-ops-view="calendar">Calendar</button></div><label class="staff-operations-date"><span>Date</span><input id="staffOperationsDate" type="date"></label></div></div><div id="staffOperationsList" class="staff-operations-list"><div class="empty-compact">Loading team schedule…</div></div></article>
           <div class="toolbar"><label class="search-field">${icons.search}<input id="staffSearch" type="search" placeholder="Search staff by name or email"></label><div class="toolbar-meta"><span id="staffResultCount">0 staff</span></div></div>
           <div id="staffList" class="staff-list"><div class="panel loading">Loading staff…</div></div>
+        </section>
+
+        <section id="billingView" class="view hidden">
+          <div class="page-heading"><div><span class="eyebrow">PLAN & BILLING</span><h1>Appointment Lite Pro</h1><p>Your subscription lifecycle is managed by SHOPLINE. Appointment Lite mirrors the latest SHOPLINE status here.</p></div><button id="syncSubscriptionBilling" type="button" class="secondary">Refresh subscription</button></div>
+          <div class="billing-grid">
+            <article class="panel billing-plan-card"><div class="billing-plan-head"><div><span class="eyebrow">CURRENT PLAN</span><h2 id="billingPlanName">Appointment Lite Pro</h2></div><span id="billingStatusBadge" class="status-badge">Checking</span></div><div class="billing-price"><strong id="billingPrice">$5.99</strong><span>USD / month</span></div><div class="billing-trial-note"><strong>7-day free trial</strong><span>Trial eligibility and conversion are controlled by SHOPLINE.</span></div></article>
+            <article class="panel billing-details-card"><div class="panel-head"><div><span class="eyebrow">SUBSCRIPTION DETAILS</span><h2>Billing status</h2></div></div><dl class="billing-details"><div><dt>Status</dt><dd id="billingStatus">—</dd></div><div><dt>Access</dt><dd id="billingAccess">—</dd></div><div><dt>Trial</dt><dd id="billingTrial">—</dd></div><div><dt>Current period ends</dt><dd id="billingRenewal">—</dd></div><div><dt>Automatic renewal</dt><dd id="billingAutoRenew">—</dd></div><div><dt>Last synced</dt><dd id="billingLastSynced">—</dd></div></dl><p class="billing-managed-note">Subscription changes, payment, cancellation, and refunds are managed in SHOPLINE.</p></article>
+          </div>
         </section>
 
 
@@ -351,7 +378,7 @@ export function adminPage() {
   </dialog>
 
   <dialog id="confirmDialog" class="confirm-modal"><div class="confirm-icon">!</div><div class="confirm-copy"><h2 id="confirmTitle">Please confirm</h2><p id="confirmMessage"></p></div><div class="modal-actions"><button id="confirmNo" class="secondary">Keep it</button><button id="confirmYes" class="danger">Confirm</button></div></dialog>
-  <script type="module" src="/admin/app.js?v=0.6.16"></script>
+  <script type="module" src="/admin/app.js?v=0.7.0"></script>
 </body>
 </html>`;
 }
