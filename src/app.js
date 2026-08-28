@@ -28,14 +28,14 @@ export function createApp() {
   app.post('/webhooks/shopline', express.raw({ type: 'application/json', limit: '1mb' }), shoplinePaidBookingWebhook);
   app.use(express.json({ limit: '100kb' }));
   app.use(express.urlencoded({ extended: false, limit: '20kb' }));
-  app.use('/admin', express.static('public/admin', { maxAge: config.nodeEnv === 'production' ? '1h' : 0 }));
+  app.use('/admin', express.static('public/admin', { maxAge: 0, etag: true, setHeaders(res) { res.setHeader('Cache-Control', 'no-store'); } }));
   app.use('/assets/staff', express.static('public/staff-avatars', { maxAge: config.nodeEnv === 'production' ? '7d' : 0 }));
   app.use('/manage/assets', express.static('public/manage', { maxAge: config.nodeEnv === 'production' ? '1h' : 0 }));
   app.use('/book/assets', express.static('public/book', { maxAge: config.nodeEnv === 'production' ? '1h' : 0 }));
   app.use('/integration-assets', express.static('public/integrations', { maxAge: config.nodeEnv === 'production' ? '1h' : 0 }));
   app.use('/legal/assets', express.static('public/legal', { maxAge: config.nodeEnv === 'production' ? '1h' : 0 }));
 
-  app.get('/health', (req, res) => res.json({ ok: true, service: 'appointment-lite', version: '0.7.0', build: '0.7.0-subscription.1' }));
+  app.get('/health', (req, res) => res.set('Cache-Control', 'no-store').json({ ok: true, service: 'appointment-lite', version: '0.7.0', build: '0.7.0-subscription.1', release: 'v0.7.0.6-shopline-package-only' }));
   const legalHeaders = { 'Cache-Control': 'public, max-age=3600', 'Referrer-Policy': 'strict-origin-when-cross-origin' };
   app.get('/privacy', (req, res) => res.redirect(302, `/${preferredLegalLocale(req.get('accept-language'))}/privacy`));
   app.get('/terms', (req, res) => res.redirect(302, `/${preferredLegalLocale(req.get('accept-language'))}/terms`));
@@ -61,7 +61,7 @@ export function createApp() {
   app.use('/auth', authRouter);
   app.use('/subscription', subscriptionRouter);
   app.use('/integrations', integrationsRouter);
-  app.get('/app', requireAdmin, (req, res) => res.type('html').send(adminPage()));
+  app.get('/app', requireAdmin, (req, res) => res.set('Cache-Control', 'no-store').type('html').send(adminPage()));
   app.get('/manage', (req, res) => res.set({ 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' }).type('html').send(managePage()));
   app.get('/book/:ruleId', (req, res) => res.set({ 'Cache-Control': 'no-store' }).type('html').send(bookingPage(req.params.ruleId)));
   app.use('/api/admin', adminRouter);

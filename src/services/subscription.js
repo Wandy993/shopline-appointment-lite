@@ -1,4 +1,3 @@
-import crypto from 'node:crypto';
 import { config } from '../config.js';
 import { Shop } from '../models/Shop.js';
 import { SubscriptionCheckout } from '../models/SubscriptionCheckout.js';
@@ -341,58 +340,38 @@ export async function ensureFreshSubscriptionForShop(shop, { maxAgeMs = config.s
   return { ...result, recoverySync };
 }
 
-export function createSubscriptionTradeNo(handle = 'shop') {
-  const safeHandle = asString(handle).toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 28) || 'shop';
-  return `al_${safeHandle}_${Date.now()}_${crypto.randomBytes(5).toString('hex')}`;
-}
+export async function createSubscriptionCheckout(shop) {
+  if (!config.subscription.enabled) {
+    throw Object.assign(new Error('SHOPLINE subscription billing is not enabled.'), {
+      code: 'SUBSCRIPTION_DISABLED',
+      status: 503
+    });
+  }
+  if (!shop?.handle || !shop?._id) {
+    throw Object.assign(new Error('Store session is invalid.'), {
+      code: 'STORE_NOT_FOUND',
+      status: 404
+    });
+  }
+  // v0.7.0.6 intentionally does not call create_pay.json.
+  // SHOPLINE already owns the app-plan gate and package page. For a single-plan
+  // public app, sending merchants to that official page is the reliable way to
+  // start the platform-managed trial, subscribe, or renew. Keeping a Partner API
+  // checkout fallback here can re-introduce platform schema drift and is not
+  // needed for Appointment Lite's current billing model.
+  const packageUrl = shoplineSubscriptionPlanUrl(shop);
+  if (!packageUrl) {
+    throw Object.assign(new Error('SHOPLINE subscription package URL is not configured.'), {
+      code: 'SHOPLINE_PACKAGE_URL_MISSING',
+      status: 503
+    });
+  }
 
-export function buildSubscriptionCheckoutBody(shop, { outTradeNo, returnUrl } = {}) {
   return {
-    application_charge: {
-      count: '1',
-      out_trade_no: asString(outTradeNo),
-      return_url: asString(returnUrl),
-      spu_key: config.subscription.spuKey,
-      app_key: config.shopline.appKey,
-      currency: 'USD',
-      handle: asString(shop?.handle).toLowerCase()
-    }
+    url: packageUrl,
+    outTradeNo: '',
+    entry: 'shopline_package'
   };
-}
-
-export async function createSubscriptionCheckout(shop, {
-  CheckoutModel = SubscriptionCheckout,
-  fetchImpl
-} = {}) {
-  if (!config.subscription.enabled) throw Object.assign(new Error('SHOPLINE subscription billing is not enabled.'), { code: 'SUBSCRIPTION_DISABLED', status: 503 });
-  if (!shop?.handle || !shop?._id) throw Object.assign(new Error('Store session is invalid.'), { code: 'STORE_NOT_FOUND', status: 404 });
-  if (subscriptionAccessAllowed(shop)) {
-    throw Object.assign(new Error('Appointment Lite Pro is already active for this store.'), { code: 'SUBSCRIPTION_ALREADY_ACTIVE', status: 409 });
-  }
-  const outTradeNo = createSubscriptionTradeNo(shop.handle);
-  const returnUrl = new URL('/subscription/return', config.appUrl);
-  returnUrl.searchParams.set('trade', outTradeNo);
-  const attempt = await CheckoutModel.create({ shopId: shop._id, outTradeNo, spuKey: config.subscription.spuKey, status: 'created' });
-  try {
-    void incrementOpsUsage(shop, 'shopline_partner_api_requests', 1);
-    const payload = await partnerSubscriptionRequest('create_pay.json', {
-      method: 'POST',
-      body: buildSubscriptionCheckoutBody(shop, { outTradeNo, returnUrl: returnUrl.toString() }),
-      ...(fetchImpl ? { fetchImpl } : {})
-    });
-    const url = asString(payload?.url ?? payload?.data?.url ?? payload?.application_charge?.url);
-    if (!url || !/^https:\/\//i.test(url)) throw Object.assign(new Error('SHOPLINE did not return a subscription checkout URL.'), { code: 'SUBSCRIPTION_CHECKOUT_URL_MISSING', status: 502 });
-    await CheckoutModel.updateOne({ _id: attempt._id }, { $set: { status: 'pending', checkoutUrl: url } });
-    return { url, outTradeNo };
-  } catch (error) {
-    await CheckoutModel.updateOne({ _id: attempt._id }, { $set: { status: 'failed', lastError: String(error.message || error).slice(0, 500) } }).catch(() => {});
-    void queueHealthEvent('subscription.checkout.failed', {
-      shop, severity: 'error', category: 'subscription',
-      message: 'SHOPLINE subscription checkout could not be created.',
-      metadata: { errorCode: String(error?.code || error?.name || 'SUBSCRIPTION_CHECKOUT_FAILED'), operation: 'subscription_checkout' }
-    });
-    throw error;
-  }
 }
 
 export async function querySubscriptionChargeStatus(outTradeNo, { fetchImpl } = {}) {

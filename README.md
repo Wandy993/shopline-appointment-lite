@@ -1,5 +1,17 @@
 # Appointment Lite
 
+## v0.7.0.6 — SHOPLINE Package-Only Hard Lock
+
+Appointment Lite now hard-locks every subscription activation/renewal entry to SHOPLINE's official app package page. The current admin client opens that page directly, and the legacy `/api/admin/subscription/checkout` endpoint is kept only for stale cached clients and also returns the same package URL without any Partner checkout request. Admin app assets are served with `no-store` so an older checkout client cannot stay cached after a release.
+
+See [SHOPLINE Package-Only Hard Lock](docs/V0706_SHOPLINE_PACKAGE_ONLY_HARD_LOCK.md).
+
+## v0.7.0.4 — SHOPLINE Checkout Body Fix
+
+Fixes SHOPLINE `create_pay.json` checkout creation by sending `app_key`, `currency`, and `handle` at the request-body root while keeping `spu_key` and checkout order fields inside `application_charge`, matching SHOPLINE's documented request hierarchy.
+
+See [SHOPLINE Checkout Body Fix](docs/V0704_SHOPLINE_CHECKOUT_BODY_FIX.md).
+
 ## v0.7.0.3 — Subscription Recovery Hardening
 
 Appointment Lite now force-reconciles any stale inactive subscription with SHOPLINE whenever the admin starts or an archived page is resumed. Renewal recovery no longer waits for the normal subscription cache: signed subscription webhooks, admin bootstrap, manual refresh, browser focus/visibility restore, and BFCache resume all converge on the Partner API as the authority. When SHOPLINE reports valid access again, archive restrictions are removed immediately and the merchant sees a recovery confirmation.

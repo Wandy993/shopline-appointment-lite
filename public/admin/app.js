@@ -950,9 +950,11 @@ async function startSubscriptionCheckout() {
   button.disabled = true;
   if (errorBox) errorBox.classList.add('hidden');
   try {
-    const payload = await api('/subscription/checkout', { method: 'POST', body: '{}' });
-    if (!payload?.url) throw new Error('SHOPLINE checkout is temporarily unavailable.');
-    try { window.top.location.href = payload.url; } catch { window.location.href = payload.url; }
+    // v0.7.0.6: the official SHOPLINE app package page is the only activation
+    // entry. Do not call create_pay.json from the browser or through our backend.
+    const packageUrl = String(state.subscription?.shoplinePlanUrl || '').trim();
+    if (!packageUrl) throw new Error('SHOPLINE subscription package URL is not configured.');
+    try { window.top.location.href = packageUrl; } catch { window.location.href = packageUrl; }
   } catch (error) {
     if (errorBox) {
       errorBox.textContent = t(error.message || 'Could not open SHOPLINE subscription checkout.');

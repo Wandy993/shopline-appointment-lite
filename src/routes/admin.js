@@ -94,10 +94,10 @@ adminRouter.post('/subscription/sync', async (req, res, next) => {
 
 adminRouter.post('/subscription/checkout', async (req, res, next) => {
   try {
-    const synced = await syncSubscriptionForShop(req.shop, { source: 'checkout_preflight' });
-    if (synced.shop) req.shop = synced.shop;
+    // Compatibility endpoint for any stale cached admin client. Never call the
+    // Partner checkout API here; simply return SHOPLINE's official package page.
     const checkout = await createSubscriptionCheckout(req.shop);
-    res.json(checkout);
+    res.set('Cache-Control', 'no-store').json(checkout);
   } catch (error) { next(error); }
 });
 
