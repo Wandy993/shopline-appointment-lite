@@ -42,6 +42,7 @@ export const config = Object.freeze({
     partnerToken: process.env.SHOPLINE_PARTNER_TOKEN || '',
     partnerApiVersion: process.env.SHOPLINE_PARTNER_API_VERSION || 'v20220901',
     spuKey: process.env.SHOPLINE_SUBSCRIPTION_SPU_KEY || 'appointment_lite_pro',
+    packageId: process.env.SHOPLINE_SUBSCRIPTION_PACKAGE_ID || '',
     planName: process.env.SHOPLINE_SUBSCRIPTION_PLAN_NAME || 'Appointment Lite Pro',
     priceUsd: Number(process.env.SHOPLINE_SUBSCRIPTION_PRICE_USD || 5.99),
     trialDays: boundedNumber('SHOPLINE_SUBSCRIPTION_TRIAL_DAYS', 7, { min: 0, max: 30 }),

@@ -3,7 +3,7 @@ const state = {
   ruleStep: 0, activeTemplate: 'confirmation', emailEditorReady: false, bookingView: 'list', calendarMonth: '',
   locale: 'en', currentView: 'dashboard', themeLinkLoaded: false, bootstrap: null, onboarding: null, lastTestEmail: '', ruleModeTouched: false, editingRule: false,
   calendarSync: null, calendarStaffId: '', calendarPopup: null, calendarDayItems: {}, paidVariants: [], orderAccess: null, locations: [], locationAccess: null, storefrontSettings: null,
-  subscription: null, subscriptionSyncError: '', restricted: false
+  subscription: null, subscriptionSyncError: '', restricted: false, archiveMode: false, accessMode: 'full'
 };
 const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const viewLabels = {
@@ -872,14 +872,26 @@ function subscriptionStatusText(subscription = state.subscription) {
 function renderSubscriptionStatus(subscription = state.subscription, syncError = state.subscriptionSyncError) {
   state.subscription = subscription || null;
   state.subscriptionSyncError = syncError || '';
-  const restricted = Boolean(subscription?.enabled && !subscription?.accessAllowed);
+  const accessMode = subscription?.adminMode || (subscription?.enabled && !subscription?.accessAllowed ? 'subscription_required' : 'full');
+  const restricted = accessMode === 'subscription_required';
+  const archiveMode = accessMode === 'archive';
+  state.accessMode = accessMode;
   state.restricted = restricted;
+  state.archiveMode = archiveMode;
   document.body.classList.toggle('subscription-restricted', restricted);
+  document.body.classList.toggle('subscription-archive', archiveMode);
   $('#subscriptionGate')?.classList.toggle('hidden', !restricted);
+  $('#bookingArchiveNotice')?.classList.toggle('hidden', !archiveMode);
+  $('#renewSubscriptionBilling')?.classList.toggle('hidden', !archiveMode);
+
+  $$('.nav-item').forEach(button => {
+    const archiveAllowed = ['bookings', 'billing'].includes(button.dataset.view);
+    button.disabled = restricted || (archiveMode && !archiveAllowed);
+  });
 
   const sidebarTitle = $('#sidebarStatusTitle');
   const sidebarProvider = $('#sidebarProvider');
-  if (sidebarTitle) sidebarTitle.textContent = t(restricted ? 'Subscription required' : 'Store connected');
+  if (sidebarTitle) sidebarTitle.textContent = t(archiveMode ? 'Read-only archive' : (restricted ? 'Subscription required' : 'Store connected'));
   if (sidebarProvider) sidebarProvider.textContent = subscription?.enabled
     ? `${t(subscription?.planName || 'Appointment Lite Pro')} · ${subscriptionStatusText(subscription)}`
     : sidebarProvider.textContent;
@@ -900,7 +912,7 @@ function renderSubscriptionStatus(subscription = state.subscription, syncError =
   if ($('#billingPlanName')) $('#billingPlanName').textContent = subscription?.planName || 'Appointment Lite Pro';
   if ($('#billingPrice')) $('#billingPrice').textContent = `$${Number(subscription?.price?.amount || 5.99).toFixed(2)}`;
   if ($('#billingStatus')) $('#billingStatus').textContent = statusText;
-  if ($('#billingAccess')) $('#billingAccess').textContent = t(subscription?.accessAllowed ? 'Available' : 'Paused');
+  if ($('#billingAccess')) $('#billingAccess').textContent = t(archiveMode ? 'Read-only' : (subscription?.accessAllowed ? 'Available' : 'Paused'));
   if ($('#billingTrial')) $('#billingTrial').textContent = subscription?.isTrial
     ? (Number.isFinite(Number(subscription.trialDaysRemaining)) ? t('{count} days remaining', { count: String(subscription.trialDaysRemaining) }) : t('Active'))
     : t(subscription?.type === 'paid' ? 'Completed' : 'Not active');
@@ -909,9 +921,17 @@ function renderSubscriptionStatus(subscription = state.subscription, syncError =
   if ($('#billingLastSynced')) $('#billingLastSynced').textContent = formatSubscriptionDate(subscription?.lastSyncedAt);
   const badge = $('#billingStatusBadge');
   if (badge) {
-    badge.textContent = statusText;
+    badge.textContent = archiveMode ? t('Read-only') : statusText;
     badge.classList.toggle('success', Boolean(subscription?.accessAllowed));
     badge.classList.toggle('disabled', !subscription?.accessAllowed);
+  }
+
+  if (archiveMode) {
+    state.bookingView = 'list';
+    $$('[data-booking-view]').forEach(button => button.classList.toggle('active', button.dataset.bookingView === 'list'));
+    $('#bookingTable')?.classList.remove('hidden');
+    $('#bookingCalendar')?.classList.add('hidden');
+    $('#calendarControls')?.classList.add('hidden');
   }
 
   if (restricted) {
@@ -940,6 +960,15 @@ async function startSubscriptionCheckout() {
   }
 }
 
+function openShoplineRenewal() {
+  const url = String(state.subscription?.shoplinePlanUrl || '').trim();
+  if (url) {
+    try { window.top.location.href = url; } catch { window.location.href = url; }
+    return;
+  }
+  startSubscriptionCheckout();
+}
+
 async function refreshSubscription() {
   const buttons = [$('#syncSubscriptionGate'), $('#syncSubscriptionBilling')].filter(Boolean);
   buttons.forEach(button => { button.disabled = true; });
@@ -947,7 +976,10 @@ async function refreshSubscription() {
     const payload = await api('/subscription/sync', { method: 'POST', body: '{}' });
     renderSubscriptionStatus(payload.subscription, '');
     if (payload.subscription?.accessAllowed) await loadBootstrap();
-    else toast(t('SHOPLINE subscription refreshed.'));
+    else {
+      if (payload.subscription?.adminMode === 'archive') switchView('bookings');
+      toast(t('SHOPLINE subscription refreshed.'));
+    }
   } catch (error) { showError(error); }
   finally { buttons.forEach(button => { button.disabled = false; }); }
 }
@@ -962,6 +994,7 @@ function switchView(name) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     return;
   }
+  if (state.archiveMode && !['bookings', 'billing'].includes(name)) name = 'bookings';
   state.currentView = name;
   $$('.view').forEach(view => view.classList.add('hidden'));
   $(`#${name}View`).classList.remove('hidden');
@@ -969,7 +1002,10 @@ function switchView(name) {
   $('#pageEyebrow').textContent = t(viewLabels[name]?.[0] || 'Workspace');
   $('#pageTitle').textContent = t(viewLabels[name]?.[1] || 'Appointment Lite');
   if (name === 'rules') loadRules();
-  if (name === 'bookings') Promise.all([ensureStaff(), loadRules(), loadBookings()]);
+  if (name === 'bookings') {
+    if (state.archiveMode) loadBookings();
+    else Promise.all([ensureStaff(), loadRules(), loadBookings()]);
+  }
   if (name === 'staff') Promise.all([loadStaff(), loadStaffOperations($('#staffOperationsDate')?.value || '')]);
   if (name === 'billing') renderSubscriptionStatus();
   if (name === 'calendar') loadCalendarSync();
@@ -1503,8 +1539,19 @@ function renderBookingStaffFilter() {
   const select = $('#bookingStaffFilter');
   if (!select) return;
   const current = select.value;
-  select.innerHTML = `<option value="">${t('All staff')}</option>${state.staff.map(item => `<option value="${item._id}">${escapeHtml(item.name)}</option>`).join('')}`;
-  select.value = state.staff.some(item => String(item._id) === current) ? current : '';
+  let staffRows = state.staff.map(item => ({ id: String(item._id), name: item.name }));
+  if (state.archiveMode) {
+    const archived = new Map();
+    state.bookings.forEach(booking => {
+      if (booking.staffId && booking.staff) archived.set(String(booking.staffId), booking.staff);
+      (booking.occurrences || []).forEach(item => {
+        if (item.staffId && (item.staffName || booking.staff)) archived.set(String(item.staffId), item.staffName || booking.staff);
+      });
+    });
+    staffRows = [...archived.entries()].map(([id, name]) => ({ id, name })).sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+  }
+  select.innerHTML = `<option value="">${t('All staff')}</option>${staffRows.map(item => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}</option>`).join('')}`;
+  select.value = staffRows.some(item => String(item.id) === current) ? current : '';
 }
 
 function renderProductOptions(query = '') {
@@ -2336,21 +2383,25 @@ function renderBookingList(bookings) {
     const scheduleMeta = [staffLabel, locationLabel].filter(Boolean).join(' · ');
 
     const menuItems = [];
-    if (booking.shoplineOrder?.adminUrl) {
-      menuItems.push(`<a class="booking-menu-item" href="${escapeHtml(booking.shoplineOrder.adminUrl)}" target="_blank" rel="noopener noreferrer"><span>${t('Open order')}</span><i>↗</i></a>`);
+    if (!state.archiveMode) {
+      if (booking.shoplineOrder?.adminUrl) {
+        menuItems.push(`<a class="booking-menu-item" href="${escapeHtml(booking.shoplineOrder.adminUrl)}" target="_blank" rel="noopener noreferrer"><span>${t('Open order')}</span><i>↗</i></a>`);
+      }
+      if (!isLifecycle && booking.status === 'confirmed') {
+        if (canDirectEdit) menuItems.push(`<button type="button" class="booking-menu-item" data-edit-booking="${booking._id}"><span>${t('Edit')}</span></button>`);
+        menuItems.push(`<button type="button" class="booking-menu-item" data-complete="${booking._id}"><span>${t('Mark complete')}</span></button>`);
+        menuItems.push(`<button type="button" class="booking-menu-item" data-no-show="${booking._id}"><span>${t('No-show')}</span></button>`);
+        menuItems.push(`<button type="button" class="booking-menu-item menu-warning" data-cancel="${booking._id}"><span>${t('Cancel booking')}</span></button>`);
+      }
+      menuItems.push(`<span class="booking-menu-divider" aria-hidden="true"></span><button type="button" class="booking-menu-item menu-danger" data-delete-booking="${booking._id}"><span>${t('Delete record')}</span></button>`);
     }
-    if (!isLifecycle && booking.status === 'confirmed') {
-      if (canDirectEdit) menuItems.push(`<button type="button" class="booking-menu-item" data-edit-booking="${booking._id}"><span>${t('Edit')}</span></button>`);
-      menuItems.push(`<button type="button" class="booking-menu-item" data-complete="${booking._id}"><span>${t('Mark complete')}</span></button>`);
-      menuItems.push(`<button type="button" class="booking-menu-item" data-no-show="${booking._id}"><span>${t('No-show')}</span></button>`);
-      menuItems.push(`<button type="button" class="booking-menu-item menu-warning" data-cancel="${booking._id}"><span>${t('Cancel booking')}</span></button>`);
-    }
-    menuItems.push(`<span class="booking-menu-divider" aria-hidden="true"></span><button type="button" class="booking-menu-item menu-danger" data-delete-booking="${booking._id}"><span>${t('Delete record')}</span></button>`);
 
-    const actionGroup = `<div class="booking-action-group"><button type="button" class="small booking-action more" data-booking-actions-toggle="${booking._id}" aria-haspopup="menu" aria-expanded="false">${t('Actions')}<span class="booking-action-chevron" aria-hidden="true"></span></button><div class="booking-action-menu hidden" role="menu">${menuItems.join('')}</div></div>`;
-    const actions = `<button type="button" class="small booking-action activity" data-flow-booking="${booking._id}">${t('Activity')}</button>${actionGroup}`;
+    const actionGroup = state.archiveMode ? '' : `<div class="booking-action-group"><button type="button" class="small booking-action more" data-booking-actions-toggle="${booking._id}" aria-haspopup="menu" aria-expanded="false">${t('Actions')}<span class="booking-action-chevron" aria-hidden="true"></span></button><div class="booking-action-menu hidden" role="menu">${menuItems.join('')}</div></div>`;
+    const actions = state.archiveMode
+      ? `<span class="readonly-badge">${t('Read only')}</span>`
+      : `<button type="button" class="small booking-action activity" data-flow-booking="${booking._id}">${t('Activity')}</button>${actionGroup}`;
 
-    return `<div class="booking-row ${isLifecycle ? 'order-lifecycle-row' : ''}"><div class="booking-primary"><strong>${escapeHtml(booking.productTitle)}</strong><span>${escapeHtml(booking.customer?.name || t('Customer'))}${booking.customer?.email ? ` · ${escapeHtml(booking.customer.email)}` : ''}</span>${isLifecycle && booking.notificationSentAt ? `<small>${t('Private link sent')}</small>` : ''}</div><div class="booking-schedule-cell"><strong>${escapeHtml(when.primary)}</strong><span>${escapeHtml(when.secondary)}</span><small>${escapeHtml(scheduleMeta)}</small></div><div class="booking-status-cell"><span class="status-badge payment-${escapeHtml(paymentStatus)}">${escapeHtml(paymentStatusLabel(paymentStatus))}</span></div><div class="booking-status-cell"><span class="status-badge appointment-${escapeHtml(appointmentStatus)}">${escapeHtml(appointmentStatusLabel(appointmentStatus))}</span>${appointmentMeta}</div><div class="row-actions">${actions}</div></div>`;
+    return `<div class="booking-row ${isLifecycle ? 'order-lifecycle-row' : ''} ${state.archiveMode ? 'archive-readonly' : ''}"><div class="booking-primary"><strong>${escapeHtml(booking.productTitle)}</strong><span>${escapeHtml(booking.customer?.name || t('Customer'))}${booking.customer?.email ? ` · ${escapeHtml(booking.customer.email)}` : ''}</span>${isLifecycle && booking.notificationSentAt ? `<small>${t('Private link sent')}</small>` : ''}</div><div class="booking-schedule-cell"><strong>${escapeHtml(when.primary)}</strong><span>${escapeHtml(when.secondary)}</span><small>${escapeHtml(scheduleMeta)}</small></div><div class="booking-status-cell"><span class="status-badge payment-${escapeHtml(paymentStatus)}">${escapeHtml(paymentStatusLabel(paymentStatus))}</span></div><div class="booking-status-cell"><span class="status-badge appointment-${escapeHtml(appointmentStatus)}">${escapeHtml(appointmentStatusLabel(appointmentStatus))}</span>${appointmentMeta}</div><div class="row-actions">${actions}</div></div>`;
   }).join('');
   bindBookingRows();
 }
@@ -2414,6 +2465,7 @@ function openCalendarDay(date) {
 }
 
 function setBookingView(view) {
+  if (state.archiveMode) view = 'list';
   state.bookingView = view === 'calendar' ? 'calendar' : 'list';
   $$('[data-booking-view]').forEach(button => button.classList.toggle('active', button.dataset.bookingView === state.bookingView));
   $('#bookingTable').classList.toggle('hidden', state.bookingView !== 'list');
@@ -2451,6 +2503,7 @@ async function loadBookings() {
   try {
     state.bookings = (await api('/bookings')).bookings;
     renderBookingServiceFilter();
+    renderBookingStaffFilter();
     if (!state.calendarMonth) state.calendarMonth = monthKey(state.bookings.find(booking => booking.status === 'confirmed')?.date || new Date().toISOString().slice(0, 10));
     renderBookings();
   } catch (error) { showError(error); }
@@ -2926,14 +2979,21 @@ async function loadBootstrap() {
   state.shop = payload.shop;
   state.subscription = payload.subscription || null;
   state.subscriptionSyncError = payload.subscriptionSyncError || '';
-  state.restricted = Boolean(payload.restricted);
+  state.accessMode = payload.accessMode || (payload.archiveMode ? 'archive' : (payload.restricted ? 'subscription_required' : 'full'));
+  state.archiveMode = state.accessMode === 'archive';
+  state.restricted = state.accessMode === 'subscription_required';
   $('#shopBadge').textContent = `${payload.shop.handle}.myshopline.com`;
   $('#timezoneBadge').textContent = payload.shop.timezone || 'UTC';
   $('#bookingTimezone').textContent = payload.shop.timezone || 'UTC';
   $('#storeAvatar').textContent = payload.shop.handle.slice(0, 1).toUpperCase();
   await setLocale(payload.shop.adminLocale || 'en', { save: false });
   renderSubscriptionStatus(state.subscription, state.subscriptionSyncError);
-  if (payload.restricted) return;
+  if (state.restricted) return;
+  if (state.archiveMode) {
+    state.currentView = 'bookings';
+    switchView('bookings');
+    return;
+  }
 
   renderOrderAccess(payload.orderAccess);
   state.email = payload.email;
@@ -2983,11 +3043,11 @@ async function setLocale(locale, { save = true } = {}) {
   if (state.staff.length) { renderStaff(); renderRuleStaffOptions(); renderBookingStaffFilter(); }
   if (state.staffOperations?.date) renderStaffOperations();
   if (state.calendarSync) renderCalendarSync();
-  if (state.bootstrap && !state.bootstrap.restricted) { renderDashboard(state.bootstrap); renderOnboarding(state.bootstrap); }
+  if (state.bootstrap?.accessMode === 'full') { renderDashboard(state.bootstrap); renderOnboarding(state.bootstrap); }
   if (state.subscription) renderSubscriptionStatus(state.subscription, state.subscriptionSyncError);
   if (state.emailSettings) renderEmailStudio();
   if (state.storefrontSettings) renderStorefrontSettings(state.storefrontSettings);
-  if (save) {
+  if (save && !state.restricted && !state.archiveMode) {
     try { await api('/preferences', { method: 'PUT', body: JSON.stringify({ adminLocale: state.locale }) }); }
     catch (error) { showError(error); }
   }
@@ -3021,6 +3081,8 @@ function bind() {
   $('#startSubscription')?.addEventListener('click', startSubscriptionCheckout);
   $('#syncSubscriptionGate')?.addEventListener('click', refreshSubscription);
   $('#syncSubscriptionBilling')?.addEventListener('click', refreshSubscription);
+  $('#renewSubscriptionBilling')?.addEventListener('click', openShoplineRenewal);
+  $('#renewFromBookings')?.addEventListener('click', openShoplineRenewal);
   $$('[data-go-view]').forEach(button => button.addEventListener('click', () => switchView(button.dataset.goView)));
   $$('[data-new-rule]').forEach(button => button.addEventListener('click', () => openRule()));
   $$('[data-close-dialog]').forEach(button => button.addEventListener('click', () => { closeRuleSelect(); closeServiceTimezonePicker(); closeLocationPicker(); $('#ruleDialog').close(); }));
@@ -3240,4 +3302,12 @@ Object.assign(zh, {
   'This removes the record from Appointment Lite. If the appointment is still active, its time will be released and calendar events will be removed. The SHOPLINE order is not deleted.': '删除后，这条记录会从 Appointment Lite 中移除；如果预约仍然有效，将释放对应时段并移除日历事件。SHOPLINE 订单不会被删除。',
   'Delete record': '删除记录',
   'Booking record deleted.': '预约记录已删除。'
+});
+
+Object.assign(zh, {
+  'Read-only archive': '只读归档',
+  'Read-only': '只读',
+  'Read only': '只读',
+  'Renew with SHOPLINE': '前往 SHOPLINE 续费',
+  'Your SHOPLINE subscription has ended. Booking records remain available for review and CSV export, but editing and operational actions are locked until you renew.': 'SHOPLINE 套餐已到期。你仍可以查看预约记录并导出 CSV，但编辑和所有运营操作都会锁定，续费后即可恢复。'
 });

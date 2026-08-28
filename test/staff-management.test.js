@@ -247,7 +247,9 @@ test('staff administration protects service assignments and booking view loads s
   assert.match(routes, /STAFF_ASSIGNED_TO_SERVICES/);
   assert.match(routes, /BookingReservation\.deleteMany\(\{ ruleId: rule\._id, shopId: req\.shop\._id \}\)/);
   assert.match(routes, /StaffReservation\.deleteMany\(\{ ruleId: rule\._id, shopId: req\.shop\._id \}\)/);
-  assert.match(admin, /if \(name === 'bookings'\) Promise\.all\(\[ensureStaff\(\), loadRules\(\), loadBookings\(\)\]\);/);
+  assert.match(admin, /if \(name === 'bookings'\) \{/);
+  assert.match(admin, /if \(state\.archiveMode\) loadBookings\(\);/);
+  assert.match(admin, /else Promise\.all\(\[ensureStaff\(\), loadRules\(\), loadBookings\(\)\]\);/);
 });
 
 test('editing one booking does not ignore a shared staff reservation that still contains other customers', async () => {

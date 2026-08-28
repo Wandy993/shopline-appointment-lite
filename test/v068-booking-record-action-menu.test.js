@@ -43,7 +43,8 @@ test('v0.6.8 uses a positioned custom menu instead of a native select', async ()
 
 test('v0.6.8 gives every row a consistent activity entry including order lifecycle records', async () => {
   const admin = await source('public/admin/app.js');
-  assert.match(admin, /const actions = `<button type="button" class="small booking-action activity" data-flow-booking="\$\{booking\._id\}">/);
+  assert.match(admin, /: `<button type="button" class="small booking-action activity" data-flow-booking="\$\{booking\._id\}">/);
+  assert.match(admin, /const actions = state\.archiveMode/);
   assert.doesNotMatch(admin, /const actions = isLifecycle/);
 });
 

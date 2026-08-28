@@ -68,7 +68,7 @@ test('v0.7.0 Partner Token stays server-side and subscription API routes are wir
   assert.match(service, /create_pay\.json/);
   assert.match(service, /list\.json/);
   assert.match(admin, /\/subscription\/checkout/);
-  assert.match(admin, /adminRouter\.use\(requireActiveSubscription\)/);
+  assert.match(admin, /adminRouter\.use\(requireAdminSubscriptionAccess\)/);
   assert.match(publicRoute, /publicSubscriptionUnavailable/);
   assert.match(bookings, /subscriptionAccessAllowed/);
   assert.match(app, /\/subscription/);

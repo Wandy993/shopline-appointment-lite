@@ -111,6 +111,29 @@ export function subscriptionAccessAllowed(shopOrSubscription, options = {}) {
   return subscriptionAccessState(subscription, options).allowed;
 }
 
+export function subscriptionHasHistoricalAccess(shopOrSubscription) {
+  const subscription = shopOrSubscription?.subscription || shopOrSubscription || {};
+  const status = normalizeStatus(subscription?.status);
+  if (subscription?.everActivatedAt) return true;
+  if (subscription?.startedAt && ['expired', 'unactive', 'cancelled', 'locked'].includes(status)) return true;
+  return false;
+}
+
+export function subscriptionAdminMode(shopOrSubscription, { now = new Date(), enabled = config.subscription.enabled } = {}) {
+  const subscription = shopOrSubscription?.subscription || shopOrSubscription || {};
+  const access = subscriptionAccessState(subscription, { now, enabled });
+  if (!enabled || access.allowed) return 'full';
+  if (subscriptionHasHistoricalAccess(subscription)) return 'archive';
+  return 'subscription_required';
+}
+
+export function shoplineSubscriptionPlanUrl(shop = {}) {
+  const handle = asString(shop?.handle).toLowerCase();
+  const packageId = asString(config.subscription.packageId || config.shopline.appKey);
+  if (!handle || !packageId) return '';
+  return `https://${encodeURIComponent(handle)}.myshopline.com/admin/app-store/package/${encodeURIComponent(packageId)}`;
+}
+
 function remainingTrialDays(subscription, now = new Date()) {
   if (!subscription?.isTrial || !subscription?.expiresAt) return null;
   const end = new Date(subscription.expiresAt).getTime();
@@ -127,12 +150,17 @@ function remainingTrialDays(subscription, now = new Date()) {
 }
 
 export function publicSubscriptionSnapshot(shopOrSubscription, { now = new Date() } = {}) {
+  const shop = shopOrSubscription?.subscription ? shopOrSubscription : null;
   const subscription = shopOrSubscription?.subscription || shopOrSubscription || {};
   const access = subscriptionAccessState(subscription, { now });
+  const adminMode = subscriptionAdminMode(subscription, { now });
   return {
     enabled: config.subscription.enabled,
     accessAllowed: access.allowed,
     accessReason: access.reason,
+    adminMode,
+    archiveMode: adminMode === 'archive',
+    shoplinePlanUrl: shoplineSubscriptionPlanUrl(shop || {}),
     planName: config.subscription.planName,
     spuKey: config.subscription.spuKey,
     price: { amount: config.subscription.priceUsd, currency: 'USD', interval: 'month' },
@@ -144,6 +172,7 @@ export function publicSubscriptionSnapshot(shopOrSubscription, { now = new Date(
     subId: asString(subscription.subId),
     startedAt: subscription.startedAt || null,
     expiresAt: subscription.expiresAt || null,
+    everActivatedAt: subscription.everActivatedAt || null,
     trialDaysRemaining: remainingTrialDays(subscription, now),
     lastSyncedAt: subscription.lastSyncedAt || null,
     lastWebhookAt: subscription.lastWebhookAt || null,

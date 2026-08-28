@@ -8,7 +8,7 @@ import { attachPaidOrderToBooking, confirmPaidBooking } from '../services/bookin
 import { activatePostPurchaseEntitlementsForOrder, revokePostPurchaseEntitlementsForOrder, upsertPostPurchaseEntitlementsFromOrder } from '../services/post-purchase.js';
 import { findInstalledShop } from '../services/shops.js';
 import { incrementOpsUsage, queueHealthEvent, queueShopInstalled, queueShopUninstalled } from '../services/ops-hub.js';
-import { applySubscriptionActivatedWebhook, applySubscriptionExpiredWebhook, recordSubscriptionPaymentWebhook, syncSubscriptionForShop } from '../services/subscription.js';
+import { applySubscriptionActivatedWebhook, applySubscriptionExpiredWebhook, recordSubscriptionPaymentWebhook, subscriptionAccessAllowed, syncSubscriptionForShop } from '../services/subscription.js';
 
 const LIFECYCLE_TOPIC = 'apps/installed_uninstalled';
 const SUBSCRIPTION_CREATED_TOPIC = 'appsubscription/create';
@@ -321,6 +321,12 @@ export async function shoplinePaidBookingWebhook(req, res) {
       : topic === LIFECYCLE_TOPIC ? lifecycleActionOf(payload) : orderIdOf(payload);
   const { receipt, duplicate } = await startReceipt({ webhookId, topic, shoplineStoreId, externalId });
   if (duplicate && receipt?.status !== 'failed') return res.status(200).json({ ok: true, duplicate: true });
+
+  const businessTopic = !SUBSCRIPTION_TOPICS.has(topic) && topic !== LIFECYCLE_TOPIC;
+  if (businessTopic && opsShop && !subscriptionAccessAllowed(opsShop)) {
+    await finishReceipt(receipt, 'ignored', { externalId });
+    return res.status(200).json({ ok: true, ignored: true, reason: 'SUBSCRIPTION_INACTIVE' });
+  }
 
   try {
     const result = topic === 'orders/create'

@@ -9,7 +9,7 @@ import { StaffReservation } from '../models/StaffReservation.js';
 import { CalendarConnection } from '../models/CalendarConnection.js';
 import { validateAdminBookingInput, validateBookingStatus, validateRuleInput, validateStaffInput } from '../lib/validation.js';
 import { requireAdmin, requireCsrf } from '../middleware/auth.js';
-import { requireActiveSubscription } from '../middleware/subscription.js';
+import { requireAdminSubscriptionAccess } from '../middleware/subscription.js';
 import { ensureBookingCommerceWebhooks, reauthorizationUrlForShop, shoplineGet, shoplineLocationAccessStatus, shoplineOrderAccessStatus, syncShopMetadata } from '../services/shopline.js';
 import { getProductVariants, syncProductCatalog } from '../services/product-catalog.js';
 import { cancelBookingByMerchant, deleteBookingByMerchant, setBookingStatusByMerchant, updateBookingByMerchant } from '../services/bookings.js';
@@ -146,10 +146,24 @@ adminRouter.get('/bootstrap', async (req, res) => {
       Object.assign(req.shop, metadata);
     } catch (error) { console.warn('Could not refresh shop metadata:', error.message); }
   }
-  if (config.subscription.enabled && !subscription.accessAllowed) {
+  if (config.subscription.enabled && subscription.adminMode === 'subscription_required') {
     res.set('Cache-Control', 'no-store');
     return res.json({
       restricted: true,
+      accessMode: 'subscription_required',
+      archiveMode: false,
+      subscription,
+      subscriptionSyncError,
+      shop: { handle: req.shop.handle, storeId: req.shop.shoplineStoreId || '', locale: req.shop.locale, adminLocale: req.shop.adminLocale || 'en', timezone: req.shop.timezone, email: req.shop.email || '' },
+      csrfToken: req.csrfToken
+    });
+  }
+  if (config.subscription.enabled && subscription.adminMode === 'archive') {
+    res.set('Cache-Control', 'no-store');
+    return res.json({
+      restricted: false,
+      accessMode: 'archive',
+      archiveMode: true,
       subscription,
       subscriptionSyncError,
       shop: { handle: req.shop.handle, storeId: req.shop.shoplineStoreId || '', locale: req.shop.locale, adminLocale: req.shop.adminLocale || 'en', timezone: req.shop.timezone, email: req.shop.email || '' },
@@ -193,7 +207,7 @@ adminRouter.get('/bootstrap', async (req, res) => {
     reconcileAvailable: orderAccessState.granted
   };
   res.json({
-    restricted: false, subscription, subscriptionSyncError,
+    restricted: false, accessMode: 'full', archiveMode: false, subscription, subscriptionSyncError,
     shop: { handle: req.shop.handle, storeId: req.shop.shoplineStoreId || '', locale: req.shop.locale, adminLocale: req.shop.adminLocale || 'en', timezone: req.shop.timezone, email: req.shop.email || '' },
     email: { configured: delivery.configured, from: delivery.from || '' }, emailSettings: normalizeEmailSettings(req.shop.emailSettings || {}), storefrontSettings: normalizeStorefrontSettings(req.shop.storefrontSettings || {}), nextBookings, orderAccess,
     onboarding: onboardingStatus(req.shop, { ruleCount, activeRuleCount, bookingCount, firstActiveRule }),
@@ -202,7 +216,7 @@ adminRouter.get('/bootstrap', async (req, res) => {
   });
 });
 
-adminRouter.use(requireActiveSubscription);
+adminRouter.use(requireAdminSubscriptionAccess);
 
 adminRouter.get('/products', async (req, res, next) => {
   try {

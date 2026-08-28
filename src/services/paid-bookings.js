@@ -6,6 +6,7 @@ import { confirmPaidBooking, expirePendingPaidBookings } from './bookings.js';
 import { upsertPostPurchaseEntitlementsFromOrder } from './post-purchase.js';
 import { shoplineGet, SHOPLINE_ORDER_SCOPE } from './shopline.js';
 import { queueHealthEvent } from './ops-hub.js';
+import { subscriptionAccessAllowed } from './subscription.js';
 
 function orderList(payload = {}) {
   const rows = payload.orders ?? payload.data?.orders ?? payload.data ?? [];
@@ -94,6 +95,7 @@ export async function reconcilePendingCommercePayments({
     try {
       const shop = await ShopModel.findOne({ _id: shopId, uninstalledAt: null }).lean();
       if (!shop) continue;
+      if (!subscriptionAccessAllowed(shop)) continue;
       if (!hasReadOrders(shop)) { summary.skippedNoPermission += 1; continue; }
       summary.shops += 1;
       const ids = [...orderIds];
@@ -139,6 +141,7 @@ export async function reconcileRecentCommerceOrdersForShop({
   shoplineGetFn = shoplineGet
 } = {}) {
   if (!shop?._id || !hasReadOrders(shop)) return { skipped: true, reason: 'READ_ORDERS_REQUIRED', ordersChecked: 0 };
+  if (!subscriptionAccessAllowed(shop)) return { skipped: true, reason: 'SUBSCRIPTION_INACTIVE', ordersChecked: 0 };
   const createdAtMin = new Date(Date.now() - Math.max(1, Number(days || 7)) * 24 * 60 * 60 * 1000).toISOString();
   const payload = await shoplineGetFn(shop._id, 'orders.json', {
     status: 'any',
@@ -191,6 +194,7 @@ export async function reconcileRecentPaidOrdersForShop({
   shoplineGetFn = shoplineGet
 } = {}) {
   if (!shop?._id || !hasReadOrders(shop)) return { skipped: true, reason: 'READ_ORDERS_REQUIRED', ordersChecked: 0 };
+  if (!subscriptionAccessAllowed(shop)) return { skipped: true, reason: 'SUBSCRIPTION_INACTIVE', ordersChecked: 0 };
   const createdAtMin = new Date(Date.now() - Math.max(1, Number(days || 7)) * 24 * 60 * 60 * 1000).toISOString();
   const payload = await shoplineGetFn(shop._id, 'orders.json', {
     financial_status: 'paid',
@@ -219,6 +223,7 @@ export async function reconcileRecentCommerceOrdersForActiveShops({
   const summary = { shopsChecked: 0, ordersChecked: 0, confirmed: 0, activated: 0, notified: 0, errors: 0 };
   for (const shop of shops) {
     try {
+      if (!subscriptionAccessAllowed(shop)) continue;
       const result = await reconcileRecentCommerceOrdersForShop({
         shop,
         days,

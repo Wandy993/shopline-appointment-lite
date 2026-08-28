@@ -4,6 +4,7 @@ import { Shop } from '../models/Shop.js';
 import { PostPurchaseEntitlement } from '../models/PostPurchaseEntitlement.js';
 import { sendPostPurchaseScheduleNotification } from './email.js';
 import { normalizeProductId } from '../lib/product-catalog.js';
+import { subscriptionAccessAllowed } from './subscription.js';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const NOTIFICATION_CLAIM_STALE_MS = 15 * 60 * 1000;
@@ -166,6 +167,7 @@ async function sendScheduleLinkIfNeeded({ entitlement, rule, shop, now = new Dat
 export async function upsertPostPurchaseEntitlementsFromOrder({ shop, payload, paid = false, webhookId = '', RuleModel = AppointmentRule, EntitlementModel = PostPurchaseEntitlement }) {
   const orderId = orderIdOf(payload);
   if (!shop?._id || !orderId) return { matched: 0, activated: 0, notified: 0, orderId };
+  if (!subscriptionAccessAllowed(shop)) return { matched: 0, activated: 0, notified: 0, orderId, skipped: true, reason: 'SUBSCRIPTION_INACTIVE' };
   const quantities = productQuantityMap(payload);
   if (!quantities.size) return { matched: 0, activated: 0, notified: 0, orderId };
 
@@ -225,6 +227,7 @@ export async function upsertPostPurchaseEntitlementsFromOrder({ shop, payload, p
 
 export async function activatePostPurchaseEntitlementsForOrder({ shop, orderId, webhookId = '', EntitlementModel = PostPurchaseEntitlement, RuleModel = AppointmentRule }) {
   if (!shop?._id || !orderId) return { matched: 0, activated: 0, notified: 0 };
+  if (!subscriptionAccessAllowed(shop)) return { matched: 0, activated: 0, notified: 0, skipped: true, reason: 'SUBSCRIPTION_INACTIVE' };
   const entitlements = await EntitlementModel.find({ shopId: shop._id, orderId, status: { $in: ['pending_payment', 'active', 'exhausted'] } });
   let activated = 0;
   let notified = 0;
@@ -331,6 +334,7 @@ export async function processPostPurchaseScheduleNotifications({
       failed += 1;
       continue;
     }
+    if (!subscriptionAccessAllowed(shop)) continue;
     const result = await sendScheduleLinkIfNeeded({ entitlement, rule, shop, now, EntitlementModel });
     if (!result?.skipped && !result?.failed) sent += 1;
     else if (result?.failed || result?.reason) failed += 1;
