@@ -66,6 +66,8 @@ function publicBooking(booking) {
     : [{ date: booking.date, time: bookingMode === 'all_day' ? '' : booking.time }];
   return {
     id: booking._id, serviceTitle: booking.productTitle, productTitle: booking.productTitle,
+    bookingType: booking.bookingType || (booking.commerceMode === 'product_post_purchase' ? 'purchase_triggered' : 'standalone'),
+    paymentMode: booking.paymentMode || (booking.commerceMode === 'standalone_paid' ? 'checkout' : 'none'),
     bookingSource: booking.bookingSource || (booking.sourceType === 'standalone' ? 'direct' : 'product'),
     commerceMode: booking.commerceMode || ((booking.bookingSource || (booking.sourceType === 'standalone' ? 'direct' : 'product')) === 'direct' && !booking.productId ? 'standalone_free' : 'product_pre_purchase'),
     sourceType: booking.sourceType || 'product', serviceType: booking.serviceType === 'product' ? 'appointment' : (booking.serviceType || 'appointment'),
@@ -80,12 +82,58 @@ function publicBooking(booking) {
   };
 }
 
+function normalizedBookingModel(rule = {}) {
+  const commerceMode = rule.commerceMode || ((rule.bookingSource || (rule.sourceType === 'standalone' ? 'direct' : 'product')) === 'direct' && !rule.productId ? 'standalone_free' : 'product_pre_purchase');
+  return {
+    bookingType: rule.bookingType || (commerceMode === 'product_post_purchase' ? 'purchase_triggered' : 'standalone'),
+    paymentMode: rule.paymentMode || (commerceMode === 'standalone_paid' ? 'checkout' : 'none'),
+    commerceMode
+  };
+}
+
+function normalizedPlacement(rule = {}) {
+  if (rule.storefrontPlacement) {
+    return {
+      directLink: rule.storefrontPlacement.directLink !== false,
+      pageBlock: rule.storefrontPlacement.pageBlock !== false,
+      staffDirectory: rule.storefrontPlacement.staffDirectory === true,
+      productBlock: {
+        enabled: rule.storefrontPlacement.productBlock?.enabled === true,
+        scope: rule.storefrontPlacement.productBlock?.scope === 'selected' ? 'selected' : 'all',
+        productIds: (rule.storefrontPlacement.productBlock?.productIds || []).map(String)
+      },
+      appEmbed: { enabled: rule.storefrontPlacement.appEmbed?.enabled === true }
+    };
+  }
+  const bookingSource = rule.bookingSource || (rule.sourceType === 'standalone' ? 'direct' : 'product');
+  const productEnabled = ['product', 'both'].includes(bookingSource) || rule.commerceMode === 'product_pre_purchase';
+  const directEnabled = ['direct', 'both'].includes(bookingSource) && rule.commerceMode !== 'product_post_purchase';
+  return {
+    directLink: directEnabled,
+    pageBlock: directEnabled,
+    staffDirectory: false,
+    productBlock: { enabled: productEnabled, scope: rule.productId ? 'selected' : 'all', productIds: rule.productId ? [String(rule.productId)] : [] },
+    appEmbed: { enabled: false }
+  };
+}
+
+function productPlacementAllows(rule, productId) {
+  const placement = normalizedPlacement(rule).productBlock;
+  if (!placement.enabled || !productId) return false;
+  return placement.scope === 'all' || placement.productIds.includes(String(productId));
+}
+
 function serializeRule(rule, timezone, staffMeta = { mode: 'none', options: [] }) {
   const storeDate = zonedNow(timezone).date;
   const bookingWindowDays = Number(rule.bookingWindowDays || 90);
+  const model = normalizedBookingModel(rule);
+  const placement = normalizedPlacement(rule);
   return {
-    id: rule._id, bookingSource: rule.bookingSource || (rule.sourceType === 'standalone' ? 'direct' : 'product'),
-    commerceMode: rule.commerceMode || ((rule.bookingSource || (rule.sourceType === 'standalone' ? 'direct' : 'product')) === 'direct' && !rule.productId ? 'standalone_free' : 'product_pre_purchase'),
+    id: rule._id,
+    bookingType: model.bookingType,
+    paymentMode: model.paymentMode,
+    bookingSource: rule.bookingSource || (rule.sourceType === 'standalone' ? 'direct' : 'product'),
+    commerceMode: model.commerceMode,
     sourceType: rule.sourceType || 'product', serviceType: rule.serviceType === 'product' ? 'appointment' : (rule.serviceType || 'appointment'),
     bookingMode: bookingModeFor(rule), sessionsRequired: Number(rule.sessionsRequired || 3), timezone,
     productId: rule.productId || '', productTitle: rule.productTitle || '', serviceTitle: rule.serviceTitle || rule.productTitle,
@@ -98,15 +146,16 @@ function serializeRule(rule, timezone, staffMeta = { mode: 'none', options: [] }
     location: rule.location, shoplineLocationId: rule.shoplineLocationId || '',
     locationSnapshot: rule.locationSnapshot || null, staff: rule.staff,
     staffAssignment: { mode: staffMeta.mode, staffIds: staffMeta.options.map(item => item.id) }, staffOptions: staffMeta.options,
-    payment: rule.commerceMode === 'standalone_paid' ? { required: true, holdMinutes: Number(rule.paymentHoldMinutes || 15), price: rule.productVariantPrice || '', variantTitle: rule.productVariantTitle || '' } : { required: false },
-    postPurchaseRequired: rule.commerceMode === 'product_post_purchase',
+    payment: model.paymentMode === 'checkout' ? { required: true, holdMinutes: Number(rule.paymentHoldMinutes || 15), price: rule.checkoutProduct?.price || rule.productVariantPrice || '', variantTitle: rule.checkoutProduct?.variantTitle || rule.productVariantTitle || '' } : { required: false },
+    postPurchaseRequired: model.bookingType === 'purchase_triggered',
+    storefrontPlacement: placement,
     questionLabel: rule.questionLabel, customQuestions: rule.customQuestions
   };
 }
 
 function publicRuleCacheKey(req) {
   const ruleId = String(req.query.ruleId || '').trim();
-  if (ruleId) return `rule:${ruleId}`;
+  if (ruleId) return `rule:${ruleId}:${String(req.query.productId || '').trim()}`;
   const handle = String(req.query.shop || '').trim().toLowerCase();
   const shopId = String(req.query.shopId || '').trim();
   const productId = String(req.query.productId || '').trim();
@@ -124,6 +173,10 @@ async function findPublicRule(req) {
     if (!validRuleId(ruleId)) return { error: { status: 400, body: { error: 'INVALID_REQUEST', message: 'A valid ruleId is required.' } } };
     const rule = await AppointmentRule.findOne({ _id: ruleId, enabled: true }).lean();
     if (!rule) return { error: { status: 404, body: { error: 'NOT_FOUND', message: 'Appointment service not found.' } } };
+    const requestedProductId = String(req.query.productId || '').trim();
+    if (requestedProductId && !productPlacementAllows(rule, requestedProductId)) {
+      return { error: { status: 404, body: { error: 'NOT_FOUND', message: 'This appointment service is not enabled on this product.' } } };
+    }
     const shop = await findInstalledShop({ objectId: rule.shopId });
     if (!shop) return { error: { status: 404, body: { error: 'NOT_FOUND', message: 'Store not found.' } } };
     if (publicSubscriptionUnavailable(shop)) return { error: { status: 404, body: { error: 'NOT_FOUND', message: 'Appointment service is temporarily unavailable.' } } };
@@ -136,8 +189,16 @@ async function findPublicRule(req) {
     const shop = await findInstalledShop({ shopId, shop: handle });
     if (!shop) return { error: { status: 404, body: { error: 'NOT_FOUND', message: 'Store not found.' } } };
     if (publicSubscriptionUnavailable(shop)) return { error: { status: 404, body: { error: 'NOT_FOUND', message: 'Appointment service is temporarily unavailable.' } } };
-    const rule = await AppointmentRule.findOne({ shopId: shop._id, productId, enabled: true, $or: [{ bookingSource: { $in: ['product', 'both'] } }, { bookingSource: { $exists: false }, sourceType: 'product' }] }).lean();
-    if (!rule) return { error: { status: 404, body: { error: 'NOT_FOUND', message: 'No appointment rule for this product.' } } };
+    const candidates = await AppointmentRule.find({
+      shopId: shop._id,
+      enabled: true,
+      $or: [
+        { 'storefrontPlacement.productBlock.enabled': true },
+        { productId, $or: [{ bookingSource: { $in: ['product', 'both'] } }, { bookingSource: { $exists: false }, sourceType: 'product' }] }
+      ]
+    }).sort({ updatedAt: -1 }).limit(50).lean();
+    const rule = candidates.find(item => productPlacementAllows(item, productId) || (!item.storefrontPlacement && String(item.productId || '') === productId));
+    if (!rule) return { error: { status: 404, body: { error: 'NOT_FOUND', message: 'No appointment service is placed on this product.' } } };
     result = { rule, shop };
   }
   publicContextCache.set(cacheKey, result);
@@ -179,8 +240,7 @@ publicRouter.get('/rule', async (req, res) => {
 publicRouter.get('/staff-directory', async (req, res) => {
   const result = await findPublicRule(req);
   if (result.error) return res.status(result.error.status).json(result.error.body);
-  const bookingSource = result.rule.bookingSource || (result.rule.sourceType === 'standalone' ? 'direct' : 'product');
-  if (!['direct', 'both'].includes(bookingSource)) return res.status(404).json({ error: 'NOT_FOUND', message: 'Direct booking is not enabled for this service.' });
+  if (req.query.placement === 'staff_directory' && !normalizedPlacement(result.rule).staffDirectory) return res.status(404).json({ error: 'NOT_FOUND', message: 'Staff Directory placement is not enabled for this service.' });
   const directory = await publicStaffDirectory(result.rule);
   res.set('Cache-Control', 'no-cache');
   res.json({
@@ -189,11 +249,26 @@ publicRouter.get('/staff-directory', async (req, res) => {
   });
 });
 
+publicRouter.get('/embed-services', async (req, res) => {
+  const handle = String(req.query.shop || '').toLowerCase();
+  const shopId = String(req.query.shopId || '').trim();
+  if (!validShoplineStoreId(shopId) && !validShopHandle(handle)) return res.status(400).json({ error: 'INVALID_REQUEST', message: 'shopId or shop is required.' });
+  const shop = await findInstalledShop({ shopId, shop: handle });
+  if (!shop || publicSubscriptionUnavailable(shop)) return res.status(404).json({ error: 'NOT_FOUND', message: 'Appointment services are unavailable.' });
+  const rules = await AppointmentRule.find({ shopId: shop._id, enabled: true, bookingType: { $ne: 'purchase_triggered' }, 'storefrontPlacement.appEmbed.enabled': true })
+    .sort({ serviceTitle: 1 }).select('_id serviceTitle serviceDescription serviceType').lean();
+  const storefront = normalizeStorefrontSettings(shop.storefrontSettings || {});
+  res.set('Cache-Control', 'no-cache');
+  res.json({
+    services: rules.map(rule => ({ id: String(rule._id), title: rule.serviceTitle || 'Appointment', description: rule.serviceDescription || '', serviceType: rule.serviceType || 'appointment' })),
+    storefront
+  });
+});
+
 publicRouter.get('/service', async (req, res) => {
   const result = await findPublicRule(req);
   if (result.error) return res.status(result.error.status).json(result.error.body);
-  const bookingSource = result.rule.bookingSource || (result.rule.sourceType === 'standalone' ? 'direct' : 'product');
-  if (!['direct', 'both'].includes(bookingSource)) return res.status(404).json({ error: 'NOT_FOUND', message: 'Direct booking is not enabled for this service.' });
+  if (req.query.placement === 'page' && !normalizedPlacement(result.rule).pageBlock) return res.status(404).json({ error: 'NOT_FOUND', message: 'Regular page placement is not enabled for this service.' });
   const access = await postPurchaseAccessForRequest(result, req.query.access);
   if (access.error) return res.status(access.error.status).json(access.error.body);
   const timezone = resolveRuleTimezone(result.rule, result.shop.timezone || 'UTC');

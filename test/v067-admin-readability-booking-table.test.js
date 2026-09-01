@@ -41,9 +41,9 @@ test('v0.6.7 release version is aligned', async () => {
     source('package.json'), source('src/views/admin.js'), source('src/views/book.js'), source('theme-extension-source/public/appointment-lite.js')
   ]);
   const pkg = JSON.parse(pkgText);
-  assert.equal(pkg.version, '0.8.0');
-  assert.match(appView, /styles\.css\?v=0.8.0/);
-  assert.match(appView, /app\.js\?v=0.8.0/);
-  assert.match(bookView, /styles\.css\?v=0.8.0/);
-  assert.match(theme, /const VERSION = '0.8.0'/);
+  assert.equal(pkg.version, '0.8.1');
+  assert.match(appView, /styles\.css\?v=0.8.1/);
+  assert.match(appView, /app\.js\?v=0.8.1/);
+  assert.match(bookView, /styles\.css\?v=0.8.1/);
+  assert.match(theme, /const VERSION = '0.8.1'/);
 });

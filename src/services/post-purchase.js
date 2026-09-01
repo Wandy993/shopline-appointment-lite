@@ -171,7 +171,16 @@ export async function upsertPostPurchaseEntitlementsFromOrder({ shop, payload, p
   const quantities = productQuantityMap(payload);
   if (!quantities.size) return { matched: 0, activated: 0, notified: 0, orderId };
 
-  const rules = await RuleModel.find({ shopId: shop._id, commerceMode: 'product_post_purchase', enabled: true, productId: { $in: [...quantities.keys()] } });
+  const productIds = [...quantities.keys()];
+  const rules = await RuleModel.find({
+    shopId: shop._id,
+    commerceMode: 'product_post_purchase',
+    enabled: true,
+    $or: [
+      { 'purchaseTrigger.products.id': { $in: productIds } },
+      { productId: { $in: productIds } }
+    ]
+  });
   let activated = 0;
   let notified = 0;
   const customer = orderCustomer(payload);
@@ -181,11 +190,16 @@ export async function upsertPostPurchaseEntitlementsFromOrder({ shop, payload, p
   const orderCreatedAt = orderCreatedAtOf(payload);
 
   for (const rule of rules) {
-    const eligibleQuantity = Math.max(1, Number(quantities.get(String(rule.productId)) || 1));
+    const triggerIds = (rule.purchaseTrigger?.products || []).map(item => String(item.id || '')).filter(Boolean);
+    if (!triggerIds.length && rule.productId) triggerIds.push(String(rule.productId));
+    const matchedTriggerIds = triggerIds.filter(id => quantities.has(id));
+    if (!matchedTriggerIds.length) continue;
+    const eligibleQuantity = Math.max(1, matchedTriggerIds.reduce((sum, id) => sum + Number(quantities.get(id) || 0), 0));
+    const entitlementProductId = matchedTriggerIds[0];
     let entitlement = await EntitlementModel.findOneAndUpdate(
       { shopId: shop._id, ruleId: rule._id, orderId },
       {
-        $setOnInsert: { shopId: shop._id, ruleId: rule._id, productId: String(rule.productId), orderId, usedBookings: 0, bookingIds: [] },
+        $setOnInsert: { shopId: shop._id, ruleId: rule._id, productId: entitlementProductId, orderId, usedBookings: 0, bookingIds: [] },
         $set: {
           orderName: orderNameOf(payload), eligibleQuantity, customer, shippingAddress,
           financialStatus: paid ? 'paid' : financialStatus,

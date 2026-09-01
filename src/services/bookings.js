@@ -251,7 +251,10 @@ export async function createBookingAtomic({
   const resolvedLocation = bookingLocationForRule(rule, input);
   const document = {
     _id: bookingId,
-    shopId: shop._id, ruleId: rule._id, bookingSource: rule.bookingSource || (rule.sourceType === 'standalone' ? 'direct' : 'product'),
+    shopId: shop._id, ruleId: rule._id,
+    bookingType: rule.bookingType || (rule.commerceMode === 'product_post_purchase' ? 'purchase_triggered' : 'standalone'),
+    paymentMode: rule.paymentMode || (rule.commerceMode === 'standalone_paid' ? 'checkout' : 'none'),
+    bookingSource: rule.bookingSource || (rule.sourceType === 'standalone' ? 'direct' : 'product'),
     commerceMode: rule.commerceMode || ((rule.bookingSource || (rule.sourceType === 'standalone' ? 'direct' : 'product')) === 'direct' && !rule.productId ? 'standalone_free' : 'product_pre_purchase'),
     sourceType: rule.sourceType || 'product', serviceType: rule.serviceType === 'product' ? 'appointment' : (rule.serviceType || 'appointment'),
     bookingMode: mode,
@@ -297,7 +300,20 @@ async function resolveBookingContext({ shopId, handle, productId, ruleId }) {
     shop = await findInstalledShop({ objectId: rule.shopId });
   } else {
     shop = await findInstalledShop({ shopId, shop: handle });
-    if (shop) rule = await AppointmentRule.findOne({ shopId: shop._id, productId, enabled: true, $or: [{ bookingSource: { $in: ['product', 'both'] } }, { bookingSource: { $exists: false }, sourceType: 'product' }] });
+    if (shop) {
+      const candidates = await AppointmentRule.find({
+        shopId: shop._id, enabled: true,
+        $or: [
+          { 'storefrontPlacement.productBlock.enabled': true },
+          { productId, $or: [{ bookingSource: { $in: ['product', 'both'] } }, { bookingSource: { $exists: false }, sourceType: 'product' }] }
+        ]
+      }).sort({ updatedAt: -1 }).limit(50);
+      rule = candidates.find(candidate => {
+        const placement = candidate.storefrontPlacement?.productBlock;
+        if (placement?.enabled) return placement.scope !== 'selected' || (placement.productIds || []).map(String).includes(String(productId));
+        return String(candidate.productId || '') === String(productId);
+      }) || null;
+    }
   }
   if (!shop) throw Object.assign(new Error('Store is not available.'), { code: 'NOT_FOUND' });
   if (!subscriptionAccessAllowed(shop)) throw Object.assign(new Error('Appointment service is not available.'), { code: 'NOT_FOUND', status: 404 });

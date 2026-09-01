@@ -2,6 +2,8 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 const BOOKING_SOURCES = new Set(['product', 'direct', 'both']);
+const BOOKING_TYPES = new Set(['standalone', 'purchase_triggered']);
+const PAYMENT_MODES = new Set(['none', 'checkout']);
 const SERVICE_TYPES = new Set(['appointment', 'product', 'in_store', 'onsite', 'consultation', 'class', 'other']);
 const BOOKING_MODES = new Set(['slot', 'all_day', 'multi_slot']);
 const COMMERCE_MODES = new Set(['standalone_free', 'standalone_paid', 'product_pre_purchase', 'product_post_purchase']);
@@ -40,15 +42,141 @@ function legacyCommerceMode(body, bookingSource) {
   return 'product_pre_purchase';
 }
 
+function normalizeProductReference(value = {}) {
+  return {
+    id: text(value.id || value.productId, 100),
+    title: text(value.title || value.productTitle, 255),
+    handle: text(value.handle || value.productHandle, 255)
+  };
+}
+
+function normalizeProductList(values) {
+  const seen = new Set();
+  return (Array.isArray(values) ? values : []).slice(0, 100).map(normalizeProductReference).filter(item => {
+    if (!item.id || seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+}
+
+function legacyModelFromBody(body) {
+  const requestedBookingSource = BOOKING_SOURCES.has(body.bookingSource) ? body.bookingSource : legacyBookingSource(body);
+  const legacyMode = legacyCommerceMode(body, requestedBookingSource);
+  const bookingType = legacyMode === 'product_post_purchase' ? 'purchase_triggered' : 'standalone';
+  const paymentMode = legacyMode === 'standalone_paid' ? 'checkout' : 'none';
+  const legacyProduct = normalizeProductReference(body);
+  const purchaseTriggerProducts = bookingType === 'purchase_triggered' && legacyProduct.id ? [legacyProduct] : [];
+  const checkoutProduct = paymentMode === 'checkout' && legacyProduct.id ? {
+    productId: legacyProduct.id,
+    productTitle: legacyProduct.title,
+    productHandle: legacyProduct.handle,
+    variantId: text(body.productVariantId, 100),
+    variantTitle: text(body.productVariantTitle, 255),
+    price: text(body.productVariantPrice, 40)
+  } : undefined;
+  const productPlacementEnabled = legacyMode === 'product_pre_purchase' || ['product', 'both'].includes(requestedBookingSource);
+  const directEnabled = legacyMode !== 'product_post_purchase' && ['direct', 'both'].includes(requestedBookingSource);
+  return {
+    bookingType,
+    paymentMode,
+    purchaseTrigger: { products: purchaseTriggerProducts },
+    checkoutProduct,
+    storefrontPlacement: {
+      directLink: directEnabled,
+      pageBlock: directEnabled,
+      staffDirectory: false,
+      productBlock: {
+        enabled: productPlacementEnabled,
+        scope: legacyProduct.id ? 'selected' : 'all',
+        productIds: legacyProduct.id ? [legacyProduct.id] : []
+      },
+      appEmbed: { enabled: false }
+    }
+  };
+}
+
+function normalizeStorefrontPlacement(raw = {}, fallback = {}) {
+  const input = raw && typeof raw === 'object' ? raw : {};
+  const source = Object.keys(input).length ? input : fallback;
+  const rawProductBlock = source.productBlock && typeof source.productBlock === 'object' ? source.productBlock : {};
+  const scope = rawProductBlock.scope === 'selected' ? 'selected' : 'all';
+  const productIds = [...new Set((Array.isArray(rawProductBlock.productIds) ? rawProductBlock.productIds : []).map(value => text(value, 100)).filter(Boolean))].slice(0, 100);
+  const rawEmbed = source.appEmbed && typeof source.appEmbed === 'object' ? source.appEmbed : {};
+  return {
+    directLink: source.directLink !== false,
+    pageBlock: source.pageBlock !== false,
+    staffDirectory: source.staffDirectory === true,
+    productBlock: { enabled: rawProductBlock.enabled === true, scope, productIds: scope === 'selected' ? productIds : [] },
+    appEmbed: { enabled: rawEmbed.enabled === true }
+  };
+}
+
 export function validateRuleInput(body) {
   const errors = [];
-  const requestedBookingSource = BOOKING_SOURCES.has(body.bookingSource) ? body.bookingSource : legacyBookingSource(body);
-  const commerceMode = legacyCommerceMode(body, requestedBookingSource);
-  const bookingSource = commerceMode === 'product_post_purchase' ? 'direct' : requestedBookingSource;
+  const legacy = legacyModelFromBody(body);
+  const bookingType = BOOKING_TYPES.has(body.bookingType) ? body.bookingType : legacy.bookingType;
+  const paymentMode = bookingType === 'purchase_triggered'
+    ? 'none'
+    : PAYMENT_MODES.has(body.paymentMode) ? body.paymentMode : legacy.paymentMode;
+  const rawPurchaseTrigger = body.purchaseTrigger && typeof body.purchaseTrigger === 'object' ? body.purchaseTrigger : legacy.purchaseTrigger;
+  const triggerProducts = normalizeProductList(rawPurchaseTrigger.products);
+  const rawCheckout = body.checkoutProduct && typeof body.checkoutProduct === 'object' ? body.checkoutProduct : legacy.checkoutProduct || {};
+  const checkoutProduct = paymentMode === 'checkout' ? {
+    productId: text(rawCheckout.productId, 100),
+    productTitle: text(rawCheckout.productTitle, 255),
+    productHandle: text(rawCheckout.productHandle, 255),
+    variantId: text(rawCheckout.variantId, 100),
+    variantTitle: text(rawCheckout.variantTitle, 255),
+    price: text(rawCheckout.price, 40)
+  } : undefined;
+  const storefrontPlacement = normalizeStorefrontPlacement(body.storefrontPlacement, legacy.storefrontPlacement);
+  const legacyRequestedBookingSource = BOOKING_SOURCES.has(body.bookingSource) ? body.bookingSource : legacyBookingSource(body);
+  const legacyRequestedCommerceMode = legacyCommerceMode(body, legacyRequestedBookingSource);
+
+  if (bookingType === 'purchase_triggered' && triggerProducts.length < 1) errors.push('Choose at least one SHOPLINE product that unlocks this appointment after purchase.');
+  if (paymentMode === 'checkout') {
+    if (!checkoutProduct?.productId || !checkoutProduct?.productTitle) errors.push('Choose the SHOPLINE checkout product used to charge for this appointment.');
+    if (!checkoutProduct?.variantId) errors.push('Choose the SHOPLINE variant customers will pay for.');
+  }
+  if (storefrontPlacement.productBlock.enabled && storefrontPlacement.productBlock.scope === 'selected' && storefrontPlacement.productBlock.productIds.length < 1) {
+    errors.push('Choose at least one product for selected-product storefront placement.');
+  }
+  const explicitNewModel = BOOKING_TYPES.has(body.bookingType) || PAYMENT_MODES.has(body.paymentMode) || Boolean(body.purchaseTrigger || body.checkoutProduct || body.storefrontPlacement);
+  if (!explicitNewModel) {
+    const legacyNeedsProduct = ['product', 'both'].includes(legacyRequestedBookingSource) || ['standalone_paid', 'product_pre_purchase', 'product_post_purchase'].includes(legacyRequestedCommerceMode);
+    const legacyProduct = normalizeProductReference(body);
+    if (legacyNeedsProduct && !legacyProduct.id) errors.push('Product is required for this booking flow.');
+    if (legacyNeedsProduct && !legacyProduct.title) errors.push('Product title is required for this booking flow.');
+  }
+  if (bookingType === 'standalone') {
+    const hasPublicPlacement = storefrontPlacement.directLink || storefrontPlacement.pageBlock || storefrontPlacement.staffDirectory || storefrontPlacement.productBlock.enabled || storefrontPlacement.appEmbed.enabled;
+    if (!hasPublicPlacement) errors.push('Enable at least one storefront placement or direct booking link.');
+  }
+
+  const commerceMode = !explicitNewModel && COMMERCE_MODES.has(body.commerceMode)
+    ? legacyRequestedCommerceMode
+    : bookingType === 'purchase_triggered' ? 'product_post_purchase' : paymentMode === 'checkout' ? 'standalone_paid' : 'standalone_free';
+  const publicDirect = storefrontPlacement.directLink || storefrontPlacement.pageBlock || storefrontPlacement.staffDirectory || storefrontPlacement.appEmbed.enabled;
+  const bookingSource = !explicitNewModel
+    ? (commerceMode === 'product_post_purchase' ? 'direct' : legacyRequestedBookingSource)
+    : bookingType === 'purchase_triggered' ? 'direct' : storefrontPlacement.productBlock.enabled ? (publicDirect ? 'both' : 'product') : 'direct';
+  const sourceType = bookingSource === 'direct' ? 'standalone' : 'product';
+  const legacyProduct = !explicitNewModel
+    ? normalizeProductReference(body)
+    : bookingType === 'purchase_triggered' ? (triggerProducts[0] || { id: '', title: '', handle: '' }) : paymentMode === 'checkout' ? {
+      id: checkoutProduct?.productId || '', title: checkoutProduct?.productTitle || '', handle: checkoutProduct?.productHandle || ''
+    } : { id: '', title: '', handle: '' };
+  const productId = legacyProduct.id || '';
+  const productTitle = legacyProduct.title || '';
+  const productHandle = legacyProduct.handle || '';
+  const productVariantId = paymentMode === 'checkout' ? checkoutProduct?.variantId || '' : '';
+  const productVariantTitle = paymentMode === 'checkout' ? checkoutProduct?.variantTitle || '' : '';
+  const productVariantPrice = paymentMode === 'checkout' ? checkoutProduct?.price || '' : '';
+  const paymentHoldMinutes = paymentMode === 'checkout' ? Number(body.paymentHoldMinutes ?? 15) : 15;
+
   const rawServiceType = SERVICE_TYPES.has(body.serviceType) ? body.serviceType : 'appointment';
   const serviceType = rawServiceType === 'product' ? 'appointment' : rawServiceType;
   const bookingMode = BOOKING_MODES.has(body.bookingMode) ? body.bookingMode : 'slot';
-  const sourceType = bookingSource === 'direct' ? 'standalone' : 'product';
   const durationRaw = Number(body.duration ?? 60);
   const bufferRaw = Number(body.buffer ?? 0);
   const capacity = Number(body.capacity ?? 1);
@@ -59,14 +187,6 @@ export function validateRuleInput(body) {
   const minimumNoticeMinutes = Number(body.minimumNoticeMinutes ?? 0);
   const bookingWindowDays = Number(body.bookingWindowDays ?? 90);
   const timezone = text(body.timezone, 80);
-  const usesProductPage = bookingSource === 'product' || bookingSource === 'both';
-  const needsProductBinding = usesProductPage || ['standalone_paid', 'product_pre_purchase', 'product_post_purchase'].includes(commerceMode);
-  const productId = needsProductBinding ? text(body.productId, 100) : '';
-  const productTitle = needsProductBinding ? text(body.productTitle, 255) : '';
-  const productVariantId = commerceMode === 'standalone_paid' ? text(body.productVariantId, 100) : '';
-  const productVariantTitle = commerceMode === 'standalone_paid' ? text(body.productVariantTitle, 255) : '';
-  const productVariantPrice = commerceMode === 'standalone_paid' ? text(body.productVariantPrice, 40) : '';
-  const paymentHoldMinutes = commerceMode === 'standalone_paid' ? Number(body.paymentHoldMinutes ?? 15) : 15;
   const serviceTitle = text(body.serviceTitle || body.productTitle, 255);
   const legacyLocation = text(body.location, 300);
   const locationMode = LOCATION_MODES.has(body.locationMode) ? body.locationMode : (legacyLocation ? 'custom' : 'custom');
@@ -85,10 +205,7 @@ export function validateRuleInput(body) {
 
   if (!serviceTitle) errors.push('Service name is required.');
   if (!validTimeZone(timezone)) errors.push('Choose a valid IANA service time zone.');
-  if (needsProductBinding && !productId) errors.push('Product is required for this booking flow.');
-  if (needsProductBinding && !productTitle) errors.push('Product title is required for this booking flow.');
-  if (commerceMode === 'standalone_paid' && !productVariantId) errors.push('Choose the SHOPLINE variant customers will pay for.');
-  if (commerceMode === 'standalone_paid' && (!Number.isInteger(paymentHoldMinutes) || paymentHoldMinutes < 5 || paymentHoldMinutes > 30)) errors.push('Payment hold time must be 5–30 minutes.');
+  if (paymentMode === 'checkout' && (!Number.isInteger(paymentHoldMinutes) || paymentHoldMinutes < 5 || paymentHoldMinutes > 30)) errors.push('Payment hold time must be 5–30 minutes.');
   if (bookingMode !== 'all_day' && (!Number.isInteger(duration) || duration < 5 || duration > 480)) errors.push('Duration must be 5–480 minutes.');
   if (bookingMode !== 'all_day' && (!Number.isInteger(buffer) || buffer < 0 || buffer > 240)) errors.push('Buffer must be 0–240 minutes.');
   if (!Number.isInteger(capacity) || capacity < 1 || capacity > 100) errors.push(bookingMode === 'all_day' ? 'Capacity must be 1–100 bookings per day.' : 'Capacity must be 1–100 bookings per time slot.');
@@ -131,9 +248,12 @@ export function validateRuleInput(body) {
   })).filter(question => question.label);
 
   return { errors: [...new Set(errors)], value: {
+    bookingType, paymentMode,
+    purchaseTrigger: { products: triggerProducts },
+    checkoutProduct,
+    storefrontPlacement,
     bookingSource, commerceMode, sourceType, serviceType, bookingMode, sessionsRequired, serviceTitle, timezone,
-    productId, productTitle,
-    productHandle: needsProductBinding ? text(body.productHandle, 255) : '',
+    productId, productTitle, productHandle,
     productVariantId, productVariantTitle, productVariantPrice, paymentHoldMinutes,
     serviceDescription: text(body.serviceDescription, 500),
     duration, buffer, capacity, minimumNoticeMinutes, bookingWindowDays,

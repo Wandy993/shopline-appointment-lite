@@ -45,6 +45,44 @@ const onlineMeetingSchema = new mongoose.Schema({
   url: { type: String, default: '', trim: true, maxlength: 2000 }
 }, { _id: false });
 
+
+const triggerProductSchema = new mongoose.Schema({
+  id: { type: String, required: true, trim: true, maxlength: 100 },
+  title: { type: String, default: '', trim: true, maxlength: 255 },
+  handle: { type: String, default: '', trim: true, maxlength: 255 }
+}, { _id: false });
+
+const purchaseTriggerSchema = new mongoose.Schema({
+  products: { type: [triggerProductSchema], default: [] }
+}, { _id: false });
+
+const checkoutProductSchema = new mongoose.Schema({
+  productId: { type: String, default: '', trim: true, maxlength: 100 },
+  productTitle: { type: String, default: '', trim: true, maxlength: 255 },
+  productHandle: { type: String, default: '', trim: true, maxlength: 255 },
+  variantId: { type: String, default: '', trim: true, maxlength: 100 },
+  variantTitle: { type: String, default: '', trim: true, maxlength: 255 },
+  price: { type: String, default: '', trim: true, maxlength: 40 }
+}, { _id: false });
+
+const productPlacementSchema = new mongoose.Schema({
+  enabled: { type: Boolean, default: false },
+  scope: { type: String, enum: ['all', 'selected'], default: 'all' },
+  productIds: { type: [String], default: [] }
+}, { _id: false });
+
+const appEmbedPlacementSchema = new mongoose.Schema({
+  enabled: { type: Boolean, default: false }
+}, { _id: false });
+
+const storefrontPlacementSchema = new mongoose.Schema({
+  directLink: { type: Boolean, default: true },
+  pageBlock: { type: Boolean, default: true },
+  staffDirectory: { type: Boolean, default: false },
+  productBlock: { type: productPlacementSchema, default: () => ({ enabled: false, scope: 'all', productIds: [] }) },
+  appEmbed: { type: appEmbedPlacementSchema, default: () => ({ enabled: false }) }
+}, { _id: false });
+
 const questionSchema = new mongoose.Schema({
   label: { type: String, required: true, maxlength: 120 },
   required: { type: Boolean, default: false }
@@ -53,6 +91,15 @@ const questionSchema = new mongoose.Schema({
 const appointmentRuleSchema = new mongoose.Schema({
   shopId: { type: mongoose.Schema.Types.ObjectId, ref: 'Shop', required: true, index: true },
 
+  // v0.8.1: booking business model is independent from checkout and storefront placement.
+  bookingType: { type: String, enum: ['standalone', 'purchase_triggered'], default: 'standalone', index: true },
+  paymentMode: { type: String, enum: ['none', 'checkout'], default: 'none', index: true },
+  purchaseTrigger: { type: purchaseTriggerSchema, default: () => ({ products: [] }) },
+  checkoutProduct: { type: checkoutProductSchema, default: undefined },
+  storefrontPlacement: { type: storefrontPlacementSchema, default: () => ({ directLink: true, pageBlock: true, staffDirectory: false, productBlock: { enabled: false, scope: 'all', productIds: [] }, appEmbed: { enabled: false } }) },
+
+  // Legacy compatibility fields. v0.8.1 derives these from the model above so existing
+  // booking, checkout, order webhook, and storefront code can migrate without downtime.
   // v0.3.1: booking channel is independent from the kind of service.
   // sourceType remains as a compatibility field for older records and clients.
   bookingSource: { type: String, enum: ['product', 'direct', 'both'], default: 'product', index: true },
@@ -99,9 +146,8 @@ const appointmentRuleSchema = new mongoose.Schema({
   enabled: { type: Boolean, default: true }
 }, { timestamps: true });
 
-appointmentRuleSchema.index(
-  { shopId: 1, productId: 1 },
-  { unique: true, partialFilterExpression: { productId: { $gt: '' } }, name: 'one_appointment_service_per_product' }
-);
+appointmentRuleSchema.index({ shopId: 1, productId: 1 }, { name: 'legacy_product_lookup' });
+appointmentRuleSchema.index({ shopId: 1, bookingType: 1, enabled: 1 }, { name: 'booking_type_lookup' });
+appointmentRuleSchema.index({ shopId: 1, 'storefrontPlacement.productBlock.enabled': 1 }, { name: 'product_placement_lookup' });
 
 export const AppointmentRule = mongoose.model('AppointmentRule', appointmentRuleSchema);

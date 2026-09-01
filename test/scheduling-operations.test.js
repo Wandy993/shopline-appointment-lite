@@ -113,10 +113,11 @@ test('merchant completion and no-show are validated and recorded in booking hist
   assert.equal(update.$push.events.type, 'merchant_completed');
 });
 
-test('schemas expose partial product uniqueness and capacity-position uniqueness', () => {
+test('schemas allow reusable product placement and keep capacity-position uniqueness', () => {
   const ruleIndexes = AppointmentRule.schema.indexes();
   const bookingIndexes = Booking.schema.indexes();
-  assert.ok(ruleIndexes.some(([keys, options]) => keys.shopId === 1 && keys.productId === 1 && options.name === 'one_appointment_service_per_product' && options.partialFilterExpression?.productId?.$gt === ''));
+  assert.ok(ruleIndexes.some(([keys, options]) => keys.shopId === 1 && keys.productId === 1 && options.name === 'legacy_product_lookup' && !options.unique));
+  assert.ok(ruleIndexes.some(([keys, options]) => keys.shopId === 1 && keys.bookingType === 1 && options.name === 'booking_type_lookup'));
   assert.ok(bookingIndexes.some(([keys, options]) => keys.slotPosition === 1 && options.name === 'capacity_position_per_slot' && options.partialFilterExpression?.status === 'confirmed'));
 });
 

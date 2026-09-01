@@ -6,7 +6,7 @@ export function bookingPage(ruleId) {
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="robots" content="noindex,nofollow">
   <title>Book an appointment</title>
-  <link rel="stylesheet" href="/book/assets/styles.css?v=0.8.0">
+  <link rel="stylesheet" href="/book/assets/styles.css?v=0.8.1">
 </head>
 <body data-rule-id="${String(ruleId).replace(/[^a-f\d]/gi, '')}">
   <main class="booking-shell">
@@ -53,7 +53,7 @@ export function bookingPage(ruleId) {
     <section id="successView" class="booking-card hidden"><div class="success-state"><span class="success-mark">✓</span><span class="eyebrow">BOOKING CONFIRMED</span><h1 id="successTitle">You're booked.</h1><p id="successWhen"></p><p id="successDetails" class="muted"></p><div id="successCalendarActions" class="success-calendar-actions"><a id="addGoogleCalendar" class="secondary-link calendar-link google-calendar-link hidden" href="#" target="_blank" rel="noopener noreferrer"><span class="google-g-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill="#4285F4" d="M21.6 12.23c0-.71-.06-1.24-.2-1.8H12v3.28h5.52a4.72 4.72 0 0 1-2.05 3.01l-.02.11 2.98 2.31.21.02c1.93-1.78 3.04-4.4 3.04-6.93Z"/><path fill="#34A853" d="M12 22c2.76 0 5.08-.91 6.78-2.48l-3.23-2.5c-.86.6-2.04 1.01-3.55 1.01a6.17 6.17 0 0 1-5.83-4.26l-.1.01-3.1 2.4-.04.1A10.24 10.24 0 0 0 12 22Z"/><path fill="#FBBC05" d="M6.17 13.77A6.3 6.3 0 0 1 5.83 12c0-.62.12-1.22.33-1.78l-.01-.12-3.14-2.44-.1.05A10 10 0 0 0 1.82 12c0 1.55.38 3.02 1.08 4.29l3.27-2.52Z"/><path fill="#EA4335" d="M12 5.97c1.92 0 3.22.83 3.97 1.52l2.88-2.81C17.08 3.03 14.76 2 12 2a10.24 10.24 0 0 0-9.08 5.71l3.24 2.51A6.19 6.19 0 0 1 12 5.97Z"/></svg></span><span class="calendar-link-label">Add to Google Calendar</span><span class="calendar-link-arrow" aria-hidden="true">→</span></a></div><a id="manageBooking" class="primary link-button" href="#">Manage appointment</a></div></section>
     <footer>Powered by Appointment Lite</footer>
   </main>
-  <script type="module" src="/book/assets/app.js?v=0.8.0"></script>
+  <script type="module" src="/book/assets/app.js?v=0.8.1"></script>
 </body>
 </html>`;
 }

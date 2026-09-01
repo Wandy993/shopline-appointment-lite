@@ -65,24 +65,24 @@ test('v0.6.16 SHOPLINE location picker gains the same viewport-aware drop-up saf
   assert.match(css, /--location-menu-max-height/);
 });
 
-test('v0.6.16 paid checkout guidance has deliberate spacing before checkout controls', async () => {
+test('v0.8.1 paid checkout is isolated from storefront placement', async () => {
   const [view, css] = await Promise.all([source('src/views/admin.js'), source('public/admin/styles.css')]);
-  assert.match(view, /class="paid-checkout-fields hidden"/);
-  assert.match(view, /class="paid-checkout-callout"/);
-  assert.match(css, /\.paid-checkout-fields\{margin-top:20px;padding:16px/);
-  assert.match(css, /\.paid-checkout-callout\{margin:0 0 18px;padding:12px 13px/);
+  assert.match(view, /id="checkoutProductFields" class="booking-model-panel hidden"/);
+  assert.match(view, /id="paidCheckoutFields" class="paid-checkout-fields"/);
+  assert.match(view, /This product only supplies SHOPLINE price and checkout/);
+  assert.match(css, /\.booking-model-panel/);
 });
 
 test('v0.6.16 release version stays aligned', async () => {
   const [pkg, app, adminView, bookView, legalView, theme, release] = await Promise.all([
     source('package.json'), source('src/app.js'), source('src/views/admin.js'), source('src/views/book.js'), source('src/views/legal.js'), source('theme-extension-source/public/appointment-lite.js'), source('scripts/build-release.sh')
   ]);
-  assert.equal(JSON.parse(pkg).version, '0.8.0');
-  assert.match(app, /version: '0.8.0'/);
-  assert.match(adminView, /styles\.css\?v=0.8.0/);
-  assert.match(bookView, /styles\.css\?v=0.8.0/);
-  assert.match(legalView, /styles\.css\?v=0.8.0/);
-  assert.match(theme, /const VERSION = '0.8.0'/);
-  assert.match(release, /RELEASE_VERSION="0.8.0"/);
-  assert.match(release, /core-booking-staff/);
+  assert.equal(JSON.parse(pkg).version, '0.8.1');
+  assert.match(app, /version: '0.8.1'/);
+  assert.match(adminView, /styles\.css\?v=0.8.1/);
+  assert.match(bookView, /styles\.css\?v=0.8.1/);
+  assert.match(legalView, /styles\.css\?v=0.8.1/);
+  assert.match(theme, /const VERSION = '0.8.1'/);
+  assert.match(release, /RELEASE_VERSION="0.8.1"/);
+  assert.match(release, /booking-model-storefront-placement/);
 });

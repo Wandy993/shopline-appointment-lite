@@ -98,15 +98,14 @@ test('v0.6.3 protects the hosted scheduler with the private purchase token and p
   assert.match(hosted, /Order .* verified/);
 });
 
-test('v0.6.3 admin presents post-purchase scheduling as an order-linked flow rather than a pre-purchase booking button', async () => {
+test('v0.8.1 purchase-triggered booking stays private after payment', async () => {
   const [view, app] = await Promise.all([
     readFile(new URL('../src/views/admin.js', import.meta.url), 'utf8'),
     readFile(new URL('../public/admin/app.js', import.meta.url), 'utf8')
   ]);
-  assert.match(view, /data-commerce-mode="product_post_purchase"/);
-  assert.doesNotMatch(view, /data-commerce-mode="product_post_purchase" disabled/);
-  assert.match(view, /Private order scheduling link/);
-  assert.match(app, /commerceMode === 'product_post_purchase' \? 'direct'/);
-  assert.match(app, /No booking button is shown before purchase/);
-  assert.match(app, /Private order link/);
+  assert.match(view, /data-booking-type="purchase_triggered"/);
+  assert.match(view, /id="purchaseTriggerFields"/);
+  assert.match(view, /Private scheduling entitlement/);
+  assert.match(app, /bookingType === 'purchase_triggered'/);
+  assert.match(app, /directLink: false, pageBlock: false/);
 });

@@ -88,6 +88,8 @@ const postPurchaseSchema = new mongoose.Schema({
 const bookingSchema = new mongoose.Schema({
   shopId: { type: mongoose.Schema.Types.ObjectId, ref: 'Shop', required: true, index: true },
   ruleId: { type: mongoose.Schema.Types.ObjectId, ref: 'AppointmentRule', required: true, index: true },
+  bookingType: { type: String, enum: ['standalone', 'purchase_triggered'], default: 'standalone' },
+  paymentMode: { type: String, enum: ['none', 'checkout'], default: 'none' },
   bookingSource: { type: String, enum: ['product', 'direct', 'both'], default: 'product' },
   commerceMode: { type: String, enum: ['standalone_free', 'standalone_paid', 'product_pre_purchase', 'product_post_purchase'], default: 'product_pre_purchase' },
   sourceType: { type: String, enum: ['product', 'standalone'], default: 'product' },

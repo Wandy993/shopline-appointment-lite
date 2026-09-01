@@ -18,3 +18,17 @@ Do not copy a `.shopline-cli.yml` from another app; the CLI must generate it for
 ## Standalone services
 
 Standalone services remain hosted at `/book/:ruleId`, and v0.8.0 can also surface them on a regular SHOPLINE Page through the **Appointment Lite · Booking** block. The **Staff Directory** block lists only active, assigned staff with `publicProfile=true`; staff email and phone are never returned by the public directory API.
+
+
+## v0.8.1 storefront placement
+
+Appointment Lite now ships four storefront extension surfaces:
+
+- `Appointment Lite` — product detail App Block. Service visibility is controlled from each service's **Storefront placement** settings.
+- `Appointment Lite · Booking` — regular Page App Block using a Service ID.
+- `Appointment Lite · Staff Directory` — regular Page App Block using a Service ID.
+- `Appointment Lite Launcher` — App Embed Block (`target: body`) for a global floating launcher.
+
+The App Embed is not automatically activated after installation. The merchant must enable it from the SHOPLINE theme editor **App embeds** area. Only services with **App Embed floating launcher** enabled are returned to the launcher.
+
+Product detail placement is presentation-only. It must not be treated as the checkout product or purchase-trigger product.

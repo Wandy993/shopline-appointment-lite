@@ -204,8 +204,8 @@ test('v0.6.16-hotfix.2 preserves old 422 recovery but supersedes legacy per-shop
 
 test('current release identity advances without regressing the Ops Hub contract alignment', async () => {
   const [app, release] = await Promise.all([source('src/app.js'), source('scripts/build-release.sh')]);
-  assert.match(app, /build:\s*'0\.8\.0-core-booking-staff\.1'/);
-  assert.match(release, /RELEASE_VERSION="0\.8\.0"/);
-  assert.match(release, /RELEASE_BUILD="core-booking-staff\.1"/);
-  assert.match(release, /core-booking-staff/);
+  assert.match(app, /build:\s*'0\.8\.1-booking-model-storefront-placement\.1'/);
+  assert.match(release, /RELEASE_VERSION="0\.8\.1"/);
+  assert.match(release, /RELEASE_BUILD="booking-model-storefront-placement\.1"/);
+  assert.match(release, /booking-model-storefront-placement/);
 });

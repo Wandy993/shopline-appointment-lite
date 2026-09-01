@@ -396,6 +396,35 @@ adminRouter.get('/locations', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+function normalizedRuleModelForAdmin(rule = {}) {
+  const bookingSource = rule.bookingSource || (rule.sourceType === 'standalone' ? 'direct' : 'product');
+  const commerceMode = rule.commerceMode || (bookingSource === 'direct' && !rule.productId ? 'standalone_free' : 'product_pre_purchase');
+  const bookingType = rule.bookingType || (commerceMode === 'product_post_purchase' ? 'purchase_triggered' : 'standalone');
+  const paymentMode = rule.paymentMode || (commerceMode === 'standalone_paid' ? 'checkout' : 'none');
+  let purchaseTrigger = rule.purchaseTrigger || { products: [] };
+  let checkoutProduct = rule.checkoutProduct || null;
+  let storefrontPlacement = rule.storefrontPlacement || null;
+  if (!purchaseTrigger.products?.length && bookingType === 'purchase_triggered' && rule.productId) {
+    purchaseTrigger = { products: [{ id: String(rule.productId), title: rule.productTitle || '', handle: rule.productHandle || '' }] };
+  }
+  if (!checkoutProduct && paymentMode === 'checkout' && rule.productId) {
+    checkoutProduct = {
+      productId: String(rule.productId), productTitle: rule.productTitle || '', productHandle: rule.productHandle || '',
+      variantId: rule.productVariantId || '', variantTitle: rule.productVariantTitle || '', price: rule.productVariantPrice || ''
+    };
+  }
+  if (!storefrontPlacement) {
+    const productEnabled = commerceMode === 'product_pre_purchase' || ['product', 'both'].includes(bookingSource);
+    const directEnabled = commerceMode !== 'product_post_purchase' && ['direct', 'both'].includes(bookingSource);
+    storefrontPlacement = {
+      directLink: directEnabled, pageBlock: directEnabled, staffDirectory: false,
+      productBlock: { enabled: productEnabled, scope: rule.productId ? 'selected' : 'all', productIds: rule.productId ? [String(rule.productId)] : [] },
+      appEmbed: { enabled: false }
+    };
+  }
+  return { bookingSource, commerceMode, bookingType, paymentMode, purchaseTrigger, checkoutProduct, storefrontPlacement };
+}
+
 adminRouter.get('/rules', async (req, res) => {
   const [rules, bookingCounts] = await Promise.all([
     AppointmentRule.find({ shopId: req.shop._id }).sort({ updatedAt: -1 }).lean(),
@@ -410,15 +439,15 @@ adminRouter.get('/rules', async (req, res) => {
   ]);
   const counts = new Map(bookingCounts.map(item => [String(item._id), { count: Number(item.count || 0), confirmedCount: Number(item.confirmedCount || 0) }]));
   res.json({ rules: rules.map(rule => {
-    const bookingSource = rule.bookingSource || (rule.sourceType === 'standalone' ? 'direct' : 'product');
-    const commerceMode = rule.commerceMode || (bookingSource === 'direct' && !rule.productId ? 'standalone_free' : 'product_pre_purchase');
+    const model = normalizedRuleModelForAdmin(rule);
     return {
       ...rule,
-      bookingSource, commerceMode,
+      ...model,
       serviceTitle: rule.serviceTitle || rule.productTitle,
       bookingCount: counts.get(String(rule._id))?.count || 0,
       confirmedBookingCount: counts.get(String(rule._id))?.confirmedCount || 0,
-      bookingUrl: commerceMode !== 'product_post_purchase' && ['direct', 'both'].includes(bookingSource) ? `${config.appUrl}/book/${rule._id}` : ''
+      bookingUrl: model.bookingType === 'standalone' && model.storefrontPlacement.directLink ? `${config.appUrl}/book/${rule._id}` : '',
+      blockId: String(rule._id)
     };
   }) });
 });

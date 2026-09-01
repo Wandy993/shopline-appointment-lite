@@ -135,7 +135,7 @@ test('heartbeat queue remains metadata-free and current health exposes the activ
   ]);
   assert.match(opsHub, /return queueOpsEvent\('app\.heartbeat'\);/);
   assert.doesNotMatch(opsHub, /operation:\s*'heartbeat'/);
-  assert.match(app, /build:\s*'0\.8\.0-core-booking-staff\.1'/);
-  assert.match(release, /RELEASE_BUILD="core-booking-staff\.1"/);
-  assert.match(release, /core-booking-staff/);
+  assert.match(app, /build:\s*'0\.8\.1-booking-model-storefront-placement\.1'/);
+  assert.match(release, /RELEASE_BUILD="booking-model-storefront-placement\.1"/);
+  assert.match(release, /booking-model-storefront-placement/);
 });

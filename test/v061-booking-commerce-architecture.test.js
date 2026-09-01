@@ -43,27 +43,20 @@ test('v0.6.2 product-related bookings keep a product binding even when the entry
   assert.match(missing.errors.join(' '), /Product is required/);
 });
 
-test('v0.6.2 admin separates commerce relationship from booking entry and gives template guidance', async () => {
+test('legacy commerce fields remain compatible while v0.8.1 uses booking model and placement UI', async () => {
   const [view, app, css] = await Promise.all([
     readFile(new URL('../src/views/admin.js', import.meta.url), 'utf8'),
     readFile(new URL('../public/admin/app.js', import.meta.url), 'utf8'),
     readFile(new URL('../public/admin/styles.css', import.meta.url), 'utf8')
   ]);
   assert.match(view, /id="commerceMode"/);
-  assert.match(view, /data-commerce-mode="standalone_free"/);
-  assert.match(view, /data-commerce-mode="standalone_paid"/);
-  assert.doesNotMatch(view, /data-commerce-mode="standalone_paid" disabled/);
-  assert.match(view, /id="paidVariantSelect"/);
-  assert.match(view, /id="paymentHoldMinutes"/);
-  assert.match(view, /data-commerce-mode="product_pre_purchase"/);
-  assert.match(view, /data-commerce-mode="product_post_purchase"/);
-  assert.doesNotMatch(view, /data-commerce-mode="product_post_purchase" disabled/);
-  assert.match(view, /Private order scheduling link/);
-  assert.match(view, /Booking entry/);
-  assert.match(app, /function setCommerceMode/);
-  assert.match(app, /function commerceModeNeedsProduct/);
-  assert.match(app, /dedicated appointment-only template/);
-  assert.match(css, /\.commerce-mode-grid/);
+  assert.match(view, /id="bookingType"/);
+  assert.match(view, /data-booking-type="standalone"/);
+  assert.match(view, /data-booking-type="purchase_triggered"/);
+  assert.match(view, /id="storefrontPlacementFieldset"/);
+  assert.match(app, /function setBookingType/);
+  assert.match(app, /function placementPayload/);
+  assert.match(css, /\.booking-type-grid/);
 });
 
 test('v0.6.2 snapshots commerce mode and never hides SHOPLINE buy buttons with storefront DOM hacks', async () => {

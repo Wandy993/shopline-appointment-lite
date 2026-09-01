@@ -42,6 +42,41 @@ export async function ensureOperationalIndexes() {
   );
   await AppointmentRule.updateMany({ serviceType: 'product' }, { $set: { serviceType: 'appointment' } });
 
+  // v0.8.1: split booking business model, payment product, purchase trigger, and storefront placement.
+  // Existing services are migrated once while legacy compatibility fields remain available.
+  const legacyPlacementRules = await AppointmentRule.find({
+    $or: [
+      { bookingType: { $exists: false } },
+      { paymentMode: { $exists: false } },
+      { storefrontPlacement: { $exists: false } }
+    ]
+  }).select('_id bookingSource sourceType commerceMode productId productTitle productHandle productVariantId productVariantTitle productVariantPrice').lean();
+  for (const rule of legacyPlacementRules) {
+    const bookingSource = rule.bookingSource || (rule.sourceType === 'standalone' ? 'direct' : 'product');
+    const commerceMode = rule.commerceMode || (bookingSource === 'direct' && !rule.productId ? 'standalone_free' : 'product_pre_purchase');
+    const product = rule.productId ? { id: String(rule.productId), title: String(rule.productTitle || ''), handle: String(rule.productHandle || '') } : null;
+    const bookingType = commerceMode === 'product_post_purchase' ? 'purchase_triggered' : 'standalone';
+    const paymentMode = commerceMode === 'standalone_paid' ? 'checkout' : 'none';
+    const productPlacementEnabled = commerceMode === 'product_pre_purchase' || ['product', 'both'].includes(bookingSource);
+    const directEnabled = commerceMode !== 'product_post_purchase' && ['direct', 'both'].includes(bookingSource);
+    await AppointmentRule.updateOne({ _id: rule._id }, { $set: {
+      bookingType,
+      paymentMode,
+      purchaseTrigger: { products: bookingType === 'purchase_triggered' && product ? [product] : [] },
+      ...(paymentMode === 'checkout' && product ? { checkoutProduct: {
+        productId: product.id, productTitle: product.title, productHandle: product.handle,
+        variantId: String(rule.productVariantId || ''), variantTitle: String(rule.productVariantTitle || ''), price: String(rule.productVariantPrice || '')
+      } } : {}),
+      storefrontPlacement: {
+        directLink: directEnabled,
+        pageBlock: directEnabled,
+        staffDirectory: false,
+        productBlock: { enabled: productPlacementEnabled, scope: product ? 'selected' : 'all', productIds: product ? [product.id] : [] },
+        appEmbed: { enabled: false }
+      }
+    } });
+  }
+
   await Booking.updateMany(
     { bookingSource: { $exists: false }, sourceType: 'standalone' },
     { $set: { bookingSource: 'direct' } }
@@ -92,10 +127,10 @@ export async function ensureOperationalIndexes() {
   await dropIndexIfPresent(AppointmentRule.collection, 'shopId_1_productId_1');
   await dropIndexIfPresent(AppointmentRule.collection, 'one_rule_per_product');
   await dropIndexIfPresent(AppointmentRule.collection, 'one_appointment_service_per_product');
-  await AppointmentRule.collection.createIndex(
-    { shopId: 1, productId: 1 },
-    { unique: true, partialFilterExpression: { productId: { $gt: '' } }, name: 'one_appointment_service_per_product' }
-  );
+  await dropIndexIfPresent(AppointmentRule.collection, 'legacy_product_lookup');
+  await AppointmentRule.collection.createIndex({ shopId: 1, productId: 1 }, { name: 'legacy_product_lookup' });
+  await AppointmentRule.collection.createIndex({ shopId: 1, bookingType: 1, enabled: 1 }, { name: 'booking_type_lookup' });
+  await AppointmentRule.collection.createIndex({ shopId: 1, 'storefrontPlacement.productBlock.enabled': 1 }, { name: 'product_placement_lookup' });
 
   await dropIndexIfPresent(Booking.collection, 'one_confirmed_booking_per_slot');
   await dropIndexIfPresent(Booking.collection, 'shopId_1_ruleId_1_slotKey_1');

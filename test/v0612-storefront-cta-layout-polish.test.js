@@ -61,12 +61,12 @@ test('v0.6.12 release version stays aligned across app surfaces', async () => {
   const [pkg, app, adminView, bookView, legalView, theme, release] = await Promise.all([
     source('package.json'), source('src/app.js'), source('src/views/admin.js'), source('src/views/book.js'), source('src/views/legal.js'), source('theme-extension-source/public/appointment-lite.js'), source('scripts/build-release.sh')
   ]);
-  assert.equal(JSON.parse(pkg).version, '0.8.0');
-  assert.match(app, /version: '0.8.0'/);
-  assert.match(adminView, /styles\.css\?v=0.8.0/);
-  assert.match(bookView, /styles\.css\?v=0.8.0/);
-  assert.match(legalView, /styles\.css\?v=0.8.0/);
-  assert.match(theme, /const VERSION = '0.8.0'/);
-  assert.match(release, /RELEASE_VERSION="0.8.0"/);
-  assert.match(release, /core-booking-staff/);
+  assert.equal(JSON.parse(pkg).version, '0.8.1');
+  assert.match(app, /version: '0.8.1'/);
+  assert.match(adminView, /styles\.css\?v=0.8.1/);
+  assert.match(bookView, /styles\.css\?v=0.8.1/);
+  assert.match(legalView, /styles\.css\?v=0.8.1/);
+  assert.match(theme, /const VERSION = '0.8.1'/);
+  assert.match(release, /RELEASE_VERSION="0.8.1"/);
+  assert.match(release, /booking-model-storefront-placement/);
 });
