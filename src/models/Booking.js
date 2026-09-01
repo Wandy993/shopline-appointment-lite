@@ -20,6 +20,13 @@ const locationSnapshotSchema = new mongoose.Schema({
   isDefault: { type: Boolean, default: false }
 }, { _id: false });
 
+
+const onlineMeetingSchema = new mongoose.Schema({
+  provider: { type: String, enum: ['zoom', 'google_meet', 'teams', 'custom'], default: 'custom' },
+  label: { type: String, default: '', maxlength: 100 },
+  url: { type: String, default: '', maxlength: 2000 }
+}, { _id: false });
+
 const occurrenceSchema = new mongoose.Schema({
   date: { type: String, required: true, match: /^\d{4}-\d{2}-\d{2}$/ },
   time: { type: String, default: '' },
@@ -36,6 +43,7 @@ const bookingSnapshotSchema = new mongoose.Schema({
   shoplineLocationId: { type: String, default: '', maxlength: 100 },
   locationSnapshot: { type: locationSnapshotSchema, default: undefined },
   location: { type: String, default: '' },
+  onlineMeeting: { type: onlineMeetingSchema, default: undefined },
   staff: { type: String, default: '' },
   staffId: { type: mongoose.Schema.Types.ObjectId, ref: 'Staff', default: null },
   staffEmail: { type: String, default: '' },

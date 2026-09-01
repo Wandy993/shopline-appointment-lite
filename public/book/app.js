@@ -1,6 +1,7 @@
 const $ = selector => document.querySelector(selector);
 const ruleId = document.body.dataset.ruleId || '';
 const entitlementToken = new URLSearchParams(window.location.search).get('access') || '';
+const preselectedStaffId = new URLSearchParams(window.location.search).get('staffId') || '';
 let rule;
 let selectedTime = '';
 let selectedAllDayDate = '';
@@ -224,7 +225,7 @@ function setupTimezonePicker() {
 
 const staffPresetClasses = new Set(['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose', 'nova']);
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
-function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="/assets/staff/${file}?v=0.7.0" alt="" loading="lazy" decoding="async">`;}
+function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="/assets/staff/${file}?v=0.8.0" alt="" loading="lazy" decoding="async">`;}
 
 function staffAvatarMarkup(item, className = '') {
   const avatar = item?.avatar || {};
@@ -248,7 +249,7 @@ function setStaffPickerValue(item = null) {
 function renderStaffPicker(options = []) {
   const menu = $('#staffPickerMenu');
   if (!menu) return;
-  menu.innerHTML = options.length ? options.map(item => `<button type="button" class="staff-picker-option" role="option" data-staff-id="${escapeHtml(item.id)}">${staffAvatarMarkup(item, 'small')}<span><strong>${escapeHtml(item.name)}</strong><small>View this staff member's availability</small></span><i>✓</i></button>`).join('') : '<div class="staff-picker-empty">No staff available for this service.</div>';
+  menu.innerHTML = options.length ? options.map(item => `<button type="button" class="staff-picker-option" role="option" data-staff-id="${escapeHtml(item.id)}">${staffAvatarMarkup(item, 'small')}<span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.expertise || item.roleTitle || item.region || "View this staff member's availability")}</small></span><i>✓</i></button>`).join('') : '<div class="staff-picker-empty">No staff available for this service.</div>';
   menu.querySelectorAll('[data-staff-id]').forEach(button => button.addEventListener('click', async () => {
     const item = options.find(option => String(option.id) === button.dataset.staffId);
     selectedStaffId = item?.id || '';
@@ -464,10 +465,11 @@ function renderService(payload) {
   const staffField = $('#staffField');
   const staffSelect = $('#staffSelect');
   staffField.classList.toggle('hidden', staffMode !== 'customer_choice');
-  selectedStaffId = '';
-  staffSelect.value = '';
-  setStaffPickerValue(null);
+  selectedStaffId = staffMode === 'customer_choice' && staffOptions.some(item => String(item.id) === String(preselectedStaffId)) ? String(preselectedStaffId) : '';
+  staffSelect.value = selectedStaffId;
+  setStaffPickerValue(staffOptions.find(item => String(item.id) === String(selectedStaffId)) || null);
   renderStaffPicker(staffOptions);
+  $('#staffPickerMenu')?.querySelectorAll('[data-staff-id]').forEach(option => option.classList.toggle('selected', option.dataset.staffId === selectedStaffId));
   $('#timeLabel').textContent = mode === 'all_day' ? 'Availability' : mode === 'multi_slot' ? 'Available sessions' : 'Available time slots';
   const paid = rule.commerceMode === 'standalone_paid';
   const postPurchase = rule.commerceMode === 'product_post_purchase';
@@ -627,7 +629,7 @@ $('#bookingForm').addEventListener('submit', async event => {
     $('#bookingView').classList.add('hidden');
     $('#successTitle').textContent = `${rule.serviceTitle} is confirmed.`;
     $('#successWhen').textContent = formatBookingWhen(payload.booking);
-    $('#successDetails').innerHTML = [payload.booking.staff ? `<span><b>Staff</b>${escapeHtml(payload.booking.staff)}</span>` : '', payload.booking.location ? `<span><b>Location</b>${escapeHtml(payload.booking.location)}</span>` : '', `<span><b>Service time zone</b>${escapeHtml(payload.booking.timezone || serviceTimezone)}</span>`].filter(Boolean).join('');
+    $('#successDetails').innerHTML = [payload.booking.staff ? `<span><b>Staff</b>${escapeHtml(payload.booking.staff)}</span>` : '', payload.booking.location ? `<span><b>Location</b>${escapeHtml(payload.booking.location)}</span>` : '', payload.booking.meeting?.url ? `<span><b>${escapeHtml(payload.booking.meeting.label || 'Online meeting')}</b><a href="${escapeHtml(payload.booking.meeting.url)}" target="_blank" rel="noopener noreferrer">Join online meeting</a></span>` : '', `<span><b>Service time zone</b>${escapeHtml(payload.booking.timezone || serviceTimezone)}</span>`].filter(Boolean).join('');
     $('#manageBooking').href = `/manage?booking=${encodeURIComponent(payload.booking.id)}#token=${encodeURIComponent(payload.booking.managementToken)}`;
     const googleCalendar = $('#addGoogleCalendar');
     if (payload.booking.calendar?.google) { googleCalendar.href = payload.booking.calendar.google; googleCalendar.classList.remove('hidden'); } else googleCalendar.classList.add('hidden');

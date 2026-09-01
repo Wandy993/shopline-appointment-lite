@@ -119,7 +119,10 @@ function appointmentCard(booking, settings) {
     : mode === 'multi_slot'
       ? row('Sessions', occurrences.map(item => `${item.date} · ${item.time}`).join(' | '), `<div style="margin-top:3px;color:#98A5B5;font-size:11px;font-weight:400">${escapeHtml(booking.timezone || 'UTC')}</div>`)
       : row('Date & time', `${booking.date} · ${booking.time}`, `<div style="margin-top:3px;color:#98A5B5;font-size:11px;font-weight:400">${escapeHtml(booking.timezone || 'UTC')}</div>`);
-  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:separate;border-spacing:0;border:1px solid #E3E9F1;border-radius:12px;overflow:hidden;background:#FBFCFE">${row('Service', booking.productTitle)}${when}${row('Location', booking.location || 'To be confirmed')}${row('Staff', booking.staff || 'To be confirmed')}</table>`;
+  const meeting = booking.status === 'confirmed' && booking.onlineMeeting?.url
+    ? row('Online meeting', booking.onlineMeeting.label || ({ zoom: 'Zoom', google_meet: 'Google Meet', teams: 'Microsoft Teams', custom: 'Meeting link' }[booking.onlineMeeting.provider] || 'Meeting link'), `<div style="margin-top:6px"><a href="${escapeHtml(booking.onlineMeeting.url)}" style="color:${settings.accentColor};font-size:12px;font-weight:700;text-decoration:none">Join online meeting</a></div>`)
+    : '';
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:separate;border-spacing:0;border:1px solid #E3E9F1;border-radius:12px;overflow:hidden;background:#FBFCFE">${row('Service', booking.productTitle)}${when}${row('Location', booking.location || 'To be confirmed')}${meeting}${row('Staff', booking.staff || 'To be confirmed')}</table>`;
 }
 
 

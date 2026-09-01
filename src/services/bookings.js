@@ -198,7 +198,10 @@ function bookingLocationForRule(rule, input = {}) {
     if (!address) throw Object.assign(new Error('Enter the address where this service will be provided.'), { code: 'VALIDATION_ERROR' });
     return { locationMode: mode, shoplineLocationId: '', locationSnapshot: undefined, location: address };
   }
-  if (mode === 'online') return { locationMode: mode, shoplineLocationId: '', locationSnapshot: undefined, location: 'Online' };
+  if (mode === 'online') {
+    const meeting = rule.onlineMeeting?.url ? { provider: rule.onlineMeeting.provider || 'custom', label: rule.onlineMeeting.label || '', url: String(rule.onlineMeeting.url).slice(0, 2000) } : undefined;
+    return { locationMode: mode, shoplineLocationId: '', locationSnapshot: undefined, location: 'Online', ...(meeting ? { onlineMeeting: meeting } : {}) };
+  }
   if (mode === 'shopline_location') {
     return { locationMode: mode, shoplineLocationId: String(rule.shoplineLocationId || ''), locationSnapshot: rule.locationSnapshot || undefined, location: String(rule.location || rule.locationSnapshot?.name || '').slice(0, 300) };
   }
@@ -257,7 +260,7 @@ export async function createBookingAtomic({
     duration: rule.duration, buffer: rule.buffer, timezone,
     locationMode: resolvedLocation.locationMode, shoplineLocationId: resolvedLocation.shoplineLocationId,
     ...(resolvedLocation.locationSnapshot ? { locationSnapshot: resolvedLocation.locationSnapshot } : {}),
-    location: resolvedLocation.location, staff: staffName, staffId, staffEmail,
+    location: resolvedLocation.location, ...(resolvedLocation.onlineMeeting ? { onlineMeeting: resolvedLocation.onlineMeeting } : {}), staff: staffName, staffId, staffEmail,
     managementTokenHash: hashManagementToken(managementToken),
     customer: input.customer, note: input.note, answers: input.answers, status: initialStatus,
     ...(postPurchase ? { postPurchase } : {}),

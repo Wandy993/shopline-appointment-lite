@@ -71,6 +71,7 @@ export function buildGoogleCalendarEvent({ booking, occurrence, connection }) {
     `Service: ${serviceTitle}`,
     staffName ? `Staff: ${staffName}` : '',
     booking.location ? `Location: ${booking.location}` : '',
+    booking.onlineMeeting?.url ? `Meeting: ${booking.onlineMeeting.url}` : '',
     `Booking ID: ${bookingId}`
   ].filter(Boolean).join('\n');
 
@@ -78,7 +79,7 @@ export function buildGoogleCalendarEvent({ booking, occurrence, connection }) {
     id: eventId,
     summary: `${serviceTitle}${customerName ? ` · ${customerName}` : ''}`,
     description,
-    location: asString(booking.location),
+    location: asString(booking.onlineMeeting?.url || booking.location),
     transparency: 'opaque',
     guestsCanInviteOthers: false,
     guestsCanModify: false,

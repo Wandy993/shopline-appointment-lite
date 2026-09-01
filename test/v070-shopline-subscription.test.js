@@ -6,14 +6,14 @@ import { config } from '../src/config.js';
 
 const source = path => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
-test('v0.7.0 normalizes SHOPLINE second and millisecond subscription timestamps', () => {
+test('v0.8.0 normalizes SHOPLINE second and millisecond subscription timestamps', () => {
   const seconds = shoplineTimestampToDate(1_788_000_000);
   const millis = shoplineTimestampToDate(1_788_000_000_000);
   assert.equal(seconds.getTime(), 1_788_000_000_000);
   assert.equal(millis.getTime(), 1_788_000_000_000);
 });
 
-test('v0.7.0 chooses the current target plan instead of a future preorder', () => {
+test('v0.8.0 chooses the current target plan instead of a future preorder', () => {
   const now = new Date('2026-08-28T00:00:00.000Z');
   const current = pickCurrentSubscription({ subscriptions: { data: [
     { spu_key: 'appointment_lite_pro', sub_id: 'next', sub_status: 'active', sub_type: 'preorder', start_at: new Date('2026-09-28T00:00:00Z').getTime(), end_at: new Date('2026-10-28T00:00:00Z').getTime() },
@@ -25,7 +25,7 @@ test('v0.7.0 chooses the current target plan instead of a future preorder', () =
   assert.equal(current.type, 'trial');
 });
 
-test('v0.7.0.1 trial day display never exceeds the configured SHOPLINE trial term', () => {
+test('v0.8.0.1 trial day display never exceeds the configured SHOPLINE trial term', () => {
   const now = new Date('2026-08-28T12:54:00.000Z');
   const snapshot = publicSubscriptionSnapshot({
     status: 'active',
@@ -39,7 +39,7 @@ test('v0.7.0.1 trial day display never exceeds the configured SHOPLINE trial ter
   assert.equal(snapshot.trialDaysRemaining, 7);
 });
 
-test('v0.7.0 access follows SHOPLINE active state and the documented one-day grace period', () => {
+test('v0.8.0 access follows SHOPLINE active state and the documented one-day grace period', () => {
   const now = new Date('2026-08-28T12:00:00.000Z');
   assert.equal(subscriptionAccessState({ status: 'active', expiresAt: new Date('2026-08-29T00:00:00Z') }, { enabled: true, now }).allowed, true);
   assert.equal(subscriptionAccessState({ status: 'expired', expiresAt: new Date('2026-08-28T00:00:00Z') }, { enabled: true, now }).reason, 'GRACE_PERIOD');
@@ -47,7 +47,7 @@ test('v0.7.0 access follows SHOPLINE active state and the documented one-day gra
   assert.equal(subscriptionAccessState({ status: 'cancelled' }, { enabled: true, now }).allowed, false);
 });
 
-test('v0.7.0.7 opens SHOPLINE subscription activation in a separate window', async () => {
+test('v0.8.0.7 opens SHOPLINE subscription activation in a separate window', async () => {
   const url = shoplineSubscriptionPlanUrl({ handle: 'AppTest' });
   assert.equal(url, 'https://apptest.myshopline.com/admin/app-store/package/c0ced1537654a66c337cd3af4b820b7eac9dd33c');
   const client = await source('public/admin/app.js');
@@ -62,7 +62,7 @@ test('v0.7.0.7 opens SHOPLINE subscription activation in a separate window', asy
   assert.match(section, /SHOPLINE subscription package URL is not configured/);
 });
 
-test('v0.7.0 Partner Token stays server-side and subscription API routes are wired', async () => {
+test('v0.8.0 Partner Token stays server-side and subscription API routes are wired', async () => {
   const [service, env, admin, publicRoute, bookings, app] = await Promise.all([
     source('src/services/subscription.js'), source('.env.example'), source('src/routes/admin.js'), source('src/routes/public.js'), source('src/services/bookings.js'), source('src/app.js')
   ]);
@@ -80,14 +80,14 @@ test('v0.7.0 Partner Token stays server-side and subscription API routes are wir
   assert.match(publicRoute, /publicSubscriptionUnavailable/);
   assert.match(bookings, /subscriptionAccessAllowed/);
   assert.match(app, /\/subscription/);
-  assert.match(app, /release: 'v0\.7\.0\.7-shopline-new-window'/);
+  assert.match(app, /release: 'v0\.8\.0-core-booking-staff'/);
   assert.match(app, /Cache-Control', 'no-store/);
   const [adminClient, themeClient] = await Promise.all([source('public/admin/app.js'), source('theme-extension-source/public/appointment-lite.js')]);
   assert.doesNotMatch(adminClient, /SHOPLINE_PARTNER_TOKEN/);
   assert.doesNotMatch(themeClient, /SHOPLINE_PARTNER_TOKEN/);
 });
 
-test('v0.7.0 subscription webhooks use the existing signed SHOPLINE webhook pipeline', async () => {
+test('v0.8.0 subscription webhooks use the existing signed SHOPLINE webhook pipeline', async () => {
   const webhook = await source('src/routes/shopline-webhooks.js');
   assert.match(webhook, /appsubscription\/create/);
   assert.match(webhook, /appsubscription\/expiration/);
@@ -96,7 +96,7 @@ test('v0.7.0 subscription webhooks use the existing signed SHOPLINE webhook pipe
   assert.match(webhook, /WebhookReceipt/);
 });
 
-test('v0.7.0 admin exposes a single Pro plan at USD 5.99 per month with SHOPLINE-managed seven-day trial', async () => {
+test('v0.8.0 admin exposes a single Pro plan at USD 5.99 per month with SHOPLINE-managed seven-day trial', async () => {
   const [view, client, css] = await Promise.all([source('src/views/admin.js'), source('public/admin/app.js'), source('public/admin/styles.css')]);
   assert.match(view, /Appointment Lite Pro/);
   assert.match(view, /\$5\.99/);

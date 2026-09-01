@@ -1,0 +1,17 @@
+<div class="al-page-booking" data-al-page-booking data-rule-id="{{ block.settings.rule_id }}">
+  <div class="al-page-loading">Loading appointment service…</div>
+</div>
+
+{{#schema}}
+{
+  "name": "Appointment Lite · Booking",
+  "target": "section",
+  "templates": ["page"],
+  "javascript": ["public/appointment-lite-page.js"],
+  "stylesheet": ["public/appointment-lite-page.css"],
+  "limit": 1,
+  "settings": [
+    { "type": "text", "id": "rule_id", "label": "Service ID", "default": "" }
+  ]
+}
+{{/schema}}

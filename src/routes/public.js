@@ -4,7 +4,7 @@ import mongoose from 'mongoose';
 import { AppointmentRule } from '../models/AppointmentRule.js';
 import { Booking } from '../models/Booking.js';
 import { BookingReservation } from '../models/BookingReservation.js';
-import { publicStaffOptions, staffAvailabilityForDate } from '../services/staffing.js';
+import { publicStaffDirectory, publicStaffOptions, staffAvailabilityForDate } from '../services/staffing.js';
 import { addDays, bookingModeFor, filterSlotsByCapacity, futureSlotsForDate, isAllDayBookableDate, isDateAllowed, resolveRuleTimezone, slotsForDate, zonedNow } from '../lib/slots.js';
 import { validateBookingInput, validateDateInput, validateSlotInput } from '../lib/validation.js';
 import { cancelManagedBooking, createBookingForStore, createPaidBookingForStore, createPostPurchaseBookingForStore, getLegacyBookingStatus, getManagedAvailability, getManagedBooking, rescheduleManagedBooking } from '../services/bookings.js';
@@ -71,7 +71,9 @@ function publicBooking(booking) {
     sourceType: booking.sourceType || 'product', serviceType: booking.serviceType === 'product' ? 'appointment' : (booking.serviceType || 'appointment'),
     bookingMode, occurrences,
     date: booking.date, time: bookingMode === 'all_day' ? '' : booking.time, timezone, storeDate: zonedNow(timezone).date,
-    locationMode: booking.locationMode || 'custom', location: booking.location, staff: booking.staff, staffId: booking.staffId ? String(booking.staffId) : '', status: booking.status, customerRescheduleCount,
+    locationMode: booking.locationMode || 'custom', location: booking.location,
+    meeting: booking.status === 'confirmed' && booking.onlineMeeting?.url ? { provider: booking.onlineMeeting.provider || 'custom', label: booking.onlineMeeting.label || '', url: booking.onlineMeeting.url } : null,
+    staff: booking.staff, staffId: booking.staffId ? String(booking.staffId) : '', status: booking.status, customerRescheduleCount,
     customerCanReschedule: bookingMode === 'slot' && booking.status === 'confirmed' && customerRescheduleCount < 1,
     postPurchase: booking.postPurchase ? { orderId: booking.postPurchase.shoplineOrderId || '', orderName: booking.postPurchase.shoplineOrderName || '' } : null,
     calendar: booking.status === 'confirmed' ? calendarLinksForBooking(booking) : { google: '', ics: '' }
@@ -172,6 +174,19 @@ publicRouter.get('/rule', async (req, res) => {
   const staffMeta = await cachedPublicStaffOptions(result.rule);
   res.set('Cache-Control', 'no-cache');
   res.json({ rule: serializeRule(result.rule, timezone, staffMeta), storefront: normalizeStorefrontSettings(result.shop.storefrontSettings || {}), timezone, storeDate: zonedNow(timezone).date });
+});
+
+publicRouter.get('/staff-directory', async (req, res) => {
+  const result = await findPublicRule(req);
+  if (result.error) return res.status(result.error.status).json(result.error.body);
+  const bookingSource = result.rule.bookingSource || (result.rule.sourceType === 'standalone' ? 'direct' : 'product');
+  if (!['direct', 'both'].includes(bookingSource)) return res.status(404).json({ error: 'NOT_FOUND', message: 'Direct booking is not enabled for this service.' });
+  const directory = await publicStaffDirectory(result.rule);
+  res.set('Cache-Control', 'no-cache');
+  res.json({
+    service: { id: String(result.rule._id), title: result.rule.serviceTitle || result.rule.productTitle || 'Appointment', description: result.rule.serviceDescription || '' },
+    staff: directory.options
+  });
 });
 
 publicRouter.get('/service', async (req, res) => {

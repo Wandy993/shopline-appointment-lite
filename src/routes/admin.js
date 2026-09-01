@@ -434,7 +434,7 @@ function locationAccessRequiredResponse(req, res) {
 
 async function canonicalizeRuleLocation(shop, value) {
   const mode = value.locationMode || 'custom';
-  if (mode === 'online') return { ...value, shoplineLocationId: '', locationSnapshot: undefined, location: 'Online' };
+  if (mode === 'online') return { ...value, shoplineLocationId: '', locationSnapshot: undefined, location: 'Online', onlineMeeting: value.onlineMeeting?.url ? value.onlineMeeting : undefined };
   if (mode === 'customer_address') return { ...value, shoplineLocationId: '', locationSnapshot: undefined, location: 'Customer address' };
   if (mode !== 'shopline_location') return { ...value, shoplineLocationId: '', locationSnapshot: undefined, location: String(value.location || '').trim().slice(0, 300) };
   if (!shoplineLocationAccessStatus(shop).granted) throw Object.assign(new Error('Authorize SHOPLINE location access before selecting a store location.'), { code: 'LOCATION_ACCESS_REQUIRED' });

@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = '0.7.0';
+  const VERSION = '0.8.0';
   const API_BASE = 'https://appointment.toolkit.fans';
   const CACHE_TTL = 5 * 60 * 1000;
   const RULE_CACHE = new Map();
@@ -137,7 +137,7 @@
 
   const staffPresetClasses = new Set(['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose', 'nova']);
   const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
-  function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="${API_BASE}/assets/staff/${file}?v=0.7.0" alt="" loading="lazy" decoding="async">`;}
+  function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="${API_BASE}/assets/staff/${file}?v=0.8.0" alt="" loading="lazy" decoding="async">`;}
 
   function staffAvatar(item, className = '') {
     const avatar = item?.avatar || {};

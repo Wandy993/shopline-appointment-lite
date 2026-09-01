@@ -38,6 +38,13 @@ const locationSnapshotSchema = new mongoose.Schema({
   isDefault: { type: Boolean, default: false }
 }, { _id: false });
 
+
+const onlineMeetingSchema = new mongoose.Schema({
+  provider: { type: String, enum: ['zoom', 'google_meet', 'teams', 'custom'], default: 'custom' },
+  label: { type: String, default: '', trim: true, maxlength: 100 },
+  url: { type: String, default: '', trim: true, maxlength: 2000 }
+}, { _id: false });
+
 const questionSchema = new mongoose.Schema({
   label: { type: String, required: true, maxlength: 120 },
   required: { type: Boolean, default: false }
@@ -83,6 +90,7 @@ const appointmentRuleSchema = new mongoose.Schema({
   shoplineLocationId: { type: String, default: '', trim: true, maxlength: 100 },
   locationSnapshot: { type: locationSnapshotSchema, default: undefined },
   location: { type: String, default: '', maxlength: 300 },
+  onlineMeeting: { type: onlineMeetingSchema, default: undefined },
   // Legacy free-text staff remains for older services. Managed staff uses staffAssignment.
   staff: { type: String, default: '', maxlength: 200 },
   staffAssignment: { type: staffAssignmentSchema, default: () => ({ mode: 'none', staffIds: [] }) },

@@ -8,6 +8,7 @@ const COMMERCE_MODES = new Set(['standalone_free', 'standalone_paid', 'product_p
 const ACTIVE_COMMERCE_MODES = new Set(['standalone_free', 'standalone_paid', 'product_pre_purchase', 'product_post_purchase']);
 const STAFF_ASSIGNMENT_MODES = new Set(['none', 'any', 'customer_choice', 'fixed']);
 const LOCATION_MODES = new Set(['shopline_location', 'customer_address', 'online', 'custom']);
+const ONLINE_MEETING_PROVIDERS = new Set(['zoom', 'google_meet', 'teams', 'custom']);
 const OBJECT_ID_PATTERN = /^[a-f\d]{24}$/i;
 
 function validTimeZone(value) {
@@ -70,6 +71,11 @@ export function validateRuleInput(body) {
   const legacyLocation = text(body.location, 300);
   const locationMode = LOCATION_MODES.has(body.locationMode) ? body.locationMode : (legacyLocation ? 'custom' : 'custom');
   const shoplineLocationId = locationMode === 'shopline_location' ? text(body.shoplineLocationId, 100) : '';
+  const requestedOnlineMeeting = body.onlineMeeting && typeof body.onlineMeeting === 'object' ? body.onlineMeeting : {};
+  const onlineMeetingProvider = ONLINE_MEETING_PROVIDERS.has(requestedOnlineMeeting.provider) ? requestedOnlineMeeting.provider : 'custom';
+  const onlineMeetingUrl = locationMode === 'online' ? text(requestedOnlineMeeting.url, 2000) : '';
+  const onlineMeetingLabel = locationMode === 'online' ? text(requestedOnlineMeeting.label, 100) : '';
+  if (locationMode === 'online' && onlineMeetingUrl && !/^https:\/\/[^\s]+$/i.test(onlineMeetingUrl)) errors.push('Online meeting link must be a valid HTTPS URL.');
   if (locationMode === 'shopline_location' && !shoplineLocationId) errors.push('Choose a SHOPLINE location.');
   const rawStaffAssignment = body.staffAssignment && typeof body.staffAssignment === 'object' ? body.staffAssignment : {};
   const staffAssignmentMode = STAFF_ASSIGNMENT_MODES.has(rawStaffAssignment.mode) ? rawStaffAssignment.mode : 'none';
@@ -133,7 +139,9 @@ export function validateRuleInput(body) {
     duration, buffer, capacity, minimumNoticeMinutes, bookingWindowDays,
     dateFrom, dateUntil, weeklyAvailability, availabilityExceptions,
     locationMode, shoplineLocationId, locationSnapshot: undefined,
-    location: locationMode === 'custom' ? legacyLocation : '', staff: text(body.staff, 200),
+    location: locationMode === 'custom' ? legacyLocation : '',
+    onlineMeeting: locationMode === 'online' && onlineMeetingUrl ? { provider: onlineMeetingProvider, label: onlineMeetingLabel, url: onlineMeetingUrl } : undefined,
+    staff: text(body.staff, 200),
     staffAssignment: { mode: staffAssignmentMode, staffIds },
     questionLabel: text(body.questionLabel || 'Anything we should know?', 120), customQuestions,
     enabled: body.enabled !== false
@@ -202,6 +210,11 @@ export function validateStaffInput(body) {
   const name = text(body.name, 120);
   const email = text(body.email, 254).toLowerCase();
   const phone = text(body.phone, 40);
+  const roleTitle = text(body.roleTitle, 120);
+  const region = text(body.region, 120);
+  const expertise = text(body.expertise, 180);
+  const bio = text(body.bio, 800);
+  const publicProfile = body.publicProfile === true;
   const status = body.status === 'inactive' ? 'inactive' : 'active';
   if (!name) errors.push('Staff name is required.');
   if (email && !EMAIL_PATTERN.test(email)) errors.push('Enter a valid staff email address.');
@@ -243,7 +256,7 @@ export function validateStaffInput(body) {
   }
   if (!weeklyAvailability.some(day => day.enabled) && !availabilityExceptions.some(item => !item.closed)) errors.push('Enable at least one staff workday or add an open exception.');
 
-  return { errors: [...new Set(errors)], value: { name, email, phone, avatar, notifications, status, weeklyAvailability, availabilityExceptions } };
+  return { errors: [...new Set(errors)], value: { name, email, phone, roleTitle, region, expertise, bio, publicProfile, avatar, notifications, status, weeklyAvailability, availabilityExceptions } };
 }
 
 export function validateBookingStatus(value) {

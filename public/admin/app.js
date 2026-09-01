@@ -765,7 +765,7 @@ const staffAvatarPresets = ['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunse
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
 function staffPresetImage(preset) {
   const file = staffAvatarFiles[preset] || staffAvatarFiles.aurora;
-  return `<img src="/assets/staff/${file}?v=0.7.0" alt="" loading="lazy" decoding="async">`;
+  return `<img src="/assets/staff/${file}?v=0.8.0" alt="" loading="lazy" decoding="async">`;
 }
 let staffAvatarDraft = { kind: 'preset', value: 'aurora' };
 
@@ -1227,6 +1227,7 @@ function staffPayload() {
     name: $('#staffName').value,
     email: $('#staffEmail').value,
     phone: $('#staffPhone').value,
+    roleTitle: $('#staffRoleTitle').value, region: $('#staffRegion').value, expertise: $('#staffExpertise').value, bio: $('#staffBio').value, publicProfile: $('#staffPublicProfile').checked,
     avatar: { kind: $('#staffAvatarKind').value || 'preset', value: $('#staffAvatarValue').value || '' },
     notifications: { emailEnabled: Boolean($('#staffEmail').value.trim() && $('#staffEmailNotifications').checked) },
     status: $('#staffStatus').value,
@@ -1253,7 +1254,7 @@ function staffWorkSummary(staff) {
 
 function renderStaff() {
   const query = $('#staffSearch')?.value.trim().toLowerCase() || '';
-  const rows = state.staff.filter(item => !query || [item.name, item.email, item.phone].some(value => String(value || '').toLowerCase().includes(query)));
+  const rows = state.staff.filter(item => !query || [item.name, item.email, item.phone, item.roleTitle, item.region, item.expertise].some(value => String(value || '').toLowerCase().includes(query)));
   if ($('#staffResultCount')) $('#staffResultCount').textContent = state.locale === 'zh-CN' ? `${rows.length} 位员工` : `${rows.length} staff`;
   const root = $('#staffList');
   if (!root) return;
@@ -1508,6 +1509,11 @@ function openStaff(staff = null) {
   $('#staffName').value = staff?.name || '';
   $('#staffEmail').value = staff?.email || '';
   $('#staffPhone').value = staff?.phone || '';
+  $('#staffRoleTitle').value = staff?.roleTitle || '';
+  $('#staffRegion').value = staff?.region || '';
+  $('#staffExpertise').value = staff?.expertise || '';
+  $('#staffBio').value = staff?.bio || '';
+  $('#staffPublicProfile').checked = staff?.publicProfile === true;
   $('#staffStatus').value = staff?.status || 'active';
   $('#staffEmailNotifications').checked = Boolean(staff?.email && staff?.notifications?.emailEnabled === true);
   $('#staffEmailNotifications').disabled = !Boolean(staff?.email);
@@ -2016,6 +2022,9 @@ async function openRule(rule = null) {
   $('#location').value = locationMode === 'custom' ? (rule?.location || '') : '';
   $('#shoplineLocationId').value = rule?.shoplineLocationId || '';
   setLocationMode(locationMode);
+  $('#onlineMeetingProvider').value = rule?.onlineMeeting?.provider || 'zoom';
+  $('#onlineMeetingLabel').value = rule?.onlineMeeting?.label || '';
+  $('#onlineMeetingUrl').value = rule?.onlineMeeting?.url || '';
   if (locationMode === 'shopline_location') await loadLocations({ selectedId: rule?.shoplineLocationId || '' }).catch(() => {});
   $('#staff').value = rule?.staff || '';
   const assignment = rule?.staffAssignment || { mode: 'none', staffIds: [] };
@@ -2065,6 +2074,7 @@ function rulePayload() {
     locationMode: $('#locationMode').value,
     shoplineLocationId: $('#locationMode').value === 'shopline_location' ? $('#shoplineLocationId').value : '',
     location: $('#locationMode').value === 'custom' ? $('#location').value : '',
+    onlineMeeting: $('#locationMode').value === 'online' && $('#onlineMeetingUrl').value.trim() ? { provider: $('#onlineMeetingProvider').value, label: $('#onlineMeetingLabel').value, url: $('#onlineMeetingUrl').value.trim() } : undefined,
     staff: $('#staff').value, staffAssignment: currentStaffAssignment(), questionLabel: $('#questionLabel').value, enabled: $('#enabled').checked,
     customQuestions: $$('.question-row').map(row => ({ label: row.querySelector('input[type=text]').value, required: row.querySelector('input[type=checkbox]').checked }))
   };
@@ -2104,20 +2114,16 @@ function formatNotice(rule) {
   return `${minutes}m ${t('ahead')}`;
 }
 
-async function copyBookingLink(url) {
-  try {
-    await navigator.clipboard.writeText(url);
-    toast(t('Booking link copied.'));
-  } catch {
-    const input = document.createElement('textarea');
-    input.value = url;
-    document.body.append(input);
-    input.select();
-    document.execCommand('copy');
-    input.remove();
-    toast(t('Booking link copied.'));
+async function copyText(value, message) {
+  try { await navigator.clipboard.writeText(value); }
+  catch {
+    const input = document.createElement('textarea'); input.value = value; document.body.append(input); input.select(); document.execCommand('copy'); input.remove();
   }
+  toast(t(message));
 }
+
+async function copyBookingLink(url) { return copyText(url, 'Booking link copied.'); }
+async function copyServiceId(id) { return copyText(id, 'Service ID copied.'); }
 
 function renderRules() {
   const query = $('#ruleSearch').value.trim().toLowerCase();
@@ -2139,7 +2145,7 @@ function renderRules() {
     const sourceLabel = commerceMode === 'product_post_purchase' ? t('Private order link') : t(bookingSourceLabels[bookingSource] || 'Product page');
     const commerceLabel = t(commerceModeLabels[commerceMode] || 'Product + appointment');
     const productLine = rule.productId && rule.productTitle ? `<span class="service-product-line">${t('Linked product')}: ${escapeHtml(rule.productTitle)}</span>` : '';
-    const linkActions = ['direct', 'both'].includes(bookingSource) && rule.bookingUrl ? `<button class="secondary small" data-copy-link="${escapeHtml(rule.bookingUrl)}">${t('Copy link')}</button><a class="button-link secondary-link small" href="${escapeHtml(rule.bookingUrl)}" target="_blank" rel="noopener noreferrer">${t('Open booking page')}</a>` : '';
+    const linkActions = ['direct', 'both'].includes(bookingSource) && rule.bookingUrl ? `<button class="secondary small" data-copy-link="${escapeHtml(rule.bookingUrl)}">${t('Copy link')}</button><button class="secondary small" data-copy-service-id="${escapeHtml(rule._id)}">${t('Copy block ID')}</button><a class="button-link secondary-link small" href="${escapeHtml(rule.bookingUrl)}" target="_blank" rel="noopener noreferrer">${t('Open booking page')}</a>` : '';
     const mode = rule.bookingMode || 'slot';
     const timing = mode === 'all_day' ? t('All-day') + ` · ${rule.capacity || 1} ${t('per day')}` : mode === 'multi_slot' ? `${rule.sessionsRequired || 3} ${t('sessions')} · ${rule.duration} ${t('min')}` : (state.locale === 'zh-CN' ? `${rule.duration} 分钟${rule.buffer ? ` · 缓冲 ${rule.buffer} 分钟` : ''}` : `${rule.duration} min${rule.buffer ? ` · ${rule.buffer} min buffer` : ''}`);
     const bookingCount = Number(rule.bookingCount || 0);
@@ -2153,6 +2159,7 @@ function renderRules() {
   }).join('');
   $$('[data-edit]').forEach(button => button.addEventListener('click', () => openRule(state.rules.find(rule => rule._id === button.dataset.edit))));
   $$('[data-copy-link]').forEach(button => button.addEventListener('click', () => copyBookingLink(button.dataset.copyLink)));
+  $$('[data-copy-service-id]').forEach(button => button.addEventListener('click', () => copyServiceId(button.dataset.copyServiceId)));
   $$('[data-delete]').forEach(button => button.addEventListener('click', () => {
     const rule = state.rules.find(item => item._id === button.dataset.delete);
     if (Number(rule?.confirmedBookingCount || 0) > 0) {

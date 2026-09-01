@@ -96,6 +96,23 @@ export async function publicStaffOptions(rule, options = {}) {
     options: staff.map(item => ({
       id: String(item._id),
       name: item.name,
+      roleTitle: item.roleTitle || '',
+      region: item.region || '',
+      expertise: item.expertise || '',
+      bio: item.bio || '',
+      avatar: publicStaffAvatar(item.avatar?.kind ? item.avatar : { kind: 'preset', value: 'aurora' })
+    }))
+  };
+}
+
+export async function publicStaffDirectory(rule, options = {}) {
+  const assignment = normalizedStaffAssignment(rule);
+  const staff = await assignedActiveStaff(rule, options);
+  return {
+    mode: assignment.mode,
+    options: staff.filter(item => item.publicProfile === true).map(item => ({
+      id: String(item._id), name: item.name, roleTitle: item.roleTitle || '', region: item.region || '',
+      expertise: item.expertise || '', bio: item.bio || '',
       avatar: publicStaffAvatar(item.avatar?.kind ? item.avatar : { kind: 'preset', value: 'aurora' })
     }))
   };
