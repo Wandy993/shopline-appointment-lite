@@ -40,7 +40,7 @@ export function adminPage() {
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light">
   <title>Appointment Lite</title>
-  <link rel="stylesheet" href="/admin/styles.css?v=0.8.1&build=0.8.1.1">
+  <link rel="stylesheet" href="/admin/styles.css?v=0.8.1&build=0.8.1.2">
 </head>
 <body>
   <div class="app-shell">
@@ -319,7 +319,7 @@ export function adminPage() {
           <div id="placementFootnote" class="placement-footnote"><span class="footnote-dot"></span><span>You can combine multiple storefront placements for the same standalone service.</span></div>
         </section>
         <section class="rule-step wizard-stage hidden" data-rule-step="2">
-          <div class="step-intro wizard-stage-intro"><span class="step-kicker">AVAILABILITY</span><h3>When can customers book?</h3><p>Choose how time is selected, then configure the service-local booking window and schedule.</p></div>
+          <div class="step-intro wizard-stage-intro"><span class="step-kicker">AVAILABILITY</span><h3>When can customers book?</h3><p id="availabilityIntro">Choose how time is selected, then configure the service-local booking window and schedule.</p></div>
           <div class="wizard-section availability-mode-section"><div class="section-copy"><strong>Booking mode</strong><span>Choose the time structure that matches this service.</span></div>
 <fieldset class="choice-fieldset booking-mode-fieldset"><legend>Booking mode</legend><div id="bookingModeGrid" class="booking-mode-grid">
             <button type="button" class="booking-mode-option selected" data-booking-mode="slot"><span class="mode-icon">30m</span><strong>Minute / hour</strong><span>Customers choose one start time. Best for consultations, installation, visits, and single classes.</span></button>
@@ -397,7 +397,7 @@ export function adminPage() {
   </dialog>
 
   <dialog id="confirmDialog" class="confirm-modal"><div class="confirm-icon">!</div><div class="confirm-copy"><h2 id="confirmTitle">Please confirm</h2><p id="confirmMessage"></p></div><div class="modal-actions"><button id="confirmNo" class="secondary">Keep it</button><button id="confirmYes" class="danger">Confirm</button></div></dialog>
-  <script type="module" src="/admin/app.js?v=0.8.1&build=0.8.1.1"></script>
+  <script type="module" src="/admin/app.js?v=0.8.1&build=0.8.1.2"></script>
 </body>
 </html>`;
 }

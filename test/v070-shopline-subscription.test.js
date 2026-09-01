@@ -80,7 +80,7 @@ test('v0.8.0 Partner Token stays server-side and subscription API routes are wir
   assert.match(publicRoute, /publicSubscriptionUnavailable/);
   assert.match(bookings, /subscriptionAccessAllowed/);
   assert.match(app, /\/subscription/);
-  assert.match(app, /release: 'v0\.8\.1\.1-service-wizard-simplification-ui-polish'/);
+  assert.match(app, /release: 'v0\.8\.1\.2-service-wizard-simplification-ui-polish'/);
   assert.match(app, /Cache-Control', 'no-store/);
   const [adminClient, themeClient] = await Promise.all([source('public/admin/app.js'), source('theme-extension-source/public/appointment-lite.js')]);
   assert.doesNotMatch(adminClient, /SHOPLINE_PARTNER_TOKEN/);

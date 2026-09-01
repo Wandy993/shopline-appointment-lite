@@ -2027,7 +2027,8 @@ function setBookingMode(mode = 'slot', { touched = true } = {}) {
   if (normalized === 'multi_slot' && Number($('#sessionsRequired').value || 0) < 2) $('#sessionsRequired').value = '3';
   $('#slotLogicNotice').classList.toggle('hidden', normalized === 'all_day');
   $('#weeklySchedule').classList.toggle('all-day-mode', normalized === 'all_day');
-  $('#availabilityIntro').textContent = t(normalized === 'all_day'
+  const availabilityIntro = $('#availabilityIntro');
+  if (availabilityIntro) availabilityIntro.textContent = t(normalized === 'all_day'
     ? 'Dates and capacity use the service time zone. Customers choose a date without a start time.'
     : 'Set regular hours, booking policies, and date-specific exceptions in the service time zone.');
   $('#weeklyScheduleHint').textContent = t(normalized === 'all_day' ? 'Enable the days customers can book all day.' : 'Enable the days customers can normally book.');
