@@ -67,7 +67,7 @@ test('v0.6.16 SHOPLINE location picker gains the same viewport-aware drop-up saf
 
 test('v0.8.1 paid checkout is isolated from storefront placement', async () => {
   const [view, css] = await Promise.all([source('src/views/admin.js'), source('public/admin/styles.css')]);
-  assert.match(view, /id="checkoutProductFields" class="booking-model-panel hidden"/);
+  assert.match(view, /id="checkoutProductFields" class="[^"]*booking-model-panel[^"]*hidden[^"]*"/);
   assert.match(view, /id="paidCheckoutFields" class="paid-checkout-fields"/);
   assert.match(view, /This product only supplies SHOPLINE price and checkout/);
   assert.match(css, /\.booking-model-panel/);
@@ -84,5 +84,5 @@ test('v0.6.16 release version stays aligned', async () => {
   assert.match(legalView, /styles\.css\?v=0.8.1/);
   assert.match(theme, /const VERSION = '0.8.1'/);
   assert.match(release, /RELEASE_VERSION="0.8.1"/);
-  assert.match(release, /booking-model-storefront-placement/);
+  assert.match(release, /service-wizard-simplification-ui-polish/);
 });

@@ -906,3 +906,112 @@ body.subscription-archive #bookingsView .view-switch{display:none}body.subscript
 
 /* v0.8.1 booking model + placement */
 .booking-type-grid,.payment-mode-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.booking-type-option,.payment-mode-option{min-height:124px;text-align:left;border:1px solid var(--line);border-radius:14px;background:#fff;padding:16px;display:flex;flex-direction:column;gap:7px;cursor:pointer}.booking-type-option.selected,.payment-mode-option.selected{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);background:#f5f9ff}.booking-type-option strong,.payment-mode-option strong{font-size:14px;color:var(--text)}.booking-type-option span,.payment-mode-option span{font-size:13px;color:var(--muted);line-height:1.5}.booking-type-option small{margin-top:auto;color:var(--muted-2);line-height:1.45}.booking-model-panel{border:1px solid var(--line);border-radius:14px;padding:16px;background:#f9fbff;display:grid;gap:14px}.booking-model-panel .panel-copy{display:grid;gap:5px}.booking-model-panel .panel-copy strong{font-size:14px}.booking-model-panel .panel-copy p{margin:0;color:var(--muted);font-size:13px;line-height:1.55}.selected-product-chips{display:flex;flex-wrap:wrap;gap:8px}.selected-product-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:5px 8px 5px 10px;font-size:12px}.selected-product-chip button{border:0;background:transparent;cursor:pointer;color:var(--muted);font-size:15px;line-height:1}.storefront-placement-fieldset.purchase-triggered .placement-option-list{opacity:.48;pointer-events:none}.placement-option-list{display:grid;gap:10px}.placement-subpanel{margin:-2px 0 4px 46px;padding:12px;border:1px solid var(--line);border-radius:12px;background:#f8fbff;display:grid;gap:10px}.segmented-control{display:inline-flex;gap:4px;background:#eef3fa;border-radius:10px;padding:4px;width:max-content}.segmented-control button{border:0;background:transparent;border-radius:8px;padding:7px 12px;cursor:pointer;color:var(--muted)}.segmented-control button.selected{background:#fff;color:var(--accent);box-shadow:0 1px 4px #16325c18}@media(max-width:760px){.booking-type-grid,.payment-mode-grid{grid-template-columns:1fr}.placement-subpanel{margin-left:0}}
+
+/* v0.8.1.1 — Service Wizard Simplification & UI Polish */
+.rule-modal{width:min(880px,calc(100% - 28px))}
+.rule-modal .modal-body{padding:24px 30px 34px;background:#fff}
+.rule-modal .wizard-steps{padding:11px 24px;background:#fbfcfe}
+.rule-modal .wizard-steps button{min-width:112px;gap:7px;color:#7a8a9f;font-size:10px;font-weight:680}
+.rule-modal .wizard-steps button span{width:24px;height:24px;background:#fff}
+.rule-modal .wizard-steps button.active{color:#245fbd}
+.rule-modal .wizard-steps i{width:52px;background:#dce4ef}
+.wizard-stage{gap:18px}
+.wizard-stage-intro{margin:0 0 2px!important;padding:0 2px}
+.wizard-stage-intro .step-kicker{display:block;margin-bottom:6px;color:#2f6fed;font-size:8.5px;font-weight:800;letter-spacing:.11em}
+.wizard-stage-intro h3{font-size:18px!important;letter-spacing:-.02em}
+.wizard-stage-intro p{max-width:690px;margin-top:6px!important;font-size:10.5px!important;line-height:1.6}
+.wizard-section{display:grid;gap:13px}
+.service-name-section{padding:0 2px 2px}
+.service-name-section .field{max-width:none}
+.service-name-section .field input{height:44px;font-size:12px}
+.section-copy{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;padding:0 2px}
+.section-copy strong{color:#21324a;font-size:11px;font-weight:760}
+.section-copy span{max-width:470px;color:#7d8ca0;font-size:9.5px;line-height:1.45;text-align:right}
+.booking-decision-grid{gap:10px!important}
+.booking-type-option.decision-card{position:relative;min-height:132px;padding:16px 17px;border:1px solid #dce4ef;border-radius:13px;background:#fff;box-shadow:0 1px 2px rgba(24,42,72,.025);gap:5px}
+.booking-type-option.decision-card:hover{border-color:#b9cbe7;background:#fbfdff}
+.booking-type-option.decision-card.selected{border-color:#83a8ec;background:linear-gradient(180deg,#f7faff 0,#f1f6ff 100%);box-shadow:0 0 0 2px rgba(47,111,237,.055)}
+.decision-card-top{width:100%;display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.decision-icon{min-width:29px;height:25px;display:grid;place-items:center;border-radius:7px;background:#f0f4f9;color:#6b7d94;font-size:8.5px;font-weight:800;letter-spacing:.04em}
+.decision-card.selected .decision-icon{background:#2f6fed;color:#fff}
+.selection-mark{width:20px;height:20px;display:grid;place-items:center;border:1px solid #d8e1ed;border-radius:50%;color:transparent;background:#fff;font-size:10px;font-weight:900}
+.decision-card.selected .selection-mark{border-color:#2f6fed;background:#2f6fed;color:#fff}
+.booking-type-option.decision-card strong{font-size:12px!important;color:#24364f}
+.booking-type-option.decision-card>span:not(.decision-card-top){font-size:10px!important;color:#667991;line-height:1.48}
+.booking-type-option.decision-card small{margin-top:5px!important;color:#8a98aa;font-size:8.8px;line-height:1.45}
+.payment-section{padding-top:2px}
+.payment-segmented{padding:4px;gap:4px!important;border:1px solid #e1e7ef;border-radius:12px;background:#f5f7fa}
+.payment-mode-option{min-height:68px!important;padding:10px 12px!important;display:grid!important;grid-template-columns:18px minmax(0,1fr);align-items:center;gap:9px!important;border:0!important;border-radius:9px!important;background:transparent!important;box-shadow:none!important}
+.payment-mode-option:hover{background:#fff!important}
+.payment-mode-option.selected{background:#fff!important;box-shadow:0 1px 5px rgba(40,59,88,.09)!important}
+.payment-radio{width:15px;height:15px;border:1.5px solid #b9c5d4;border-radius:50%;background:#fff;box-shadow:inset 0 0 0 4px #fff}
+.payment-mode-option.selected .payment-radio{border-color:#2f6fed;background:#2f6fed}
+.payment-mode-option>span:last-child{display:block}
+.payment-mode-option strong,.payment-mode-option small{display:block}
+.payment-mode-option strong{font-size:10.5px!important;color:#30435e}
+.payment-mode-option small{margin-top:2px;color:#7b8a9e;font-size:8.8px;line-height:1.4}
+.booking-config-panel{padding:15px 16px!important;border-color:#dce6f3!important;border-radius:12px!important;background:#f8fbff!important;gap:12px!important}
+.booking-config-panel .panel-copy strong{font-size:11.5px!important;color:#304967}
+.booking-config-panel .panel-copy p{font-size:9.5px!important;color:#72839a;line-height:1.5!important}
+.booking-config-panel .panel-actions{display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.booking-config-panel .panel-actions .selected-product-chips{flex:1;min-width:180px}
+.wizard-callout{padding:13px 14px;display:grid;grid-template-columns:32px minmax(0,1fr);gap:11px;align-items:flex-start;border:1px solid #d8e5f6;border-radius:12px;background:#f6f9ff}
+.wizard-callout-icon{width:30px;height:30px;display:grid;place-items:center;border-radius:9px;color:#2f6fed;background:#e9f1ff}
+.wizard-callout-icon .icon{width:15px;height:15px}
+.wizard-callout strong{display:block;color:#304967;font-size:10.5px}
+.wizard-callout p{margin:4px 0 0;color:#6c7d93;font-size:9.5px;line-height:1.55}
+.placement-surface{display:grid;gap:12px}
+.placement-card-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.placement-card{position:relative;min-height:82px;padding:13px 38px 13px 13px;display:grid;grid-template-columns:34px minmax(0,1fr);gap:10px;align-items:center;border:1px solid #dde5ef;border-radius:12px;background:#fff;cursor:pointer;transition:border-color .16s ease,background .16s ease,box-shadow .16s ease}
+.placement-card:hover{border-color:#bdcce1;background:#fbfdff}
+.placement-card:has(input:checked){border-color:#91afe6;background:#f4f8ff;box-shadow:0 0 0 1px rgba(47,111,237,.04)}
+.placement-card>input{position:absolute;opacity:0;pointer-events:none}
+.placement-card-icon{width:34px;height:34px;display:grid;place-items:center;border-radius:10px;color:#58708f;background:#f0f4f8}
+.placement-card-icon .icon{width:16px;height:16px}
+.placement-card:has(input:checked) .placement-card-icon{color:#245fbd;background:#e7f0ff}
+.placement-card-copy strong,.placement-card-copy small{display:block}
+.placement-card-copy strong{color:#30435e;font-size:10.5px;font-weight:720}
+.placement-card-copy small{margin-top:3px;color:#7f8fa4;font-size:8.7px;line-height:1.45}
+.placement-check{position:absolute;top:12px;right:12px;width:18px;height:18px;display:grid;place-items:center;border:1px solid #d7e0eb;border-radius:50%;color:transparent;background:#fff;font-size:9px;font-weight:900}
+.placement-card:has(input:checked) .placement-check{border-color:#2f6fed;background:#2f6fed;color:#fff}
+.placement-card-wide{grid-column:1/-1;min-height:72px}
+.placement-product-panel{margin:0!important;padding:13px 14px!important;border-color:#e0e7f1!important;background:#fafcff!important}
+.placement-subpanel-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.placement-subpanel-head>div:first-child strong,.placement-subpanel-head>div:first-child span{display:block}
+.placement-subpanel-head>div:first-child strong{color:#40536d;font-size:10px}
+.placement-subpanel-head>div:first-child span{margin-top:2px;color:#8492a4;font-size:8.5px}
+.placement-footnote{padding:0 3px;display:flex;align-items:center;gap:7px;color:#7c8b9f;font-size:9px}
+.footnote-dot{width:5px;height:5px;border-radius:50%;background:#91a5be}
+.storefront-placement-fieldset.purchase-triggered{display:none}
+.availability-mode-section{padding:15px 16px;border:1px solid #e0e7f0;border-radius:13px;background:#fbfcfe}
+.availability-mode-section .booking-mode-fieldset{padding:0!important;border:0!important;background:transparent!important}
+.availability-mode-section .booking-mode-fieldset>legend{display:none}
+.availability-mode-section .booking-mode-grid{gap:8px}
+.availability-mode-section .booking-mode-option{min-height:96px;padding:12px;border-radius:10px}
+.availability-mode-section .booking-mode-option strong{font-size:10.5px}
+.availability-mode-section .booking-mode-option>span:not(.mode-icon){font-size:8.7px;line-height:1.4}
+.availability-mode-section .mode-icon{height:25px;min-width:31px;border-radius:7px;font-size:8.5px}
+.availability-mode-section .mode-settings{margin-top:12px;padding-top:13px}
+.availability-mode-section .field-row.thirds{padding:0!important;border:0!important;background:transparent!important}
+.wizard-section-divider{height:20px;display:flex;align-items:center;gap:10px;color:#8a98aa;font-size:8.5px;font-weight:760;letter-spacing:.055em;text-transform:uppercase}
+.wizard-section-divider::before,.wizard-section-divider::after{content:"";height:1px;flex:1;background:#e5ebf2}
+.details-basics{display:grid;grid-template-columns:minmax(220px,.72fr) minmax(0,1.28fr);gap:14px;padding:15px 16px;border:1px solid #e0e7f0;border-radius:13px;background:#fbfcfe}
+.details-basics .field{margin:0!important}
+.details-basics textarea{min-height:96px}
+.category-field .hint{max-width:260px}
+@media(max-width:900px){
+  .rule-modal{width:min(820px,calc(100% - 18px))}
+  .rule-modal .wizard-steps button{min-width:90px}
+  .rule-modal .wizard-steps i{width:32px}
+}
+@media(max-width:760px){
+  .rule-modal .modal-body{padding:20px 18px 28px}
+  .rule-modal .wizard-steps button{min-width:0;font-size:0}
+  .booking-decision-grid,.payment-segmented,.placement-card-grid{grid-template-columns:1fr!important}
+  .placement-card-wide{grid-column:auto}
+  .section-copy{align-items:flex-start;flex-direction:column;gap:3px}.section-copy span{text-align:left}
+  .placement-subpanel-head{align-items:flex-start;flex-direction:column}.segmented-control{width:100%}.segmented-control button{flex:1}
+  .details-basics{grid-template-columns:1fr;padding:13px}
+  .availability-mode-section{padding:13px}
+}
+.purchase-entitlement-callout{margin-top:0}

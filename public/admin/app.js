@@ -719,6 +719,52 @@ Object.assign(zh, {
   'How is this appointment unlocked?':'这项预约如何获得资格？','Standalone booking':'独立预约','Customers can book without first purchasing a specific SHOPLINE product.':'客户无需先购买指定 SHOPLINE 商品即可预约。','Consultations, classes, showroom visits, sales meetings, and independent services.':'适合咨询、课程、到店体验、销售会议及其他独立服务。','Purchase-triggered booking':'购买后预约','Customers book only after an eligible SHOPLINE product is paid.':'客户购买并支付指定 SHOPLINE 商品后才能预约。','Installation, onboarding, delivery setup, paid service packages, and post-purchase fulfillment.':'适合安装、交付培训、配送设置、服务包及其他售后履约。','Does this standalone appointment require payment?':'独立预约是否需要付款？','No payment':'无需付款','The appointment is confirmed immediately after the customer selects a time.':'客户选择时间并提交后立即确认预约。','Pay during booking':'预约时付款','Choose a time first, then complete SHOPLINE checkout before confirmation.':'客户先选择时间，再完成 SHOPLINE 结账，付款成功后确认预约。','Products that unlock this appointment':'触发预约资格的商品','Choose trigger products':'选择触发商品','Checkout product':'结账商品','SHOPLINE checkout product':'SHOPLINE 结账商品','Storefront placement':'前台展示位置','Choose where customers can discover this standalone appointment. Placement never changes purchase eligibility or checkout behavior.':'选择客户可以在哪里看到这项独立预约。展示位置不会改变购买资格或结账逻辑。','Direct booking link':'独立预约链接','Regular page App Block':'普通页面 App Block','Staff Directory block':'员工目录 Block','Product detail App Block':'商品详情页 App Block','All products':'全部商品','Selected products':'指定商品','Choose display products':'选择展示商品','App Embed floating launcher':'App Embed 全局悬浮预约入口','Purchase-triggered services are scheduled from the private order link after payment. Public storefront placement is disabled for these services.':'购买后预约会在付款成功后通过私密订单链接进行预约，因此不开放公开前台展示入口。','Booking model':'预约类型','Standalone booking · pay during booking':'独立预约 · 预约时付款','Standalone booking · no payment':'独立预约 · 无需付款','Unlock products':'触发商品','Direct link':'独立链接','Page block':'页面 Block','Staff directory':'员工目录','Selected product pages':'指定商品页','All product pages':'全部商品页','App Embed':'App Embed','No storefront placement':'未配置前台展示','No products selected':'尚未选择商品','Choose purchase trigger products':'选择购买触发商品','These products unlock the appointment after payment.':'这些商品付款成功后会产生预约资格。','These products only control where the App Block appears.':'这些商品仅决定 App Block 在哪些商品页展示。','Choose checkout product':'选择结账商品','This product supplies the SHOPLINE checkout price.':'该商品仅提供 SHOPLINE 结账价格。','Enable at least one storefront placement or direct booking link.':'请至少开启一个前台展示位置或独立预约链接。','Choose at least one display product or switch product placement to All products.':'请选择至少一个展示商品，或切换为全部商品。'
 });
 
+Object.assign(zh, {
+  'BOOKING MODEL':'预约模式', 'STOREFRONT PLACEMENT':'前台展示', 'AVAILABILITY':'可预约时间', 'DETAILS':'服务信息',
+  'Placement':'展示位置', 'Details':'服务信息',
+  'How can customers book this service?':'客户如何预约这项服务？',
+  'Set the business rule first. Where the booking appears in your storefront is configured separately.':'先确定预约业务规则；预约入口展示在哪里会在下一步单独配置。',
+  'Use the customer-facing name of the appointment or service.':'填写客户实际看到的预约服务名称。',
+  'Choose whether a purchase is required before a customer can schedule.':'选择客户是否必须先完成指定商品购买才能预约。',
+  'Book without buying a specific product first.':'无需先购买指定商品即可预约。',
+  'Book only after an eligible SHOPLINE product is paid.':'指定 SHOPLINE 商品付款成功后才能预约。',
+  'Installation, onboarding, delivery setup, service packages, and post-purchase fulfillment.':'适合安装、交付培训、配送设置、服务包及其他售后履约。',
+  'Payment':'付款', 'For standalone bookings, decide when the appointment becomes confirmed.':'独立预约可选择直接确认，或在预约时完成付款后确认。',
+  'Confirm immediately after a valid time is selected.':'选择有效时间并提交后立即确认预约。',
+  'Select time, then complete SHOPLINE checkout.':'先选择时间，再完成 SHOPLINE 结账。',
+  'Paid orders containing any selected product create appointment eligibility. These products never control storefront placement.':'包含任一所选商品的订单付款成功后会产生预约资格；这些商品不决定预约入口展示位置。',
+  'This product only supplies SHOPLINE price and checkout. It does not control where the booking is shown.':'该商品仅提供 SHOPLINE 价格和结账能力，不决定预约入口展示位置。',
+  'Scheduling starts after payment':'付款后开放预约',
+  'Appointment Lite waits for an eligible paid order, creates the booking entitlement, and sends the buyer a private scheduling link.':'Appointment Lite 会等待符合条件的订单付款成功，然后创建预约资格并向买家发送私密预约链接。',
+  'Where should customers find this booking?':'客户可以在哪里找到这个预约入口？',
+  'Placement controls discovery only. It never changes purchase eligibility, payment, schedule, or staff assignment.':'展示位置只决定客户在哪里看到预约入口，不会改变购买资格、付款、排期或员工分配逻辑。',
+  'Private scheduling after purchase':'购买后通过私密链接预约',
+  'Purchase-triggered services do not expose a public booking entry. Customers receive the private scheduling link after an eligible order is paid.':'购买后预约不会开放公开预约入口；符合条件的订单付款成功后，客户会收到私密预约链接。',
+  'Share a hosted booking URL anywhere.':'可在任意渠道分享独立预约链接。',
+  'Add the booking experience to a normal SHOPLINE page.':'将预约组件添加到普通 SHOPLINE 页面。',
+  'Let customers choose a public staff profile first.':'先展示员工目录，再由客户选择员工预约。',
+  'Show this service on all or selected product pages.':'在全部或指定商品详情页展示此服务。',
+  'Add this service to the global floating booking launcher when App embeds is enabled in the theme editor.':'在主题编辑器启用 App Embed 后，将此服务加入全站悬浮预约入口。',
+  'Product page coverage':'商品页展示范围', 'These products only decide where the App Block appears.':'这些商品仅决定 App Block 在哪些商品页展示。',
+  'You can combine multiple storefront placements for the same standalone service.':'同一个独立预约服务可以同时启用多个前台展示入口。',
+  'When can customers book?':'客户什么时候可以预约？',
+  'Choose how time is selected, then configure the service-local booking window and schedule.':'先选择时间预约方式，再配置服务时区下的预约窗口和排期。',
+  'Choose the time structure that matches this service.':'选择最适合这项服务的时间结构。',
+  'Schedule & booking window':'排期与预约窗口',
+  'Finish the customer experience':'完善客户预约体验',
+  'Add optional classification, customer-facing details, location, staff, and questions.':'补充可选分类、客户可见信息、地点、员工和问题。',
+  'Service category':'服务分类', 'General appointment':'通用预约',
+  'Optional classification only. It does not change booking, payment, placement, or availability logic.':'仅用于可选分类，不会影响预约、付款、展示位置或可预约时间逻辑。',
+  'Choose the booking model and payment behavior.':'选择预约模式和付款方式。',
+  'Choose where customers can discover this service.':'选择客户可以在哪里看到这项服务。',
+  'Set booking mode, timing, and availability.':'设置预约时间模式、时长和可预约时间。',
+  'Finish customer-facing details, staff, and location.':'完善客户可见信息、员工和服务地点。',
+  'Choose the booking model and storefront placement, then configure availability, location, and staff.':'选择预约模式和前台展示位置，然后配置可预约时间、地点和员工。',
+  'Appointment Lite separates booking rules from storefront placement. A standalone service can use direct links, Page Blocks, Product Blocks, Staff Directory, or App Embed.':'Appointment Lite 将预约业务规则与前台展示位置分开。独立预约可使用独立链接、页面 Block、商品 Block、员工目录或 App Embed。',
+  'Choose a booking model, storefront placement, and schedule.':'选择预约模式、前台展示位置和排期。',
+  'Paid order required':'需要已付款订单', 'Private scheduling link':'私密预约链接'
+});
+
 const enByZh = new Map(Object.entries(zh).map(([english, chinese]) => [chinese, english]));
 
 function t(value, variables = {}) {
@@ -1740,10 +1786,10 @@ async function ensureProducts(force = false) {
 
 function setServiceType(type = 'appointment') {
   const normalized = serviceTypeLabels[type] ? type : 'appointment';
-  $('#serviceType').value = normalized;
-  $$('#serviceTypeGrid [data-service-type]').forEach(button => button.classList.toggle('selected', button.dataset.serviceType === normalized));
-  if (!state.editingRule && !state.ruleModeTouched && $('#bookingMode')) setBookingMode(recommendedBookingMode(normalized), { touched: false });
-  else if ($('#bookingMode')) setBookingMode($('#bookingMode').value || 'slot', { touched: false });
+  const select = $('#serviceType');
+  if (!select) return;
+  select.value = normalized;
+  refreshRuleSelect(select);
 }
 
 
@@ -1758,6 +1804,7 @@ function setBookingType(type = 'standalone') {
   $('#checkoutProductFields')?.classList.toggle('hidden', purchase || $('#paymentMode').value !== 'checkout');
   $('#purchasePlacementNotice')?.classList.toggle('hidden', !purchase);
   $('#storefrontPlacementFieldset')?.classList.toggle('purchase-triggered', purchase);
+  $('#placementFootnote')?.classList.toggle('hidden', purchase);
   $('#storefrontPlacementFieldset')?.querySelectorAll('input,button').forEach(control => { if (!control.closest('#purchasePlacementNotice')) control.disabled = purchase; });
   if (purchase) {
     $('#commerceMode').value = 'product_post_purchase';
@@ -1993,10 +2040,6 @@ function setBookingMode(mode = 'slot', { touched = true } = {}) {
     $('#minimumNoticeMinutes').value = '1440';
   }
   if (normalized === 'all_day') $('#allDayCapacityMirror').value = $('#capacity').value || 1;
-  const recommendation = recommendedBookingMode($('#serviceType').value);
-  const recommendationLabel = { slot: 'Minute / hour', all_day: 'All day', multi_slot: 'Multiple sessions' }[recommendation];
-  const recommendationNode = $('#bookingModeRecommendation');
-  if (recommendationNode) recommendationNode.textContent = t('For this service type, {mode} is a good starting point. You can still choose another mode.', { mode: t(recommendationLabel) });
   renderScheduleMode();
   renderExceptionsMode();
   renderSlotLogic();
@@ -2034,12 +2077,12 @@ function setRuleStep(step) {
   $('#ruleBack').classList.toggle('hidden', state.ruleStep === 0);
   $('#ruleNext').classList.toggle('hidden', state.ruleStep === 3);
   $('#saveRule').classList.toggle('hidden', state.ruleStep !== 3);
-  const subtitles = ['Choose how customers will book this service.', 'Choose how customers select time for this service.', 'Set the service-local schedule customers can choose from.', 'Finish the customer-facing details and activate the service.'];
+  const subtitles = ['Choose the booking model and payment behavior.', 'Choose where customers can discover this service.', 'Set booking mode, timing, and availability.', 'Finish customer-facing details, staff, and location.'];
   $('#ruleDialogSubtitle').textContent = t(subtitles[state.ruleStep]);
   $('#formError').classList.add('hidden');
   const body = $('#ruleDialog .modal-body');
   if (body) body.scrollTop = 0;
-  if (state.ruleStep === 1 || state.ruleStep === 2) renderSlotLogic();
+  if (state.ruleStep === 2) renderSlotLogic();
 }
 
 function validateRuleStep(step) {
@@ -2047,25 +2090,29 @@ function validateRuleStep(step) {
   const bookingType = $('#bookingType').value;
   const paymentMode = $('#paymentMode').value;
   const mode = $('#bookingMode').value;
+
   if (step === 0 && !$('#serviceTitle').value.trim()) message = 'Service name is required before continuing.';
   if (step === 0 && bookingType === 'purchase_triggered' && !state.ruleProductSelection.trigger.length) message = 'Choose at least one SHOPLINE product that unlocks this appointment.';
   if (step === 0 && bookingType === 'standalone' && paymentMode === 'checkout' && !$('#productSelect').value) message = 'Select the SHOPLINE checkout product.';
   if (step === 0 && bookingType === 'standalone' && paymentMode === 'checkout' && !$('#productVariantId').value) message = 'Choose the SHOPLINE variant customers will pay for.';
-  if (step === 1 && mode !== 'all_day' && (!$('#duration').checkValidity() || !$('#buffer').checkValidity() || !$('#capacity').checkValidity())) message = 'Enter valid duration, buffer, and capacity.';
-  if (step === 1 && mode === 'all_day' && !$('#allDayCapacityMirror').checkValidity()) message = 'Enter valid duration, buffer, and capacity.';
-  if (step === 1 && mode === 'multi_slot' && !$('#sessionsRequired').checkValidity()) message = 'Choose 2–12 sessions per booking.';
+
+  if (step === 1 && bookingType === 'standalone') {
+    const placement = placementPayload();
+    const hasPlacement = placement.directLink || placement.pageBlock || placement.staffDirectory || placement.productBlock.enabled || placement.appEmbed.enabled;
+    if (!hasPlacement) message = 'Enable at least one storefront placement or direct booking link.';
+    if (placement.productBlock.enabled && placement.productBlock.scope === 'selected' && !placement.productBlock.productIds.length) message = 'Choose at least one display product or switch product placement to All products.';
+  }
+
+  if (step === 2 && mode !== 'all_day' && (!$('#duration').checkValidity() || !$('#buffer').checkValidity() || !$('#capacity').checkValidity())) message = 'Enter valid duration, buffer, and capacity.';
+  if (step === 2 && mode === 'all_day' && !$('#allDayCapacityMirror').checkValidity()) message = 'Enter valid duration, buffer, and capacity.';
+  if (step === 2 && mode === 'multi_slot' && !$('#sessionsRequired').checkValidity()) message = 'Choose 2–12 sessions per booking.';
   if (step === 2 && (!$('#bookingWindowDays').checkValidity() || !$('#minimumNoticeMinutes').checkValidity())) message = 'Enter a valid booking window and minimum notice.';
   if (step === 2) {
     const weeklyOpen = $$('.schedule-row input[type=checkbox]').some(input => input.checked);
     const exceptionOpen = $$('.exception-row').some(row => row.querySelector('.exception-mode').value !== 'closed' && row.querySelector('.exception-date').value);
     if (!weeklyOpen && !exceptionOpen) message = 'Enable at least one weekday or add an open exception.';
   }
-  if (step === 3 && $('#bookingType').value === 'standalone') {
-    const placement = placementPayload();
-    const hasPlacement = placement.directLink || placement.pageBlock || placement.staffDirectory || placement.productBlock.enabled || placement.appEmbed.enabled;
-    if (!hasPlacement) message = 'Enable at least one storefront placement or direct booking link.';
-    if (placement.productBlock.enabled && placement.productBlock.scope === 'selected' && !placement.productBlock.productIds.length) message = 'Choose at least one display product or switch product placement to All products.';
-  }
+
   if (step === 3) {
     const locationMode = $('#locationMode').value;
     if (locationMode === 'shopline_location' && !$('#shoplineLocationId').value) message = 'Choose a SHOPLINE location.';
@@ -2073,6 +2120,7 @@ function validateRuleStep(step) {
     if (assignment.mode === 'fixed' && assignment.staffIds.length !== 1) message = 'Select exactly one staff member for fixed assignment.';
     if (['any', 'customer_choice'].includes(assignment.mode) && assignment.staffIds.length < 1) message = 'Select at least one staff member for this assignment mode.';
   }
+
   if (message) {
     $('#formError').textContent = t(message);
     $('#formError').classList.remove('hidden');
@@ -3402,7 +3450,7 @@ function bind() {
   $('#calendarNext')?.addEventListener('click', () => shiftCalendarMonth(1));
   $('#exportBookings')?.addEventListener('click', exportBookingsCsv);
   $('#addException')?.addEventListener('click', () => addException());
-  $$('#serviceTypeGrid [data-service-type]').forEach(button => button.addEventListener('click', () => setServiceType(button.dataset.serviceType)));
+  $('#serviceType')?.addEventListener('change', event => setServiceType(event.target.value));
   $$('#bookingTypeGrid [data-booking-type]').forEach(button => button.addEventListener('click', () => setBookingType(button.dataset.bookingType)));
   $$('#paymentModeGrid [data-payment-mode]').forEach(button => button.addEventListener('click', () => setPaymentMode(button.dataset.paymentMode)));
   $('#placementProductBlock')?.addEventListener('change', refreshPlacementUi);

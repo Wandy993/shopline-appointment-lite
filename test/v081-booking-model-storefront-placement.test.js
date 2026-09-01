@@ -49,10 +49,12 @@ test('v0.8.1 admin separates booking model from storefront placement', async () 
     readFile(new URL('../src/views/admin.js', import.meta.url), 'utf8'),
     readFile(new URL('../public/admin/app.js', import.meta.url), 'utf8')
   ]);
-  assert.match(view, /How is this appointment unlocked/);
+  assert.match(view, /How can customers book this service\?/);
   assert.match(view, /id="bookingTypeGrid"/);
   assert.match(view, /id="paymentModeGrid"/);
-  assert.match(view, /id="storefrontPlacementFieldset"/);
+  assert.match(view, /data-rule-step="1"[\s\S]*id="storefrontPlacementFieldset"/);
+  assert.doesNotMatch(view, /id="serviceTypeGrid"/);
+  assert.match(view, /Service category <span>optional<\/span>/);
   assert.match(view, /App Embed floating launcher/);
   assert.match(admin, /purchaseTrigger: \{ products: triggerProducts \}/);
   assert.match(admin, /storefrontPlacement,/);

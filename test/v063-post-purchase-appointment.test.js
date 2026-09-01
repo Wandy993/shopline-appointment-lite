@@ -105,7 +105,7 @@ test('v0.8.1 purchase-triggered booking stays private after payment', async () =
   ]);
   assert.match(view, /data-booking-type="purchase_triggered"/);
   assert.match(view, /id="purchaseTriggerFields"/);
-  assert.match(view, /Private scheduling entitlement/);
+  assert.match(view, /Scheduling starts after payment/);
   assert.match(app, /bookingType === 'purchase_triggered'/);
   assert.match(app, /directLink: false, pageBlock: false/);
 });

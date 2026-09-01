@@ -28,7 +28,8 @@ test('admin uses designed controls and exposes a per-store Email Studio', async 
   assert.match(view, /id="exportBookings"/);
   assert.match(view, /id="confirmDialog"/);
   assert.match(view, /id="emailPreview"/);
-  assert.match(view, /id="serviceTypeGrid"/);
+  assert.match(view, /id="serviceType"/);
+  assert.doesNotMatch(view, /id="serviceTypeGrid"/);
   assert.match(view, /id="availabilityExceptions"/);
   assert.doesNotMatch(asset, /\bconfirm\s*\(|\balert\s*\(/);
   assert.match(asset, /\/email\/settings/);

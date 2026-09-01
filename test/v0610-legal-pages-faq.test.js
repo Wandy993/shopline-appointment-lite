@@ -91,5 +91,5 @@ test('v0.6.10 release version and legal page cache markers stay aligned', async 
   assert.match(bookView, /styles\.css\?v=0.8.1/);
   assert.match(theme, /const VERSION = '0.8.1'/);
   assert.match(release, /RELEASE_VERSION="0.8.1"/);
-  assert.match(release, /booking-model-storefront-placement/);
+  assert.match(release, /service-wizard-simplification-ui-polish/);
 });

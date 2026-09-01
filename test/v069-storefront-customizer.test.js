@@ -101,5 +101,5 @@ test('v0.6.9 release versions stay aligned', async () => {
   assert.match(theme, /const VERSION = '0.8.1'/);
   assert.match(health, /version: '0.8.1'/);
   assert.match(release, /RELEASE_VERSION="0.8.1"/);
-  assert.match(release, /booking-model-storefront-placement/);
+  assert.match(release, /service-wizard-simplification-ui-polish/);
 });
