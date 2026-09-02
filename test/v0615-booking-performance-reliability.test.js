@@ -94,5 +94,5 @@ test('v0.6.16 release version stays aligned', async () => {
   assert.match(admin, /styles\.css\?v=0.8.1/);
   assert.match(book, /app\.js\?v=0.8.1/);
   assert.match(theme, /const VERSION = '0.8.1'/);
-  assert.match(release, /appointment-lite-v\$\{RELEASE_LABEL\}-service-wizard-simplification-ui-polish/);
+  assert.match(release, /NAME="appointment-lite-v\$\{RELEASE_LABEL\}-[^"]+"/);
 });

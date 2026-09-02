@@ -393,6 +393,41 @@
     if (live) live.textContent = `${PREFIX} ${message} Open the preview console for details.`;
   }
 
+  async function productStaffDirectory(rule, context) {
+    if (rule.staffAssignment?.mode !== 'customer_choice' || rule.storefrontPlacement?.staffDirectory !== true) return [];
+    try {
+      const payload = await requestJson(apiUrl('/api/public/staff-directory', {
+        ruleId: rule.id,
+        productId: context.productId,
+        placement: 'staff_directory'
+      }), {}, 'staff directory');
+      return Array.isArray(payload.staff) ? payload.staff : [];
+    } catch (error) {
+      warn('Staff Directory could not be loaded; opening the standard booking flow.', { ...context, ruleId: rule.id, status: error.status, message: error.message });
+      return [];
+    }
+  }
+
+  function openStaffDirectory(widget, rule, context, staff) {
+    if (!Array.isArray(staff) || !staff.length) {
+      open(widget, rule, context);
+      return;
+    }
+    const dialog = document.createElement('dialog');
+    const storefront = storefrontForWidget(widget);
+    const cards = staff.map(item => {
+      const meta = [item.roleTitle, item.region].filter(Boolean).map(text).join(' · ');
+      return `<article class="al-directory-card">${staffAvatar(item, 'al-directory-avatar')}<div class="al-directory-copy"><h3>${text(item.name)}</h3>${meta ? `<p class="al-directory-meta">${meta}</p>` : ''}${item.expertise ? `<strong class="al-directory-expertise">${text(item.expertise)}</strong>` : ''}${item.bio ? `<p class="al-directory-bio">${text(item.bio)}</p>` : ''}</div><button type="button" class="al-directory-book" data-book-with-staff="${text(item.id)}">Book with ${text(item.name)}</button></article>`;
+    }).join('');
+    dialog.innerHTML = `<div class="al-head"><div><span class="al-directory-kicker">TEAM BOOKING</span><h2>Choose your specialist</h2><p>${text(rule.serviceTitle || rule.productTitle || 'Appointment')}</p></div><button class="al-close" type="button" aria-label="Close">×</button></div><div class="al-directory-body"><p class="al-directory-intro">Select a team member to view their availability and continue booking.</p><div class="al-directory-grid">${cards}</div></div>`;
+    mountDialog(dialog, 'al-staff-directory-dialog', storefront);
+    dialog.querySelectorAll('[data-book-with-staff]').forEach(button => button.addEventListener('click', () => {
+      const staffId = String(button.dataset.bookWithStaff || '');
+      dialog.close();
+      setTimeout(() => open(widget, rule, context, { staffId }), 0);
+    }));
+  }
+
   async function init(widget) {
     widget.dataset.alReady = 'true';
     widget.dataset.alStatus = 'initializing';
@@ -425,7 +460,14 @@
       widget.hidden = false;
       widget.dataset.alStatus = 'ready';
       const trigger = widget.querySelector('.al-trigger');
-      trigger.addEventListener('click', () => open(widget, rule, context));
+      trigger.addEventListener('click', async () => {
+        trigger.disabled = true;
+        try {
+          const staff = await productStaffDirectory(rule, context);
+          if (staff.length) openStaffDirectory(widget, rule, context, staff);
+          else open(widget, rule, context);
+        } finally { trigger.disabled = false; }
+      });
       const receipt = readBookingReceipt(context, rule.storeDate);
       renderBookingState(widget, rule, context, receipt);
       syncBookingState(widget, rule, context, receipt);
@@ -636,7 +678,7 @@
     });
   }
 
-  function open(widget, rule, context) {
+  function open(widget, rule, context, options = {}) {
     info('Booking dialog opened.', { ...context, ruleId: rule.id, bookingMode: rule.bookingMode || 'slot' });
     const dialog = document.createElement('dialog');
     const storefront = storefrontForWidget(widget);
@@ -654,7 +696,13 @@
     const modeMeta = mode === 'all_day' ? 'All-day booking' : mode === 'multi_slot' ? `${Number(rule.sessionsRequired || 3)} sessions` : `${rule.duration} minutes`;
     const staffMode = rule.staffAssignment?.mode || 'none';
     const staffOptions = Array.isArray(rule.staffOptions) ? rule.staffOptions : [];
-    const staffSelector = staffMode === 'customer_choice' ? `<div class="al-field al-staff-choice"><label>Staff</label><div class="al-staff-picker"><button type="button" class="al-staff-trigger" aria-haspopup="listbox" aria-expanded="false"><span class="al-staff-value"><span class="al-staff-avatar al-staff-initials al-staff-small">?</span><span><strong>Choose staff</strong><small>Select a team member</small></span></span><span class="al-staff-chevron">⌄</span></button><div class="al-staff-menu" role="listbox" hidden>${staffOptions.map(item => `<button type="button" class="al-staff-option" data-staff-id="${text(item.id)}">${staffAvatar(item, 'al-staff-small')}<span><strong>${text(item.name)}</strong><small>View availability</small></span><i>✓</i></button>`).join('')}</div><input type="hidden" name="staffId" value=""></div><small>Availability updates for the selected staff member.</small></div>` : '';
+    const requestedStaffId = String(options.staffId || '');
+    const initialStaff = staffMode === 'customer_choice' ? staffOptions.find(item => String(item.id) === requestedStaffId) : null;
+    const initialStaffId = initialStaff ? String(initialStaff.id) : '';
+    const initialStaffValue = initialStaff
+      ? `${staffAvatar(initialStaff, 'al-staff-small')}<span><strong>${text(initialStaff.name)}</strong><small>Selected staff member</small></span>`
+      : '<span class="al-staff-avatar al-staff-initials al-staff-small">?</span><span><strong>Choose staff</strong><small>Select a team member</small></span>';
+    const staffSelector = staffMode === 'customer_choice' ? `<div class="al-field al-staff-choice"><label>Staff</label><div class="al-staff-picker"><button type="button" class="al-staff-trigger" aria-haspopup="listbox" aria-expanded="false"><span class="al-staff-value">${initialStaffValue}</span><span class="al-staff-chevron">⌄</span></button><div class="al-staff-menu" role="listbox" hidden>${staffOptions.map(item => `<button type="button" class="al-staff-option${String(item.id) === initialStaffId ? ' selected' : ''}" data-staff-id="${text(item.id)}">${staffAvatar(item, 'al-staff-small')}<span><strong>${text(item.name)}</strong><small>View availability</small></span><i>✓</i></button>`).join('')}</div><input type="hidden" name="staffId" value="${text(initialStaffId)}"></div><small>Availability updates for the selected staff member.</small></div>` : '';
     const managedStaffMeta = staffMode === 'fixed' && staffOptions[0] ? staffOptions[0].name : staffMode === 'any' ? 'Staff assigned automatically' : rule.staff;
     const metaParts = [modeMeta, rule.location, managedStaffMeta].filter(Boolean);
     const paid = rule.commerceMode === 'standalone_paid';

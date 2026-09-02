@@ -1,4 +1,9 @@
-<div class="al-staff-directory" data-al-staff-directory data-rule-id="{{ block.settings.rule_id }}" data-heading="{{ block.settings.heading }}">
+<div class="al-staff-directory"
+  data-al-staff-directory
+  data-rule-id="{{ block.settings.rule_id }}"
+  data-shop-id="{{ shop.id }}"
+  data-product-id="{{ product.id }}"
+  data-heading="{{ block.settings.heading }}">
   <div class="al-page-loading">Loading team…</div>
 </div>
 
@@ -6,12 +11,12 @@
 {
   "name": "Appointment Lite · Staff Directory",
   "target": "section",
-  "templates": ["page"],
+  "templates": ["page", "product"],
   "javascript": ["public/appointment-lite-page.js"],
   "stylesheet": ["public/appointment-lite-page.css"],
   "limit": 1,
   "settings": [
-    { "type": "text", "id": "rule_id", "label": "Service ID", "default": "" },
+    { "type": "text", "id": "rule_id", "label": "Service ID (required on regular pages only)", "default": "" },
     { "type": "text", "id": "heading", "label": "Heading", "default": "Meet our team" }
   ]
 }

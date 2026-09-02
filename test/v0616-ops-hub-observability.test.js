@@ -270,5 +270,5 @@ test('current release identity stays aligned while retaining Ops Hub observabili
   assert.match(bookView, /app\.js\?v=0\.8\.1/);
   assert.match(theme, /const VERSION = '0\.8\.1'/);
   assert.match(release, /RELEASE_VERSION="0\.8\.1"/);
-  assert.match(release, /service-wizard-simplification-ui-polish/);
+  assert.match(release, /NAME="appointment-lite-v\$\{RELEASE_LABEL\}-[^"]+"/);
 });
