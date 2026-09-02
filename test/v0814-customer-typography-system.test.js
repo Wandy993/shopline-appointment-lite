@@ -12,9 +12,9 @@ test('v0.8.1.4 hosted booking and management pages use Jost headings and Poppins
   assert.match(bookCss, /service-head h1[\s\S]*font-family:\"Jost\"/);
   assert.match(manageCss, /font-family:\"Poppins\",Arial,Helvetica,sans-serif/);
   assert.match(manageCss, /heading h1[\s\S]*font-family:\"Jost\"/);
-  assert.match(bookView, /family=Jost/);
+  assert.doesNotMatch(bookView, /fonts\.googleapis\.com/);
   assert.match(bookView, /styles\.css\?v=0\.8\.1\.4/);
-  assert.match(manageView, /family=Jost/);
+  assert.doesNotMatch(manageView, /fonts\.googleapis\.com/);
   assert.match(manageView, /styles\.css\?v=0\.8\.1\.4/);
 });
 
@@ -25,7 +25,7 @@ test('v0.8.1.4 Theme customer surfaces use the same typography system', async ()
     read('../theme-extension-source/public/appointment-lite-embed.css')
   ]);
   for (const css of [modalCss, pageCss, embedCss]) {
-    assert.match(css, /fonts\.googleapis\.com/);
+    assert.doesNotMatch(css, /fonts\.googleapis\.com/);
     assert.match(css, /Poppins/);
     assert.match(css, /Jost/);
   }
@@ -36,7 +36,8 @@ test('v0.8.1.4 Theme customer surfaces use the same typography system', async ()
 
 test('v0.8.1.4 transactional emails use Jost title and Poppins body with safe fallbacks', async () => {
   const [email, adminCss, adminView] = await Promise.all([read('../src/services/email.js'), read('../public/admin/styles.css'), read('../src/views/admin.js')]);
-  assert.match(email, /fonts\.googleapis\.com\/css2\?family=Jost/);
+  assert.doesNotMatch(email, /fonts\.googleapis\.com/);
+  assert.match(email, /customer-fonts\/jost/);
   assert.match(email, /font-family:'Poppins',Arial,Helvetica,sans-serif/);
   assert.match(email, /font-family:'Jost',Arial,Helvetica,sans-serif/);
   assert.match(adminCss, /email-preview[\s\S]*Poppins/);
@@ -46,8 +47,9 @@ test('v0.8.1.4 transactional emails use Jost title and Poppins body with safe fa
 
 test('v0.8.1.4 CSP and release identity allow hosted web fonts', async () => {
   const [app, release] = await Promise.all([read('../src/app.js'), read('../scripts/build-release.sh')]);
-  assert.match(app, /styleSrc:[\s\S]*https:\/\/fonts\.googleapis\.com/);
-  assert.match(app, /fontSrc:[\s\S]*https:\/\/fonts\.gstatic\.com/);
+  assert.match(app, /\/customer-fonts\/jost/);
+  assert.match(app, /\/customer-fonts\/poppins/);
+  assert.doesNotMatch(app, /fonts\.googleapis\.com|fonts\.gstatic\.com/);
   assert.match(app, /build: '0\.8\.1\.[^']+'/);
   assert.match(app, /release: 'v0\.8\.1\.[^']+'/);
   assert.match(release, /RELEASE_LABEL="0\.8\.1\.[0-9.]+"/);

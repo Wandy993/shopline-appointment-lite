@@ -18,6 +18,8 @@
     "@alicloud/dm20151123": "^1.10.2",
     "@alicloud/openapi-client": "^0.4.15",
     "@alicloud/tea-util": "^1.4.11",
+    "@fontsource/jost": "5.3.0",
+    "@fontsource/poppins": "5.3.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^5.1.0",

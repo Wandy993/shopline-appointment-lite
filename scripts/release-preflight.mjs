@@ -18,6 +18,9 @@ const releaseVersion = releaseScript.match(/RELEASE_VERSION="([^"]+)"/)?.[1] || 
 const releaseLabel = releaseScript.match(/RELEASE_LABEL="([^"]+)"/)?.[1] || '';
 const releaseBuild = releaseScript.match(/RELEASE_BUILD="([^"]+)"/)?.[1] || '';
 const releaseName = releaseScript.match(/NAME="([^"]+)"/)?.[1] || '';
+const builderPreflightToStderr = /node \"\$ROOT_DIR\/scripts\/release-preflight\.mjs\" >\&2 \|\| exit 1/.test(releaseScript);
+
+if (!builderPreflightToStderr) fail('release builder must reserve stdout for the final artifact path by sending preflight output to stderr');
 
 if (!health) {
   fail('health release identity could not be parsed from src/app.js');

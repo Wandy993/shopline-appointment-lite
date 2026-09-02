@@ -59,3 +59,9 @@ test('historical tests cannot hard-code the active release identity', async () =
   }
   assert.deepEqual(offenders, []);
 });
+
+test('release builder reserves stdout for exactly one artifact path', async () => {
+  const shell = await read('../scripts/build-release.sh');
+  assert.match(shell, /node "\$ROOT_DIR\/scripts\/release-preflight\.mjs" >&2 \|\| exit 1/);
+  assert.match(shell, /printf '%s\\n' "\$OUTPUT"/);
+});

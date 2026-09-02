@@ -1,4 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Jost:wght@500;600;700&family=Poppins:wght@400;500;600;700&display=swap');
+@font-face{font-family:"Jost";font-style:normal;font-display:swap;font-weight:500;src:url("/customer-fonts/jost/jost-latin-500-normal.woff2") format("woff2")}
+@font-face{font-family:"Jost";font-style:normal;font-display:swap;font-weight:600;src:url("/customer-fonts/jost/jost-latin-600-normal.woff2") format("woff2")}
+@font-face{font-family:"Jost";font-style:normal;font-display:swap;font-weight:700;src:url("/customer-fonts/jost/jost-latin-700-normal.woff2") format("woff2")}
+@font-face{font-family:"Poppins";font-style:normal;font-display:swap;font-weight:400;src:url("/customer-fonts/poppins/poppins-latin-400-normal.woff2") format("woff2")}
+@font-face{font-family:"Poppins";font-style:normal;font-display:swap;font-weight:500;src:url("/customer-fonts/poppins/poppins-latin-500-normal.woff2") format("woff2")}
+@font-face{font-family:"Poppins";font-style:normal;font-display:swap;font-weight:600;src:url("/customer-fonts/poppins/poppins-latin-600-normal.woff2") format("woff2")}
+@font-face{font-family:"Poppins";font-style:normal;font-display:swap;font-weight:700;src:url("/customer-fonts/poppins/poppins-latin-700-normal.woff2") format("woff2")}
 :root {
   --bg: #f4f6fb;
   --surface: #ffffff;
