@@ -3,12 +3,14 @@ set -u
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd -P)"
 RELEASE_VERSION="0.8.1"
-RELEASE_LABEL="0.8.1.3.1"
-RELEASE_BUILD="product-staff-directory-flow.1"
-NAME="appointment-lite-v${RELEASE_LABEL}-product-staff-directory-flow"
+RELEASE_LABEL="0.8.1.4"
+RELEASE_BUILD="customer-typography-system.1"
+NAME="appointment-lite-v${RELEASE_LABEL}-customer-typography-system"
 DIST_DIR="$ROOT_DIR/dist"
 STAGE_DIR="${TMPDIR:-/tmp}/${NAME}.$$"
 OUTPUT="$DIST_DIR/${NAME}.zip"
+
+node "$ROOT_DIR/scripts/release-preflight.mjs" || exit 1
 
 cleanup() { rm -rf "$STAGE_DIR"; }
 trap cleanup EXIT INT TERM

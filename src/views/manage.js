@@ -6,7 +6,10 @@ export function managePage() {
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
   <title>Manage appointment</title>
-  <link rel="stylesheet" href="/manage/assets/styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@500;600;700&family=Poppins:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/manage/assets/styles.css?v=0.8.1.4">
 </head>
 <body>
   <main class="shell">
