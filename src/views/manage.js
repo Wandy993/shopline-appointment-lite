@@ -6,7 +6,7 @@ export function managePage() {
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
   <title>Manage appointment</title>
-  <link rel="stylesheet" href="/manage/assets/styles.css?v=0.8.1.4.1">
+  <link rel="stylesheet" href="/manage/assets/styles.css?v=0.8.1.4.2">
 </head>
 <body>
   <main class="shell">
@@ -33,7 +33,7 @@ export function managePage() {
     </section>
     <footer>This private page grants access to your appointment. Do not share its link.</footer>
   </main>
-  <script type="module" src="/manage/assets/app.js?v=0.8.1.4.1"></script>
+  <script type="module" src="/manage/assets/app.js?v=0.8.1.4.2"></script>
 </body>
 </html>`;
 }

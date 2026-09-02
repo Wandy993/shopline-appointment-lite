@@ -18,6 +18,26 @@ const releaseVersion = releaseScript.match(/RELEASE_VERSION="([^"]+)"/)?.[1] || 
 const releaseLabel = releaseScript.match(/RELEASE_LABEL="([^"]+)"/)?.[1] || '';
 const releaseBuild = releaseScript.match(/RELEASE_BUILD="([^"]+)"/)?.[1] || '';
 const releaseName = releaseScript.match(/NAME="([^"]+)"/)?.[1] || '';
+
+const themeCssFiles = [
+  'theme-extension-source/public/appointment-lite.css',
+  'theme-extension-source/public/appointment-lite-page.css',
+  'theme-extension-source/public/appointment-lite-embed.css'
+];
+const themeFontSync = read('scripts/sync-theme-fonts.mjs');
+for (const rel of themeCssFiles) {
+  const css = read(rel);
+  if (/\.woff2|format\(["']woff2["']\)/i.test(css)) fail(`${rel} must not reference WOFF2 because SHOPLINE Theme Extension CLI rejects it`);
+  if (!/al-jost-600\.ttf/.test(css) || !/al-poppins-400\.ttf/.test(css)) fail(`${rel} must reference the SHOPLINE-compatible Jost/Poppins TTF assets`);
+}
+if (!/@expo-google-fonts\/jost/.test(themeFontSync) || !/@expo-google-fonts\/poppins/.test(themeFontSync)) {
+  fail('Theme font sync must source pinned TTF assets instead of emitting WOFF2');
+}
+const generatedThemeFontNames = [...themeFontSync.matchAll(/\['[^']+',\s*'([^']+)'\]/g)].map(match => match[1]);
+if (!generatedThemeFontNames.length || generatedThemeFontNames.some(name => !name.endsWith('.ttf'))) {
+  fail(`Theme font sync must generate only SHOPLINE-compatible TTF assets; found ${generatedThemeFontNames.join(', ') || 'none'}`);
+}
+
 const builderPreflightToStderr = /node \"\$ROOT_DIR\/scripts\/release-preflight\.mjs\" >\&2 \|\| exit 1/.test(releaseScript);
 
 if (!builderPreflightToStderr) fail('release builder must reserve stdout for the final artifact path by sending preflight output to stderr');

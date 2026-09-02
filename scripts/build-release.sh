@@ -3,9 +3,9 @@ set -u
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd -P)"
 RELEASE_VERSION="0.8.1"
-RELEASE_LABEL="0.8.1.4.1"
-RELEASE_BUILD="customer-font-delivery.1"
-NAME="appointment-lite-v${RELEASE_LABEL}-customer-font-delivery"
+RELEASE_LABEL="0.8.1.4.2"
+RELEASE_BUILD="theme-font-compatibility.1"
+NAME="appointment-lite-v${RELEASE_LABEL}-theme-font-compatibility"
 DIST_DIR="$ROOT_DIR/dist"
 STAGE_DIR="${TMPDIR:-/tmp}/${NAME}.$$"
 OUTPUT="$DIST_DIR/${NAME}.zip"
