@@ -3,13 +3,14 @@ set -u
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd -P)"
 RELEASE_VERSION="0.8.1"
-RELEASE_LABEL="0.8.1.4.2"
-RELEASE_BUILD="theme-font-compatibility.1"
-NAME="appointment-lite-v${RELEASE_LABEL}-theme-font-compatibility"
+RELEASE_LABEL="0.8.1.4.3"
+RELEASE_BUILD="theme-font-css-bundle.1"
+NAME="appointment-lite-v${RELEASE_LABEL}-theme-font-css-bundle"
 DIST_DIR="$ROOT_DIR/dist"
 STAGE_DIR="${TMPDIR:-/tmp}/${NAME}.$$"
 OUTPUT="$DIST_DIR/${NAME}.zip"
 
+node "$ROOT_DIR/scripts/sync-theme-fonts.mjs" --source-only >&2 || exit 1
 node "$ROOT_DIR/scripts/release-preflight.mjs" >&2 || exit 1
 
 cleanup() { rm -rf "$STAGE_DIR"; }

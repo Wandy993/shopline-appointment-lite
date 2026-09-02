@@ -26,7 +26,7 @@ test('v0.8.1.4.1 self-hosts hosted customer fonts instead of depending on Google
   assert.doesNotMatch(email, /fonts\.googleapis\.com/);
 });
 
-test('v0.8.1.4.1 Theme Extension keeps fonts local and uses a reusable sync step', async () => {
+test('v0.8.1.4.1 Theme Extension keeps customer fonts local without Google Fonts', async () => {
   const [modalCss, pageCss, embedCss, syncScript, pkg] = await Promise.all([
     read('../theme-extension-source/public/appointment-lite.css'),
     read('../theme-extension-source/public/appointment-lite-page.css'),
@@ -34,13 +34,9 @@ test('v0.8.1.4.1 Theme Extension keeps fonts local and uses a reusable sync step
     read('../scripts/sync-theme-fonts.mjs'),
     read('../package.json')
   ]);
-  for (const css of [modalCss, pageCss, embedCss]) {
-    assert.match(css, /\.\/al-jost-600\./);
-    assert.match(css, /\.\/al-poppins-400\./);
-    assert.doesNotMatch(css, /fonts\.googleapis\.com/);
-  }
-  assert.match(syncScript, /al-jost-600/);
-  assert.match(syncScript, /al-poppins-400/);
+  for (const css of [modalCss, pageCss, embedCss]) assert.doesNotMatch(css, /fonts\.googleapis\.com/);
+  assert.match(syncScript, /@fontsource\/jost/);
+  assert.match(syncScript, /@fontsource\/poppins/);
   assert.match(pkg, /"@fontsource\/jost": "5\.3\.0"/);
   assert.match(pkg, /"@fontsource\/poppins": "5\.3\.0"/);
 });

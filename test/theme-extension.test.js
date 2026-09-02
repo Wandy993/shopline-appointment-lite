@@ -6,9 +6,13 @@ test('App Block is zero-configuration and uses SHOPLINE resource IDs', async () 
   const block = await readFile(new URL('../theme-extension-source/blocks/appointment-lite.html', import.meta.url), 'utf8');
   assert.match(block, /data-shop-id="\{\{ shop\.id \}\}"/);
   assert.match(block, /data-product-id="\{\{ product\.id \}\}"/);
-  assert.match(block, /"javascript": \["public\/appointment-lite\.js"\]/);
-  assert.match(block, /"stylesheet": \["public\/appointment-lite\.css"\]/);
-  assert.match(block, /"settings": \[\]/);
+  const schemaMatch = block.match(/\{\{#schema\}\}\s*([\s\S]*?)\s*\{\{\/schema\}\}/);
+  assert.ok(schemaMatch, 'Theme App Block schema should be parseable');
+  const schema = JSON.parse(schemaMatch[1]);
+  // Additive presentation assets are allowed; validate required membership, not an exact one-file stylesheet array.
+  assert.deepEqual(schema.javascript, ['public/appointment-lite.js']);
+  assert.ok(schema.stylesheet.includes('public/appointment-lite.css'), 'customer UI stylesheet should remain registered');
+  assert.deepEqual(schema.settings, []);
   assert.doesNotMatch(block, /block\.settings/);
 });
 

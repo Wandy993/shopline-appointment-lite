@@ -9,10 +9,11 @@
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
-    "test": "node --test",
-    "check": "node scripts/release-preflight.mjs && node --check src/server.js && node --check src/routes/admin.js && node --check src/routes/public.js && node --check src/routes/integrations.js && node --check src/routes/shopline-webhooks.js && node --check src/routes/subscription.js && node --check src/middleware/subscription.js && node --check src/services/subscription.js && node --check src/models/SubscriptionCheckout.js && node --check src/services/locations.js && node --check src/models/AppointmentRule.js && node --check src/models/Booking.js && node --check src/services/staffing.js && node --check src/services/bookings.js && node --check src/services/paid-bookings.js && node --check src/models/PostPurchaseEntitlement.js && node --check src/services/post-purchase.js && node --check src/services/shopline.js && node --check src/services/email.js && node --check src/services/google-calendar.js && node --check src/services/calendar-sync.js && node --check src/services/reminders.js && node --check src/models/Staff.js && node --check src/models/CalendarConnection.js && node --check src/models/EmailReminderDelivery.js && node --check src/models/WebhookReceipt.js && node --check src/models/OpsHubEvent.js && node --check src/models/OpsUsageDaily.js && node --check src/services/ops-hub.js && node --check src/services/ops-hub-sync-job.js && node --check src/lib/reminder-time.js && node --check src/lib/secret-box.js && node --check src/lib/shopline-webhook.js && node --check src/lib/paid-checkout.js && node --check src/lib/validation.js && node --check src/lib/storefront-settings.js && node --check src/lib/runtime-cache.js && node --check src/views/legal.js && node --check public/admin/app.js && node --check public/manage/app.js && node --check public/book/app.js && node --check public/integrations/google-complete.js && node --check public/legal/faq.js && node --check theme-extension-source/public/appointment-lite.js && node --check theme-extension-source/public/appointment-lite-page.js && node --check theme-extension-source/public/appointment-lite-embed.js",
+    "test": "node scripts/sync-theme-fonts.mjs --source-only && node --test",
+    "check": "node scripts/sync-theme-fonts.mjs --source-only && node scripts/release-preflight.mjs && node --check src/server.js && node --check src/routes/admin.js && node --check src/routes/public.js && node --check src/routes/integrations.js && node --check src/routes/shopline-webhooks.js && node --check src/routes/subscription.js && node --check src/middleware/subscription.js && node --check src/services/subscription.js && node --check src/models/SubscriptionCheckout.js && node --check src/services/locations.js && node --check src/models/AppointmentRule.js && node --check src/models/Booking.js && node --check src/services/staffing.js && node --check src/services/bookings.js && node --check src/services/paid-bookings.js && node --check src/models/PostPurchaseEntitlement.js && node --check src/services/post-purchase.js && node --check src/services/shopline.js && node --check src/services/email.js && node --check src/services/google-calendar.js && node --check src/services/calendar-sync.js && node --check src/services/reminders.js && node --check src/models/Staff.js && node --check src/models/CalendarConnection.js && node --check src/models/EmailReminderDelivery.js && node --check src/models/WebhookReceipt.js && node --check src/models/OpsHubEvent.js && node --check src/models/OpsUsageDaily.js && node --check src/services/ops-hub.js && node --check src/services/ops-hub-sync-job.js && node --check src/lib/reminder-time.js && node --check src/lib/secret-box.js && node --check src/lib/shopline-webhook.js && node --check src/lib/paid-checkout.js && node --check src/lib/validation.js && node --check src/lib/storefront-settings.js && node --check src/lib/runtime-cache.js && node --check src/views/legal.js && node --check public/admin/app.js && node --check public/manage/app.js && node --check public/book/app.js && node --check public/integrations/google-complete.js && node --check public/legal/faq.js && node --check theme-extension-source/public/appointment-lite.js && node --check theme-extension-source/public/appointment-lite-page.js && node --check theme-extension-source/public/appointment-lite-embed.js",
     "release:zip": "bash scripts/build-release.sh",
-    "release:preflight": "node scripts/release-preflight.mjs"
+    "release:preflight": "node scripts/release-preflight.mjs",
+    "theme:fonts": "node scripts/sync-theme-fonts.mjs"
   },
   "dependencies": {
     "@alicloud/dm20151123": "^1.10.2",
@@ -26,11 +27,6 @@
     "express-rate-limit": "^7.5.0",
     "helmet": "^8.1.0",
     "mongoose": "^8.13.2",
-    "resend": "^4.2.0",
-    "fonteditor-core": "2.6.3"
-  },
-  "devDependencies": {
-    "@expo-google-fonts/jost": "0.4.2",
-    "@expo-google-fonts/poppins": "0.4.1"
+    "resend": "^4.2.0"
   }
 }
