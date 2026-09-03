@@ -583,3 +583,89 @@ body.al-dialog-open{position:fixed!important;top:var(--al-dialog-scroll-y,0)!imp
   .al-manage-meeting{align-items:stretch;flex-direction:column}
   .al-manage-meeting .al-meeting-link{max-width:100%!important;width:100%!important;justify-content:center!important}
 }
+
+/* v0.8.10 — self-contained Zoom brand + compact confirmation action panel */
+.zoom-brand-svg{display:block!important;width:28px!important;height:10px!important;max-width:100%!important;overflow:visible!important}
+.al-meeting-brand--zoom{width:40px!important;min-width:40px!important;padding:5px 6px!important}
+.al-meeting-brand--zoom .zoom-brand-svg{width:28px!important;height:10px!important}
+.al-success-next-steps{
+  width:100%!important;
+  max-width:470px!important;
+  margin:14px auto 2px!important;
+  padding:12px!important;
+  border:1px solid color-mix(in srgb,var(--al-theme-line) 92%,transparent)!important;
+  border-radius:calc(var(--al-theme-radius-sm) + 2px)!important;
+  background:color-mix(in srgb,var(--al-theme-soft) 58%,var(--al-theme-surface))!important;
+  box-sizing:border-box!important;
+}
+.al-success-next-label{
+  display:block!important;
+  margin:0 0 8px!important;
+  color:var(--al-theme-muted)!important;
+  font-size:9px!important;
+  font-weight:800!important;
+  line-height:1.2!important;
+  letter-spacing:.08em!important;
+  text-align:left!important;
+  text-transform:uppercase!important;
+}
+.al-success-action-grid{
+  display:grid!important;
+  grid-template-columns:repeat(auto-fit,minmax(190px,1fr))!important;
+  gap:9px!important;
+  width:100%!important;
+}
+.al-success-action{
+  display:flex!important;
+  width:100%!important;
+  min-width:0!important;
+  min-height:58px!important;
+  align-items:center!important;
+  gap:9px!important;
+  padding:9px 10px!important;
+  border:1px solid var(--al-theme-line)!important;
+  border-radius:12px!important;
+  background:var(--al-theme-surface)!important;
+  color:var(--al-theme-text)!important;
+  text-decoration:none!important;
+  box-shadow:0 5px 14px color-mix(in srgb,var(--al-theme-text) 4%,transparent)!important;
+  box-sizing:border-box!important;
+  transition:border-color .16s ease,background .16s ease,transform .16s ease,box-shadow .16s ease!important;
+}
+.al-success-action:hover{
+  border-color:color-mix(in srgb,var(--al-accent) 30%,var(--al-theme-line))!important;
+  background:color-mix(in srgb,var(--al-theme-soft) 54%,var(--al-theme-surface))!important;
+  color:var(--al-theme-text)!important;
+  transform:translateY(-1px)!important;
+  box-shadow:0 8px 18px color-mix(in srgb,var(--al-theme-text) 7%,transparent)!important;
+}
+.al-success-action .al-meeting-brand,.al-success-action .al-google-g{
+  flex:0 0 34px!important;
+  width:34px!important;
+  height:34px!important;
+  min-width:34px!important;
+  padding:6px!important;
+  border:1px solid color-mix(in srgb,var(--al-theme-line) 88%,#fff)!important;
+  border-radius:10px!important;
+  background:#fff!important;
+  box-sizing:border-box!important;
+}
+.al-success-action .al-meeting-brand--zoom{width:42px!important;min-width:42px!important;flex-basis:42px!important;padding:7px!important}
+.al-success-action .al-meeting-brand--zoom .zoom-brand-svg{width:28px!important;height:10px!important}
+.al-success-action-copy{display:flex!important;min-width:0!important;flex:1 1 auto!important;flex-direction:column!important;gap:2px!important;text-align:left!important}
+.al-success-action-copy small{color:var(--al-theme-muted)!important;font-size:9px!important;font-style:normal!important;font-weight:650!important;line-height:1.2!important}
+.al-success-action-copy strong{overflow:hidden!important;color:var(--al-theme-text)!important;font-size:11.5px!important;font-weight:750!important;line-height:1.25!important;text-overflow:ellipsis!important;white-space:nowrap!important}
+.al-success-action-copy em{overflow:hidden!important;color:var(--al-theme-muted)!important;font-size:8.5px!important;font-style:normal!important;font-weight:500!important;line-height:1.2!important;text-overflow:ellipsis!important;white-space:nowrap!important}
+.al-success-action-open{display:grid!important;place-items:center!important;flex:0 0 24px!important;width:24px!important;height:24px!important;border-radius:999px!important;background:var(--al-theme-soft)!important;color:var(--al-theme-muted)!important;font-size:12px!important;font-weight:700!important;line-height:1!important}
+.al-booking-dialog.al-confirmed .al-success-next-steps + .al-submit{margin-top:14px!important}
+.al-booking-dialog.al-confirmed .al-meeting-actions,.al-booking-dialog.al-confirmed .al-calendar-actions{margin:0!important}
+.al-manage-meeting .al-meeting-brand--zoom .zoom-brand-svg{width:28px!important;height:10px!important}
+@media(max-width:520px){
+  .al-success-next-steps{padding:10px!important}
+  .al-success-action-grid{grid-template-columns:1fr!important}
+  .al-success-action{min-height:54px!important}
+}
+.al-booking-dialog.al-confirmed .al-success-action{
+  display:flex!important;width:100%!important;max-width:none!important;min-height:58px!important;align-items:center!important;justify-content:flex-start!important;gap:9px!important;padding:9px 10px!important;border:1px solid var(--al-theme-line)!important;border-radius:12px!important;background:var(--al-theme-surface)!important;color:var(--al-theme-text)!important;text-decoration:none!important;box-shadow:0 5px 14px color-mix(in srgb,var(--al-theme-text) 4%,transparent)!important;box-sizing:border-box!important;transform:none!important
+}
+.al-booking-dialog.al-confirmed .al-success-action:hover{border-color:color-mix(in srgb,var(--al-accent) 30%,var(--al-theme-line))!important;background:color-mix(in srgb,var(--al-theme-soft) 54%,var(--al-theme-surface))!important;color:var(--al-theme-text)!important;transform:translateY(-1px)!important;box-shadow:0 8px 18px color-mix(in srgb,var(--al-theme-text) 7%,transparent)!important;filter:none!important}

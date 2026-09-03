@@ -20,19 +20,14 @@ const bookingThemePresets = Object.freeze({
 });
 const bookingCornerRadius = Object.freeze({ soft: 14, rounded: 22, square_soft: 10 });
 let storefront = defaultStorefrontSettings;
-const ZOOM_LOGO_URL = 'https://media.zoom.com/images/assets/zoom-logo-2025.png/Zz04ZjU1ODA4OGM5NjUxMWYwYWQ3NDIyZTYxNWM4NmY4Yg%3D%3D';
+const ZOOM_BRAND_SVG = `<svg class="zoom-brand-svg" viewBox="0 8 24 8" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg"><path fill="#0B5CFF" d="M5.033 14.649H.743a.74.74 0 0 1-.686-.458.74.74 0 0 1 .16-.808L3.19 10.41H1.06A1.06 1.06 0 0 1 0 9.35h3.957c.301 0 .57.18.686.458a.74.74 0 0 1-.161.808L1.51 13.59h2.464c.585 0 1.06.475 1.06 1.06zM24 11.338c0-1.14-.927-2.066-2.066-2.066-.61 0-1.158.265-1.537.686a2.061 2.061 0 0 0-1.536-.686c-1.14 0-2.066.926-2.066 2.066v3.311a1.06 1.06 0 0 0 1.06-1.06v-2.251a1.004 1.004 0 0 1 2.013 0v2.251c0 .586.474 1.06 1.06 1.06v-3.311a1.004 1.004 0 0 1 2.012 0v2.251c0 .586.475 1.06 1.06 1.06zM16.265 12a2.728 2.728 0 1 1-5.457 0 2.728 2.728 0 0 1 5.457 0zm-1.06 0a1.669 1.669 0 1 0-3.338 0 1.669 1.669 0 0 0 3.338 0zm-4.82 0a2.728 2.728 0 1 1-5.458 0 2.728 2.728 0 0 1 5.457 0zm-1.06 0a1.669 1.669 0 1 0-3.338 0 1.669 1.669 0 0 0 3.338 0z"/></svg>`;
 
 function renderMeetingBrandIcon(element, meeting) {
   if (!element) return;
   element.replaceChildren();
   element.classList.toggle('meeting-brand-icon--zoom', meeting?.provider === 'zoom');
   if (meeting?.provider === 'zoom') {
-    const image = document.createElement('img');
-    image.src = ZOOM_LOGO_URL;
-    image.alt = 'Zoom';
-    image.loading = 'lazy';
-    image.decoding = 'async';
-    element.append(image);
+    element.innerHTML = ZOOM_BRAND_SVG;
     return;
   }
   element.textContent = String(meeting?.providerName || 'Online').slice(0, 2).toUpperCase();
@@ -294,7 +289,7 @@ function setupTimezonePicker() {
 
 const staffPresetClasses = new Set(['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose', 'nova']);
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
-function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="/assets/staff/${file}?v=0.8.9" alt="" loading="lazy" decoding="async">`;}
+function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="/assets/staff/${file}?v=0.8.10" alt="" loading="lazy" decoding="async">`;}
 
 function staffAvatarMarkup(item, className = '') {
   const avatar = item?.avatar || {};
@@ -741,7 +736,7 @@ $('#bookingForm').addEventListener('submit', async event => {
       googleCalendar.href = payload.booking.calendar.google;
       googleCalendar.classList.remove('hidden');
       if (payload.booking.meeting?.url) {
-        calendarMeetingNote.textContent = `${payload.booking.meeting.providerName || 'Meeting'} link included in the calendar event.`;
+        calendarMeetingNote.textContent = `${payload.booking.meeting.providerName || 'Meeting'} link included`;
         calendarMeetingNote.classList.remove('hidden');
       } else {
         calendarMeetingNote.textContent = '';
@@ -752,6 +747,7 @@ $('#bookingForm').addEventListener('submit', async event => {
       calendarMeetingNote.textContent = '';
       calendarMeetingNote.classList.add('hidden');
     }
+    $('#successNextSteps').classList.toggle('hidden', !(payload.booking.meeting?.url || payload.booking.calendar?.google));
     $('#successView').classList.remove('hidden');
   } catch (error) {
     errorBox.textContent = error.status === 409 ? 'One of those selections was just booked. Please choose again.' : error.message;

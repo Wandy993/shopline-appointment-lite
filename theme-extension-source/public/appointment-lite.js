@@ -1,12 +1,12 @@
 (() => {
-  const VERSION = '0.8.9';
+  const VERSION = '0.8.10';
   const API_BASE = 'https://appointment.toolkit.fans';
   const CACHE_TTL = 5 * 60 * 1000;
   const RULE_CACHE = new Map();
   const SELECTOR = '[data-appointment-lite]:not([data-al-ready])';
   const PREFIX = '[Appointment Lite]';
   const GOOGLE_G_ICON = `<span class="al-google-g" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill="#4285F4" d="M21.6 12.23c0-.71-.06-1.24-.2-1.8H12v3.28h5.52a4.72 4.72 0 0 1-2.05 3.01l-.02.11 2.98 2.31.21.02c1.93-1.78 3.04-4.4 3.04-6.93Z"/><path fill="#34A853" d="M12 22c2.76 0 5.08-.91 6.78-2.48l-3.23-2.5c-.86.6-2.04 1.01-3.55 1.01a6.17 6.17 0 0 1-5.83-4.26l-.1.01-3.1 2.4-.04.1A10.24 10.24 0 0 0 12 22Z"/><path fill="#FBBC05" d="M6.17 13.77A6.3 6.3 0 0 1 5.83 12c0-.62.12-1.22.33-1.78l-.01-.12-3.14-2.44-.1.05A10 10 0 0 0 1.82 12c0 1.55.38 3.02 1.08 4.29l3.27-2.52Z"/><path fill="#EA4335" d="M12 5.97c1.92 0 3.22.83 3.97 1.52l2.88-2.81C17.08 3.03 14.76 2 12 2a10.24 10.24 0 0 0-9.08 5.71l3.24 2.51A6.19 6.19 0 0 1 12 5.97Z"/></svg></span>`;
-  const ZOOM_LOGO_URL = 'https://media.zoom.com/images/assets/zoom-logo-2025.png/Zz04ZjU1ODA4OGM5NjUxMWYwYWQ3NDIyZTYxNWM4NmY4Yg%3D%3D';
+  const ZOOM_BRAND_SVG = `<svg class="zoom-brand-svg" viewBox="0 8 24 8" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg"><path fill="#0B5CFF" d="M5.033 14.649H.743a.74.74 0 0 1-.686-.458.74.74 0 0 1 .16-.808L3.19 10.41H1.06A1.06 1.06 0 0 1 0 9.35h3.957c.301 0 .57.18.686.458a.74.74 0 0 1-.161.808L1.51 13.59h2.464c.585 0 1.06.475 1.06 1.06zM24 11.338c0-1.14-.927-2.066-2.066-2.066-.61 0-1.158.265-1.537.686a2.061 2.061 0 0 0-1.536-.686c-1.14 0-2.066.926-2.066 2.066v3.311a1.06 1.06 0 0 0 1.06-1.06v-2.251a1.004 1.004 0 0 1 2.013 0v2.251c0 .586.474 1.06 1.06 1.06v-3.311a1.004 1.004 0 0 1 2.012 0v2.251c0 .586.475 1.06 1.06 1.06zM16.265 12a2.728 2.728 0 1 1-5.457 0 2.728 2.728 0 0 1 5.457 0zm-1.06 0a1.669 1.669 0 1 0-3.338 0 1.669 1.669 0 0 0 3.338 0zm-4.82 0a2.728 2.728 0 1 1-5.458 0 2.728 2.728 0 0 1 5.457 0zm-1.06 0a1.669 1.669 0 1 0-3.338 0 1.669 1.669 0 0 0 3.338 0z"/></svg>`;
 
   if (window.AppointmentLiteDebug?.scan) {
     console.info(PREFIX, 'Asset executed again; rescanning.', { version: window.AppointmentLiteDebug.version });
@@ -41,7 +41,7 @@
   function meetingBrandMarkup(meeting) {
     const provider = text(meeting?.providerName || 'Online meeting');
     if (meeting?.provider === 'zoom') {
-      return `<span class="al-meeting-brand al-meeting-brand--zoom"><img src="${ZOOM_LOGO_URL}" alt="Zoom" loading="lazy" decoding="async"></span>`;
+      return `<span class="al-meeting-brand al-meeting-brand--zoom">${ZOOM_BRAND_SVG}</span>`;
     }
     return `<span class="al-meeting-brand al-meeting-brand--text">${provider}</span>`;
   }
@@ -49,8 +49,10 @@
   function onlineMeetingAction(meeting, context = 'success') {
     if (!meeting?.url) return '';
     const label = text(meeting.label || 'Join meeting');
-    const contextClass = context === 'manage' ? ' al-meeting-actions--manage' : '';
-    return `<div class="al-meeting-actions${contextClass}"><a class="al-meeting-link" href="${text(meeting.url)}" target="_blank" rel="noopener noreferrer">${meetingBrandMarkup(meeting)}<span class="al-meeting-link-label">${label}</span></a></div>`;
+    if (context === 'manage') {
+      return `<div class="al-meeting-actions al-meeting-actions--manage"><a class="al-meeting-link" href="${text(meeting.url)}" target="_blank" rel="noopener noreferrer">${meetingBrandMarkup(meeting)}<span class="al-meeting-link-label">${label}</span></a></div>`;
+    }
+    return `<a class="al-success-action al-success-action--meeting" href="${text(meeting.url)}" target="_blank" rel="noopener noreferrer">${meetingBrandMarkup(meeting)}<span class="al-success-action-copy"><small>Online meeting</small><strong>${label}</strong></span><span class="al-success-action-open" aria-hidden="true">↗</span></a>`;
   }
 
   const defaultStorefrontSettings = {
@@ -207,7 +209,7 @@
 
   const staffPresetClasses = new Set(['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose', 'nova']);
   const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
-  function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="${API_BASE}/assets/staff/${file}?v=0.8.9" alt="" loading="lazy" decoding="async">`;}
+  function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="${API_BASE}/assets/staff/${file}?v=0.8.10" alt="" loading="lazy" decoding="async">`;}
 
   function staffAvatar(item, className = '') {
     const avatar = item?.avatar || {};
@@ -1108,7 +1110,10 @@
         }
         const receipt = saveBookingReceipt(context, payload.booking);
         renderBookingState(widget, rule, context, receipt);
-        dialog.classList.add('al-confirmed'); dialog.classList.add('al-confirmation-dialog-compact'); dialog.querySelector('.al-form').innerHTML = `<div class="al-success"><div class="al-success-mark">✓</div><span class="al-success-kicker">Appointment confirmed</span><h3>${text(rule.serviceTitle || rule.productTitle || 'Appointment')}</h3><div class="al-success-summary"><div><span>Date & time</span><strong>${text(bookingWhenText(payload.booking))}</strong></div>${payload.booking.staff ? `<div><span>Staff</span><strong>${text(payload.booking.staff)}</strong></div>` : ''}${payload.booking.location ? `<div><span>Location</span><strong>${text(payload.booking.location)}</strong></div>` : ''}<div><span>Service time zone</span><strong>${text(payload.booking.timezone || rule.timezone || 'UTC')}</strong></div></div><p class="al-success-note">Your appointment is confirmed. You can manage this appointment later.</p>${onlineMeetingAction(payload.booking.meeting)}${payload.booking.calendar?.google ? `<div class="al-calendar-actions"><a class="al-calendar-link" href="${text(payload.booking.calendar.google)}" target="_blank" rel="noopener noreferrer">${GOOGLE_G_ICON}<span class="al-calendar-link-label">Add to Google Calendar</span><span class="al-calendar-link-arrow" aria-hidden="true">→</span></a>${payload.booking.meeting?.url ? `<small class="al-calendar-meeting-note">${text(payload.booking.meeting.providerName || 'Meeting')} link included in the calendar event.</small>` : ''}</div>` : ''}<button class="al-submit" type="button">Done</button></div>`;
+        const meetingSuccessAction = onlineMeetingAction(payload.booking.meeting);
+        const calendarSuccessAction = payload.booking.calendar?.google ? `<a class="al-success-action al-success-action--calendar" href="${text(payload.booking.calendar.google)}" target="_blank" rel="noopener noreferrer">${GOOGLE_G_ICON}<span class="al-success-action-copy"><small>Calendar</small><strong class="al-calendar-link-label">Add to Google Calendar</strong>${payload.booking.meeting?.url ? `<em>${text(payload.booking.meeting.providerName || 'Meeting')} link included</em>` : ''}</span><span class="al-success-action-open al-calendar-link-arrow" aria-hidden="true">＋</span></a>` : '';
+        const nextSteps = meetingSuccessAction || calendarSuccessAction ? `<div class="al-success-next-steps"><span class="al-success-next-label">Next steps</span><div class="al-success-action-grid">${meetingSuccessAction}${calendarSuccessAction}</div></div>` : '';
+        dialog.classList.add('al-confirmed'); dialog.classList.add('al-confirmation-dialog-compact'); dialog.querySelector('.al-form').innerHTML = `<div class="al-success"><div class="al-success-mark">✓</div><span class="al-success-kicker">Appointment confirmed</span><h3>${text(rule.serviceTitle || rule.productTitle || 'Appointment')}</h3><div class="al-success-summary"><div><span>Date & time</span><strong>${text(bookingWhenText(payload.booking))}</strong></div>${payload.booking.staff ? `<div><span>Staff</span><strong>${text(payload.booking.staff)}</strong></div>` : ''}${payload.booking.location ? `<div><span>Location</span><strong>${text(payload.booking.location)}</strong></div>` : ''}<div><span>Service time zone</span><strong>${text(payload.booking.timezone || rule.timezone || 'UTC')}</strong></div></div><p class="al-success-note">Your appointment is confirmed. You can manage this appointment later.</p>${nextSteps}<button class="al-submit" type="button">Done</button></div>`;
         dialog.querySelector('.al-submit').addEventListener('click', () => dialog.close());
         info('Booking confirmed.', { ...context, bookingId: payload.booking.id, bookingMode: mode });
       } catch (error) {

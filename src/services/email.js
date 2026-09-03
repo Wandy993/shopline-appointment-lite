@@ -123,7 +123,7 @@ function appointmentCard(booking, settings) {
   const defaultMeetingLabel = ({ zoom: 'Join Zoom', google_meet: 'Join Google Meet', teams: 'Join Microsoft Teams', custom: 'Join meeting' }[booking.onlineMeeting?.provider] || 'Join meeting');
   const meetingLabel = String(booking.onlineMeeting?.label || '').trim() || defaultMeetingLabel;
   const meetingBrand = booking.onlineMeeting?.provider === 'zoom'
-    ? `<img src="${ZOOM_LOGO_URL}" width="28" height="7" alt="Zoom" style="display:inline-block;width:28px;height:auto;max-height:8px;margin:0 8px 0 0;vertical-align:middle;border:0">`
+    ? `<span style="display:inline-block;margin:0 8px 0 0;color:#0B5CFF;font-size:13px;font-weight:800;line-height:1;letter-spacing:-.06em;vertical-align:middle">zoom</span>`
     : '';
   const meeting = booking.status === 'confirmed' && /^https:\/\/[^\s]+$/i.test(String(booking.onlineMeeting?.url || ''))
     ? row('Online meeting', providerName, `<div style="margin-top:8px"><a href="${escapeHtml(booking.onlineMeeting.url)}" style="display:inline-block;padding:9px 13px;border:1px solid #DCE5DF;border-radius:999px;background:#FFFFFF;color:#344861;font-size:12px;font-weight:700;text-decoration:none">${meetingBrand}<span style="display:inline-block;vertical-align:middle">${escapeHtml(meetingLabel)}</span></a></div>`)
@@ -133,7 +133,6 @@ function appointmentCard(booking, settings) {
 
 
 const GOOGLE_G_ICON_URL = 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg';
-const ZOOM_LOGO_URL = 'https://media.zoom.com/images/assets/zoom-logo-2025.png/Zz04ZjU1ODA4OGM5NjUxMWYwYWQ3NDIyZTYxNWM4NmY4Yg%3D%3D';
 
 function emailBrandHeader(settings) {
   const initial = escapeHtml(settings.brandName.slice(0, 1).toUpperCase() || 'A');

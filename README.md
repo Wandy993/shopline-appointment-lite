@@ -745,3 +745,11 @@ Staff schedule exceptions now explicitly explain that they only change the emplo
 - The Zoom join action and **Add to Google Calendar** action use the same compact secondary-button visual language on confirmation screens instead of mixing a dark primary-style Zoom control with a light Google control.
 - Google Calendar remains the calendar action for online appointments. Appointment Lite adds the confirmed Zoom/Meet/Teams URL to the event details; confirmation screens now explain that the meeting link is included in the calendar event.
 - Meeting actions remain private until the booking is confirmed and disappear for cancelled/inactive bookings.
+
+
+## v0.8.10 — Online Meeting Brand & Confirmation Action Polish
+
+- Replaces runtime Zoom image requests with a self-contained inline Zoom brand SVG on Theme, hosted booking, and manage surfaces, preventing SHOPLINE/theme CSP or third-party image delivery from producing broken icons.
+- Redesigns confirmed-booking actions into one compact “Next steps” panel. Join meeting and Add to Google Calendar are equal secondary action cards on desktop and stack cleanly on mobile.
+- Keeps the Google Calendar action explicit: it adds the appointment and includes the existing online meeting link in the calendar event; it does not create a second meeting.
+- Keeps product-page Manage appointment, hosted manage, and email meeting actions intact while removing the fragile media.zoom.com dependency from customer UI.

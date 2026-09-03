@@ -27,3 +27,8 @@ body,.shell,.shell button,.shell input,.shell label,.shell p,.shell span,.shell 
 .meeting-brand-icon--zoom{width:38px;flex-basis:38px;padding:5px 6px}
 .meeting-brand-icon--zoom img{display:block;width:26px;height:auto;max-height:12px;object-fit:contain}
 @media(max-width:560px){.meeting-button{width:100%;justify-content:center}}
+
+/* v0.8.10 — self-contained Zoom brand */
+.zoom-brand-svg{display:block;width:28px;height:10px;max-width:100%;overflow:visible}
+.meeting-brand-icon--zoom{width:40px;flex-basis:40px;padding:5px 6px}
+.meeting-brand-icon--zoom .zoom-brand-svg{width:28px;height:10px}

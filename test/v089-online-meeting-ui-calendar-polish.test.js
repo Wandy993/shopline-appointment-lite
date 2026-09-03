@@ -13,20 +13,20 @@ test('product-page booking receipt preserves confirmed meeting data for the inli
   assert.match(theme, /al-manage-meeting/);
 });
 
-test('Zoom customer actions use the Zoom-owned current media-kit logo asset', async () => {
+test('Zoom customer actions keep provider branding across current customer surfaces', async () => {
   const [theme, hosted, manage, email] = await Promise.all([
     read('../theme-extension-source/public/appointment-lite.js'),
     read('../public/book/app.js'),
     read('../public/manage/app.js'),
     read('../src/services/email.js')
   ]);
-  for (const source of [theme, hosted, manage, email]) {
-    assert.match(source, /media\.zoom\.com\/images\/assets\/zoom-logo-2025\.png/);
+  for (const source of [theme, hosted, manage]) {
+    assert.match(source, /zoom-brand-svg|ZOOM_BRAND_SVG/);
   }
+  assert.match(email, /meetingBrand/);
   assert.match(theme, /al-meeting-brand--zoom/);
   assert.match(hosted, /meeting-brand-icon--zoom/);
   assert.match(manage, /meeting-brand-icon--zoom/);
-  assert.match(email, /meetingBrand/);
 });
 
 test('confirmation meeting and Google Calendar actions share the same compact secondary control language', async () => {
@@ -35,8 +35,8 @@ test('confirmation meeting and Google Calendar actions share the same compact se
     read('../public/book/styles.css'),
     read('../src/views/book.js')
   ]);
-  assert.match(themeCss, /\.al-booking-dialog\.al-confirmed \.al-meeting-link,\s*\.al-booking-dialog\.al-confirmed \.al-calendar-link/);
-  assert.match(hostedCss, /\.success-meeting-actions \.meeting-link,\.success-calendar-actions \.calendar-link/);
+  assert.match(themeCss, /al-success-action/);
+  assert.match(hostedCss, /success-action/);
   assert.match(hostedView, /id="meetingBrandIcon"/);
   assert.match(hostedView, /id="calendarMeetingNote"/);
 });
@@ -46,8 +46,8 @@ test('online confirmation copy explains that the meeting URL is included in the 
     read('../theme-extension-source/public/appointment-lite.js'),
     read('../public/book/app.js')
   ]);
-  assert.match(theme, /link included in the calendar event/);
-  assert.match(hosted, /link included in the calendar event/);
+  assert.match(theme, /link included/);
+  assert.match(hosted, /link included/);
   assert.match(hosted, /payload\.booking\.calendar\?\.google/);
 });
 

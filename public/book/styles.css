@@ -211,3 +211,54 @@ html[data-booking-theme="soft_editorial"] .service-head h1,html[data-booking-the
 .success-meeting-actions .meeting-link-arrow,.success-calendar-actions .calendar-link-arrow{display:none!important}
 .calendar-meeting-note{display:block;max-width:270px;margin:6px auto 0;color:var(--booking-muted);font-size:10px;line-height:1.4;text-align:center}
 @media(max-width:620px){.success-meeting-actions .meeting-link,.success-calendar-actions .calendar-link{width:min(100%,230px)!important}}
+
+/* v0.8.10 — self-contained Zoom brand + unified confirmation next steps */
+.zoom-brand-svg{display:block!important;width:28px!important;height:10px!important;max-width:100%!important;overflow:visible!important}
+.meeting-brand-icon--zoom{width:40px!important;flex-basis:40px!important;padding:5px 6px!important}
+.meeting-brand-icon--zoom .zoom-brand-svg{width:28px!important;height:10px!important}
+.success-next-steps{
+  width:100%;
+  max-width:560px;
+  margin:18px auto 6px;
+  padding:13px;
+  border:1px solid var(--booking-line);
+  border-radius:calc(var(--booking-radius-sm) + 2px);
+  background:color-mix(in srgb,var(--booking-soft) 58%,var(--booking-surface));
+  box-sizing:border-box;
+}
+.success-next-label{display:block;margin:0 0 9px;color:var(--booking-muted);font-size:10px;font-weight:800;letter-spacing:.08em;text-align:left;text-transform:uppercase}
+.success-action-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;width:100%}
+.success-meeting-actions,.success-calendar-actions{display:block!important;width:100%!important;max-width:none!important;margin:0!important}
+.success-meeting-actions.hidden,.success-calendar-actions .hidden,.success-next-steps.hidden{display:none!important}
+.success-action{
+  display:flex!important;
+  width:100%!important;
+  max-width:none!important;
+  min-height:60px!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  gap:10px!important;
+  padding:9px 11px!important;
+  border:1px solid var(--booking-line)!important;
+  border-radius:13px!important;
+  background:var(--booking-surface)!important;
+  color:var(--booking-text)!important;
+  text-decoration:none!important;
+  box-shadow:0 5px 14px color-mix(in srgb,var(--booking-text) 4%,transparent)!important;
+  box-sizing:border-box!important;
+  transition:border-color .16s ease,background .16s ease,transform .16s ease,box-shadow .16s ease!important;
+}
+.success-action:hover{border-color:color-mix(in srgb,var(--brand) 28%,var(--booking-line))!important;background:color-mix(in srgb,var(--booking-soft) 54%,var(--booking-surface))!important;color:var(--booking-text)!important;transform:translateY(-1px)!important;box-shadow:0 8px 18px color-mix(in srgb,var(--booking-text) 7%,transparent)!important}
+.success-action .meeting-brand-icon,.success-action .google-g-icon{display:inline-flex!important;align-items:center!important;justify-content:center!important;flex:0 0 34px!important;width:34px!important;height:34px!important;padding:6px!important;border:1px solid color-mix(in srgb,var(--booking-line) 88%,#fff)!important;border-radius:10px!important;background:#fff!important;box-sizing:border-box!important}
+.success-action .meeting-brand-icon--zoom{width:42px!important;flex-basis:42px!important;padding:7px!important}
+.success-action-copy{display:flex;min-width:0;flex:1 1 auto;flex-direction:column;gap:2px;text-align:left}
+.success-action-copy small{color:var(--booking-muted);font-size:9px;font-weight:650;line-height:1.2}
+.success-action-copy strong{overflow:hidden;color:var(--booking-text);font-size:12px;font-weight:750;line-height:1.25;text-overflow:ellipsis;white-space:nowrap}
+.success-action-copy em{overflow:hidden;color:var(--booking-muted);font-size:9px;font-style:normal;font-weight:500;line-height:1.2;text-overflow:ellipsis;white-space:nowrap}
+.success-action-open{display:grid;place-items:center;flex:0 0 25px;width:25px;height:25px;border-radius:999px;background:var(--booking-soft);color:var(--booking-muted);font-size:12px;font-weight:700;line-height:1}
+.calendar-meeting-note{display:block!important;max-width:none!important;margin:0!important;color:var(--booking-muted)!important;font-size:9px!important;line-height:1.2!important;text-align:left!important}
+@media(max-width:620px){.success-action-grid{grid-template-columns:1fr}.success-action{min-height:56px!important}}
+.success-next-steps .success-meeting-actions .success-action,.success-next-steps .success-calendar-actions .success-action{
+  display:flex!important;width:100%!important;max-width:none!important;min-height:60px!important;align-items:center!important;justify-content:flex-start!important;gap:10px!important;padding:9px 11px!important;border:1px solid var(--booking-line)!important;border-radius:13px!important;background:var(--booking-surface)!important;color:var(--booking-text)!important;text-decoration:none!important;box-shadow:0 5px 14px color-mix(in srgb,var(--booking-text) 4%,transparent)!important;box-sizing:border-box!important;transform:none!important
+}
+.success-next-steps .success-meeting-actions .success-action:hover,.success-next-steps .success-calendar-actions .success-action:hover{border-color:color-mix(in srgb,var(--brand) 28%,var(--booking-line))!important;background:color-mix(in srgb,var(--booking-soft) 54%,var(--booking-surface))!important;color:var(--booking-text)!important;transform:translateY(-1px)!important;box-shadow:0 8px 18px color-mix(in srgb,var(--booking-text) 7%,transparent)!important;filter:none!important}
