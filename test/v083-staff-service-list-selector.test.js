@@ -37,7 +37,7 @@ test('v0.8.3 product staff chooser matches avatar + services + Select list inter
   assert.match(asset, /Service details not added yet/);
   assert.match(asset, /<span>Select<\/span>/);
   assert.match(asset, /open\(widget, rule, context, \{ staffId \}\)/);
-  assert.match(css, /grid-template-columns:minmax\(210px,.8fr\) minmax\(280px,1.25fr\) 90px/);
+  assert.match(css, /grid-template-columns:minmax\(190px,.82fr\) minmax\(240px,1.18fr\) 78px/);
   assert.match(css, /\.al-directory-check\{/);
   assert.match(css, /border-radius:50%/);
 });

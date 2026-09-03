@@ -23,7 +23,7 @@ test('v0.8.2 public staff profiles suppress placeholder fields and keep contact 
   const [staffing, route] = await Promise.all([read('../src/services/staffing.js'), read('../src/routes/public.js')]);
   assert.match(staffing, /function publicProfileText/);
   assert.match(staffing, /select\|choose/);
-  assert.match(staffing, /region: publicProfileText\(item\.region\)/);
+  assert.doesNotMatch(staffing, /region: publicProfileText\(item\.region\)/);
   assert.match(staffing, /expertise: publicProfileText\(item\.expertise\)/);
   assert.match(staffing, /bio: publicProfileText\(item\.bio\)/);
   assert.doesNotMatch(staffing, /email: item\.email[\s\S]*publicStaffDirectory/);
@@ -54,12 +54,12 @@ test('active release uses a real SemVer package version and current cache marker
     read('../theme-extension-source/public/appointment-lite.js'), read('../theme-extension-source/public/appointment-lite-page.js'), read('../theme-extension-source/public/appointment-lite-embed.js'), read('../scripts/build-release.sh')
   ]);
   const pkg = JSON.parse(pkgText);
-  assert.equal(pkg.version, '0.8.3');
-  assert.match(app, /version: '0\.8\.3'/);
-  assert.match(admin, /styles\.css\?v=0\.8\.3&build=0\.8\.3/);
-  assert.match(book, /styles\.css\?v=0\.8\.3/);
-  assert.match(manage, /styles\.css\?v=0\.8\.3/);
-  for (const asset of [theme, page, embed]) assert.match(asset, /const VERSION = '0\.8\.3'/);
-  assert.match(release, /RELEASE_VERSION="0\.8\.3"/);
-  assert.match(release, /RELEASE_LABEL="0\.8\.3"/);
+  assert.equal(pkg.version, '0.8.4');
+  assert.match(app, /version: '0\.8\.4'/);
+  assert.match(admin, /styles\.css\?v=0\.8\.4&build=0\.8\.4/);
+  assert.match(book, /styles\.css\?v=0\.8\.4/);
+  assert.match(manage, /styles\.css\?v=0\.8\.4/);
+  for (const asset of [theme, page, embed]) assert.match(asset, /const VERSION = '0\.8\.4'/);
+  assert.match(release, /RELEASE_VERSION="0\.8\.4"/);
+  assert.match(release, /RELEASE_LABEL="0\.8\.4"/);
 });

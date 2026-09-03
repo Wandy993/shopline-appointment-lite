@@ -1,3 +1,11 @@
+## v0.8.4 — Staff Editor Polish
+
+- Product-page staff selector width is reduced from 940px to 820px so the avatar, supported services, and Select action stay readable without the oversized empty middle area.
+- Staff editor optional markers now render as compact badges instead of faint trailing text.
+- The misleading staff **Region** field is removed from merchant UI. Region was presentation-only and was never linked to SHOPLINE Locations or service delivery. Existing legacy values are ignored on customer surfaces and are cleared the next time the staff profile is saved.
+- Staff editor now explains that delivery location belongs to the appointment service. SHOPLINE location, customer address, online, and custom location remain configured under **Service location** in each service.
+- Public staff payloads no longer expose the legacy region field.
+
 ## v0.8.3 — Staff Service List Selector
 
 - Product-page staff selection now follows a directory-style row layout: staff avatar/name/role on the left, merchant-entered supported services with green checks in the center, and a lightweight **Select** action on the right.

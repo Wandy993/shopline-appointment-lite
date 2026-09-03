@@ -351,7 +351,9 @@ Object.assign(zh, {
   'Profile description': '个人介绍',
   'Add one service per line. These labels are shown in the public staff list with green check marks. They are display-only; service assignment is still configured inside each appointment service.': '每行填写一个服务。这里的文案会在前台员工列表中以绿色勾选项展示，仅用于展示；员工实际关联哪些预约服务仍在对应预约服务中配置。',
   'Show in Staff Directory': '展示在员工列表',
-  'Only public profile fields are shown. Email and phone remain private.': '前台仅展示公开资料字段，邮箱和电话不会公开。'
+  'Only public profile fields are shown. Email and phone remain private.': '前台仅展示公开资料字段，邮箱和电话不会公开。',
+  'Location is configured per appointment service.': '地点按预约服务配置。',
+  'Staff profiles do not have a separate region or location binding. Use Service location when you need a SHOPLINE location, customer address, online service, or custom location.': '员工资料不再单独设置地区或地点。需要 SHOPLINE 地点、客户地址、在线服务或自定义地点时，请在对应预约服务的“服务地点”中配置。'
 });
 
 const originalText = new WeakMap();
@@ -828,7 +830,7 @@ const staffAvatarPresets = ['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunse
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
 function staffPresetImage(preset) {
   const file = staffAvatarFiles[preset] || staffAvatarFiles.aurora;
-  return `<img src="/assets/staff/${file}?v=0.8.3" alt="" loading="lazy" decoding="async">`;
+  return `<img src="/assets/staff/${file}?v=0.8.4" alt="" loading="lazy" decoding="async">`;
 }
 let staffAvatarDraft = { kind: 'preset', value: 'aurora' };
 
@@ -1290,7 +1292,7 @@ function staffPayload() {
     name: $('#staffName').value,
     email: $('#staffEmail').value,
     phone: $('#staffPhone').value,
-    roleTitle: $('#staffRoleTitle').value, region: $('#staffRegion').value, expertise: $('#staffExpertise').value,
+    roleTitle: $('#staffRoleTitle').value, region: '', expertise: $('#staffExpertise').value,
     supportedServices: $('#staffSupportedServices').value.split(/\n+/).map(value => value.trim()).filter(Boolean),
     bio: $('#staffBio').value, publicProfile: $('#staffPublicProfile').checked,
     avatar: { kind: $('#staffAvatarKind').value || 'preset', value: $('#staffAvatarValue').value || '' },
@@ -1575,7 +1577,6 @@ function openStaff(staff = null) {
   $('#staffEmail').value = staff?.email || '';
   $('#staffPhone').value = staff?.phone || '';
   $('#staffRoleTitle').value = staff?.roleTitle || '';
-  $('#staffRegion').value = staff?.region || '';
   $('#staffExpertise').value = staff?.expertise || '';
   $('#staffSupportedServices').value = (staff?.supportedServices || []).join('\n');
   $('#staffBio').value = staff?.bio || '';

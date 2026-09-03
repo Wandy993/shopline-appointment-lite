@@ -1030,3 +1030,11 @@ body.subscription-archive #bookingsView .view-switch{display:none}body.subscript
 
 /* v0.8.3 customer email preview typography */
 .email-preview-canvas,.preview-email-card,.preview-email-card *{font-family:"Poppins","PingFang SC","Hiragino Sans GB","Microsoft YaHei",Arial,Helvetica,sans-serif!important}.preview-email-card h1,.preview-email-card h2,.preview-email-card .preview-email-title{font-family:"Jost","Poppins","PingFang SC","Hiragino Sans GB","Microsoft YaHei",Arial,Helvetica,sans-serif!important;font-weight:600!important;letter-spacing:-.02em}
+
+
+/* v0.8.4 — Staff editor clarity */
+#staffDialog .field label .optional-tag{display:inline-flex;align-items:center;min-height:18px;margin-left:6px;padding:1px 7px;border:1px solid #dfe5ec;border-radius:999px;background:#f6f8fa;color:#667085;font-size:8.5px;font-weight:700;line-height:1;vertical-align:middle;letter-spacing:.01em}
+#staffDialog .staff-profile-location-note{margin:0 0 18px;padding:11px 12px;border:1px solid #dbe7f4;border-radius:11px;background:#f7faff}
+#staffDialog .staff-profile-location-note strong,#staffDialog .staff-profile-location-note span{display:block}
+#staffDialog .staff-profile-location-note strong{color:#365272;font-size:10px;font-weight:720}
+#staffDialog .staff-profile-location-note span{margin-top:4px;color:#66768a;font-size:9.5px;line-height:1.55}

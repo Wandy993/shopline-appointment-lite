@@ -109,7 +109,6 @@ export async function publicStaffOptions(rule, options = {}) {
       id: String(item._id),
       name: publicProfileText(item.name),
       roleTitle: publicProfileText(item.roleTitle),
-      region: publicProfileText(item.region),
       expertise: publicProfileText(item.expertise),
       supportedServices: publicServiceList(item.supportedServices),
       bio: publicProfileText(item.bio),
@@ -124,7 +123,7 @@ export async function publicStaffDirectory(rule, options = {}) {
   return {
     mode: assignment.mode,
     options: staff.filter(item => item.publicProfile === true).map(item => ({
-      id: String(item._id), name: publicProfileText(item.name), roleTitle: publicProfileText(item.roleTitle), region: publicProfileText(item.region),
+      id: String(item._id), name: publicProfileText(item.name), roleTitle: publicProfileText(item.roleTitle),
       expertise: publicProfileText(item.expertise), supportedServices: publicServiceList(item.supportedServices), bio: publicProfileText(item.bio),
       avatar: publicStaffAvatar(item.avatar?.kind ? item.avatar : { kind: 'preset', value: 'aurora' })
     }))
