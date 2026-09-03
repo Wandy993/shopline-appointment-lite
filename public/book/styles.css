@@ -138,3 +138,7 @@ html[data-booking-theme="soft_editorial"] .service-head h1,html[data-booking-the
   border-radius:8px!important;
 }
 .success-calendar-actions .calendar-link-arrow{display:none!important}
+
+
+/* v0.8.8 — online meeting success action */
+.success-meeting-actions{display:flex;justify-content:center;width:100%;max-width:470px;margin:16px auto 0}.success-meeting-actions.hidden{display:none!important}.success-meeting-actions .meeting-link{display:inline-flex;align-items:center;justify-content:center;gap:9px;max-width:100%;min-height:42px;border:1px solid color-mix(in srgb,var(--brand) 28%,var(--booking-line));border-radius:999px;background:var(--brand);color:var(--brand-text,#fff);padding:7px 14px;text-decoration:none;box-shadow:0 8px 20px color-mix(in srgb,var(--brand) 15%,transparent)}.success-meeting-actions .meeting-provider{display:inline-flex;align-items:center;min-height:24px;border-radius:999px;background:color-mix(in srgb,#fff 15%,transparent);padding:3px 8px;color:inherit;font-size:10px;font-weight:800;letter-spacing:.03em}.success-meeting-actions .meeting-link-label{color:inherit;font-size:12px;font-weight:750;white-space:nowrap}.success-meeting-actions .meeting-link-arrow{font-size:13px}.success-meeting-actions .meeting-link:hover{filter:brightness(.96);transform:translateY(-1px)}

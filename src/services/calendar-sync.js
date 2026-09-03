@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { Booking } from '../models/Booking.js';
+import { ensureBookingOnlineMeetingSnapshot } from './online-meeting.js';
 import { CalendarConnection } from '../models/CalendarConnection.js';
 import {
   accessTokenForConnection,
@@ -206,8 +207,9 @@ function desiredConnectionsForBooking(booking, connections) {
 }
 
 export async function reconcileBookingGoogleCalendar(bookingId) {
-  const booking = await Booking.findById(bookingId);
-  if (!booking) return { bookingId: asString(bookingId), skipped: true, reason: 'BOOKING_NOT_FOUND' };
+  const foundBooking = await Booking.findById(bookingId);
+  if (!foundBooking) return { bookingId: asString(bookingId), skipped: true, reason: 'BOOKING_NOT_FOUND' };
+  const booking = await ensureBookingOnlineMeetingSnapshot(foundBooking);
 
   const connections = await CalendarConnection.find({ shopId: booking.shopId, provider: PROVIDER }).select('+refreshTokenEncrypted');
   const desiredConnections = desiredConnectionsForBooking(booking, connections);

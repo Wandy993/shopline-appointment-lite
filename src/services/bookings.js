@@ -13,6 +13,7 @@ import {
 import { findInstalledShop } from './shops.js';
 import { normalizedStaffAssignment, releaseStaffReservations, reserveStaffForBooking, staffAvailabilityForDate } from './staffing.js';
 import { queueBookingGoogleCalendarSync, reconcileBookingGoogleCalendar } from './calendar-sync.js';
+import { ensureBookingOnlineMeetingSnapshot } from './online-meeting.js';
 import { buildPaidBookingCheckoutUrl } from '../lib/paid-checkout.js';
 import { attachBookingToPostPurchaseEntitlement, claimPostPurchaseEntitlement, getPostPurchaseEntitlement, releasePostPurchaseEntitlementClaim, restorePostPurchaseEntitlementForBooking } from './post-purchase.js';
 import { subscriptionAccessAllowed } from './subscription.js';
@@ -32,10 +33,15 @@ function validManagementToken(token) {
 }
 
 function bookingSnapshot(booking, overrides = {}) {
+  const meeting = overrides.onlineMeeting !== undefined ? overrides.onlineMeeting : booking.onlineMeeting;
   return {
     date: overrides.date ?? booking.date ?? '',
     time: overrides.time ?? booking.time ?? '',
+    locationMode: overrides.locationMode ?? booking.locationMode ?? 'custom',
+    shoplineLocationId: overrides.shoplineLocationId ?? booking.shoplineLocationId ?? '',
+    locationSnapshot: overrides.locationSnapshot ?? booking.locationSnapshot ?? undefined,
     location: overrides.location ?? booking.location ?? '',
+    onlineMeeting: meeting?.url ? { provider: meeting.provider || 'custom', label: meeting.label || '', url: String(meeting.url).slice(0, 2000) } : undefined,
     staff: overrides.staff ?? booking.staff ?? '',
     staffId: overrides.staffId ?? booking.staffId ?? null,
     staffEmail: overrides.staffEmail ?? booking.staffEmail ?? '',
@@ -270,7 +276,7 @@ export async function createBookingAtomic({
     ...(payment ? { payment } : {}),
     events: [{
       type: eventType, actor: eventActor, at: now,
-      to: { date: first.date, time: primaryTime, locationMode: resolvedLocation.locationMode, shoplineLocationId: resolvedLocation.shoplineLocationId, ...(resolvedLocation.locationSnapshot ? { locationSnapshot: resolvedLocation.locationSnapshot } : {}), location: resolvedLocation.location || '', staff: staffName, staffId, staffEmail, status: initialStatus }
+      to: { date: first.date, time: primaryTime, locationMode: resolvedLocation.locationMode, shoplineLocationId: resolvedLocation.shoplineLocationId, ...(resolvedLocation.locationSnapshot ? { locationSnapshot: resolvedLocation.locationSnapshot } : {}), location: resolvedLocation.location || '', ...(resolvedLocation.onlineMeeting ? { onlineMeeting: resolvedLocation.onlineMeeting } : {}), staff: staffName, staffId, staffEmail, status: initialStatus }
     }]
   };
   let booking;
@@ -493,7 +499,7 @@ export async function getManagedBooking({ bookingId, token, BookingModel = Booki
   if (!validManagementToken(token)) throw accessError();
   const booking = await BookingModel.findOne({ _id: bookingId, managementTokenHash: hashManagementToken(token) });
   if (!booking) throw accessError();
-  return booking;
+  return ensureBookingOnlineMeetingSnapshot(booking, { BookingModel });
 }
 
 export async function getLegacyBookingStatus({ bookingId, shopObjectId, productId, BookingModel = Booking }) {

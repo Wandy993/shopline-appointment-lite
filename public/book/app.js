@@ -277,7 +277,7 @@ function setupTimezonePicker() {
 
 const staffPresetClasses = new Set(['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose', 'nova']);
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
-function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="/assets/staff/${file}?v=0.8.7" alt="" loading="lazy" decoding="async">`;}
+function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="/assets/staff/${file}?v=0.8.8" alt="" loading="lazy" decoding="async">`;}
 
 function staffAvatarMarkup(item, className = '') {
   const avatar = item?.avatar || {};
@@ -702,7 +702,18 @@ $('#bookingForm').addEventListener('submit', async event => {
     $('#bookingView').classList.add('hidden');
     $('#successTitle').textContent = `${rule.serviceTitle} is confirmed.`;
     $('#successWhen').textContent = formatBookingWhen(payload.booking);
-    $('#successDetails').innerHTML = [payload.booking.staff ? `<span><b>Staff</b>${escapeHtml(payload.booking.staff)}</span>` : '', payload.booking.location ? `<span><b>Location</b>${escapeHtml(payload.booking.location)}</span>` : '', payload.booking.meeting?.url ? `<span><b>${escapeHtml(payload.booking.meeting.label || 'Online meeting')}</b><a href="${escapeHtml(payload.booking.meeting.url)}" target="_blank" rel="noopener noreferrer">Join online meeting</a></span>` : '', `<span><b>Service time zone</b>${escapeHtml(payload.booking.timezone || serviceTimezone)}</span>`].filter(Boolean).join('');
+    $('#successDetails').innerHTML = [payload.booking.staff ? `<span><b>Staff</b>${escapeHtml(payload.booking.staff)}</span>` : '', payload.booking.location ? `<span><b>Location</b>${escapeHtml(payload.booking.location)}</span>` : '', `<span><b>Service time zone</b>${escapeHtml(payload.booking.timezone || serviceTimezone)}</span>`].filter(Boolean).join('');
+    const meetingActions = $('#successMeetingActions');
+    const meetingLink = $('#joinMeeting');
+    if (payload.booking.meeting?.url) {
+      $('#meetingProvider').textContent = payload.booking.meeting.providerName || 'Online meeting';
+      $('#meetingActionLabel').textContent = payload.booking.meeting.label || 'Join meeting';
+      meetingLink.href = payload.booking.meeting.url;
+      meetingActions.classList.remove('hidden');
+    } else {
+      meetingLink.removeAttribute('href');
+      meetingActions.classList.add('hidden');
+    }
     $('#manageBooking').href = `/manage?booking=${encodeURIComponent(payload.booking.id)}#token=${encodeURIComponent(payload.booking.managementToken)}`;
     const googleCalendar = $('#addGoogleCalendar');
     if (payload.booking.calendar?.google) { googleCalendar.href = payload.booking.calendar.google; googleCalendar.classList.remove('hidden'); } else googleCalendar.classList.add('hidden');

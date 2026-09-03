@@ -13,6 +13,13 @@ function addMinutes(date, time, minutes) {
   const iso = point.toISOString();
   return { date: iso.slice(0, 10), time: iso.slice(11, 16) };
 }
+
+const ONLINE_MEETING_PROVIDER_NAMES = Object.freeze({ zoom: 'Zoom', google_meet: 'Google Meet', teams: 'Microsoft Teams', custom: 'Online meeting' });
+function confirmedOnlineMeeting(booking) {
+  if (booking?.status !== 'confirmed' || !/^https:\/\/[^\s]+$/i.test(String(booking?.onlineMeeting?.url || ''))) return null;
+  const provider = ONLINE_MEETING_PROVIDER_NAMES[booking.onlineMeeting.provider] ? booking.onlineMeeting.provider : 'custom';
+  return { providerName: ONLINE_MEETING_PROVIDER_NAMES[provider], url: String(booking.onlineMeeting.url) };
+}
 function addDays(date, days = 1) {
   const point = new Date(`${date}T12:00:00Z`);
   point.setUTCDate(point.getUTCDate() + days);
@@ -47,11 +54,13 @@ export function googleCalendarAddUrl(booking) {
   if (!occurrence?.date) return '';
   const params = new URLSearchParams({ action: 'TEMPLATE' });
   params.set('text', compact(`${booking.productTitle || 'Appointment'}${booking.staff ? ` · ${booking.staff}` : ''}`));
+  const meeting = confirmedOnlineMeeting(booking);
   const details = [
     'Appointment Lite booking',
     booking.customer?.name ? `Customer: ${booking.customer.name}` : '',
     booking.staff ? `Staff: ${booking.staff}` : '',
-    booking.customer?.email ? `Email: ${booking.customer.email}` : ''
+    booking.customer?.email ? `Email: ${booking.customer.email}` : '',
+    meeting ? `${meeting.providerName}: ${meeting.url}` : ''
   ].filter(Boolean).join('\n');
   params.set('details', details);
   if (booking.location) params.set('location', compact(booking.location));
@@ -84,11 +93,13 @@ export function buildBookingIcs(booking) {
   const events = occurrences.map((occurrence, index) => {
     const uid = `appointment-lite-${booking._id}-${index + 1}@${hostname}`;
     const summary = icsEscape(`${booking.productTitle || 'Appointment'}${booking.staff ? ` · ${booking.staff}` : ''}`);
+    const meeting = confirmedOnlineMeeting(booking);
     const description = icsEscape([
       'Appointment Lite booking',
       booking.customer?.name ? `Customer: ${booking.customer.name}` : '',
       booking.staff ? `Staff: ${booking.staff}` : '',
-      booking.customer?.email ? `Email: ${booking.customer.email}` : ''
+      booking.customer?.email ? `Email: ${booking.customer.email}` : '',
+      meeting ? `${meeting.providerName}: ${meeting.url}` : ''
     ].filter(Boolean).join('\n'));
     const lines = [
       'BEGIN:VEVENT', `UID:${uid}`, `DTSTAMP:${now}`, `STATUS:${status}`, `SUMMARY:${summary}`,

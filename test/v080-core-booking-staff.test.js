@@ -34,5 +34,5 @@ test('public directory implementation never emits staff email or phone', async()
 
 test('hosted booking honors staff preselection and reveals meeting only after confirmation', async()=>{
   const app=await read('../public/book/app.js'); const publicRoute=await read('../src/routes/public.js');
-  assert.match(app,/preselectedStaffId/); assert.match(app,/booking\.meeting\?\.url/); assert.match(publicRoute,/booking\.status === 'confirmed' && booking\.onlineMeeting\?\.url/);
+  assert.match(app,/preselectedStaffId/); assert.match(app,/booking\.meeting\?\.url/); assert.match(publicRoute,/publicOnlineMeeting\(booking\)/); assert.match(publicRoute,/booking\?\.status !== 'confirmed'/);
 });

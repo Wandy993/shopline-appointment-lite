@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = '0.8.7';
+  const VERSION = '0.8.8';
   const API_BASE = 'https://appointment.toolkit.fans';
   const CACHE_TTL = 5 * 60 * 1000;
   const RULE_CACHE = new Map();
@@ -34,6 +34,14 @@
 
   function text(value) {
     return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char]);
+  }
+
+
+  function onlineMeetingAction(meeting) {
+    if (!meeting?.url) return '';
+    const provider = text(meeting.providerName || 'Online meeting');
+    const label = text(meeting.label || 'Join meeting');
+    return `<div class="al-meeting-actions"><a class="al-meeting-link" href="${text(meeting.url)}" target="_blank" rel="noopener noreferrer"><span class="al-meeting-provider">${provider}</span><span class="al-meeting-link-label">${label}</span><span class="al-meeting-link-arrow" aria-hidden="true">↗</span></a></div>`;
   }
 
   const defaultStorefrontSettings = {
@@ -190,7 +198,7 @@
 
   const staffPresetClasses = new Set(['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose', 'nova']);
   const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
-  function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="${API_BASE}/assets/staff/${file}?v=0.8.7" alt="" loading="lazy" decoding="async">`;}
+  function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="${API_BASE}/assets/staff/${file}?v=0.8.8" alt="" loading="lazy" decoding="async">`;}
 
   function staffAvatar(item, className = '') {
     const avatar = item?.avatar || {};
@@ -1070,7 +1078,7 @@
         }
         const receipt = saveBookingReceipt(context, payload.booking);
         renderBookingState(widget, rule, context, receipt);
-        dialog.classList.add('al-confirmed'); dialog.classList.add('al-confirmation-dialog-compact'); dialog.querySelector('.al-form').innerHTML = `<div class="al-success"><div class="al-success-mark">✓</div><span class="al-success-kicker">Appointment confirmed</span><h3>${text(rule.serviceTitle || rule.productTitle || 'Appointment')}</h3><div class="al-success-summary"><div><span>Date & time</span><strong>${text(bookingWhenText(payload.booking))}</strong></div>${payload.booking.staff ? `<div><span>Staff</span><strong>${text(payload.booking.staff)}</strong></div>` : ''}${payload.booking.location ? `<div><span>Location</span><strong>${text(payload.booking.location)}</strong></div>` : ''}<div><span>Service time zone</span><strong>${text(payload.booking.timezone || rule.timezone || 'UTC')}</strong></div></div><p class="al-success-note">Your appointment is confirmed. You can manage this appointment later.</p>${payload.booking.calendar?.google ? `<div class="al-calendar-actions"><a class="al-calendar-link" href="${text(payload.booking.calendar.google)}" target="_blank" rel="noopener noreferrer">${GOOGLE_G_ICON}<span class="al-calendar-link-label">Add to Google Calendar</span><span class="al-calendar-link-arrow" aria-hidden="true">→</span></a></div>` : ''}<button class="al-submit" type="button">Done</button></div>`;
+        dialog.classList.add('al-confirmed'); dialog.classList.add('al-confirmation-dialog-compact'); dialog.querySelector('.al-form').innerHTML = `<div class="al-success"><div class="al-success-mark">✓</div><span class="al-success-kicker">Appointment confirmed</span><h3>${text(rule.serviceTitle || rule.productTitle || 'Appointment')}</h3><div class="al-success-summary"><div><span>Date & time</span><strong>${text(bookingWhenText(payload.booking))}</strong></div>${payload.booking.staff ? `<div><span>Staff</span><strong>${text(payload.booking.staff)}</strong></div>` : ''}${payload.booking.location ? `<div><span>Location</span><strong>${text(payload.booking.location)}</strong></div>` : ''}<div><span>Service time zone</span><strong>${text(payload.booking.timezone || rule.timezone || 'UTC')}</strong></div></div><p class="al-success-note">Your appointment is confirmed. You can manage this appointment later.</p>${onlineMeetingAction(payload.booking.meeting)}${payload.booking.calendar?.google ? `<div class="al-calendar-actions"><a class="al-calendar-link" href="${text(payload.booking.calendar.google)}" target="_blank" rel="noopener noreferrer">${GOOGLE_G_ICON}<span class="al-calendar-link-label">Add to Google Calendar</span><span class="al-calendar-link-arrow" aria-hidden="true">→</span></a></div>` : ''}<button class="al-submit" type="button">Done</button></div>`;
         dialog.querySelector('.al-submit').addEventListener('click', () => dialog.close());
         info('Booking confirmed.', { ...context, bookingId: payload.booking.id, bookingMode: mode });
       } catch (error) {

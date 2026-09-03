@@ -47,6 +47,15 @@ function render() {
   $('#bookingWhen').textContent = bookingWhen(booking);
   $('#bookingDetails').textContent = [booking.location, booking.staff, `Store time zone: ${booking.timezone || 'UTC'}`].filter(Boolean).join(' · ');
   const active = booking.status === 'confirmed';
+  const meeting = active && booking.meeting?.url ? booking.meeting : null;
+  $('#meetingCard').classList.toggle('hidden', !meeting);
+  if (meeting) {
+    $('#meetingProvider').textContent = meeting.providerName || 'Online meeting';
+    $('#meetingLabel').textContent = meeting.label || 'Join meeting';
+    $('#meetingButton').href = meeting.url;
+  } else {
+    $('#meetingButton').removeAttribute('href');
+  }
   $('#mainActions').classList.toggle('hidden', !active);
   $('#limitNotice').classList.toggle('hidden', !active);
   $('#changeButton').classList.toggle('hidden', !booking.customerCanReschedule);

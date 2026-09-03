@@ -16,6 +16,7 @@ import { getPostPurchaseEntitlement, publicPostPurchaseEntitlement } from '../se
 import { TinyTtlCache, createSingleFlight } from '../lib/runtime-cache.js';
 import { incrementOpsUsage, queueHealthEvent } from '../services/ops-hub.js';
 import { publicSubscriptionUnavailable } from '../middleware/subscription.js';
+import { ensureBookingOnlineMeetingSnapshot } from '../services/online-meeting.js';
 
 export const publicRouter = Router();
 const publicContextCache = new TinyTtlCache({ ttlMs: 4000, maxEntries: 300 });
@@ -57,7 +58,21 @@ async function reportBookingCreateFailure(input, error) {
   });
 }
 
-function publicBooking(booking) {
+const ONLINE_MEETING_PROVIDER_NAMES = Object.freeze({ zoom: 'Zoom', google_meet: 'Google Meet', teams: 'Microsoft Teams', custom: 'Online meeting' });
+const ONLINE_MEETING_DEFAULT_LABELS = Object.freeze({ zoom: 'Join Zoom', google_meet: 'Join Google Meet', teams: 'Join Microsoft Teams', custom: 'Join meeting' });
+
+function publicOnlineMeeting(booking) {
+  if (booking?.status !== 'confirmed' || !/^https:\/\/[^\s]+$/i.test(String(booking?.onlineMeeting?.url || ''))) return null;
+  const provider = ONLINE_MEETING_PROVIDER_NAMES[booking.onlineMeeting.provider] ? booking.onlineMeeting.provider : 'custom';
+  return {
+    provider,
+    providerName: ONLINE_MEETING_PROVIDER_NAMES[provider],
+    label: String(booking.onlineMeeting.label || '').trim() || ONLINE_MEETING_DEFAULT_LABELS[provider],
+    url: String(booking.onlineMeeting.url)
+  };
+}
+
+export function publicBooking(booking) {
   const customerRescheduleCount = Number(booking.customerRescheduleCount || 0);
   const timezone = booking.timezone || 'UTC';
   const bookingMode = ['slot', 'all_day', 'multi_slot'].includes(booking.bookingMode) ? booking.bookingMode : 'slot';
@@ -74,7 +89,7 @@ function publicBooking(booking) {
     bookingMode, occurrences,
     date: booking.date, time: bookingMode === 'all_day' ? '' : booking.time, timezone, storeDate: zonedNow(timezone).date,
     locationMode: booking.locationMode || 'custom', location: booking.location,
-    meeting: booking.status === 'confirmed' && booking.onlineMeeting?.url ? { provider: booking.onlineMeeting.provider || 'custom', label: booking.onlineMeeting.label || '', url: booking.onlineMeeting.url } : null,
+    meeting: publicOnlineMeeting(booking),
     staff: booking.staff, staffId: booking.staffId ? String(booking.staffId) : '', status: booking.status, customerRescheduleCount,
     customerCanReschedule: bookingMode === 'slot' && booking.status === 'confirmed' && customerRescheduleCount < 1,
     postPurchase: booking.postPurchase ? { orderId: booking.postPurchase.shoplineOrderId || '', orderName: booking.postPurchase.shoplineOrderName || '' } : null,
@@ -375,8 +390,9 @@ publicRouter.get('/bookings/:id/calendar.ics', async (req, res) => {
   if (!validBookingId(req.params.id)) return res.status(404).type('text/plain').send('Calendar file not found.');
   const access = readBookingCalendarToken(req.query.token);
   if (!access || String(access.bookingId) !== String(req.params.id)) return res.status(404).type('text/plain').send('Calendar file not found.');
-  const booking = await Booking.findById(req.params.id).lean();
-  if (!booking) return res.status(404).type('text/plain').send('Calendar file not found.');
+  const foundBooking = await Booking.findById(req.params.id);
+  if (!foundBooking) return res.status(404).type('text/plain').send('Calendar file not found.');
+  const booking = await ensureBookingOnlineMeetingSnapshot(foundBooking);
   const safeName = String(booking.productTitle || 'appointment').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'appointment';
   res.set({
     'Cache-Control': 'no-store',

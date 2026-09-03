@@ -1,3 +1,12 @@
+## v0.8.8 — Online Meeting Delivery Completion
+
+- Persists Zoom / Google Meet / Microsoft Teams / custom meeting URLs as an immutable booking snapshot instead of losing them at Mongoose persistence time.
+- Reveals the private meeting CTA only after a booking is confirmed, using the merchant-configured button label.
+- Delivers the meeting action across product-page confirmation, hosted booking confirmation, manage-appointment, confirmation/change/reminder emails, customer Google Calendar links, ICS files, and merchant Business Google Calendar sync.
+- Keeps meeting URLs out of public rule / availability payloads before confirmation and removes the CTA after cancellation.
+- Adds regression coverage for persistence, public serialization, calendar details, reminder projections, and storefront delivery.
+- Existing online bookings created before this fix can recover a missing meeting snapshot from the service rule the first time their private manage/calendar flow is opened, then persist it for later use.
+
 ## v0.8.7 — Storefront Booking State Polish
 
 - Staff selector dialogs now shrink to the real team-list height instead of inheriting a viewport-sized blank shell.

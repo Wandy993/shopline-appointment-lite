@@ -6,7 +6,7 @@ export function managePage() {
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
   <title>Manage appointment</title>
-  <link rel="stylesheet" href="/manage/assets/styles.css?v=0.8.7">
+  <link rel="stylesheet" href="/manage/assets/styles.css?v=0.8.8">
 </head>
 <body>
   <main class="shell">
@@ -17,6 +17,7 @@ export function managePage() {
       <div id="bookingView" class="hidden">
         <div class="heading"><div><span class="eyebrow">Appointment booked</span><h1 id="productTitle"></h1></div><span id="statusBadge" class="badge"></span></div>
         <div class="summary"><strong id="bookingWhen"></strong><span id="bookingDetails"></span></div>
+        <div id="meetingCard" class="meeting-card hidden"><div class="meeting-copy"><span class="meeting-kicker">Online meeting</span><strong id="meetingProvider">Online meeting</strong></div><a id="meetingButton" class="meeting-button" href="#" target="_blank" rel="noopener noreferrer"><span id="meetingLabel">Join meeting</span><span aria-hidden="true">↗</span></a></div>
         <div id="limitNotice" class="notice"></div>
         <div id="mainActions" class="actions"><button id="changeButton" class="primary">Change date or time</button><button id="cancelButton" class="danger-outline">Cancel appointment</button></div>
         <form id="changeForm" class="hidden">
@@ -33,7 +34,7 @@ export function managePage() {
     </section>
     <footer>This private page grants access to your appointment. Do not share its link.</footer>
   </main>
-  <script type="module" src="/manage/assets/app.js?v=0.8.7"></script>
+  <script type="module" src="/manage/assets/app.js?v=0.8.8"></script>
 </body>
 </html>`;
 }

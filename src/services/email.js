@@ -119,8 +119,11 @@ function appointmentCard(booking, settings) {
     : mode === 'multi_slot'
       ? row('Sessions', occurrences.map(item => `${item.date} · ${item.time}`).join(' | '), `<div style="margin-top:3px;color:#98A5B5;font-size:11px;font-weight:400">${escapeHtml(booking.timezone || 'UTC')}</div>`)
       : row('Date & time', `${booking.date} · ${booking.time}`, `<div style="margin-top:3px;color:#98A5B5;font-size:11px;font-weight:400">${escapeHtml(booking.timezone || 'UTC')}</div>`);
-  const meeting = booking.status === 'confirmed' && booking.onlineMeeting?.url
-    ? row('Online meeting', booking.onlineMeeting.label || ({ zoom: 'Zoom', google_meet: 'Google Meet', teams: 'Microsoft Teams', custom: 'Meeting link' }[booking.onlineMeeting.provider] || 'Meeting link'), `<div style="margin-top:6px"><a href="${escapeHtml(booking.onlineMeeting.url)}" style="color:${settings.accentColor};font-size:12px;font-weight:700;text-decoration:none">Join online meeting</a></div>`)
+  const providerName = ({ zoom: 'Zoom', google_meet: 'Google Meet', teams: 'Microsoft Teams', custom: 'Online meeting' }[booking.onlineMeeting?.provider] || 'Online meeting');
+  const defaultMeetingLabel = ({ zoom: 'Join Zoom', google_meet: 'Join Google Meet', teams: 'Join Microsoft Teams', custom: 'Join meeting' }[booking.onlineMeeting?.provider] || 'Join meeting');
+  const meetingLabel = String(booking.onlineMeeting?.label || '').trim() || defaultMeetingLabel;
+  const meeting = booking.status === 'confirmed' && /^https:\/\/[^\s]+$/i.test(String(booking.onlineMeeting?.url || ''))
+    ? row('Online meeting', providerName, `<div style="margin-top:8px"><a href="${escapeHtml(booking.onlineMeeting.url)}" style="display:inline-block;padding:9px 13px;border-radius:8px;background:${settings.accentColor};color:#fff;font-size:12px;font-weight:700;text-decoration:none">${escapeHtml(meetingLabel)}</a></div>`)
     : '';
   return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:separate;border-spacing:0;border:1px solid #E3E9F1;border-radius:12px;overflow:hidden;background:#FBFCFE;font-family:'Poppins','PingFang SC','Hiragino Sans GB','Microsoft YaHei',Arial,Helvetica,sans-serif">${row('Service', booking.productTitle)}${when}${row('Location', booking.location || 'To be confirmed')}${meeting}${row('Staff', booking.staff || 'To be confirmed')}</table>`;
 }

@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = '0.8.7';
+  const VERSION = '0.8.8';
   const API_BASE = 'https://appointment.toolkit.fans';
   const SELECTOR = '[data-appointment-lite-embed]:not([data-al-embed-ready])';
 

@@ -110,6 +110,7 @@ const bookingSchema = new mongoose.Schema({
   shoplineLocationId: { type: String, default: '', maxlength: 100 },
   locationSnapshot: { type: locationSnapshotSchema, default: undefined },
   location: { type: String, default: '' },
+  onlineMeeting: { type: onlineMeetingSchema, default: undefined },
   staff: { type: String, default: '' },
   staffId: { type: mongoose.Schema.Types.ObjectId, ref: 'Staff', default: null, index: true },
   staffEmail: { type: String, default: '' },
