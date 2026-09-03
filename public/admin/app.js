@@ -33,9 +33,31 @@ const bookingSourceLabels = { product: 'Product page', direct: 'Booking page', b
 const commerceModeLabels = { standalone_free: 'Standalone · no payment', standalone_paid: 'Standalone · payment required', product_pre_purchase: 'Product + appointment', product_post_purchase: 'Purchase first · schedule after' };
 const activeCommerceModes = new Set(['standalone_free', 'standalone_paid', 'product_pre_purchase', 'product_post_purchase']);
 const defaultStorefrontSettings = Object.freeze({
+  appearance: Object.freeze({ template: 'warm_luxe', backgroundIntensity: 'medium', cornerStyle: 'rounded', primaryStyle: 'template', unifiedBookingFlow: true }),
   button: Object.freeze({ label: 'Book an appointment', backgroundColor: '#2F6FED', textColor: '#FFFFFF', width: 'content', alignment: 'left', borderRadius: 8 }),
   modal: Object.freeze({ title: 'Book an appointment', accentColor: '#2F6FED', primaryTextColor: '#FFFFFF', primaryButtonWidth: 'content', primaryButtonAlignment: 'right', showServiceSummary: true, showTimezoneSelector: true, showPhone: true, showNotes: true, showFooterNote: true })
 });
+const storefrontThemePresets = Object.freeze({
+  minimal_light: Object.freeze({ label: 'Minimal Light', accent: '#344054', primaryText: '#FFFFFF', surface: '#FFFFFF', soft: '#F7F8FA', text: '#1D2939', muted: '#667085', line: '#E4E7EC', success: '#5D8A70', backgrounds: Object.freeze({ soft: '#FAFBFC', medium: '#F5F7F9', strong: '#EEF1F4' }) }),
+  warm_luxe: Object.freeze({ label: 'Warm Luxe', accent: '#4B342B', primaryText: '#FFFDFC', surface: '#FFFDFC', soft: '#F5ECE5', text: '#2C211D', muted: '#74645C', line: '#E4D6CD', success: '#6F8B73', backgrounds: Object.freeze({ soft: '#FAF6F2', medium: '#F3EBE4', strong: '#E9DDD4' }) }),
+  soft_editorial: Object.freeze({ label: 'Soft Editorial', accent: '#252722', primaryText: '#FFFFFF', surface: '#FCFCF8', soft: '#F2F1EC', text: '#22231F', muted: '#6D6D66', line: '#DDDDD5', success: '#68856F', backgrounds: Object.freeze({ soft: '#FAFAF7', medium: '#F1F1EC', strong: '#E7E7E0' }) })
+});
+const storefrontCornerRadius = Object.freeze({ soft: 14, rounded: 22, square_soft: 10 });
+function storefrontThemeTokens(settings = defaultStorefrontSettings) {
+  const appearance = settings.appearance || defaultStorefrontSettings.appearance;
+  const preset = storefrontThemePresets[appearance.template] || storefrontThemePresets.warm_luxe;
+  const intensity = ['soft', 'medium', 'strong'].includes(appearance.backgroundIntensity) ? appearance.backgroundIntensity : 'medium';
+  const custom = appearance.primaryStyle === 'custom';
+  return {
+    ...preset,
+    background: preset.backgrounds[intensity] || preset.backgrounds.medium,
+    accent: custom ? settings.modal.accentColor : preset.accent,
+    primaryText: custom ? settings.modal.primaryTextColor : preset.primaryText,
+    triggerAccent: custom ? settings.button.backgroundColor : preset.accent,
+    triggerText: custom ? settings.button.textColor : preset.primaryText,
+    radius: storefrontCornerRadius[appearance.cornerStyle] || storefrontCornerRadius.rounded
+  };
+}
 const productStatusLabels = { active: 'Published', draft: 'Draft' };
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -700,7 +722,20 @@ Object.assign(zh, {
   'Name and email stay visible. Customer address stays required for services configured with Customer address, and staff selection stays visible when the customer must choose a staff member.': '姓名和邮箱始终展示。配置为“客户地址”的服务仍会要求填写地址；当服务要求客户选择员工时，员工选择也会保留。',
   'LIVE STOREFRONT PREVIEW': '前台实时预览', 'Product page + dialog': '商品页 + 弹窗',
   'The preview is simplified. Real availability, staff, customer-address fields, custom questions, and payment actions still follow each service configuration.': '此处为简化预览。实际可预约时段、员工、客户地址、自定义问题和付款动作仍以每项服务配置为准。',
-  'CONNECTION': '连接配置', 'Theme & launch checklist': '主题与上线检查', 'Storefront settings saved.': '店铺前台设置已保存。'
+  'CONNECTION': '连接配置', 'Theme & launch checklist': '主题与上线检查', 'Storefront settings saved.': '店铺前台设置已保存。',
+  'Booking appearance': '预约视觉',
+  'Choose a polished booking theme and keep the staff selector, calendar, customer form, and confirmation experience visually consistent.': '选择统一的预约视觉模板，让员工选择、日历、客户信息和预约确认保持一致。',
+  'Booking theme': '预约主题', 'Start from a coordinated visual system instead of styling each booking step separately.': '从一套统一视觉系统开始，不需要逐个预约步骤分别配色。',
+  'Minimal Light': '极简明亮', 'Clean, neutral, and broadly compatible.': '干净中性，适合大多数店铺。',
+  'Warm Luxe': '暖调高级', 'Warm taupe, espresso actions, and a premium service feel.': '暖米棕背景、深咖操作色，更适合美容、服务和生活方式品牌。',
+  'Soft Editorial': '柔和杂志感', 'Muted stone tones with a modern editorial edge.': '柔和石灰色调，强调现代品牌与杂志感。',
+  'Background intensity': '背景强度', 'Controls how strongly the template color appears behind cards and panels.': '控制模板底色在卡片和内容区域中的明显程度。',
+  'Soft': '柔和', 'Medium': '标准', 'Strong': '明显',
+  'Corner style': '圆角风格', 'Applies one radius system across dialogs, cards, calendar cells, and fields.': '统一应用到弹窗、卡片、日历和输入框。',
+  'Square-soft': '轻方角', 'Soft rounded': '柔和圆角', 'Rounded': '大圆角',
+  'Primary action color': '主操作颜色', 'Follow the selected template, or use your existing custom booking colors.': '跟随模板主色，或继续使用自定义预约颜色。',
+  'Follow template': '跟随模板', 'Custom color': '自定义颜色',
+  'Unified booking appearance': '统一预约流程样式', 'Apply this theme to staff selection, calendar, customer details, and booking confirmation. Recommended.': '将该主题同步应用到员工选择、日历、客户信息和预约确认。建议开启。'
 });
 
 Object.assign(zh, {
@@ -830,7 +865,7 @@ const staffAvatarPresets = ['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunse
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
 function staffPresetImage(preset) {
   const file = staffAvatarFiles[preset] || staffAvatarFiles.aurora;
-  return `<img src="/assets/staff/${file}?v=0.8.4" alt="" loading="lazy" decoding="async">`;
+  return `<img src="/assets/staff/${file}?v=0.8.5" alt="" loading="lazy" decoding="async">`;
 }
 let staffAvatarDraft = { kind: 'preset', value: 'aurora' };
 
@@ -2807,9 +2842,39 @@ function clone(value) { return JSON.parse(JSON.stringify(value)); }
 
 function normalizeStorefrontClient(input = {}) {
   return {
+    appearance: { ...clone(defaultStorefrontSettings.appearance), ...(input.appearance || {}) },
     button: { ...clone(defaultStorefrontSettings.button), ...(input.button || {}) },
     modal: { ...clone(defaultStorefrontSettings.modal), ...(input.modal || {}) }
   };
+}
+
+function setStorefrontTheme(value, { render = true } = {}) {
+  const next = Object.prototype.hasOwnProperty.call(storefrontThemePresets, value) ? value : defaultStorefrontSettings.appearance.template;
+  $('#storefrontTheme').value = next;
+  $$('#storefrontThemeOptions [data-storefront-theme]').forEach(button => button.classList.toggle('selected', button.dataset.storefrontTheme === next));
+  if (render) renderStorefrontPreview();
+}
+
+function setStorefrontIntensity(value, { render = true } = {}) {
+  const next = ['soft', 'medium', 'strong'].includes(value) ? value : defaultStorefrontSettings.appearance.backgroundIntensity;
+  $('#storefrontBackgroundIntensity').value = next;
+  $$('#storefrontIntensityOptions [data-storefront-intensity]').forEach(button => button.classList.toggle('active', button.dataset.storefrontIntensity === next));
+  if (render) renderStorefrontPreview();
+}
+
+function setStorefrontCornerStyle(value, { render = true } = {}) {
+  const next = ['soft', 'rounded', 'square_soft'].includes(value) ? value : defaultStorefrontSettings.appearance.cornerStyle;
+  $('#storefrontCornerStyle').value = next;
+  $$('#storefrontCornerOptions [data-storefront-corner]').forEach(button => button.classList.toggle('active', button.dataset.storefrontCorner === next));
+  if (render) renderStorefrontPreview();
+}
+
+function setStorefrontPrimaryStyle(value, { render = true } = {}) {
+  const next = value === 'custom' ? 'custom' : 'template';
+  $('#storefrontPrimaryStyle').value = next;
+  $$('#storefrontPrimaryStyleOptions [data-storefront-primary-style]').forEach(button => button.classList.toggle('active', button.dataset.storefrontPrimaryStyle === next));
+  document.querySelectorAll('[data-storefront-custom-color]').forEach(element => element.classList.toggle('storefront-custom-color-disabled', next !== 'custom'));
+  if (render) renderStorefrontPreview();
 }
 
 function setStorefrontButtonWidth(value, { render = true } = {}) {
@@ -2856,6 +2921,13 @@ function syncStorefrontColor(colorId, hexId, source = 'color') {
 function storefrontSettingsFromForm() {
   const hex = (id, fallback) => /^#[0-9a-f]{6}$/i.test($(`#${id}`)?.value || '') ? $(`#${id}`).value.toUpperCase() : fallback;
   return {
+    appearance: {
+      template: Object.prototype.hasOwnProperty.call(storefrontThemePresets, $('#storefrontTheme')?.value || '') ? $('#storefrontTheme').value : defaultStorefrontSettings.appearance.template,
+      backgroundIntensity: ['soft', 'medium', 'strong'].includes($('#storefrontBackgroundIntensity')?.value) ? $('#storefrontBackgroundIntensity').value : defaultStorefrontSettings.appearance.backgroundIntensity,
+      cornerStyle: ['soft', 'rounded', 'square_soft'].includes($('#storefrontCornerStyle')?.value) ? $('#storefrontCornerStyle').value : defaultStorefrontSettings.appearance.cornerStyle,
+      primaryStyle: $('#storefrontPrimaryStyle')?.value === 'custom' ? 'custom' : 'template',
+      unifiedBookingFlow: $('#storefrontUnifiedFlow')?.checked !== false
+    },
     button: {
       label: $('#storefrontButtonLabel').value.trim() || defaultStorefrontSettings.button.label,
       backgroundColor: hex('storefrontButtonColorHex', defaultStorefrontSettings.button.backgroundColor),
@@ -2882,14 +2954,33 @@ function storefrontSettingsFromForm() {
 function renderStorefrontPreview() {
   if (!$('#storefrontButtonPreview')) return;
   const settings = storefrontSettingsFromForm();
+  const appearance = settings.appearance;
   const button = settings.button;
   const modal = settings.modal;
+  const theme = storefrontThemeTokens(settings);
+  const previewCanvas = document.querySelector('.storefront-preview-canvas');
+  const dialogPreview = document.querySelector('.storefront-dialog-preview');
+  [previewCanvas, dialogPreview].filter(Boolean).forEach(element => {
+    element.dataset.bookingTheme = appearance.template;
+    element.dataset.bookingIntensity = appearance.backgroundIntensity;
+    element.dataset.bookingCorner = appearance.cornerStyle;
+    element.style.setProperty('--booking-theme-bg', theme.background);
+    element.style.setProperty('--booking-theme-surface', theme.surface);
+    element.style.setProperty('--booking-theme-soft', theme.soft);
+    element.style.setProperty('--booking-theme-text', theme.text);
+    element.style.setProperty('--booking-theme-muted', theme.muted);
+    element.style.setProperty('--booking-theme-line', theme.line);
+    element.style.setProperty('--booking-theme-accent', theme.accent);
+    element.style.setProperty('--booking-theme-primary-text', theme.primaryText);
+    element.style.setProperty('--booking-theme-success', theme.success);
+    element.style.setProperty('--booking-theme-radius', `${theme.radius}px`);
+  });
   const buttonWrap = $('#storefrontButtonPreviewWrap');
   const buttonPreview = $('#storefrontButtonPreview');
   buttonWrap.className = `storefront-button-preview-wrap ${button.width === 'full' ? 'full' : `align-${button.alignment}`}`;
   buttonPreview.textContent = button.label;
-  buttonPreview.style.background = button.backgroundColor;
-  buttonPreview.style.color = button.textColor;
+  buttonPreview.style.background = theme.triggerAccent;
+  buttonPreview.style.color = theme.triggerText;
   buttonPreview.style.borderRadius = `${button.borderRadius}px`;
   $('#storefrontModalTitlePreview').textContent = modal.title;
   $('#storefrontSummaryPreview').classList.toggle('hidden', !modal.showServiceSummary);
@@ -2900,15 +2991,19 @@ function renderStorefrontPreview() {
   const actionWrap = document.querySelector('.storefront-dialog-preview-actions');
   actionWrap.className = `storefront-dialog-preview-actions ${modal.primaryButtonWidth === 'full' ? 'full' : `align-${modal.primaryButtonAlignment}`}`;
   const modalButton = $('#storefrontModalButtonPreview');
-  modalButton.style.background = modal.accentColor;
-  modalButton.style.color = modal.primaryTextColor;
-  document.querySelectorAll('.storefront-mini-calendar .selected,.storefront-mini-slots .selected').forEach(element => { element.style.background = modal.accentColor; element.style.borderColor = modal.accentColor; });
+  modalButton.style.background = theme.accent;
+  modalButton.style.color = theme.primaryText;
+  document.querySelectorAll('.storefront-mini-calendar .selected,.storefront-mini-slots .selected').forEach(element => { element.style.background = theme.accent; element.style.borderColor = theme.accent; });
 }
-
 function renderStorefrontSettings(settings = state.storefrontSettings) {
   if (!$('#storefrontButtonLabel')) return;
   const value = normalizeStorefrontClient(settings || defaultStorefrontSettings);
   state.storefrontSettings = value;
+  setStorefrontTheme(value.appearance.template, { render: false });
+  setStorefrontIntensity(value.appearance.backgroundIntensity, { render: false });
+  setStorefrontCornerStyle(value.appearance.cornerStyle, { render: false });
+  setStorefrontPrimaryStyle(value.appearance.primaryStyle, { render: false });
+  $('#storefrontUnifiedFlow').checked = value.appearance.unifiedBookingFlow !== false;
   $('#storefrontButtonLabel').value = value.button.label;
   $('#storefrontButtonColor').value = value.button.backgroundColor;
   $('#storefrontButtonColorHex').value = value.button.backgroundColor;
@@ -3486,6 +3581,11 @@ function bind() {
     if (action) try { await action(); } catch (error) { showError(error); }
   });
   $('#saveStorefrontSettings')?.addEventListener('click', saveStorefrontSettings);
+  $$('#storefrontThemeOptions [data-storefront-theme]').forEach(button => button.addEventListener('click', () => setStorefrontTheme(button.dataset.storefrontTheme)));
+  $$('#storefrontIntensityOptions [data-storefront-intensity]').forEach(button => button.addEventListener('click', () => setStorefrontIntensity(button.dataset.storefrontIntensity)));
+  $$('#storefrontCornerOptions [data-storefront-corner]').forEach(button => button.addEventListener('click', () => setStorefrontCornerStyle(button.dataset.storefrontCorner)));
+  $$('#storefrontPrimaryStyleOptions [data-storefront-primary-style]').forEach(button => button.addEventListener('click', () => setStorefrontPrimaryStyle(button.dataset.storefrontPrimaryStyle)));
+  $('#storefrontUnifiedFlow')?.addEventListener('input', renderStorefrontPreview);
   $$('#storefrontButtonWidthOptions [data-storefront-width]').forEach(button => button.addEventListener('click', () => setStorefrontButtonWidth(button.dataset.storefrontWidth)));
   $$('#storefrontButtonAlignmentOptions [data-storefront-alignment]').forEach(button => button.addEventListener('click', () => { if (!button.disabled) setStorefrontButtonAlignment(button.dataset.storefrontAlignment); }));
   $$('#storefrontPrimaryWidthOptions [data-storefront-primary-width]').forEach(button => button.addEventListener('click', () => setStorefrontPrimaryWidth(button.dataset.storefrontPrimaryWidth)));

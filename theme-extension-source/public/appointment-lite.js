@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = '0.8.4';
+  const VERSION = '0.8.5';
   const API_BASE = 'https://appointment.toolkit.fans';
   const CACHE_TTL = 5 * 60 * 1000;
   const RULE_CACHE = new Map();
@@ -37,14 +37,67 @@
   }
 
   const defaultStorefrontSettings = {
+    appearance: { template: 'warm_luxe', backgroundIntensity: 'medium', cornerStyle: 'rounded', primaryStyle: 'template', unifiedBookingFlow: true },
     button: { label: 'Book an appointment', backgroundColor: '#2F6FED', textColor: '#FFFFFF', width: 'content', alignment: 'left', borderRadius: 8 },
     modal: { title: 'Book an appointment', accentColor: '#2F6FED', primaryTextColor: '#FFFFFF', primaryButtonWidth: 'content', primaryButtonAlignment: 'right', showServiceSummary: true, showTimezoneSelector: true, showPhone: true, showNotes: true, showFooterNote: true }
   };
+  const bookingThemePresets = {
+    minimal_light: { accent: '#344054', primaryText: '#FFFFFF', surface: '#FFFFFF', soft: '#F7F8FA', text: '#1D2939', muted: '#667085', line: '#E4E7EC', success: '#5D8A70', backgrounds: { soft: '#FAFBFC', medium: '#F5F7F9', strong: '#EEF1F4' } },
+    warm_luxe: { accent: '#4B342B', primaryText: '#FFFDFC', surface: '#FFFDFC', soft: '#F5ECE5', text: '#2C211D', muted: '#74645C', line: '#E4D6CD', success: '#6F8B73', backgrounds: { soft: '#FAF6F2', medium: '#F3EBE4', strong: '#E9DDD4' } },
+    soft_editorial: { accent: '#252722', primaryText: '#FFFFFF', surface: '#FCFCF8', soft: '#F2F1EC', text: '#22231F', muted: '#6D6D66', line: '#DDDDD5', success: '#68856F', backgrounds: { soft: '#FAFAF7', medium: '#F1F1EC', strong: '#E7E7E0' } }
+  };
+  const bookingCornerRadius = { soft: 14, rounded: 22, square_soft: 10 };
+
+  function bookingThemeTokens(settings, { bookingStep = false } = {}) {
+    const appearance = settings.appearance || defaultStorefrontSettings.appearance;
+    const useTemplate = !bookingStep || appearance.unifiedBookingFlow !== false;
+    const preset = bookingThemePresets[useTemplate ? appearance.template : 'minimal_light'] || bookingThemePresets.warm_luxe;
+    const intensity = useTemplate && ['soft', 'medium', 'strong'].includes(appearance.backgroundIntensity) ? appearance.backgroundIntensity : 'soft';
+    const custom = !useTemplate || appearance.primaryStyle === 'custom';
+    return {
+      ...preset,
+      background: preset.backgrounds[intensity] || preset.backgrounds.medium,
+      accent: custom ? settings.modal.accentColor : preset.accent,
+      primaryText: custom ? settings.modal.primaryTextColor : preset.primaryText,
+      triggerAccent: appearance.primaryStyle === 'custom' ? settings.button.backgroundColor : preset.accent,
+      triggerText: appearance.primaryStyle === 'custom' ? settings.button.textColor : preset.primaryText,
+      radius: bookingCornerRadius[useTemplate ? appearance.cornerStyle : 'soft'] || bookingCornerRadius.rounded,
+      template: useTemplate ? appearance.template : 'minimal_light',
+      intensity
+    };
+  }
+
+  function applyThemeVariables(element, settings, { bookingStep = false } = {}) {
+    const theme = bookingThemeTokens(settings, { bookingStep });
+    element.dataset.alTheme = theme.template;
+    element.dataset.alIntensity = theme.intensity;
+    element.style.setProperty('--al-accent', theme.accent);
+    element.style.setProperty('--al-primary-text', theme.primaryText);
+    element.style.setProperty('--al-theme-bg', theme.background);
+    element.style.setProperty('--al-theme-surface', theme.surface);
+    element.style.setProperty('--al-theme-soft', theme.soft);
+    element.style.setProperty('--al-theme-text', theme.text);
+    element.style.setProperty('--al-theme-muted', theme.muted);
+    element.style.setProperty('--al-theme-line', theme.line);
+    element.style.setProperty('--al-theme-success', theme.success);
+    element.style.setProperty('--al-theme-radius', `${theme.radius}px`);
+    element.style.setProperty('--al-theme-radius-sm', `${Math.max(8, Math.round(theme.radius * .55))}px`);
+    return theme;
+  }
 
   function storefrontSettings(input = {}) {
     const hex = (value, fallback) => /^#[0-9a-f]{6}$/i.test(String(value || '')) ? String(value).toUpperCase() : fallback;
     const radius = Number(input.button?.borderRadius);
     return {
+      appearance: {
+        ...defaultStorefrontSettings.appearance,
+        ...(input.appearance || {}),
+        template: Object.prototype.hasOwnProperty.call(bookingThemePresets, input.appearance?.template) ? input.appearance.template : defaultStorefrontSettings.appearance.template,
+        backgroundIntensity: ['soft', 'medium', 'strong'].includes(input.appearance?.backgroundIntensity) ? input.appearance.backgroundIntensity : defaultStorefrontSettings.appearance.backgroundIntensity,
+        cornerStyle: ['soft', 'rounded', 'square_soft'].includes(input.appearance?.cornerStyle) ? input.appearance.cornerStyle : defaultStorefrontSettings.appearance.cornerStyle,
+        primaryStyle: input.appearance?.primaryStyle === 'custom' ? 'custom' : 'template',
+        unifiedBookingFlow: input.appearance?.unifiedBookingFlow !== false
+      },
       button: {
         label: String(input.button?.label || defaultStorefrontSettings.button.label).trim().slice(0, 60) || defaultStorefrontSettings.button.label,
         backgroundColor: hex(input.button?.backgroundColor, defaultStorefrontSettings.button.backgroundColor),
@@ -72,9 +125,9 @@
     widget.__appointmentLiteStorefront = settings;
     widget.dataset.alButtonWidth = settings.button.width;
     widget.dataset.alButtonAlign = settings.button.alignment;
-    widget.style.setProperty('--al-accent', settings.modal.accentColor);
-    widget.style.setProperty('--al-trigger-bg', settings.button.backgroundColor);
-    widget.style.setProperty('--al-trigger-text', settings.button.textColor);
+    const theme = applyThemeVariables(widget, settings);
+    widget.style.setProperty('--al-trigger-bg', theme.triggerAccent);
+    widget.style.setProperty('--al-trigger-text', theme.triggerText);
     widget.style.setProperty('--al-trigger-radius', `${settings.button.borderRadius}px`);
     const trigger = widget.querySelector('.al-trigger');
     if (trigger) trigger.textContent = settings.button.label;
@@ -137,7 +190,7 @@
 
   const staffPresetClasses = new Set(['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose', 'nova']);
   const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
-  function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="${API_BASE}/assets/staff/${file}?v=0.8.4" alt="" loading="lazy" decoding="async">`;}
+  function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="${API_BASE}/assets/staff/${file}?v=0.8.5" alt="" loading="lazy" decoding="async">`;}
 
   function staffAvatar(item, className = '') {
     const avatar = item?.avatar || {};
@@ -561,8 +614,7 @@
 
   function mountDialog(dialog, variant = '', settings = storefrontSettings()) {
     dialog.className = ['al-dialog', variant].filter(Boolean).join(' ');
-    dialog.style.setProperty('--al-accent', settings.modal.accentColor);
-    dialog.style.setProperty('--al-primary-text', settings.modal.primaryTextColor);
+    applyThemeVariables(dialog, settings, { bookingStep: variant === 'al-booking-dialog' });
     if (variant === 'al-booking-dialog') {
       dialog.dataset.alPrimaryWidth = settings.modal.primaryButtonWidth;
       dialog.dataset.alPrimaryAlign = settings.modal.primaryButtonAlignment;

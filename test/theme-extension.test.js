@@ -29,7 +29,8 @@ test('theme asset exposes diagnostics and handles editor re-renders', async () =
 test('booking dialog keeps selected times and submit action visible', async () => {
   const asset = await readFile(new URL('../theme-extension-source/public/appointment-lite.js', import.meta.url), 'utf8');
   const stylesheet = await readFile(new URL('../theme-extension-source/public/appointment-lite.css', import.meta.url), 'utf8');
-  assert.match(asset, /dialog\.style\.setProperty\('--al-accent', settings\.modal\.accentColor\)/);
+  assert.match(asset, /accent: custom \? settings\.modal\.accentColor : preset\.accent/);
+  assert.match(asset, /element\.style\.setProperty\('--al-accent', theme\.accent\)/);
   assert.match(asset, /class="al-actions"/);
   assert.match(stylesheet, /var\(--al-accent,#2f6fed\)/);
   assert.match(stylesheet, /\.al-time\[aria-pressed=true\][^{]*\{[^}]*color:var\(--al-primary-text,#fff\)/);

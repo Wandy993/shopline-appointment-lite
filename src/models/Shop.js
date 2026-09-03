@@ -68,7 +68,16 @@ const storefrontModalSettingsSchema = new mongoose.Schema({
   showFooterNote: { type: Boolean, default: true }
 }, { _id: false });
 
+const storefrontAppearanceSettingsSchema = new mongoose.Schema({
+  template: { type: String, enum: ['minimal_light', 'warm_luxe', 'soft_editorial'], default: 'warm_luxe' },
+  backgroundIntensity: { type: String, enum: ['soft', 'medium', 'strong'], default: 'medium' },
+  cornerStyle: { type: String, enum: ['soft', 'rounded', 'square_soft'], default: 'rounded' },
+  primaryStyle: { type: String, enum: ['template', 'custom'], default: 'template' },
+  unifiedBookingFlow: { type: Boolean, default: true }
+}, { _id: false });
+
 const storefrontSettingsSchema = new mongoose.Schema({
+  appearance: { type: storefrontAppearanceSettingsSchema, default: () => ({}) },
   button: { type: storefrontButtonSettingsSchema, default: () => ({}) },
   modal: { type: storefrontModalSettingsSchema, default: () => ({}) }
 }, { _id: false });

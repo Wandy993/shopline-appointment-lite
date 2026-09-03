@@ -70,3 +70,35 @@
 body,.booking-shell,.booking-shell button,.booking-shell input,.booking-shell textarea,.booking-shell select,.booking-shell option,.booking-shell label,.booking-shell p,.booking-shell span,.booking-shell strong{font-family:var(--al-font-body)!important}
 .service-head h1,.success-state h1,.empty-state h1{font-family:var(--al-font-heading)!important;font-weight:600!important;letter-spacing:-.025em}
 .selected-staff-profile{margin-top:8px;padding:10px 12px;border:1px solid #e2e9f3;border-radius:10px;background:#f8faff;color:#5f7088}.selected-staff-profile strong,.selected-staff-profile span{display:block}.selected-staff-profile strong{color:#344861;font-size:11px;font-weight:600}.selected-staff-profile span{margin-top:3px;color:#3f6598;font-size:11px;font-weight:500}.selected-staff-profile p{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;margin:6px 0 0;color:#68798e;font-size:11px;line-height:1.5}
+
+/* v0.8.5 — unified booking appearance templates */
+:root{--booking-bg:#f3ebe4;--booking-surface:#fffdfc;--booking-soft:#f5ece5;--booking-text:#2c211d;--booking-muted:#74645c;--booking-line:#e4d6cd;--booking-success:#6f8b73;--booking-radius:22px;--booking-radius-sm:12px}
+body{background:radial-gradient(circle at 50% -12%,color-mix(in srgb,var(--booking-surface) 76%,var(--booking-bg)) 0,transparent 34rem),var(--booking-bg);color:var(--booking-text)}
+.booking-brand span:not(.brand-mark),.service-description,.field>small,.muted,footer{color:var(--booking-muted)}
+.booking-card{border-color:var(--booking-line);border-radius:var(--booking-radius);background:var(--booking-surface);box-shadow:0 28px 74px color-mix(in srgb,var(--booking-text) 10%,transparent)}
+.service-head{border-color:var(--booking-line);background:var(--booking-surface)}.service-head h1,.success-state h1,.empty-state h1{color:var(--booking-text)}
+.service-badge,.eyebrow{background:var(--booking-soft);color:var(--brand)}
+.service-meta span{border-color:var(--booking-line);border-radius:var(--booking-radius-sm);background:var(--booking-soft);color:var(--booking-muted)}
+.calendar-pane{border-color:var(--booking-line);background:linear-gradient(180deg,color-mix(in srgb,var(--booking-soft) 76%,var(--booking-surface)) 0,var(--booking-soft) 100%)}
+.booking-panel{background:var(--booking-surface)}
+.calendar-card{border-color:var(--booking-line);border-radius:calc(var(--booking-radius) - 4px);background:var(--booking-surface)}
+.calendar-toolbar strong,.field-label-row>span,.field>span,.selected-session-head strong{color:var(--booking-text)}
+.calendar-nav{border-radius:var(--booking-radius-sm);color:var(--booking-muted)}.calendar-nav:hover:not(:disabled){background:var(--booking-soft);color:var(--brand)}
+.calendar-day{color:var(--booking-text)}.calendar-day:hover:not(:disabled):not(.selected){background:var(--booking-soft);color:var(--brand)}.calendar-day.today:not(.selected)::after{background:var(--brand)}
+.calendar-day i{background:var(--booking-success)}
+.timezone-note{border-color:color-mix(in srgb,var(--brand) 18%,var(--booking-line));border-radius:calc(var(--booking-radius) - 7px);background:var(--booking-soft);color:var(--booking-muted)}
+.time-slot{border-color:var(--booking-line);border-radius:var(--booking-radius-sm);background:var(--booking-surface);color:var(--brand)}.time-slot:hover{border-color:var(--brand);background:var(--booking-soft)}
+.details-divider{color:var(--booking-muted)}.details-divider::before,.details-divider::after{background:var(--booking-line)}
+.field input,.field textarea{border-color:var(--booking-line);border-radius:var(--booking-radius-sm);background:var(--booking-surface);color:var(--booking-text)}
+.booking-actions{border-color:var(--booking-line);background:var(--booking-surface)}.booking-actions p{color:var(--booking-muted)}
+.primary{border-radius:var(--booking-radius-sm);box-shadow:0 10px 24px color-mix(in srgb,var(--brand) 18%,transparent)}
+.selected-sessions,.selected-session,.all-day-available{border-color:var(--booking-line);border-radius:var(--booking-radius-sm);background:var(--booking-soft);color:var(--booking-text)}
+.staff-picker-button,.staff-picker-menu,.timezone-picker-menu{border-color:var(--booking-line)!important;border-radius:var(--booking-radius-sm)!important;background:var(--booking-surface)!important;color:var(--booking-text)!important}.staff-picker-button:hover{border-color:color-mix(in srgb,var(--brand) 32%,var(--booking-line))}.staff-option:hover,.staff-option.selected,.timezone-option:hover,.timezone-option.selected{background:var(--booking-soft)!important;color:var(--brand)!important}
+.selected-staff-profile{border-color:var(--booking-line);border-radius:var(--booking-radius-sm);background:var(--booking-soft);color:var(--booking-muted)}.selected-staff-profile strong{color:var(--booking-text)}.selected-staff-profile span{color:var(--brand)}.selected-staff-profile p{color:var(--booking-muted)}
+.success-state #successDetails{border-color:var(--booking-line);border-radius:calc(var(--booking-radius) - 7px);background:var(--booking-soft)}.success-state #successDetails span{border-color:var(--booking-line);color:var(--booking-text)}.success-state #successDetails b{color:var(--booking-muted)}
+.success-mark{background:color-mix(in srgb,var(--booking-success) 14%,var(--booking-surface));color:var(--booking-success)}
+.success-calendar-actions .calendar-link{border-color:var(--booking-line);border-radius:var(--booking-radius-sm);background:var(--booking-soft);color:var(--booking-text)}.success-calendar-actions .calendar-link:hover{border-color:color-mix(in srgb,var(--brand) 25%,var(--booking-line));background:color-mix(in srgb,var(--booking-soft) 82%,var(--booking-surface))}.success-calendar-actions .calendar-link-label{color:var(--booking-text)}
+html[data-booking-theme="warm_luxe"] .service-badge,html[data-booking-theme="warm_luxe"] .eyebrow{letter-spacing:.1em}
+html[data-booking-theme="soft_editorial"] .booking-card{box-shadow:0 24px 56px rgba(31,31,28,.09)}
+html[data-booking-theme="soft_editorial"] .service-head h1,html[data-booking-theme="soft_editorial"] .success-state h1{letter-spacing:-.035em}
+@media(max-width:620px){.booking-card{border-radius:calc(var(--booking-radius) - 5px)}.calendar-pane{background:var(--booking-soft)}.booking-actions{background:var(--booking-surface)}}

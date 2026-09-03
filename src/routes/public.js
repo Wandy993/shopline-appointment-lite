@@ -245,7 +245,8 @@ publicRouter.get('/staff-directory', async (req, res) => {
   res.set('Cache-Control', 'no-cache');
   res.json({
     service: { id: String(result.rule._id), title: result.rule.serviceTitle || result.rule.productTitle || 'Appointment', description: result.rule.serviceDescription || '' },
-    staff: directory.options
+    staff: directory.options,
+    storefront: normalizeStorefrontSettings(result.shop.storefrontSettings || {})
   });
 });
 

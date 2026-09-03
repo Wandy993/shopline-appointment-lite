@@ -40,7 +40,7 @@ export function adminPage() {
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light">
   <title>Appointment Lite</title>
-  <link rel="stylesheet" href="/admin/styles.css?v=0.8.4&build=0.8.4">
+  <link rel="stylesheet" href="/admin/styles.css?v=0.8.5&build=0.8.5">
 </head>
 <body>
   <div class="app-shell">
@@ -213,13 +213,26 @@ export function adminPage() {
         <section id="setupView" class="view hidden">
           <div class="page-heading"><div><span class="eyebrow">STOREFRONT</span><h1>Storefront setup</h1><p>Connect Appointment Lite to your theme and customize the booking entry and dialog to match your storefront.</p></div><span class="status-badge success">Store connected</span></div>
           <article class="panel storefront-customizer">
-            <div class="storefront-customizer-head"><div><span class="eyebrow">STOREFRONT DESIGN</span><h2>Booking button & dialog</h2><p>Use one global storefront style for product-page App Blocks and direct booking pages. Service schedules and required booking fields remain protected.</p></div><button id="saveStorefrontSettings" class="primary" type="button">Save storefront</button></div>
+            <div class="storefront-customizer-head"><div><span class="eyebrow">STOREFRONT DESIGN</span><h2>Booking appearance</h2><p>Choose a polished booking theme and keep the staff selector, calendar, customer form, and confirmation experience visually consistent.</p></div><button id="saveStorefrontSettings" class="primary" type="button">Save storefront</button></div>
             <div class="storefront-customizer-grid">
               <div class="storefront-customizer-controls">
+                <section class="storefront-config-group booking-theme-config">
+                  <div class="storefront-config-title"><span class="section-number">01</span><div><strong>Booking theme</strong><small>Start from a coordinated visual system instead of styling each booking step separately.</small></div></div>
+                  <input id="storefrontTheme" type="hidden" value="warm_luxe">
+                  <div id="storefrontThemeOptions" class="booking-theme-grid">
+                    <button type="button" class="booking-theme-option" data-storefront-theme="minimal_light"><span class="booking-theme-swatch theme-minimal"><i></i><i></i><i></i></span><span><strong>Minimal Light</strong><small>Clean, neutral, and broadly compatible.</small></span><b>✓</b></button>
+                    <button type="button" class="booking-theme-option selected" data-storefront-theme="warm_luxe"><span class="booking-theme-swatch theme-luxe"><i></i><i></i><i></i></span><span><strong>Warm Luxe</strong><small>Warm taupe, espresso actions, and a premium service feel.</small></span><b>✓</b></button>
+                    <button type="button" class="booking-theme-option" data-storefront-theme="soft_editorial"><span class="booking-theme-swatch theme-editorial"><i></i><i></i><i></i></span><span><strong>Soft Editorial</strong><small>Muted stone tones with a modern editorial edge.</small></span><b>✓</b></button>
+                  </div>
+                  <div class="storefront-option-row"><div><strong>Background intensity</strong><small>Controls how strongly the template color appears behind cards and panels.</small></div><div class="segmented storefront-segmented" id="storefrontIntensityOptions"><button type="button" data-storefront-intensity="soft">Soft</button><button type="button" data-storefront-intensity="medium" class="active">Medium</button><button type="button" data-storefront-intensity="strong">Strong</button></div><input id="storefrontBackgroundIntensity" type="hidden" value="medium"></div>
+                  <div class="storefront-option-row"><div><strong>Corner style</strong><small>Applies one radius system across dialogs, cards, calendar cells, and fields.</small></div><div class="segmented storefront-segmented" id="storefrontCornerOptions"><button type="button" data-storefront-corner="square_soft">Square-soft</button><button type="button" data-storefront-corner="soft">Soft rounded</button><button type="button" data-storefront-corner="rounded" class="active">Rounded</button></div><input id="storefrontCornerStyle" type="hidden" value="rounded"></div>
+                  <div class="storefront-option-row"><div><strong>Primary action color</strong><small>Follow the selected template, or use your existing custom booking colors.</small></div><div class="segmented storefront-segmented" id="storefrontPrimaryStyleOptions"><button type="button" data-storefront-primary-style="template" class="active">Follow template</button><button type="button" data-storefront-primary-style="custom">Custom color</button></div><input id="storefrontPrimaryStyle" type="hidden" value="template"></div>
+                  <label class="toggle-row storefront-toggle unified-booking-toggle"><input id="storefrontUnifiedFlow" type="checkbox" checked><span class="toggle"><i></i></span><span><strong>Unified booking appearance</strong><small>Apply this theme to staff selection, calendar, customer details, and booking confirmation. Recommended.</small></span></label>
+                </section>
                 <section class="storefront-config-group">
-                  <div class="storefront-config-title"><span class="section-number">01</span><div><strong>Booking button</strong><small>Control the product-page appointment entry without depending on the theme button color.</small></div></div>
+                  <div class="storefront-config-title"><span class="section-number">02</span><div><strong>Booking button</strong><small>Control the product-page appointment entry without depending on the theme button color.</small></div></div>
                   <div class="field"><label for="storefrontButtonLabel">Button text</label><input id="storefrontButtonLabel" maxlength="60" placeholder="Book an appointment"></div>
-                  <div class="field-row storefront-color-row">
+                  <div class="field-row storefront-color-row" data-storefront-custom-color>
                     <div class="field color-field"><label for="storefrontButtonColor">Button color</label><div><input id="storefrontButtonColor" type="color" value="#2F6FED"><input id="storefrontButtonColorHex" maxlength="7" value="#2F6FED"></div></div>
                     <div class="field color-field"><label for="storefrontButtonTextColor">Text color</label><div><input id="storefrontButtonTextColor" type="color" value="#FFFFFF"><input id="storefrontButtonTextColorHex" maxlength="7" value="#FFFFFF"></div></div>
                   </div>
@@ -228,9 +241,9 @@ export function adminPage() {
                   <div class="field storefront-radius-field"><label for="storefrontButtonRadius">Corner radius <span>0–24 px</span></label><div class="input-suffix"><input id="storefrontButtonRadius" type="number" min="0" max="24" step="1" value="8"><span>px</span></div></div>
                 </section>
                 <section class="storefront-config-group">
-                  <div class="storefront-config-title"><span class="section-number">02</span><div><strong>Booking dialog</strong><small>Choose the accent and which optional customer-facing elements are visible.</small></div></div>
+                  <div class="storefront-config-title"><span class="section-number">03</span><div><strong>Booking dialog</strong><small>Choose the accent and which optional customer-facing elements are visible.</small></div></div>
                   <div class="field"><label for="storefrontModalTitle">Dialog title</label><input id="storefrontModalTitle" maxlength="80" placeholder="Book an appointment"></div>
-                  <div class="field-row storefront-color-row">
+                  <div class="field-row storefront-color-row" data-storefront-custom-color>
                     <div class="field color-field"><label for="storefrontModalAccent">Accent color</label><div><input id="storefrontModalAccent" type="color" value="#2F6FED"><input id="storefrontModalAccentHex" maxlength="7" value="#2F6FED"></div></div>
                     <div class="field color-field"><label for="storefrontModalTextColor">Primary button text</label><div><input id="storefrontModalTextColor" type="color" value="#FFFFFF"><input id="storefrontModalTextColorHex" maxlength="7" value="#FFFFFF"></div></div>
                   </div>
@@ -397,7 +410,7 @@ export function adminPage() {
   </dialog>
 
   <dialog id="confirmDialog" class="confirm-modal"><div class="confirm-icon">!</div><div class="confirm-copy"><h2 id="confirmTitle">Please confirm</h2><p id="confirmMessage"></p></div><div class="modal-actions"><button id="confirmNo" class="secondary">Keep it</button><button id="confirmYes" class="danger">Confirm</button></div></dialog>
-  <script type="module" src="/admin/app.js?v=0.8.4&build=0.8.4"></script>
+  <script type="module" src="/admin/app.js?v=0.8.5&build=0.8.5"></script>
 </body>
 </html>`;
 }

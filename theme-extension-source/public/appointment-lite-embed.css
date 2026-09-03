@@ -7,3 +7,10 @@
 
 /* v0.8.3 reliable customer typography */
 .al-embed-root{--al-font-heading:"Jost","Poppins","PingFang SC","Hiragino Sans GB","Microsoft YaHei",Arial,Helvetica,sans-serif;--al-font-body:"Poppins","PingFang SC","Hiragino Sans GB","Microsoft YaHei",Arial,Helvetica,sans-serif;font-family:var(--al-font-body)!important;font-synthesis:none}.al-embed-root,.al-embed-root *{font-family:var(--al-font-body)!important}.al-embed-head strong{font-family:var(--al-font-heading)!important;font-weight:600!important;letter-spacing:-.02em}
+
+/* v0.8.5 — booking appearance templates for App Embed */
+.al-embed-root{--al-embed-bg:#f3ebe4;--al-embed-surface:#fffdfc;--al-embed-soft:#f5ece5;--al-embed-copy:#2c211d;--al-embed-muted:#74645c;--al-embed-line:#e4d6cd;--al-embed-radius:22px}
+.al-embed-launcher{box-shadow:0 12px 32px color-mix(in srgb,var(--al-embed-accent) 22%,transparent)}
+.al-embed-panel{border-color:var(--al-embed-line);border-radius:var(--al-embed-radius);background:var(--al-embed-bg);box-shadow:0 22px 58px color-mix(in srgb,var(--al-embed-copy) 18%,transparent);color:var(--al-embed-copy)}
+.al-embed-head{border-color:var(--al-embed-line);background:var(--al-embed-surface)}.al-embed-head span{color:var(--al-embed-muted)}.al-embed-close{border-radius:calc(var(--al-embed-radius) * .5);background:var(--al-embed-soft);color:var(--al-embed-copy)}
+.al-embed-services{gap:6px;background:var(--al-embed-bg)}.al-embed-service{border:1px solid transparent;border-radius:calc(var(--al-embed-radius) * .58);background:var(--al-embed-surface)}.al-embed-service:hover{border-color:var(--al-embed-line);background:var(--al-embed-soft)}.al-embed-service span{color:var(--al-embed-muted)}

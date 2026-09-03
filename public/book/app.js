@@ -9,15 +9,67 @@ let selectedOccurrences = [];
 let selectedStaffId = '';
 let brand = { name: 'Appointment Lite', accentColor: '#2F6FED' };
 const defaultStorefrontSettings = Object.freeze({
+  appearance: { template: 'warm_luxe', backgroundIntensity: 'medium', cornerStyle: 'rounded', primaryStyle: 'template', unifiedBookingFlow: true },
   button: { label: 'Book an appointment', backgroundColor: '#2F6FED', textColor: '#FFFFFF', width: 'content', alignment: 'left', borderRadius: 8 },
   modal: { title: 'Book an appointment', accentColor: '#2F6FED', primaryTextColor: '#FFFFFF', primaryButtonWidth: 'content', primaryButtonAlignment: 'right', showServiceSummary: true, showTimezoneSelector: true, showPhone: true, showNotes: true, showFooterNote: true }
 });
+const bookingThemePresets = Object.freeze({
+  minimal_light: Object.freeze({ accent: '#344054', primaryText: '#FFFFFF', surface: '#FFFFFF', soft: '#F7F8FA', text: '#1D2939', muted: '#667085', line: '#E4E7EC', success: '#5D8A70', backgrounds: Object.freeze({ soft: '#FAFBFC', medium: '#F5F7F9', strong: '#EEF1F4' }) }),
+  warm_luxe: Object.freeze({ accent: '#4B342B', primaryText: '#FFFDFC', surface: '#FFFDFC', soft: '#F5ECE5', text: '#2C211D', muted: '#74645C', line: '#E4D6CD', success: '#6F8B73', backgrounds: Object.freeze({ soft: '#FAF6F2', medium: '#F3EBE4', strong: '#E9DDD4' }) }),
+  soft_editorial: Object.freeze({ accent: '#252722', primaryText: '#FFFFFF', surface: '#FCFCF8', soft: '#F2F1EC', text: '#22231F', muted: '#6D6D66', line: '#DDDDD5', success: '#68856F', backgrounds: Object.freeze({ soft: '#FAFAF7', medium: '#F1F1EC', strong: '#E7E7E0' }) })
+});
+const bookingCornerRadius = Object.freeze({ soft: 14, rounded: 22, square_soft: 10 });
 let storefront = defaultStorefrontSettings;
+
+function bookingThemeTokens(settings, { unified = true } = {}) {
+  const appearance = settings.appearance || defaultStorefrontSettings.appearance;
+  const useTemplate = unified && appearance.unifiedBookingFlow !== false;
+  const preset = bookingThemePresets[useTemplate ? appearance.template : 'minimal_light'] || bookingThemePresets.warm_luxe;
+  const intensity = useTemplate && ['soft', 'medium', 'strong'].includes(appearance.backgroundIntensity) ? appearance.backgroundIntensity : 'soft';
+  const custom = !useTemplate || appearance.primaryStyle === 'custom';
+  return {
+    ...preset,
+    background: preset.backgrounds[intensity] || preset.backgrounds.medium,
+    accent: custom ? settings.modal.accentColor : preset.accent,
+    primaryText: custom ? settings.modal.primaryTextColor : preset.primaryText,
+    radius: bookingCornerRadius[useTemplate ? appearance.cornerStyle : 'soft'] || bookingCornerRadius.rounded,
+    template: useTemplate ? appearance.template : 'minimal_light',
+    intensity
+  };
+}
+
+function applyBookingTheme(settings) {
+  const theme = bookingThemeTokens(settings, { unified: true });
+  const root = document.documentElement;
+  root.dataset.bookingTheme = theme.template;
+  root.dataset.bookingIntensity = theme.intensity;
+  root.style.setProperty('--brand', theme.accent);
+  root.style.setProperty('--brand-soft', theme.soft);
+  root.style.setProperty('--brand-text', theme.primaryText);
+  root.style.setProperty('--booking-bg', theme.background);
+  root.style.setProperty('--booking-surface', theme.surface);
+  root.style.setProperty('--booking-soft', theme.soft);
+  root.style.setProperty('--booking-text', theme.text);
+  root.style.setProperty('--booking-muted', theme.muted);
+  root.style.setProperty('--booking-line', theme.line);
+  root.style.setProperty('--booking-success', theme.success);
+  root.style.setProperty('--booking-radius', `${theme.radius}px`);
+  root.style.setProperty('--booking-radius-sm', `${Math.max(8, Math.round(theme.radius * .55))}px`);
+}
 
 function normalizeStorefrontSettings(input = {}) {
   const hex = (value, fallback) => /^#[0-9A-Fa-f]{6}$/.test(String(value || '')) ? String(value).toUpperCase() : fallback;
   const radius = Number(input.button?.borderRadius);
   return {
+    appearance: {
+      ...defaultStorefrontSettings.appearance,
+      ...(input.appearance || {}),
+      template: Object.prototype.hasOwnProperty.call(bookingThemePresets, input.appearance?.template) ? input.appearance.template : defaultStorefrontSettings.appearance.template,
+      backgroundIntensity: ['soft', 'medium', 'strong'].includes(input.appearance?.backgroundIntensity) ? input.appearance.backgroundIntensity : defaultStorefrontSettings.appearance.backgroundIntensity,
+      cornerStyle: ['soft', 'rounded', 'square_soft'].includes(input.appearance?.cornerStyle) ? input.appearance.cornerStyle : defaultStorefrontSettings.appearance.cornerStyle,
+      primaryStyle: input.appearance?.primaryStyle === 'custom' ? 'custom' : 'template',
+      unifiedBookingFlow: input.appearance?.unifiedBookingFlow !== false
+    },
     button: {
       ...defaultStorefrontSettings.button,
       ...(input.button || {}),
@@ -225,7 +277,7 @@ function setupTimezonePicker() {
 
 const staffPresetClasses = new Set(['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose', 'nova']);
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
-function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="/assets/staff/${file}?v=0.8.4" alt="" loading="lazy" decoding="async">`;}
+function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="/assets/staff/${file}?v=0.8.5" alt="" loading="lazy" decoding="async">`;}
 
 function staffAvatarMarkup(item, className = '') {
   const avatar = item?.avatar || {};
@@ -431,10 +483,7 @@ function renderService(payload) {
   rule.timezone = serviceTimezone;
   brand = payload.brand || brand;
   storefront = normalizeStorefrontSettings(payload.storefront || {});
-  const storefrontAccent = storefront.modal.accentColor || '#2F6FED';
-  document.documentElement.style.setProperty('--brand', storefrontAccent);
-  document.documentElement.style.setProperty('--brand-soft', `color-mix(in srgb,${storefrontAccent} 9%,white)`);
-  document.documentElement.style.setProperty('--brand-text', storefront.modal.primaryTextColor || '#FFFFFF');
+  applyBookingTheme(storefront);
   $('#brandName').textContent = brand.name || 'Appointment Lite';
   $('#brandMark').textContent = (brand.name || 'A').slice(0, 1).toUpperCase();
   $('#serviceType').textContent = typeLabels[rule.serviceType] || typeLabels.other;

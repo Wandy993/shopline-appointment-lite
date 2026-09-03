@@ -54,12 +54,13 @@ test('active release uses a real SemVer package version and current cache marker
     read('../theme-extension-source/public/appointment-lite.js'), read('../theme-extension-source/public/appointment-lite-page.js'), read('../theme-extension-source/public/appointment-lite-embed.js'), read('../scripts/build-release.sh')
   ]);
   const pkg = JSON.parse(pkgText);
-  assert.equal(pkg.version, '0.8.4');
-  assert.match(app, /version: '0\.8\.4'/);
-  assert.match(admin, /styles\.css\?v=0\.8\.4&build=0\.8\.4/);
-  assert.match(book, /styles\.css\?v=0\.8\.4/);
-  assert.match(manage, /styles\.css\?v=0\.8\.4/);
-  for (const asset of [theme, page, embed]) assert.match(asset, /const VERSION = '0\.8\.4'/);
-  assert.match(release, /RELEASE_VERSION="0\.8\.4"/);
-  assert.match(release, /RELEASE_LABEL="0\.8\.4"/);
+  assert.match(pkg.version, /^\d+\.\d+\.\d+$/);
+  const escaped = pkg.version.replace(/\./g, '\\.');
+  assert.match(app, new RegExp(`version: '${escaped}'`));
+  assert.match(admin, new RegExp(`styles\\.css\\?v=${escaped}&build=${escaped}`));
+  assert.match(book, new RegExp(`styles\\.css\\?v=${escaped}`));
+  assert.match(manage, new RegExp(`styles\\.css\\?v=${escaped}`));
+  for (const asset of [theme, page, embed]) assert.match(asset, new RegExp(`const VERSION = '${escaped}'`));
+  assert.match(release, new RegExp(`RELEASE_VERSION=\"${escaped}\"`));
+  assert.match(release, new RegExp(`RELEASE_LABEL=\"${escaped}\"`));
 });

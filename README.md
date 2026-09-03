@@ -1,3 +1,12 @@
+## v0.8.5 — Booking Theme System + Modal Layout Fix
+
+- Adds a storefront **Booking theme** system with three coordinated templates: **Minimal Light**, **Warm Luxe** (recommended default), and **Soft Editorial**.
+- Adds **Background intensity**, **Corner style**, **Primary action color** (follow template/custom), and **Unified booking appearance** controls in Storefront Setup.
+- Applies the selected visual system across the product-page staff selector, calendar, time slots, customer details form, confirmation state, hosted booking page, Page blocks, Staff Directory blocks, and App Embed surfaces.
+- Keeps existing custom button/accent colors available; they become the active primary colors when **Custom color** is selected.
+- Fixes the staff editor modal height regression that could leave a large blank area below the sticky action bar after enabling the public Staff Directory profile.
+- Public Staff Directory responses now include normalized storefront appearance settings so regular-page directory blocks can match the rest of the booking journey.
+
 ## v0.8.4 — Staff Editor Polish
 
 - Product-page staff selector width is reduced from 940px to 820px so the avatar, supported services, and Select action stay readable without the oversized empty middle area.
