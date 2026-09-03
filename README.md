@@ -1,3 +1,10 @@
+## v0.8.6 — Storefront Booking State Polish
+
+- Staff selector dialogs now shrink to the real team-list height instead of inheriting a viewport-sized blank shell.
+- Google Calendar is a compact secondary success action across Theme App Block and hosted booking surfaces.
+- Confirmed product-page bookings now use one exclusive state: the Book Service trigger is force-hidden while the appointment management card is present.
+- Confirmed-state cards inherit the active Booking Theme tokens so Warm Luxe / Minimal Light / Soft Editorial remain visually consistent.
+
 ## v0.8.5 — Booking Theme System + Modal Layout Fix
 
 - Adds a storefront **Booking theme** system with three coordinated templates: **Minimal Light**, **Warm Luxe** (recommended default), and **Soft Editorial**.

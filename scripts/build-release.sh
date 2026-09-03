@@ -2,10 +2,10 @@
 set -u
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd -P)"
-RELEASE_VERSION="0.8.5"
-RELEASE_LABEL="0.8.5"
-RELEASE_BUILD="booking-theme-system-modal-layout-fix.1"
-NAME="appointment-lite-v${RELEASE_LABEL}-booking-theme-system-modal-layout-fix"
+RELEASE_VERSION="0.8.6"
+RELEASE_LABEL="0.8.6"
+RELEASE_BUILD="storefront-booking-state-polish.1"
+NAME="appointment-lite-v${RELEASE_LABEL}-storefront-booking-state-polish"
 DIST_DIR="$ROOT_DIR/dist"
 STAGE_DIR="${TMPDIR:-/tmp}/${NAME}.$$"
 OUTPUT="$DIST_DIR/${NAME}.zip"

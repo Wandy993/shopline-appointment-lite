@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = '0.8.5';
+  const VERSION = '0.8.6';
   const API_BASE = 'https://appointment.toolkit.fans';
   const CACHE_TTL = 5 * 60 * 1000;
   const RULE_CACHE = new Map();
@@ -190,7 +190,7 @@
 
   const staffPresetClasses = new Set(['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose', 'nova']);
   const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
-  function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="${API_BASE}/assets/staff/${file}?v=0.8.5" alt="" loading="lazy" decoding="async">`;}
+  function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="${API_BASE}/assets/staff/${file}?v=0.8.6" alt="" loading="lazy" decoding="async">`;}
 
   function staffAvatar(item, className = '') {
     const avatar = item?.avatar || {};
@@ -395,10 +395,16 @@
     const trigger = widget.querySelector('.al-trigger');
     const receipt = suppliedReceipt || readBookingReceipt(context, rule.storeDate);
     if (!receipt) {
+      widget.classList.remove('al-widget--booked');
       trigger.hidden = false;
+      trigger.removeAttribute('aria-hidden');
+      trigger.style.removeProperty('display');
       return;
     }
+    widget.classList.add('al-widget--booked');
     trigger.hidden = true;
+    trigger.setAttribute('aria-hidden', 'true');
+    trigger.style.setProperty('display', 'none', 'important');
     const details = [receipt.location, receipt.staff].filter(Boolean).map(text).join(' · ');
     const timezone = receipt.timezone || rule.timezone || 'UTC';
     const status = document.createElement('section');

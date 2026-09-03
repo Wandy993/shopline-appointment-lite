@@ -277,7 +277,7 @@ function setupTimezonePicker() {
 
 const staffPresetClasses = new Set(['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose', 'nova']);
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
-function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="/assets/staff/${file}?v=0.8.5" alt="" loading="lazy" decoding="async">`;}
+function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="/assets/staff/${file}?v=0.8.6" alt="" loading="lazy" decoding="async">`;}
 
 function staffAvatarMarkup(item, className = '') {
   const avatar = item?.avatar || {};
