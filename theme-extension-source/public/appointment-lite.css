@@ -457,3 +457,129 @@ body.al-dialog-open{position:fixed!important;top:var(--al-dialog-scroll-y,0)!imp
 
 /* v0.8.8 — confirmed online meeting action */
 .al-booking-dialog.al-confirmed .al-meeting-actions{display:flex!important;width:100%!important;justify-content:center!important;align-items:center!important;margin:12px auto 8px!important}.al-booking-dialog.al-confirmed .al-meeting-link{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:8px!important;flex:0 0 auto!important;width:max-content!important;max-width:100%!important;min-height:42px!important;border:1px solid color-mix(in srgb,var(--al-accent) 28%,var(--al-theme-line))!important;border-radius:999px!important;background:var(--al-accent)!important;color:var(--al-primary-text)!important;padding:7px 14px!important;text-decoration:none!important;box-shadow:0 8px 20px color-mix(in srgb,var(--al-accent) 15%,transparent)!important}.al-booking-dialog.al-confirmed .al-meeting-provider{display:inline-flex!important;align-items:center!important;min-height:24px!important;border-radius:999px!important;background:color-mix(in srgb,#fff 15%,transparent)!important;padding:3px 8px!important;color:inherit!important;font-size:10px!important;font-weight:800!important;letter-spacing:.03em!important}.al-booking-dialog.al-confirmed .al-meeting-link-label{color:inherit!important;font-size:12px!important;font-weight:750!important;white-space:nowrap!important}.al-booking-dialog.al-confirmed .al-meeting-link-arrow{font-size:13px!important}.al-booking-dialog.al-confirmed .al-meeting-link:hover{filter:brightness(.96)!important;transform:translateY(-1px)!important}
+
+/* v0.8.9 — online meeting UI consistency + product-page manage meeting */
+.al-meeting-brand{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  flex:0 0 auto!important;
+  min-width:28px!important;
+  height:28px!important;
+  padding:4px 5px!important;
+  border:1px solid color-mix(in srgb,var(--al-theme-line) 88%,#fff)!important;
+  border-radius:8px!important;
+  background:#fff!important;
+  box-sizing:border-box!important;
+  color:var(--al-theme-muted)!important;
+  font-size:9px!important;
+  font-weight:800!important;
+  line-height:1!important;
+}
+.al-meeting-brand--zoom{width:38px!important;padding:5px 6px!important}
+.al-meeting-brand--zoom img{display:block!important;width:26px!important;height:auto!important;max-height:12px!important;object-fit:contain!important}
+.al-booking-dialog.al-confirmed .al-meeting-actions,
+.al-booking-dialog.al-confirmed .al-calendar-actions{
+  display:flex!important;
+  width:100%!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+  align-items:center!important;
+  margin:10px auto 0!important;
+}
+.al-booking-dialog.al-confirmed .al-meeting-link,
+.al-booking-dialog.al-confirmed .al-calendar-link{
+  display:inline-flex!important;
+  flex:0 0 auto!important;
+  width:min(100%,230px)!important;
+  max-width:230px!important;
+  min-height:42px!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  gap:9px!important;
+  padding:6px 11px!important;
+  border:1px solid var(--al-theme-line)!important;
+  border-radius:999px!important;
+  background:var(--al-theme-soft)!important;
+  color:var(--al-theme-text)!important;
+  text-decoration:none!important;
+  box-shadow:none!important;
+  box-sizing:border-box!important;
+  transform:none!important;
+}
+.al-booking-dialog.al-confirmed .al-meeting-link:hover,
+.al-booking-dialog.al-confirmed .al-calendar-link:hover{
+  border-color:color-mix(in srgb,var(--al-accent) 28%,var(--al-theme-line))!important;
+  background:color-mix(in srgb,var(--al-theme-soft) 82%,var(--al-theme-surface))!important;
+  color:var(--al-theme-text)!important;
+  filter:none!important;
+  transform:translateY(-1px)!important;
+}
+.al-booking-dialog.al-confirmed .al-meeting-link-label,
+.al-booking-dialog.al-confirmed .al-calendar-link-label{
+  flex:1 1 auto!important;
+  color:var(--al-theme-text)!important;
+  font-size:12px!important;
+  font-weight:750!important;
+  line-height:1.25!important;
+  text-align:left!important;
+  white-space:nowrap!important;
+}
+.al-booking-dialog.al-confirmed .al-google-g{
+  width:28px!important;
+  height:28px!important;
+  flex:0 0 28px!important;
+  padding:5px!important;
+  border:1px solid color-mix(in srgb,var(--al-theme-line) 88%,#fff)!important;
+  border-radius:8px!important;
+  background:#fff!important;
+  box-sizing:border-box!important;
+}
+.al-booking-dialog.al-confirmed .al-meeting-link-arrow,
+.al-booking-dialog.al-confirmed .al-calendar-link-arrow{display:none!important}
+.al-calendar-meeting-note{
+  display:block!important;
+  max-width:260px!important;
+  margin:6px auto 0!important;
+  color:var(--al-theme-muted)!important;
+  font-size:10px!important;
+  line-height:1.4!important;
+  text-align:center!important;
+}
+.al-manage-meeting{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  margin:-4px 0 18px;
+  padding:13px 14px;
+  border:1px solid color-mix(in srgb,var(--al-theme-success) 24%,var(--al-theme-line));
+  border-radius:var(--al-theme-radius-sm);
+  background:color-mix(in srgb,var(--al-theme-success) 6%,var(--al-theme-surface));
+}
+.al-manage-meeting-copy{display:flex;min-width:0;flex-direction:column;gap:3px}
+.al-manage-meeting-copy span{color:var(--al-theme-muted);font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+.al-manage-meeting-copy strong{color:var(--al-theme-text);font-size:13px}
+.al-manage-meeting .al-meeting-actions--manage{display:block!important;width:auto!important;margin:0!important}
+.al-manage-meeting .al-meeting-link{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  gap:8px!important;
+  min-height:40px!important;
+  max-width:220px!important;
+  padding:5px 10px!important;
+  border:1px solid var(--al-theme-line)!important;
+  border-radius:999px!important;
+  background:var(--al-theme-surface)!important;
+  color:var(--al-theme-text)!important;
+  text-decoration:none!important;
+  box-shadow:none!important;
+}
+.al-manage-meeting .al-meeting-link:hover{border-color:color-mix(in srgb,var(--al-accent) 28%,var(--al-theme-line))!important;background:var(--al-theme-soft)!important}
+.al-manage-meeting .al-meeting-link-label{color:var(--al-theme-text)!important;font-size:11px!important;font-weight:750!important;white-space:nowrap!important}
+@media(max-width:540px){
+  .al-booking-dialog.al-confirmed .al-meeting-link,.al-booking-dialog.al-confirmed .al-calendar-link{width:min(100%,230px)!important}
+  .al-manage-meeting{align-items:stretch;flex-direction:column}
+  .al-manage-meeting .al-meeting-link{max-width:100%!important;width:100%!important;justify-content:center!important}
+}

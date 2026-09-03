@@ -142,3 +142,72 @@ html[data-booking-theme="soft_editorial"] .service-head h1,html[data-booking-the
 
 /* v0.8.8 — online meeting success action */
 .success-meeting-actions{display:flex;justify-content:center;width:100%;max-width:470px;margin:16px auto 0}.success-meeting-actions.hidden{display:none!important}.success-meeting-actions .meeting-link{display:inline-flex;align-items:center;justify-content:center;gap:9px;max-width:100%;min-height:42px;border:1px solid color-mix(in srgb,var(--brand) 28%,var(--booking-line));border-radius:999px;background:var(--brand);color:var(--brand-text,#fff);padding:7px 14px;text-decoration:none;box-shadow:0 8px 20px color-mix(in srgb,var(--brand) 15%,transparent)}.success-meeting-actions .meeting-provider{display:inline-flex;align-items:center;min-height:24px;border-radius:999px;background:color-mix(in srgb,#fff 15%,transparent);padding:3px 8px;color:inherit;font-size:10px;font-weight:800;letter-spacing:.03em}.success-meeting-actions .meeting-link-label{color:inherit;font-size:12px;font-weight:750;white-space:nowrap}.success-meeting-actions .meeting-link-arrow{font-size:13px}.success-meeting-actions .meeting-link:hover{filter:brightness(.96);transform:translateY(-1px)}
+
+/* v0.8.9 — provider actions share one premium secondary-button language */
+.success-meeting-actions,.success-calendar-actions{
+  display:flex!important;
+  width:100%!important;
+  max-width:none!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+  align-items:center!important;
+  margin:10px auto 0!important;
+}
+.success-meeting-actions.hidden,.success-calendar-actions .hidden,.calendar-meeting-note.hidden{display:none!important}
+.success-meeting-actions .meeting-link,.success-calendar-actions .calendar-link{
+  display:inline-flex!important;
+  flex:0 0 auto!important;
+  width:min(100%,230px)!important;
+  max-width:230px!important;
+  min-height:42px!important;
+  justify-content:flex-start!important;
+  align-items:center!important;
+  gap:9px!important;
+  padding:6px 11px!important;
+  border:1px solid var(--booking-line)!important;
+  border-radius:999px!important;
+  background:var(--booking-soft)!important;
+  color:var(--booking-text)!important;
+  text-decoration:none!important;
+  box-shadow:none!important;
+  box-sizing:border-box!important;
+  transform:none!important;
+}
+.success-meeting-actions .meeting-link:hover,.success-calendar-actions .calendar-link:hover{
+  border-color:color-mix(in srgb,var(--brand) 26%,var(--booking-line))!important;
+  background:color-mix(in srgb,var(--booking-soft) 82%,var(--booking-surface))!important;
+  color:var(--booking-text)!important;
+  filter:none!important;
+  transform:translateY(-1px)!important;
+}
+.meeting-brand-icon,.success-calendar-actions .google-g-icon{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  flex:0 0 28px!important;
+  width:28px!important;
+  height:28px!important;
+  padding:5px!important;
+  border:1px solid color-mix(in srgb,var(--booking-line) 88%,#fff)!important;
+  border-radius:8px!important;
+  background:#fff!important;
+  box-sizing:border-box!important;
+  color:var(--booking-muted)!important;
+  font-size:9px!important;
+  font-weight:800!important;
+  line-height:1!important;
+}
+.meeting-brand-icon--zoom{flex-basis:38px!important;width:38px!important;padding:5px 6px!important}
+.meeting-brand-icon--zoom img{display:block!important;width:26px!important;height:auto!important;max-height:12px!important;object-fit:contain!important}
+.success-meeting-actions .meeting-link-label,.success-calendar-actions .calendar-link-label{
+  flex:1 1 auto!important;
+  color:var(--booking-text)!important;
+  font-size:12px!important;
+  font-weight:750!important;
+  line-height:1.25!important;
+  text-align:left!important;
+  white-space:nowrap!important;
+}
+.success-meeting-actions .meeting-link-arrow,.success-calendar-actions .calendar-link-arrow{display:none!important}
+.calendar-meeting-note{display:block;max-width:270px;margin:6px auto 0;color:var(--booking-muted);font-size:10px;line-height:1.4;text-align:center}
+@media(max-width:620px){.success-meeting-actions .meeting-link,.success-calendar-actions .calendar-link{width:min(100%,230px)!important}}

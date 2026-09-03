@@ -12,6 +12,23 @@ if (incomingToken) {
 const managementToken = sessionStorage.getItem(tokenKey) || '';
 let booking;
 let selectedTime = '';
+const ZOOM_LOGO_URL = 'https://media.zoom.com/images/assets/zoom-logo-2025.png/Zz04ZjU1ODA4OGM5NjUxMWYwYWQ3NDIyZTYxNWM4NmY4Yg%3D%3D';
+
+function renderMeetingBrandIcon(element, meeting) {
+  if (!element) return;
+  element.replaceChildren();
+  element.classList.toggle('meeting-brand-icon--zoom', meeting?.provider === 'zoom');
+  if (meeting?.provider === 'zoom') {
+    const image = document.createElement('img');
+    image.src = ZOOM_LOGO_URL;
+    image.alt = 'Zoom';
+    image.loading = 'lazy';
+    image.decoding = 'async';
+    element.append(image);
+    return;
+  }
+  element.textContent = String(meeting?.providerName || 'Online').slice(0, 2).toUpperCase();
+}
 
 async function api(path, body = {}) {
   const response = await fetch(`/api/public/bookings/${encodeURIComponent(bookingId)}${path}`, {
@@ -53,8 +70,12 @@ function render() {
     $('#meetingProvider').textContent = meeting.providerName || 'Online meeting';
     $('#meetingLabel').textContent = meeting.label || 'Join meeting';
     $('#meetingButton').href = meeting.url;
+    $('#meetingButton').setAttribute('aria-label', `${meeting.providerName || 'Online meeting'}: ${meeting.label || 'Join meeting'}`);
+    renderMeetingBrandIcon($('#meetingBrandIcon'), meeting);
   } else {
     $('#meetingButton').removeAttribute('href');
+    $('#meetingButton').removeAttribute('aria-label');
+    renderMeetingBrandIcon($('#meetingBrandIcon'), null);
   }
   $('#mainActions').classList.toggle('hidden', !active);
   $('#limitNotice').classList.toggle('hidden', !active);

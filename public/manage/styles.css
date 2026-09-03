@@ -19,3 +19,11 @@ body,.shell,.shell button,.shell input,.shell label,.shell p,.shell span,.shell 
 
 /* v0.8.8 — confirmed online meeting delivery */
 .meeting-card{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:-4px 0 18px;padding:14px 16px;border:1px solid #d7e5dc;border-radius:10px;background:#f5faf6}.meeting-copy{display:flex;min-width:0;flex-direction:column;gap:3px}.meeting-kicker{color:#64748b;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.meeting-copy strong{color:#1f2937;font-size:14px}.meeting-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;flex:0 0 auto;border:1px solid var(--brand);border-radius:9px;background:var(--brand);color:#fff;padding:10px 14px;text-decoration:none;font-size:13px;font-weight:700}.meeting-button:hover{filter:brightness(.96)}@media(max-width:560px){.meeting-card{align-items:stretch;flex-direction:column}.meeting-button{width:100%}}
+
+/* v0.8.9 — Zoom-branded compact join action */
+.meeting-button{gap:8px;padding:7px 11px;border-color:#d7e5dc;background:#fff;color:#1f2937;border-radius:999px;box-shadow:none}
+.meeting-button:hover{background:#f8fbf9;filter:none}
+.meeting-brand-icon{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;flex:0 0 28px;padding:5px;border:1px solid #dfe8e2;border-radius:8px;background:#fff;box-sizing:border-box;color:#64748b;font-size:9px;font-weight:800;line-height:1}
+.meeting-brand-icon--zoom{width:38px;flex-basis:38px;padding:5px 6px}
+.meeting-brand-icon--zoom img{display:block;width:26px;height:auto;max-height:12px;object-fit:contain}
+@media(max-width:560px){.meeting-button{width:100%;justify-content:center}}

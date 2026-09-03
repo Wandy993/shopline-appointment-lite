@@ -20,6 +20,23 @@ const bookingThemePresets = Object.freeze({
 });
 const bookingCornerRadius = Object.freeze({ soft: 14, rounded: 22, square_soft: 10 });
 let storefront = defaultStorefrontSettings;
+const ZOOM_LOGO_URL = 'https://media.zoom.com/images/assets/zoom-logo-2025.png/Zz04ZjU1ODA4OGM5NjUxMWYwYWQ3NDIyZTYxNWM4NmY4Yg%3D%3D';
+
+function renderMeetingBrandIcon(element, meeting) {
+  if (!element) return;
+  element.replaceChildren();
+  element.classList.toggle('meeting-brand-icon--zoom', meeting?.provider === 'zoom');
+  if (meeting?.provider === 'zoom') {
+    const image = document.createElement('img');
+    image.src = ZOOM_LOGO_URL;
+    image.alt = 'Zoom';
+    image.loading = 'lazy';
+    image.decoding = 'async';
+    element.append(image);
+    return;
+  }
+  element.textContent = String(meeting?.providerName || 'Online').slice(0, 2).toUpperCase();
+}
 
 function bookingThemeTokens(settings, { unified = true } = {}) {
   const appearance = settings.appearance || defaultStorefrontSettings.appearance;
@@ -277,7 +294,7 @@ function setupTimezonePicker() {
 
 const staffPresetClasses = new Set(['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose', 'nova']);
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
-function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="/assets/staff/${file}?v=0.8.8" alt="" loading="lazy" decoding="async">`;}
+function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="/assets/staff/${file}?v=0.8.9" alt="" loading="lazy" decoding="async">`;}
 
 function staffAvatarMarkup(item, className = '') {
   const avatar = item?.avatar || {};
@@ -706,17 +723,35 @@ $('#bookingForm').addEventListener('submit', async event => {
     const meetingActions = $('#successMeetingActions');
     const meetingLink = $('#joinMeeting');
     if (payload.booking.meeting?.url) {
-      $('#meetingProvider').textContent = payload.booking.meeting.providerName || 'Online meeting';
+      renderMeetingBrandIcon($('#meetingBrandIcon'), payload.booking.meeting);
       $('#meetingActionLabel').textContent = payload.booking.meeting.label || 'Join meeting';
       meetingLink.href = payload.booking.meeting.url;
+      meetingLink.setAttribute('aria-label', `${payload.booking.meeting.providerName || 'Online meeting'}: ${payload.booking.meeting.label || 'Join meeting'}`);
       meetingActions.classList.remove('hidden');
     } else {
+      renderMeetingBrandIcon($('#meetingBrandIcon'), null);
       meetingLink.removeAttribute('href');
+      meetingLink.removeAttribute('aria-label');
       meetingActions.classList.add('hidden');
     }
     $('#manageBooking').href = `/manage?booking=${encodeURIComponent(payload.booking.id)}#token=${encodeURIComponent(payload.booking.managementToken)}`;
     const googleCalendar = $('#addGoogleCalendar');
-    if (payload.booking.calendar?.google) { googleCalendar.href = payload.booking.calendar.google; googleCalendar.classList.remove('hidden'); } else googleCalendar.classList.add('hidden');
+    const calendarMeetingNote = $('#calendarMeetingNote');
+    if (payload.booking.calendar?.google) {
+      googleCalendar.href = payload.booking.calendar.google;
+      googleCalendar.classList.remove('hidden');
+      if (payload.booking.meeting?.url) {
+        calendarMeetingNote.textContent = `${payload.booking.meeting.providerName || 'Meeting'} link included in the calendar event.`;
+        calendarMeetingNote.classList.remove('hidden');
+      } else {
+        calendarMeetingNote.textContent = '';
+        calendarMeetingNote.classList.add('hidden');
+      }
+    } else {
+      googleCalendar.classList.add('hidden');
+      calendarMeetingNote.textContent = '';
+      calendarMeetingNote.classList.add('hidden');
+    }
     $('#successView').classList.remove('hidden');
   } catch (error) {
     errorBox.textContent = error.status === 409 ? 'One of those selections was just booked. Please choose again.' : error.message;
