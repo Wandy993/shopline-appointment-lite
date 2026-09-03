@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = '0.8.6';
+  const VERSION = '0.8.7';
   const API_BASE = 'https://appointment.toolkit.fans';
   const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;' }[c]));
   const clean = value => {

@@ -1,4 +1,4 @@
-## v0.8.6 — Storefront Booking State Polish
+## v0.8.7 — Storefront Booking State Polish
 
 - Staff selector dialogs now shrink to the real team-list height instead of inheriting a viewport-sized blank shell.
 - Google Calendar is a compact secondary success action across Theme App Block and hosted booking surfaces.

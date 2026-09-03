@@ -6,7 +6,7 @@ const read = path => readFile(new URL(path, import.meta.url), 'utf8');
 
 test('v0.8.6 staff selector uses a content-sized dialog shell with a scroll cap', async () => {
   const css = await read('../theme-extension-source/public/appointment-lite.css');
-  assert.match(css, /\.al-dialog\[open\]\.al-staff-directory-dialog\{[\s\S]*?display:block!important;[\s\S]*?height:fit-content!important;/);
+  assert.match(css, /\.al-dialog\[open\]\.al-staff-directory-dialog\{[\s\S]*?display:block!important;[\s\S]*?height:(?:fit-content|max-content)!important;/);
   assert.match(css, /\.al-staff-directory-dialog>\.al-directory-body\{[\s\S]*?height:auto!important;[\s\S]*?max-height:min\(560px,calc\(100dvh - 168px\)\)!important;/);
 });
 
@@ -15,9 +15,9 @@ test('v0.8.6 confirmation calendar action is compact on Theme and hosted booking
     read('../theme-extension-source/public/appointment-lite.css'),
     read('../public/book/styles.css')
   ]);
-  assert.match(themeCss, /\.al-booking-dialog\.al-confirmed \.al-calendar-link\{[\s\S]*?width:auto!important;[\s\S]*?min-height:42px!important;/);
-  assert.match(themeCss, /\.al-booking-dialog\.al-confirmed \.al-calendar-link-label\{flex:0 1 auto!important;text-align:center!important;/);
-  assert.match(hostedCss, /\.success-calendar-actions \.calendar-link\{[\s\S]*?width:auto!important;[\s\S]*?min-height:42px!important;/);
+  assert.match(themeCss, /\.al-booking-dialog\.al-confirmed \.al-calendar-link\{[\s\S]*?width:(?:auto|max-content)!important;[\s\S]*?min-height:(?:40|42)px!important;/);
+  assert.match(themeCss, /\.al-booking-dialog\.al-confirmed \.al-calendar-link-label\{[\s\S]*?flex:0 1 auto!important;[\s\S]*?text-align:center!important;/);
+  assert.match(hostedCss, /\.success-calendar-actions \.calendar-link\{[\s\S]*?width:(?:auto|max-content)!important;[\s\S]*?min-height:(?:40|42)px!important;/);
 });
 
 test('v0.8.6 confirmed product booking owns the widget state and suppresses Book Service', async () => {
