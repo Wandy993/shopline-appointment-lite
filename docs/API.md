@@ -23,8 +23,8 @@ Requires the signed `al_session` HTTP-only cookie. Mutations also require `X-CSR
 - `PUT /api/admin/rules/:id`
 - `DELETE /api/admin/rules/:id`
 - `GET /api/admin/staff` — team members plus appointment services currently assigned to each member
-- `POST /api/admin/staff` — create a staff member with weekly hours and availability exceptions
-- `PUT /api/admin/staff/:id` — edit contact details, status, and availability; deactivation is blocked while active bookings or service assignments remain
+- `POST /api/admin/staff` — create a staff member with weekly hours, availability exceptions, and optional public profile fields including merchant-entered `supportedServices[]`
+- `PUT /api/admin/staff/:id` — edit contact details, public profile/display service labels, status, and availability; deactivation is blocked while active bookings or service assignments remain
 - `DELETE /api/admin/staff/:id` — delete only after confirmed bookings are resolved and the member is removed from assigned services
 - `GET /api/admin/bookings?status=pending_payment|confirmed|cancelled|completed|no_show|payment_expired|payment_conflict&ruleId=...&staffId=...&from=YYYY-MM-DD&to=YYYY-MM-DD` — max 1000 records; the admin UI also applies client-side text search and CSV export
 - `PUT /api/admin/bookings/:id` — merchant date/time/location/staff edit for minute/hour bookings; managed staff reassignment is conflict-checked before the old assignment is released
@@ -60,6 +60,12 @@ Requires the signed `al_session` HTTP-only cookie. Mutations also require `X-CSR
 - `GET /api/public/service?ruleId=RULE_ID&access=PRIVATE_TOKEN` — private purchase-first service bootstrap; the token is mandatory for `product_post_purchase`
 - `GET /api/public/availability?ruleId=RULE_ID&date=YYYY-MM-DD&access=PRIVATE_TOKEN` — private order-linked availability
 - `POST /api/public/post-purchase-bookings` — consumes one eligible order appointment and creates a normal confirmed Booking; accepts `entitlementToken` plus the standard booking selection payload
+
+### Public staff directory
+
+- `GET /api/public/staff-directory?ruleId=RULE_ID&placement=staff_directory`
+- Product-template Staff Directory blocks may identify the service with `shopId=STORE_ID&productId=PRODUCT_ID` instead of `ruleId`.
+- The response exposes only public profile data. `supportedServices[]` contains merchant-entered display labels for the storefront list; it does not change the service assignment or availability engine. Staff email and phone are never returned by this endpoint.
 
 Paid bookings are finalized asynchronously by the raw-body SHOPLINE webhook endpoint `POST /webhooks/shopline`, which handles `orders/create`, `order_transactions/create`, and `orders/cancelled`. The same webhook endpoint activates/revokes post-purchase scheduling entitlements. The endpoint verifies SHOPLINE HMAC headers and stores webhook IDs for idempotency.
 

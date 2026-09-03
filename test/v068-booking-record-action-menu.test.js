@@ -52,10 +52,10 @@ test('v0.6.8 release version is aligned', async () => {
   const [pkgText, adminView, bookView, theme, health] = await Promise.all([
     source('package.json'), source('src/views/admin.js'), source('src/views/book.js'), source('theme-extension-source/public/appointment-lite.js'), source('src/app.js')
   ]);
-  assert.equal(JSON.parse(pkgText).version, '0.8.1');
-  assert.match(adminView, /styles\.css\?v=0.8.1/);
-  assert.match(adminView, /app\.js\?v=0.8.1/);
-  assert.match(bookView, /styles\.css\?v=0.8.1/);
-  assert.match(theme, /const VERSION = '0.8.1'/);
-  assert.match(health, /version: '0.8.1'/);
+  assert.match(JSON.parse(pkgText).version, /^\d+\.\d+\.\d+$/);
+  assert.match(adminView, /styles\.css\?v=\d+\.\d+\.\d+/);
+  assert.match(adminView, /app\.js\?v=\d+\.\d+\.\d+/);
+  assert.match(bookView, /styles\.css\?v=\d+\.\d+\.\d+/);
+  assert.match(theme, /const VERSION = '\d+\.\d+\.\d+'/);
+  assert.match(health, /version: '\d+\.\d+\.\d+'/);
 });

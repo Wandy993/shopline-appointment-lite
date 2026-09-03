@@ -225,7 +225,7 @@ function setupTimezonePicker() {
 
 const staffPresetClasses = new Set(['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose', 'nova']);
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
-function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="/assets/staff/${file}?v=0.8.1" alt="" loading="lazy" decoding="async">`;}
+function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="/assets/staff/${file}?v=0.8.3" alt="" loading="lazy" decoding="async">`;}
 
 function staffAvatarMarkup(item, className = '') {
   const avatar = item?.avatar || {};
@@ -238,18 +238,39 @@ function staffAvatarMarkup(item, className = '') {
   return `<span class="staff-avatar customer preset-${preset} ${className}">${staffPresetImage(preset)}</span>`;
 }
 
+function publicProfileValue(value = '') {
+  const normalized = String(value || '').trim();
+  if (!normalized || /^(?:select|choose)\s+(?:a\s+)?(?:state|region|location|option)(?:\.\.\.)?$/i.test(normalized)) return '';
+  return normalized;
+}
+function staffProfileCaption(item = {}) {
+  return [publicProfileValue(item.roleTitle), publicProfileValue(item.expertise), publicProfileValue(item.region)].filter(Boolean).slice(0, 2).join(' · ') || 'View availability';
+}
+function renderSelectedStaffProfile(item = null) {
+  const root = $('#selectedStaffProfile');
+  if (!root) return;
+  if (!item) { root.classList.add('hidden'); root.innerHTML = ''; return; }
+  const role = publicProfileValue(item.roleTitle);
+  const region = publicProfileValue(item.region);
+  const expertise = publicProfileValue(item.expertise);
+  const bio = publicProfileValue(item.bio);
+  const meta = [role, region].filter(Boolean).join(' · ');
+  root.innerHTML = `${meta ? `<strong>${escapeHtml(meta)}</strong>` : ''}${expertise ? `<span>${escapeHtml(expertise)}</span>` : ''}${bio ? `<p>${escapeHtml(bio)}</p>` : ''}`;
+  root.classList.toggle('hidden', !(meta || expertise || bio));
+}
+
 function setStaffPickerValue(item = null) {
   const value = $('#staffPickerValue');
   if (!value) return;
   value.innerHTML = item
-    ? `${staffAvatarMarkup(item, 'small')}<span><strong>${escapeHtml(item.name)}</strong><small>Selected staff member</small></span>`
+    ? `${staffAvatarMarkup(item, 'small')}<span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(staffProfileCaption(item))}</small></span>`
     : `<span class="staff-avatar customer small initials">?</span><span><strong>Choose staff</strong><small>Select a team member</small></span>`;
 }
 
 function renderStaffPicker(options = []) {
   const menu = $('#staffPickerMenu');
   if (!menu) return;
-  menu.innerHTML = options.length ? options.map(item => `<button type="button" class="staff-picker-option" role="option" data-staff-id="${escapeHtml(item.id)}">${staffAvatarMarkup(item, 'small')}<span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.expertise || item.roleTitle || item.region || "View this staff member's availability")}</small></span><i>✓</i></button>`).join('') : '<div class="staff-picker-empty">No staff available for this service.</div>';
+  menu.innerHTML = options.length ? options.map(item => `<button type="button" class="staff-picker-option" role="option" data-staff-id="${escapeHtml(item.id)}">${staffAvatarMarkup(item, 'small')}<span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(staffProfileCaption(item))}</small></span><i>✓</i></button>`).join('') : '<div class="staff-picker-empty">No staff available for this service.</div>';
   menu.querySelectorAll('[data-staff-id]').forEach(button => button.addEventListener('click', async () => {
     const item = options.find(option => String(option.id) === button.dataset.staffId);
     selectedStaffId = item?.id || '';
@@ -259,6 +280,7 @@ function renderStaffPicker(options = []) {
     selectedOccurrences = [];
     renderSelectedSessions();
     setStaffPickerValue(item || null);
+    renderSelectedStaffProfile(item || null);
     menu.classList.add('hidden');
     $('#staffPickerButton').setAttribute('aria-expanded', 'false');
     menu.querySelectorAll('[data-staff-id]').forEach(option => option.classList.toggle('selected', option.dataset.staffId === selectedStaffId));
@@ -467,7 +489,9 @@ function renderService(payload) {
   staffField.classList.toggle('hidden', staffMode !== 'customer_choice');
   selectedStaffId = staffMode === 'customer_choice' && staffOptions.some(item => String(item.id) === String(preselectedStaffId)) ? String(preselectedStaffId) : '';
   staffSelect.value = selectedStaffId;
-  setStaffPickerValue(staffOptions.find(item => String(item.id) === String(selectedStaffId)) || null);
+  const initiallySelectedStaff = staffOptions.find(item => String(item.id) === String(selectedStaffId)) || null;
+  setStaffPickerValue(initiallySelectedStaff);
+  renderSelectedStaffProfile(initiallySelectedStaff);
   renderStaffPicker(staffOptions);
   $('#staffPickerMenu')?.querySelectorAll('[data-staff-id]').forEach(option => option.classList.toggle('selected', option.dataset.staffId === selectedStaffId));
   $('#timeLabel').textContent = mode === 'all_day' ? 'Availability' : mode === 'multi_slot' ? 'Available sessions' : 'Available time slots';

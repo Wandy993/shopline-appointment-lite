@@ -7,6 +7,26 @@ const read = rel => fs.readFileSync(path.join(root, rel), 'utf8');
 const failures = [];
 const fail = message => failures.push(message);
 
+const packageJson = JSON.parse(read('package.json'));
+const packageLock = JSON.parse(read('package-lock.json'));
+const lockRoot = packageLock.packages?.[''];
+if (!lockRoot) {
+  fail('package-lock.json must contain the root package entry');
+} else {
+  if (packageLock.version !== packageJson.version || lockRoot.version !== packageJson.version) {
+    fail(`package-lock version must match package.json ${packageJson.version}`);
+  }
+  const dependencyGroups = ['dependencies', 'devDependencies', 'optionalDependencies'];
+  for (const group of dependencyGroups) {
+    const expected = packageJson[group] || {};
+    const locked = lockRoot[group] || {};
+    for (const [name, spec] of Object.entries(expected)) {
+      if (locked[name] !== spec) fail(`package-lock root ${group}.${name} must equal package.json spec ${spec}`);
+      if (!packageLock.packages?.[`node_modules/${name}`]) fail(`package-lock is missing node_modules/${name}`);
+    }
+  }
+}
+
 const app = read('src/app.js');
 const admin = read('src/views/admin.js');
 const book = read('src/views/book.js');
@@ -43,6 +63,15 @@ for (const rel of themeCssFiles) {
 for (const rel of themeBlockFiles) {
   const block = read(rel);
   if (!/public\/appointment-lite-fonts\.css/.test(block)) fail(`${rel} must load public/appointment-lite-fonts.css before its customer UI stylesheet`);
+  const schemaText = block.match(/\{\{#schema\}\}\s*([\s\S]*?)\s*\{\{\/schema\}\}/)?.[1];
+  try {
+    const schema = JSON.parse(schemaText || '{}');
+    const styles = Array.isArray(schema.stylesheet) ? schema.stylesheet : [];
+    if (!styles.includes('public/appointment-lite-fonts.css')) fail(`${rel} schema must register public/appointment-lite-fonts.css`);
+    if (styles.some(value => !String(value).endsWith('.css'))) fail(`${rel} stylesheet entries must all be CSS files`);
+  } catch {
+    fail(`${rel} schema must be valid JSON`);
+  }
 }
 if (!/data:font\/woff2;base64,/.test(themeFontCss) || !/font-family:"Jost"/.test(themeFontCss) || !/font-family:"Poppins"/.test(themeFontCss)) {
   fail(`${themeFontCssRel} must contain generated embedded Jost/Poppins data-URL font faces`);

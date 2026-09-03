@@ -10,3 +10,8 @@
 /* v0.8.1.4 customer typography system */
 .heading h1,.card>h1,.card h2,.center h1{font-family:"Jost",Arial,Helvetica,sans-serif;font-weight:600}
 .shell,.shell button,.shell input{font-family:"Poppins",Arial,Helvetica,sans-serif}
+
+
+/* v0.8.3 — Reliable customer typography */
+:root{--al-font-heading:"Jost","Poppins","PingFang SC","Hiragino Sans GB","Microsoft YaHei",Arial,Helvetica,sans-serif;--al-font-body:"Poppins","PingFang SC","Hiragino Sans GB","Microsoft YaHei",Arial,Helvetica,sans-serif}
+body,.shell,.shell button,.shell input,.shell label,.shell p,.shell span,.shell strong{font-family:var(--al-font-body)!important}.heading h1,.card>h1,.card h2,.center h1{font-family:var(--al-font-heading)!important;font-weight:600!important;letter-spacing:-.02em}

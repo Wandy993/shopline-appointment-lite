@@ -63,3 +63,10 @@
 /* v0.8.1.4 customer typography system */
 .service-head h1,.success-state h1,.empty-state h1{font-family:"Jost",Arial,Helvetica,sans-serif;font-weight:600}
 .booking-shell,.booking-shell button,.booking-shell input,.booking-shell textarea,.booking-shell select,.booking-shell option{font-family:"Poppins",Arial,Helvetica,sans-serif}
+
+
+/* v0.8.3 — Reliable customer typography + selected staff profile */
+:root{--al-font-heading:"Jost","Poppins","PingFang SC","Hiragino Sans GB","Microsoft YaHei",Arial,Helvetica,sans-serif;--al-font-body:"Poppins","PingFang SC","Hiragino Sans GB","Microsoft YaHei",Arial,Helvetica,sans-serif}
+body,.booking-shell,.booking-shell button,.booking-shell input,.booking-shell textarea,.booking-shell select,.booking-shell option,.booking-shell label,.booking-shell p,.booking-shell span,.booking-shell strong{font-family:var(--al-font-body)!important}
+.service-head h1,.success-state h1,.empty-state h1{font-family:var(--al-font-heading)!important;font-weight:600!important;letter-spacing:-.025em}
+.selected-staff-profile{margin-top:8px;padding:10px 12px;border:1px solid #e2e9f3;border-radius:10px;background:#f8faff;color:#5f7088}.selected-staff-profile strong,.selected-staff-profile span{display:block}.selected-staff-profile strong{color:#344861;font-size:11px;font-weight:600}.selected-staff-profile span{margin-top:3px;color:#3f6598;font-size:11px;font-weight:500}.selected-staff-profile p{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;margin:6px 0 0;color:#68798e;font-size:11px;line-height:1.5}

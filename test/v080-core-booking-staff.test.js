@@ -17,8 +17,8 @@ test('online meeting only accepts https links', () => {
 });
 
 test('staff public profile fields normalize without publishing contact fields', () => {
-  const result=validateStaffInput({name:'Taylor',email:'private@example.com',phone:'+1',roleTitle:'Aesthetician',region:'West',expertise:'Skincare',bio:'Specialist',publicProfile:true,weeklyAvailability:[{weekday:1,enabled:true,windows:[{start:'09:00',end:'17:00'}]}]});
-  assert.deepEqual(result.errors,[]); assert.equal(result.value.publicProfile,true); assert.equal(result.value.roleTitle,'Aesthetician');
+  const result=validateStaffInput({name:'Taylor',email:'private@example.com',phone:'+1',roleTitle:'Aesthetician',region:'West',expertise:'Skincare',supportedServices:['Hair Color','Haircut'],bio:'Specialist',publicProfile:true,weeklyAvailability:[{weekday:1,enabled:true,windows:[{start:'09:00',end:'17:00'}]}]});
+  assert.deepEqual(result.errors,[]); assert.equal(result.value.publicProfile,true); assert.equal(result.value.roleTitle,'Aesthetician'); assert.deepEqual(result.value.supportedServices,['Hair Color','Haircut']);
 });
 
 test('page booking and staff directory blocks are scoped to regular pages', async()=>{

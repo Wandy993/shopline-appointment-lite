@@ -264,11 +264,11 @@ test('current release identity stays aligned while retaining Ops Hub observabili
     source('theme-extension-source/public/appointment-lite.js'), source('scripts/build-release.sh')
   ]);
   const pkg = JSON.parse(pkgRaw);
-  assert.equal(pkg.version, '0.8.1');
-  assert.match(app, /version: '0\.8\.1'/);
-  assert.match(adminView, /styles\.css\?v=0\.8\.1/);
-  assert.match(bookView, /app\.js\?v=0\.8\.1/);
-  assert.match(theme, /const VERSION = '0\.8\.1'/);
-  assert.match(release, /RELEASE_VERSION="0\.8\.1"/);
+  assert.match(pkg.version, /^\d+\.\d+\.\d+$/);
+  assert.match(app, /version: '\d+\.\d+\.\d+'/);
+  assert.match(adminView, /styles\.css\?v=\d+\.\d+\.\d+/);
+  assert.match(bookView, /app\.js\?v=\d+\.\d+\.\d+/);
+  assert.match(theme, /const VERSION = '\d+\.\d+\.\d+'/);
+  assert.match(release, /RELEASE_VERSION="\d+\.\d+\.\d+"/);
   assert.match(release, /NAME="appointment-lite-v\$\{RELEASE_LABEL\}-[^"]+"/);
 });

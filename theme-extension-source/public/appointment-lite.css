@@ -254,3 +254,55 @@ body.al-dialog-open{position:fixed!important;top:var(--al-dialog-scroll-y,0)!imp
 /* v0.8.1.4 customer typography system */
 .al-widget,.al-widget button,.al-dialog,.al-dialog button,.al-dialog input,.al-dialog textarea,.al-dialog select{font-family:"Poppins",Arial,Helvetica,sans-serif}
 .al-dialog .al-head h2,.al-dialog .al-success h3,.al-dialog .al-confirm-copy strong{font-family:"Jost",Arial,Helvetica,sans-serif;font-weight:600}
+
+
+/* v0.8.2 — Staff Directory Redesign + Reliable Customer Typography */
+.al-widget,.al-dialog{--al-font-heading:"Jost","Poppins","PingFang SC","Hiragino Sans GB","Microsoft YaHei",Arial,Helvetica,sans-serif;--al-font-body:"Poppins","PingFang SC","Hiragino Sans GB","Microsoft YaHei",Arial,Helvetica,sans-serif;font-family:var(--al-font-body)!important;font-synthesis:none}
+.al-widget,.al-widget button,.al-widget input,.al-widget textarea,.al-widget select,.al-dialog,.al-dialog button,.al-dialog input,.al-dialog textarea,.al-dialog select,.al-dialog label,.al-dialog p,.al-dialog span,.al-dialog strong{font-family:var(--al-font-body)!important}
+.al-dialog .al-head h2,.al-dialog .al-success h3,.al-dialog .al-confirm-copy strong{font-family:var(--al-font-heading)!important;font-weight:600!important;letter-spacing:-.025em}
+.al-staff-directory-dialog{width:min(820px,calc(100vw - 40px));max-width:calc(100vw - 40px);border-radius:22px;background:#fff;box-shadow:0 28px 80px rgba(21,37,63,.24)}
+.al-staff-directory-dialog .al-directory-head{padding:26px 28px 22px;border-bottom:1px solid #e9eef5;background:#fff}
+.al-staff-directory-dialog .al-directory-head h2{margin:5px 0 5px;font-size:27px;line-height:1.15;color:#17243a}
+.al-staff-directory-dialog .al-directory-head p{max-width:620px;margin:0;color:#66758c;font-size:13px;line-height:1.55}
+.al-staff-directory-dialog .al-directory-head p strong{color:#344762;font-weight:600}
+.al-staff-directory-dialog .al-close{width:36px;height:36px;border-radius:12px;background:#f5f7fa;color:#53627a;font-size:20px}
+.al-directory-kicker{display:block;margin-bottom:6px;color:#5576a7;font-size:10px;font-weight:700;letter-spacing:.13em;text-transform:uppercase}
+.al-directory-body{padding:20px 24px 26px;background:#f7f9fc}
+.al-directory-intro{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:0 0 14px;padding:0 2px;color:#697991}
+.al-directory-intro strong{color:#31435e;font-size:13px;font-weight:600}.al-directory-intro span{font-size:12px}
+.al-directory-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+.al-directory-card{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"profile button";align-items:center;gap:18px;min-width:0;padding:18px 18px 18px 20px;border:1px solid #dce5f1;border-radius:16px;background:#fff;box-shadow:0 4px 16px rgba(35,55,86,.035);transition:border-color .16s ease,box-shadow .16s ease,transform .16s ease}
+.al-directory-card:hover{border-color:#bfd0e8;box-shadow:0 10px 28px rgba(35,55,86,.07);transform:translateY(-1px)}
+.al-directory-profile{grid-area:profile;display:grid;grid-template-columns:72px minmax(0,1fr);gap:16px;min-width:0;align-items:start}
+.al-directory-avatar{width:72px;height:72px;flex-basis:72px;border-radius:16px;box-shadow:0 0 0 1px rgba(26,48,80,.06)}
+.al-directory-copy{min-width:0}.al-directory-name-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.al-directory-copy h3{margin:0;color:#1c2a41;font-size:17px;font-weight:600;line-height:1.3}
+.al-directory-meta{display:flex;flex-wrap:wrap;gap:7px;margin-top:5px}.al-directory-role,.al-directory-region{display:inline-flex;align-items:center;color:#687991;font-size:12px;line-height:1.3}.al-directory-role+.al-directory-region::before{content:"•";margin-right:7px;color:#a4afbe}
+.al-directory-service-pill{flex:0 0 auto;border:1px solid #d9e8df;border-radius:999px;background:#f2faf5;color:#4c765f;padding:5px 8px;font-size:10px;font-weight:600;white-space:nowrap}
+.al-directory-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px}.al-directory-tags span{display:inline-flex;align-items:center;border:1px solid #d9e5f7;border-radius:999px;background:#f5f8fd;color:#3f628f;padding:5px 8px;font-size:11px;font-weight:500;line-height:1}
+.al-directory-bio{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;margin:10px 0 0;color:#607087;font-size:12.5px;line-height:1.55}
+.al-directory-book{grid-area:button;display:inline-flex;align-items:center;justify-content:center;gap:12px;width:auto;min-width:178px;min-height:42px;padding:0 15px;border:1px solid color-mix(in srgb,var(--al-accent,#2f6fed) 30%,#dce5f1);border-radius:11px;background:#fff;color:var(--al-accent,#2f6fed);font-size:12.5px;font-weight:600;white-space:nowrap;box-shadow:none}
+.al-directory-book:hover{background:color-mix(in srgb,var(--al-accent,#2f6fed) 7%,#fff);filter:none}.al-directory-book span:last-child{font-size:16px;line-height:1}
+.al-staff-value small,.al-staff-option small{line-height:1.35}.al-staff-option small{max-width:330px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:700px){.al-staff-directory-dialog{width:calc(100vw - 16px);max-width:calc(100vw - 16px);max-height:calc(100dvh - 16px);border-radius:17px}.al-staff-directory-dialog .al-directory-head{padding:20px 18px 17px}.al-staff-directory-dialog .al-directory-head h2{font-size:23px}.al-directory-body{padding:16px}.al-directory-intro{align-items:flex-start;flex-direction:column;gap:3px}.al-directory-card{grid-template-columns:minmax(0,1fr);grid-template-areas:"profile" "button";padding:15px}.al-directory-profile{grid-template-columns:62px minmax(0,1fr);gap:13px}.al-directory-avatar{width:62px;height:62px;flex-basis:62px;border-radius:14px}.al-directory-name-row{display:block}.al-directory-service-pill{display:inline-flex;margin-top:8px}.al-directory-book{width:100%;min-width:0}.al-directory-bio{-webkit-line-clamp:4}}
+
+/* v0.8.3 — Staff service list selector */
+.al-staff-directory-dialog{width:min(940px,calc(100vw - 40px));max-width:calc(100vw - 40px);max-height:min(760px,calc(100dvh - 32px));border-radius:18px;background:#fff;box-shadow:0 28px 80px rgba(21,37,63,.24)}
+.al-staff-directory-dialog .al-directory-head{padding:24px 28px 20px;border-bottom:1px solid #edf1f5;background:#fff}
+.al-staff-directory-dialog .al-directory-head h2{margin:4px 0 5px;font-size:25px;line-height:1.2;color:#1d2939}
+.al-staff-directory-dialog .al-directory-head p{max-width:680px;margin:0;color:#667085;font-size:13px;line-height:1.55}
+.al-directory-body{max-height:min(610px,calc(100dvh - 150px));padding:10px 18px 18px;overflow:auto;background:#f8fafc}
+.al-directory-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:0;border:1px solid #edf1f5;border-radius:14px;overflow:hidden;background:#fff}
+.al-directory-card{display:grid;grid-template-columns:minmax(210px,.8fr) minmax(280px,1.25fr) 90px;grid-template-areas:"person services button";align-items:start;gap:22px;min-width:0;padding:20px 22px;border:0;border-bottom:1px solid #edf1f5;border-radius:0;background:#fff;box-shadow:none;transition:background .16s ease}
+.al-directory-card:last-child{border-bottom:0}
+.al-directory-card:hover{border-color:#edf1f5;background:#fbfcfe;box-shadow:none;transform:none}
+.al-directory-person{grid-area:person;display:flex;align-items:center;gap:14px;min-width:0}
+.al-directory-avatar{width:64px;height:64px;flex:0 0 64px;border-radius:50%;box-shadow:0 0 0 1px rgba(26,48,80,.07);overflow:hidden}
+.al-directory-person-copy{min-width:0}.al-directory-person-copy h3{margin:0;color:#344054;font-size:15px;font-weight:600;line-height:1.3}.al-directory-person-copy p{margin:4px 0 0;color:#98a2b3;font-size:11px;line-height:1.4}
+.al-directory-services{grid-area:services;min-width:0;padding-top:2px}.al-directory-services>strong{display:block;margin-bottom:9px;color:#667085;font-size:10px;font-weight:600;line-height:1.2}
+.al-directory-services-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px 18px;margin:0;padding:0;list-style:none}.al-directory-services-list li{display:flex;align-items:flex-start;gap:6px;min-width:0;color:#98a2b3;font-size:10.5px;line-height:1.35}.al-directory-services-list li>span:last-child{overflow-wrap:anywhere}
+.al-directory-check{display:inline-flex;align-items:center;justify-content:center;flex:0 0 10px;width:10px;height:10px;margin-top:1px;border-radius:50%;background:#ecfdf3;color:#6fcf97;font-size:7px;font-weight:700;line-height:1}
+.al-directory-services-empty{display:block;color:#b0b8c4;font-size:10.5px;line-height:1.4}
+.al-directory-book{grid-area:button;align-self:start;justify-self:end;display:inline-flex;align-items:center;justify-content:flex-end;gap:7px;width:auto;min-width:0;min-height:28px;padding:0;border:0;border-radius:0;background:transparent;color:#667085;font-size:9px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;box-shadow:none}
+.al-directory-book:hover{background:transparent;color:var(--al-accent,#2f6fed);filter:none}.al-directory-book span:last-child{font-size:15px;font-weight:400;line-height:1}
+@media(max-width:760px){.al-staff-directory-dialog{width:calc(100vw - 16px);max-width:calc(100vw - 16px);max-height:calc(100dvh - 16px);border-radius:16px}.al-staff-directory-dialog .al-directory-head{padding:19px 18px 16px}.al-staff-directory-dialog .al-directory-head h2{font-size:22px}.al-directory-body{max-height:calc(100dvh - 128px);padding:8px}.al-directory-grid{border-radius:12px}.al-directory-card{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"person button" "services services";gap:14px;padding:16px}.al-directory-avatar{width:58px;height:58px;flex-basis:58px}.al-directory-services{padding:0 0 0 72px}.al-directory-services-list{grid-template-columns:minmax(0,1fr);gap:6px}.al-directory-book{align-self:center}.al-directory-person-copy h3{font-size:14px}}
+@media(max-width:440px){.al-directory-services{padding-left:0}.al-directory-card{grid-template-columns:minmax(0,1fr) auto}.al-directory-services-list{grid-template-columns:repeat(2,minmax(0,1fr))}}

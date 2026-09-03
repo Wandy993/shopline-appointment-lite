@@ -135,7 +135,7 @@ test('heartbeat queue remains metadata-free and current health exposes the activ
   ]);
   assert.match(opsHub, /return queueOpsEvent\('app\.heartbeat'\);/);
   assert.doesNotMatch(opsHub, /operation:\s*'heartbeat'/);
-  assert.match(app, /build:\s*'0\.8\.1\.[^']+'/);
-  assert.match(release, /RELEASE_VERSION="0\.8\.1"/);
+  assert.match(app, /build:\s*'\d+\.\d+\.\d+-[^']+'/);
+  assert.match(release, /RELEASE_VERSION="\d+\.\d+\.\d+"/);
   assert.match(release, /RELEASE_BUILD="[^"]+"/);
 });

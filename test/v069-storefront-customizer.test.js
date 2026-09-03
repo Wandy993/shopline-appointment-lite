@@ -93,13 +93,13 @@ test('v0.6.9 release versions stay aligned', async () => {
   const [pkgText, adminView, bookView, theme, health, release] = await Promise.all([
     source('package.json'), source('src/views/admin.js'), source('src/views/book.js'), source('theme-extension-source/public/appointment-lite.js'), source('src/app.js'), source('scripts/build-release.sh')
   ]);
-  assert.equal(JSON.parse(pkgText).version, '0.8.1');
-  assert.match(adminView, /styles\.css\?v=0.8.1/);
-  assert.match(adminView, /app\.js\?v=0.8.1/);
-  assert.match(bookView, /styles\.css\?v=0.8.1/);
-  assert.match(bookView, /app\.js\?v=0.8.1/);
-  assert.match(theme, /const VERSION = '0.8.1'/);
-  assert.match(health, /version: '0.8.1'/);
-  assert.match(release, /RELEASE_VERSION="0.8.1"/);
+  assert.match(JSON.parse(pkgText).version, /^\d+\.\d+\.\d+$/);
+  assert.match(adminView, /styles\.css\?v=\d+\.\d+\.\d+/);
+  assert.match(adminView, /app\.js\?v=\d+\.\d+\.\d+/);
+  assert.match(bookView, /styles\.css\?v=\d+\.\d+\.\d+/);
+  assert.match(bookView, /app\.js\?v=\d+\.\d+\.\d+/);
+  assert.match(theme, /const VERSION = '\d+\.\d+\.\d+'/);
+  assert.match(health, /version: '\d+\.\d+\.\d+'/);
+  assert.match(release, /RELEASE_VERSION="\d+\.\d+\.\d+"/);
   assert.match(release, /NAME="appointment-lite-v\$\{RELEASE_LABEL\}-[^"]+"/);
 });

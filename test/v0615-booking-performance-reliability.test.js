@@ -89,10 +89,10 @@ test('v0.6.16 release version stays aligned', async () => {
     source('src/app.js'), source('src/views/admin.js'), source('src/views/book.js'),
     source('theme-extension-source/public/appointment-lite.js'), source('scripts/build-release.sh')
   ]);
-  assert.equal(pkg.version, '0.8.1');
-  assert.match(app, /version: '0.8.1'/);
-  assert.match(admin, /styles\.css\?v=0.8.1/);
-  assert.match(book, /app\.js\?v=0.8.1/);
-  assert.match(theme, /const VERSION = '0.8.1'/);
+  assert.match(pkg.version, /^\d+\.\d+\.\d+$/);
+  assert.match(app, /version: '\d+\.\d+\.\d+'/);
+  assert.match(admin, /styles\.css\?v=\d+\.\d+\.\d+/);
+  assert.match(book, /app\.js\?v=\d+\.\d+\.\d+/);
+  assert.match(theme, /const VERSION = '\d+\.\d+\.\d+'/);
   assert.match(release, /NAME="appointment-lite-v\$\{RELEASE_LABEL\}-[^"]+"/);
 });

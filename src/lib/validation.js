@@ -333,6 +333,9 @@ export function validateStaffInput(body) {
   const roleTitle = text(body.roleTitle, 120);
   const region = text(body.region, 120);
   const expertise = text(body.expertise, 180);
+  const supportedServices = [...new Set((Array.isArray(body.supportedServices) ? body.supportedServices : String(body.supportedServices || '').split(/[\n,;]+/))
+    .map(item => text(item, 120))
+    .filter(Boolean))].slice(0, 12);
   const bio = text(body.bio, 800);
   const publicProfile = body.publicProfile === true;
   const status = body.status === 'inactive' ? 'inactive' : 'active';
@@ -376,7 +379,7 @@ export function validateStaffInput(body) {
   }
   if (!weeklyAvailability.some(day => day.enabled) && !availabilityExceptions.some(item => !item.closed)) errors.push('Enable at least one staff workday or add an open exception.');
 
-  return { errors: [...new Set(errors)], value: { name, email, phone, roleTitle, region, expertise, bio, publicProfile, avatar, notifications, status, weeklyAvailability, availabilityExceptions } };
+  return { errors: [...new Set(errors)], value: { name, email, phone, roleTitle, region, expertise, supportedServices, bio, publicProfile, avatar, notifications, status, weeklyAvailability, availabilityExceptions } };
 }
 
 export function validateBookingStatus(value) {

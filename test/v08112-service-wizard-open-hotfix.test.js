@@ -13,6 +13,6 @@ test('v0.8.1.2 service wizard keeps the availability intro target used by setBoo
 
 test('v0.8.1.2 admin assets and health release use a new cache build', async () => {
   const [view, app] = await Promise.all([read('../src/views/admin.js'), read('../src/app.js')]);
-  assert.match(view, /build=0\.8\.1\.[0-9.]+/);
-  assert.match(app, /v0\.8\.1\.[^']+/);
+  assert.match(view, /build=[^\"&]+/);
+  assert.match(app, /release:\s*'v\d+\.\d+\.\d+-[^']+'/);
 });

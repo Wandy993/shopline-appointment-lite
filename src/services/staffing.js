@@ -14,12 +14,24 @@ const staffAvatarPresetData = new Map(Object.entries(staffAvatarPresetFiles).map
   }
 }));
 
+function publicProfileText(value = '') {
+  const normalized = String(value || '').trim();
+  if (!normalized) return '';
+  if (/^(?:select|choose)\s+(?:a\s+)?(?:state|region|location|option)(?:\.\.\.)?$/i.test(normalized)) return '';
+  if (/^(?:undefined|null|n\/?a|none)$/i.test(normalized)) return '';
+  return normalized;
+}
+
 function publicStaffAvatar(avatar = {}) {
   if (avatar.kind === 'custom' && /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(String(avatar.value || ''))) return { kind: 'custom', value: avatar.value };
   if (avatar.kind === 'initials') return { kind: 'initials', value: '' };
   const preset = Object.hasOwn(staffAvatarPresetFiles, avatar.value) ? avatar.value : 'aurora';
   const embedded = staffAvatarPresetData.get(preset);
   return embedded ? { kind: 'custom', value: embedded } : { kind: 'preset', value: preset };
+}
+
+function publicServiceList(values = []) {
+  return [...new Set((Array.isArray(values) ? values : []).map(publicProfileText).filter(Boolean))].slice(0, 12);
 }
 
 export class StaffConflictError extends Error {
@@ -95,11 +107,12 @@ export async function publicStaffOptions(rule, options = {}) {
     mode: assignment.mode,
     options: staff.map(item => ({
       id: String(item._id),
-      name: item.name,
-      roleTitle: item.roleTitle || '',
-      region: item.region || '',
-      expertise: item.expertise || '',
-      bio: item.bio || '',
+      name: publicProfileText(item.name),
+      roleTitle: publicProfileText(item.roleTitle),
+      region: publicProfileText(item.region),
+      expertise: publicProfileText(item.expertise),
+      supportedServices: publicServiceList(item.supportedServices),
+      bio: publicProfileText(item.bio),
       avatar: publicStaffAvatar(item.avatar?.kind ? item.avatar : { kind: 'preset', value: 'aurora' })
     }))
   };
@@ -111,8 +124,8 @@ export async function publicStaffDirectory(rule, options = {}) {
   return {
     mode: assignment.mode,
     options: staff.filter(item => item.publicProfile === true).map(item => ({
-      id: String(item._id), name: item.name, roleTitle: item.roleTitle || '', region: item.region || '',
-      expertise: item.expertise || '', bio: item.bio || '',
+      id: String(item._id), name: publicProfileText(item.name), roleTitle: publicProfileText(item.roleTitle), region: publicProfileText(item.region),
+      expertise: publicProfileText(item.expertise), supportedServices: publicServiceList(item.supportedServices), bio: publicProfileText(item.bio),
       avatar: publicStaffAvatar(item.avatar?.kind ? item.avatar : { kind: 'preset', value: 'aurora' })
     }))
   };

@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = '0.8.1';
+  const VERSION = '0.8.3';
   const API_BASE = 'https://appointment.toolkit.fans';
   const CACHE_TTL = 5 * 60 * 1000;
   const RULE_CACHE = new Map();
@@ -137,7 +137,7 @@
 
   const staffPresetClasses = new Set(['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose', 'nova']);
   const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
-  function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="${API_BASE}/assets/staff/${file}?v=0.8.1" alt="" loading="lazy" decoding="async">`;}
+  function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="${API_BASE}/assets/staff/${file}?v=0.8.3" alt="" loading="lazy" decoding="async">`;}
 
   function staffAvatar(item, className = '') {
     const avatar = item?.avatar || {};
@@ -408,6 +408,22 @@
     }
   }
 
+  function publicProfileValue(value = '') {
+    const normalized = String(value || '').trim();
+    if (!normalized || /^(?:select|choose)\s+(?:a\s+)?(?:state|region|location|option)(?:\.\.\.)?$/i.test(normalized)) return '';
+    return normalized;
+  }
+
+  function publicServiceList(item = {}) {
+    return [...new Set((Array.isArray(item.supportedServices) ? item.supportedServices : [])
+      .map(publicProfileValue)
+      .filter(Boolean))].slice(0, 12);
+  }
+
+  function staffPickerCaption(item = {}) {
+    return [publicProfileValue(item.roleTitle), publicProfileValue(item.expertise), publicProfileValue(item.region)].filter(Boolean).slice(0, 2).join(' · ') || 'View availability';
+  }
+
   function openStaffDirectory(widget, rule, context, staff) {
     if (!Array.isArray(staff) || !staff.length) {
       open(widget, rule, context);
@@ -415,11 +431,16 @@
     }
     const dialog = document.createElement('dialog');
     const storefront = storefrontForWidget(widget);
+    const serviceTitle = publicProfileValue(rule.serviceTitle || rule.productTitle) || 'Appointment';
     const cards = staff.map(item => {
-      const meta = [item.roleTitle, item.region].filter(Boolean).map(text).join(' · ');
-      return `<article class="al-directory-card">${staffAvatar(item, 'al-directory-avatar')}<div class="al-directory-copy"><h3>${text(item.name)}</h3>${meta ? `<p class="al-directory-meta">${meta}</p>` : ''}${item.expertise ? `<strong class="al-directory-expertise">${text(item.expertise)}</strong>` : ''}${item.bio ? `<p class="al-directory-bio">${text(item.bio)}</p>` : ''}</div><button type="button" class="al-directory-book" data-book-with-staff="${text(item.id)}">Book with ${text(item.name)}</button></article>`;
+      const role = publicProfileValue(item.roleTitle);
+      const services = publicServiceList(item);
+      const servicesMarkup = services.length
+        ? `<ul class="al-directory-services-list">${services.map(service => `<li><span class="al-directory-check" aria-hidden="true">✓</span><span>${text(service)}</span></li>`).join('')}</ul>`
+        : '<span class="al-directory-services-empty">Service details not added yet</span>';
+      return `<article class="al-directory-card"><div class="al-directory-person">${staffAvatar(item, 'al-directory-avatar')}<div class="al-directory-person-copy"><h3>${text(item.name)}</h3>${role ? `<p>${text(role)}</p>` : ''}</div></div><div class="al-directory-services"><strong>Services</strong>${servicesMarkup}</div><button type="button" class="al-directory-book" data-book-with-staff="${text(item.id)}" aria-label="Select ${text(item.name)}"><span>Select</span><span aria-hidden="true">›</span></button></article>`;
     }).join('');
-    dialog.innerHTML = `<div class="al-head"><div><span class="al-directory-kicker">TEAM BOOKING</span><h2>Choose your specialist</h2><p>${text(rule.serviceTitle || rule.productTitle || 'Appointment')}</p></div><button class="al-close" type="button" aria-label="Close">×</button></div><div class="al-directory-body"><p class="al-directory-intro">Select a team member to view their availability and continue booking.</p><div class="al-directory-grid">${cards}</div></div>`;
+    dialog.innerHTML = `<div class="al-head al-directory-head"><div><span class="al-directory-kicker">TEAM BOOKING</span><h2>Choose your specialist</h2><p>Select a team member for <strong>${text(serviceTitle)}</strong>, then continue to their available calendar.</p></div><button class="al-close" type="button" aria-label="Close">×</button></div><div class="al-directory-body"><div class="al-directory-grid">${cards}</div></div>`;
     mountDialog(dialog, 'al-staff-directory-dialog', storefront);
     dialog.querySelectorAll('[data-book-with-staff]').forEach(button => button.addEventListener('click', () => {
       const staffId = String(button.dataset.bookWithStaff || '');
@@ -700,9 +721,9 @@
     const initialStaff = staffMode === 'customer_choice' ? staffOptions.find(item => String(item.id) === requestedStaffId) : null;
     const initialStaffId = initialStaff ? String(initialStaff.id) : '';
     const initialStaffValue = initialStaff
-      ? `${staffAvatar(initialStaff, 'al-staff-small')}<span><strong>${text(initialStaff.name)}</strong><small>Selected staff member</small></span>`
+      ? `${staffAvatar(initialStaff, 'al-staff-small')}<span><strong>${text(initialStaff.name)}</strong><small>${text(staffPickerCaption(initialStaff))}</small></span>`
       : '<span class="al-staff-avatar al-staff-initials al-staff-small">?</span><span><strong>Choose staff</strong><small>Select a team member</small></span>';
-    const staffSelector = staffMode === 'customer_choice' ? `<div class="al-field al-staff-choice"><label>Staff</label><div class="al-staff-picker"><button type="button" class="al-staff-trigger" aria-haspopup="listbox" aria-expanded="false"><span class="al-staff-value">${initialStaffValue}</span><span class="al-staff-chevron">⌄</span></button><div class="al-staff-menu" role="listbox" hidden>${staffOptions.map(item => `<button type="button" class="al-staff-option${String(item.id) === initialStaffId ? ' selected' : ''}" data-staff-id="${text(item.id)}">${staffAvatar(item, 'al-staff-small')}<span><strong>${text(item.name)}</strong><small>View availability</small></span><i>✓</i></button>`).join('')}</div><input type="hidden" name="staffId" value="${text(initialStaffId)}"></div><small>Availability updates for the selected staff member.</small></div>` : '';
+    const staffSelector = staffMode === 'customer_choice' ? `<div class="al-field al-staff-choice"><label>Staff</label><div class="al-staff-picker"><button type="button" class="al-staff-trigger" aria-haspopup="listbox" aria-expanded="false"><span class="al-staff-value">${initialStaffValue}</span><span class="al-staff-chevron">⌄</span></button><div class="al-staff-menu" role="listbox" hidden>${staffOptions.map(item => `<button type="button" class="al-staff-option${String(item.id) === initialStaffId ? ' selected' : ''}" data-staff-id="${text(item.id)}">${staffAvatar(item, 'al-staff-small')}<span><strong>${text(item.name)}</strong><small>${text(staffPickerCaption(item))}</small></span><i>✓</i></button>`).join('')}</div><input type="hidden" name="staffId" value="${text(initialStaffId)}"></div><small>Availability updates for the selected staff member.</small></div>` : '';
     const managedStaffMeta = staffMode === 'fixed' && staffOptions[0] ? staffOptions[0].name : staffMode === 'any' ? 'Staff assigned automatically' : rule.staff;
     const metaParts = [modeMeta, rule.location, managedStaffMeta].filter(Boolean);
     const paid = rule.commerceMode === 'standalone_paid';
@@ -938,7 +959,7 @@
         renderSelected();
         renderCalendar();
         const value = staffTrigger.querySelector('.al-staff-value');
-        value.innerHTML = item ? `${staffAvatar(item, 'al-staff-small')}<span><strong>${text(item.name)}</strong><small>Selected staff member</small></span>` : '<span class="al-staff-avatar al-staff-initials al-staff-small">?</span><span><strong>Choose staff</strong><small>Select a team member</small></span>';
+        value.innerHTML = item ? `${staffAvatar(item, 'al-staff-small')}<span><strong>${text(item.name)}</strong><small>${text(staffPickerCaption(item))}</small></span>` : '<span class="al-staff-avatar al-staff-initials al-staff-small">?</span><span><strong>Choose staff</strong><small>Select a team member</small></span>';
         staffMenu.querySelectorAll('[data-staff-id]').forEach(option => option.classList.toggle('selected', option.dataset.staffId === selectedStaffId));
         staffMenu.hidden = true;
         staffTrigger.setAttribute('aria-expanded', 'false');

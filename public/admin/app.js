@@ -342,6 +342,18 @@ Object.assign(zh, {
   'Team scheduling':'员工排班','Staff':'员工','TEAM SCHEDULING':'员工排班','Create bookable team members, set their working hours, and connect them to appointment services.':'创建可预约员工、设置工作时间，并关联到预约服务。','Add staff':'新增员工','Search staff by name or email':'按姓名或邮箱搜索员工','No staff yet':'还没有员工','Add your first team member to start staff-aware scheduling.':'添加第一位员工后即可启用员工排班与冲突检测。','No staff match your search':'没有匹配的员工','Services':'服务','Working hours':'工作时间','Not assigned':'未关联服务','No regular hours':'无固定工作时间','No contact details':'未填写联系方式','Inactive':'已停用','Edit staff':'编辑员工','Delete staff':'删除员工','TEAM MEMBER':'员工','Set the team member details and store-local working schedule.':'设置员工信息及店铺本地时区下的工作时间。','Name':'姓名','Phone':'电话','Weekly working hours':'每周工作时间','Staff availability intersects with the service schedule. A time is bookable only when both are open.':'员工工作时间会与服务可预约时间取交集，只有两者同时开放时客户才能预约。','Schedule exceptions':'特殊排班','Use exceptions for holidays, leave, or one-off staff working hours. Staff exceptions do not open a service date that is closed in the service schedule.':'用于休假、节假日或员工临时工作时间。员工特殊排班不会自动开放服务本身关闭的日期；如需当天可预约，请同时在服务的“可预约时段 → 特殊日期”中开放该日期。','Save staff':'保存员工','Staff member updated.':'员工已更新。','Staff member created.':'员工已创建。','Staff member deleted.':'员工已删除。','Staff assignment':'员工分配','Choose how this service uses the team schedule. Managed staff availability is checked together with the service schedule.':'选择该服务如何使用员工排班。系统会同时检查服务时间和员工可用时间。','No staff required':'无需员工','Use the service schedule without staff conflict checks.':'仅使用服务排期，不检查员工冲突。','Any available staff':'任意可用员工','Appointment Lite automatically assigns one available team member.':'系统自动分配一位有空的员工。','Customer chooses':'客户选择员工','Customers choose a team member before selecting an available time.':'客户先选择员工，再查看该员工可预约时间。','Fixed staff':'固定员工','This service always uses one selected team member.':'该服务始终由指定员工提供。','Available staff for this service':'该服务可用员工','Select one or more active staff members.':'选择一位或多位启用中的员工。','Select exactly one active staff member.':'请选择且仅选择一位启用中的员工。','No active staff yet. Add staff from the Staff page first.':'暂无启用中的员工，请先在“员工”页面添加。','Select exactly one staff member for fixed assignment.':'固定员工模式必须选择一位员工。','Select at least one staff member for this assignment mode.':'此分配模式至少需要选择一位员工。','All staff':'全部员工','No managed staff':'未启用员工管理','Auto assign available staff':'自动分配可用员工','Select staff':'选择员工','Current staff':'当前员工'
 });
 
+Object.assign(zh, {
+  'Public booking profile': '公开预约资料',
+  'Title / role': '职位 / 角色',
+  'Region': '地区',
+  'Expertise': '专长',
+  'Supported services': '支持的服务',
+  'Profile description': '个人介绍',
+  'Add one service per line. These labels are shown in the public staff list with green check marks. They are display-only; service assignment is still configured inside each appointment service.': '每行填写一个服务。这里的文案会在前台员工列表中以绿色勾选项展示，仅用于展示；员工实际关联哪些预约服务仍在对应预约服务中配置。',
+  'Show in Staff Directory': '展示在员工列表',
+  'Only public profile fields are shown. Email and phone remain private.': '前台仅展示公开资料字段，邮箱和电话不会公开。'
+});
+
 const originalText = new WeakMap();
 const originalAttributes = new WeakMap();
 
@@ -816,7 +828,7 @@ const staffAvatarPresets = ['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunse
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
 function staffPresetImage(preset) {
   const file = staffAvatarFiles[preset] || staffAvatarFiles.aurora;
-  return `<img src="/assets/staff/${file}?v=0.8.1" alt="" loading="lazy" decoding="async">`;
+  return `<img src="/assets/staff/${file}?v=0.8.3" alt="" loading="lazy" decoding="async">`;
 }
 let staffAvatarDraft = { kind: 'preset', value: 'aurora' };
 
@@ -1278,7 +1290,9 @@ function staffPayload() {
     name: $('#staffName').value,
     email: $('#staffEmail').value,
     phone: $('#staffPhone').value,
-    roleTitle: $('#staffRoleTitle').value, region: $('#staffRegion').value, expertise: $('#staffExpertise').value, bio: $('#staffBio').value, publicProfile: $('#staffPublicProfile').checked,
+    roleTitle: $('#staffRoleTitle').value, region: $('#staffRegion').value, expertise: $('#staffExpertise').value,
+    supportedServices: $('#staffSupportedServices').value.split(/\n+/).map(value => value.trim()).filter(Boolean),
+    bio: $('#staffBio').value, publicProfile: $('#staffPublicProfile').checked,
     avatar: { kind: $('#staffAvatarKind').value || 'preset', value: $('#staffAvatarValue').value || '' },
     notifications: { emailEnabled: Boolean($('#staffEmail').value.trim() && $('#staffEmailNotifications').checked) },
     status: $('#staffStatus').value,
@@ -1305,7 +1319,7 @@ function staffWorkSummary(staff) {
 
 function renderStaff() {
   const query = $('#staffSearch')?.value.trim().toLowerCase() || '';
-  const rows = state.staff.filter(item => !query || [item.name, item.email, item.phone, item.roleTitle, item.region, item.expertise].some(value => String(value || '').toLowerCase().includes(query)));
+  const rows = state.staff.filter(item => !query || [item.name, item.email, item.phone, item.roleTitle, item.region, item.expertise, ...(item.supportedServices || [])].some(value => String(value || '').toLowerCase().includes(query)));
   if ($('#staffResultCount')) $('#staffResultCount').textContent = state.locale === 'zh-CN' ? `${rows.length} 位员工` : `${rows.length} staff`;
   const root = $('#staffList');
   if (!root) return;
@@ -1563,6 +1577,7 @@ function openStaff(staff = null) {
   $('#staffRoleTitle').value = staff?.roleTitle || '';
   $('#staffRegion').value = staff?.region || '';
   $('#staffExpertise').value = staff?.expertise || '';
+  $('#staffSupportedServices').value = (staff?.supportedServices || []).join('\n');
   $('#staffBio').value = staff?.bio || '';
   $('#staffPublicProfile').checked = staff?.publicProfile === true;
   $('#staffStatus').value = staff?.status || 'active';

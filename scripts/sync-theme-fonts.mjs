@@ -11,9 +11,9 @@ const themePublicDir = path.join(themeDir, 'public');
 const outputDirs = sourceOnly ? [sourcePublicDir] : [sourcePublicDir, themePublicDir];
 const outputName = 'appointment-lite-fonts.css';
 
-// Theme App Extension upload validation accepts CSS/JS/image assets, but rejects
-// standalone font binaries. Keep customer typography fully local by embedding the
-// pinned latin WOFF2 payloads as data URLs inside one normal CSS asset.
+// SHOPLINE Theme App Extension CLI rejects standalone font binaries. Keep customer
+// typography self-contained by embedding the pinned WOFF2 payloads as data URLs
+// inside a normal CSS asset that loads before every customer-facing UI stylesheet.
 const fonts = [
   { family: 'Jost', weight: 600, rel: '@fontsource/jost/files/jost-latin-600-normal.woff2' },
   { family: 'Poppins', weight: 400, rel: '@fontsource/poppins/files/poppins-latin-400-normal.woff2' },

@@ -1,3 +1,19 @@
+## v0.8.3 — Staff Service List Selector
+
+- Product-page staff selection now follows a directory-style row layout: staff avatar/name/role on the left, merchant-entered supported services with green checks in the center, and a lightweight **Select** action on the right.
+- Clicking **Select** keeps the existing staff-aware availability logic and opens the normal calendar booking flow with that team member preselected.
+- Staff now have a dedicated **Supported services** public-profile field in admin. Merchants enter one display label per line; these labels are presentation-only and do not replace the service-to-staff assignment rules used for availability/conflict checks.
+- The regular Page Staff Directory block uses the same list pattern for consistent storefront presentation.
+- Public staff payloads continue to keep email/phone private and only expose customer-safe profile information.
+
+## v0.8.2 — Staff Directory Redesign + Reliable Customer Typography
+
+- Staff Directory uses a full-width profile list with avatar, role, region, expertise tags, biography and a compact booking action.
+- Placeholder public values such as “Select state...” are filtered before storefront output; email and phone remain private.
+- Customer headings use Jost and supporting text/controls use Poppins with explicit CJK fallbacks and host-theme-resistant overrides.
+- Theme fonts remain embedded in a supported CSS asset; no standalone font binaries are uploaded.
+- Historical tests no longer pin the active package version, so normal SemVer upgrades do not break unrelated regression coverage.
+
 
 ## v0.7.0.7 — SHOPLINE Subscription New Window
 

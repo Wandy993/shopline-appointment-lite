@@ -34,6 +34,7 @@ const staffSchema = new mongoose.Schema({
   roleTitle: { type: String, default: '', trim: true, maxlength: 120 },
   region: { type: String, default: '', trim: true, maxlength: 120 },
   expertise: { type: String, default: '', trim: true, maxlength: 180 },
+  supportedServices: { type: [{ type: String, trim: true, maxlength: 120 }], default: [] },
   bio: { type: String, default: '', trim: true, maxlength: 800 },
   publicProfile: { type: Boolean, default: false, index: true },
   avatar: { type: avatarSchema, default: () => ({ kind: 'preset', value: 'aurora' }) },

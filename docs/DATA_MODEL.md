@@ -64,12 +64,14 @@ Important fields:
 - `shopId`
 - `name`, optional `email`, optional `phone`
 - `avatar { kind: preset | custom | initials, value }` — public-facing profile presentation; custom images are compressed before storage
+- `roleTitle`, `region`, `expertise`, `bio`, `publicProfile` — optional customer-facing profile metadata
+- `supportedServices[]` — merchant-entered display labels shown in the public staff list; these labels do not control service assignment or availability
 - `notifications { emailEnabled }` — explicit opt-in for assignment/update/reassignment/cancellation emails
 - `status`: `active | inactive`
 - `weeklyAvailability[{ weekday, enabled, windows[{ start, end }] }]`
 - `availabilityExceptions[{ date, closed, windows[] }]`
 
-Staff availability is independent from service availability. A customer-facing occurrence is bookable only when the service schedule, service capacity, and the chosen/assigned staff schedule all allow it. Staff records are tenant-scoped and can be assigned to multiple services. Public staff-choice responses expose only `id`, `name`, and `avatar`; contact data and notification settings stay admin-only.
+Staff availability is independent from service availability. A customer-facing occurrence is bookable only when the service schedule, service capacity, and the chosen/assigned staff schedule all allow it. Staff records are tenant-scoped and can be assigned to multiple services. Public staff-choice responses expose only safe profile fields (`id`, `name`, avatar, optional public profile metadata, and `supportedServices[]`); contact data and notification settings stay admin-only.
 
 ## StaffReservation
 

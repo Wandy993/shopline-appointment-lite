@@ -1026,3 +1026,7 @@ body.subscription-archive #bookingsView .view-switch{display:none}body.subscript
 /* v0.8.1.4 email preview typography parity */
 .email-preview,.email-preview button,.email-preview a,.preview-mail-shell,.preview-mail-shell *{font-family:"Poppins",Arial,Helvetica,sans-serif}
 .preview-email-card h2{font-family:"Jost",Arial,Helvetica,sans-serif;font-weight:600}
+
+
+/* v0.8.3 customer email preview typography */
+.email-preview-canvas,.preview-email-card,.preview-email-card *{font-family:"Poppins","PingFang SC","Hiragino Sans GB","Microsoft YaHei",Arial,Helvetica,sans-serif!important}.preview-email-card h1,.preview-email-card h2,.preview-email-card .preview-email-title{font-family:"Jost","Poppins","PingFang SC","Hiragino Sans GB","Microsoft YaHei",Arial,Helvetica,sans-serif!important;font-weight:600!important;letter-spacing:-.02em}

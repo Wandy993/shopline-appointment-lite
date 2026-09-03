@@ -3,3 +3,7 @@
 /* v0.8.1.4 customer typography system */
 .al-embed-root,.al-embed-root button,.al-embed-root a{font-family:"Poppins",Arial,Helvetica,sans-serif}
 .al-embed-head strong{font-family:"Jost",Arial,Helvetica,sans-serif;font-weight:600}
+
+
+/* v0.8.3 reliable customer typography */
+.al-embed-root{--al-font-heading:"Jost","Poppins","PingFang SC","Hiragino Sans GB","Microsoft YaHei",Arial,Helvetica,sans-serif;--al-font-body:"Poppins","PingFang SC","Hiragino Sans GB","Microsoft YaHei",Arial,Helvetica,sans-serif;font-family:var(--al-font-body)!important;font-synthesis:none}.al-embed-root,.al-embed-root *{font-family:var(--al-font-body)!important}.al-embed-head strong{font-family:var(--al-font-heading)!important;font-weight:600!important;letter-spacing:-.02em}

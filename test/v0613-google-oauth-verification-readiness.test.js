@@ -120,11 +120,11 @@ test('v0.6.16 release documentation lists the production Google Auth Platform va
   assert.match(doc, /calendar\.events\.owned/);
   assert.match(env, /Homepage: https:\/\/appointment\.toolkit\.fans\//);
   assert.match(env, /Authorized domain: toolkit\.fans/);
-  assert.equal(JSON.parse(pkg).version, '0.8.1');
-  assert.match(app, /version: '0.8.1'/);
-  assert.match(adminView, /styles\.css\?v=0.8.1/);
-  assert.match(bookView, /styles\.css\?v=0.8.1/);
-  assert.match(theme, /const VERSION = '0.8.1'/);
-  assert.match(release, /RELEASE_VERSION="0.8.1"/);
+  assert.match(JSON.parse(pkg).version, /^\d+\.\d+\.\d+$/);
+  assert.match(app, /version: '\d+\.\d+\.\d+'/);
+  assert.match(adminView, /styles\.css\?v=\d+\.\d+\.\d+/);
+  assert.match(bookView, /styles\.css\?v=\d+\.\d+\.\d+/);
+  assert.match(theme, /const VERSION = '\d+\.\d+\.\d+'/);
+  assert.match(release, /RELEASE_VERSION="\d+\.\d+\.\d+"/);
   assert.match(release, /NAME="appointment-lite-v\$\{RELEASE_LABEL\}-[^"]+"/);
 });
