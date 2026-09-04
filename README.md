@@ -747,9 +747,15 @@ Staff schedule exceptions now explicitly explain that they only change the emplo
 - Meeting actions remain private until the booking is confirmed and disappear for cancelled/inactive bookings.
 
 
-## v0.8.10 — Online Meeting Brand & Confirmation Action Polish
+## v0.8.11 — Online Meeting Brand & Confirmation Action Polish
 
 - Replaces runtime Zoom image requests with a self-contained inline Zoom brand SVG on Theme, hosted booking, and manage surfaces, preventing SHOPLINE/theme CSP or third-party image delivery from producing broken icons.
 - Redesigns confirmed-booking actions into one compact “Next steps” panel. Join meeting and Add to Google Calendar are equal secondary action cards on desktop and stack cleanly on mobile.
 - Keeps the Google Calendar action explicit: it adds the appointment and includes the existing online meeting link in the calendar event; it does not create a second meeting.
 - Keeps product-page Manage appointment, hosted manage, and email meeting actions intact while removing the fragile media.zoom.com dependency from customer UI.
+
+
+## v0.8.11 Provider Brand + Email Polish
+- Keeps online meeting provider and join action on one email row.
+- Uses provider-aware Zoom, Google Meet, Microsoft Teams and neutral custom meeting themes across customer booking/manage surfaces.
+- Makes the default confirmation subject date/time-specific to reduce Gmail conversation trimming of repeated transactional messages.

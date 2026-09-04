@@ -18,11 +18,13 @@ function renderMeetingBrandIcon(element, meeting) {
   if (!element) return;
   element.replaceChildren();
   element.classList.toggle('meeting-brand-icon--zoom', meeting?.provider === 'zoom');
+  ['google_meet','teams','custom'].forEach(provider => element.classList.toggle(`meeting-brand-icon--${provider}`, meeting?.provider === provider));
   if (meeting?.provider === 'zoom') {
     element.innerHTML = ZOOM_BRAND_SVG;
     return;
   }
-  element.textContent = String(meeting?.providerName || 'Online').slice(0, 2).toUpperCase();
+  const fallback = { google_meet: 'Meet', teams: 'Teams', custom: 'Online' }[meeting?.provider] || String(meeting?.providerName || 'Online');
+  element.textContent = fallback;
 }
 
 async function api(path, body = {}) {
@@ -65,9 +67,13 @@ function render() {
     $('#meetingProvider').textContent = meeting.providerName || 'Online meeting';
     $('#meetingLabel').textContent = meeting.label || 'Join meeting';
     $('#meetingButton').href = meeting.url;
+    $('#meetingCard').className = `meeting-card provider-${meeting.provider || 'custom'}`;
+    $('#meetingButton').className = `meeting-button provider-${meeting.provider || 'custom'}`;
     $('#meetingButton').setAttribute('aria-label', `${meeting.providerName || 'Online meeting'}: ${meeting.label || 'Join meeting'}`);
     renderMeetingBrandIcon($('#meetingBrandIcon'), meeting);
   } else {
+    $('#meetingCard').className = 'meeting-card hidden';
+    $('#meetingButton').className = 'meeting-button';
     $('#meetingButton').removeAttribute('href');
     $('#meetingButton').removeAttribute('aria-label');
     renderMeetingBrandIcon($('#meetingBrandIcon'), null);

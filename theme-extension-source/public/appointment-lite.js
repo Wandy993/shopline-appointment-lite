@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = '0.8.10';
+  const VERSION = '0.8.11';
   const API_BASE = 'https://appointment.toolkit.fans';
   const CACHE_TTL = 5 * 60 * 1000;
   const RULE_CACHE = new Map();
@@ -43,16 +43,16 @@
     if (meeting?.provider === 'zoom') {
       return `<span class="al-meeting-brand al-meeting-brand--zoom">${ZOOM_BRAND_SVG}</span>`;
     }
-    return `<span class="al-meeting-brand al-meeting-brand--text">${provider}</span>`;
+    return `<span class="al-meeting-brand al-meeting-brand--text al-meeting-brand--${text(meeting?.provider || 'custom')}">${provider}</span>`;
   }
 
   function onlineMeetingAction(meeting, context = 'success') {
     if (!meeting?.url) return '';
     const label = text(meeting.label || 'Join meeting');
     if (context === 'manage') {
-      return `<div class="al-meeting-actions al-meeting-actions--manage"><a class="al-meeting-link" href="${text(meeting.url)}" target="_blank" rel="noopener noreferrer">${meetingBrandMarkup(meeting)}<span class="al-meeting-link-label">${label}</span></a></div>`;
+      return `<div class="al-meeting-actions al-meeting-actions--manage al-provider-${text(meeting.provider || 'custom')}"><a class="al-meeting-link" href="${text(meeting.url)}" target="_blank" rel="noopener noreferrer">${meetingBrandMarkup(meeting)}<span class="al-meeting-link-label">${label}</span></a></div>`;
     }
-    return `<a class="al-success-action al-success-action--meeting" href="${text(meeting.url)}" target="_blank" rel="noopener noreferrer">${meetingBrandMarkup(meeting)}<span class="al-success-action-copy"><small>Online meeting</small><strong>${label}</strong></span><span class="al-success-action-open" aria-hidden="true">↗</span></a>`;
+    return `<a class="al-success-action al-success-action--meeting al-provider-${text(meeting.provider || 'custom')}" href="${text(meeting.url)}" target="_blank" rel="noopener noreferrer">${meetingBrandMarkup(meeting)}<span class="al-success-action-copy"><small>Online meeting</small><strong>${label}</strong></span><span class="al-success-action-open" aria-hidden="true">↗</span></a>`;
   }
 
   const defaultStorefrontSettings = {
@@ -209,7 +209,7 @@
 
   const staffPresetClasses = new Set(['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose', 'nova']);
   const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
-  function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="${API_BASE}/assets/staff/${file}?v=0.8.10" alt="" loading="lazy" decoding="async">`;}
+  function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="${API_BASE}/assets/staff/${file}?v=0.8.11" alt="" loading="lazy" decoding="async">`;}
 
   function staffAvatar(item, className = '') {
     const avatar = item?.avatar || {};
@@ -689,7 +689,7 @@
       : canReschedule
         ? '<div class="al-notice"><strong>One online change available</strong><span>You can change this appointment once. After saving, contact the store for further changes.</span></div><button type="button" class="al-submit al-reschedule">Change date or time</button>'
         : '<div class="al-limit"><strong>Online change already used</strong><span>Please contact the store if you need to change this appointment again.</span></div>';
-    const meetingCard = receipt.meeting?.url ? `<div class="al-manage-meeting"><div class="al-manage-meeting-copy"><span>Online meeting</span><strong>${text(receipt.meeting.providerName || 'Online meeting')}</strong></div>${onlineMeetingAction(receipt.meeting, 'manage')}</div>` : '';
+    const meetingCard = receipt.meeting?.url ? `<div class="al-manage-meeting al-provider-${text(receipt.meeting.provider || 'custom')}"><div class="al-manage-meeting-copy"><span>Online meeting</span><strong>${text(receipt.meeting.providerName || 'Online meeting')}</strong></div>${onlineMeetingAction(receipt.meeting, 'manage')}</div>` : '';
     dialog.innerHTML = `<div class="al-head"><div><h2>Manage appointment</h2><p>${text(rule.serviceTitle || rule.productTitle)}</p></div><button class="al-close" type="button" aria-label="Close">×</button></div><div class="al-manage">${appointmentDetails(receipt)}${meetingCard}<div class="al-error" hidden role="alert"></div><div class="al-manage-actions">${changeControl}<button type="button" class="al-danger al-cancel">Cancel appointment</button></div></div>`;
     mountDialog(dialog, '', storefrontForWidget(widget));
     dialog.querySelector('.al-reschedule')?.addEventListener('click', () => {

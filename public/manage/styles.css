@@ -32,3 +32,8 @@ body,.shell,.shell button,.shell input,.shell label,.shell p,.shell span,.shell 
 .zoom-brand-svg{display:block;width:28px;height:10px;max-width:100%;overflow:visible}
 .meeting-brand-icon--zoom{width:40px;flex-basis:40px;padding:5px 6px}
 .meeting-brand-icon--zoom .zoom-brand-svg{width:28px;height:10px}
+
+/* v0.8.11 — provider-aware online meeting themes */
+.meeting-card.provider-zoom{border-color:#C9D8FF;background:#F2F6FF}.meeting-card.provider-google_meet{border-color:#C8E8D7;background:#F1FAF5}.meeting-card.provider-teams{border-color:#D9D8FF;background:#F4F3FF}.meeting-card.provider-custom{border-color:#E1E5EA;background:#F7F8FA}
+.meeting-button.provider-zoom{border-color:#0B5CFF;background:#0B5CFF;color:#fff}.meeting-button.provider-google_meet{border-color:#0F9D58;background:#0F9D58;color:#fff}.meeting-button.provider-teams{border-color:#5558AF;background:#5558AF;color:#fff}.meeting-button.provider-custom{border-color:#475467;background:#475467;color:#fff}.meeting-button[class*="provider-"]:hover{filter:brightness(.96)}
+.meeting-brand-icon--google_meet{width:auto;min-width:38px;color:#0F9D58;border-color:#C8E8D7;background:#fff}.meeting-brand-icon--teams{width:auto;min-width:42px;color:#5558AF;border-color:#D9D8FF;background:#fff}.meeting-brand-icon--custom{width:auto;min-width:42px;color:#475467;border-color:#E1E5EA;background:#fff}

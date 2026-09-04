@@ -26,11 +26,13 @@ function renderMeetingBrandIcon(element, meeting) {
   if (!element) return;
   element.replaceChildren();
   element.classList.toggle('meeting-brand-icon--zoom', meeting?.provider === 'zoom');
+  ['google_meet','teams','custom'].forEach(provider => element.classList.toggle(`meeting-brand-icon--${provider}`, meeting?.provider === provider));
   if (meeting?.provider === 'zoom') {
     element.innerHTML = ZOOM_BRAND_SVG;
     return;
   }
-  element.textContent = String(meeting?.providerName || 'Online').slice(0, 2).toUpperCase();
+  const fallback = { google_meet: 'Meet', teams: 'Teams', custom: 'Online' }[meeting?.provider] || String(meeting?.providerName || 'Online');
+  element.textContent = fallback;
 }
 
 function bookingThemeTokens(settings, { unified = true } = {}) {
@@ -289,7 +291,7 @@ function setupTimezonePicker() {
 
 const staffPresetClasses = new Set(['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose', 'nova']);
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
-function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="/assets/staff/${file}?v=0.8.10" alt="" loading="lazy" decoding="async">`;}
+function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="/assets/staff/${file}?v=0.8.11" alt="" loading="lazy" decoding="async">`;}
 
 function staffAvatarMarkup(item, className = '') {
   const avatar = item?.avatar || {};
@@ -719,6 +721,7 @@ $('#bookingForm').addEventListener('submit', async event => {
     const meetingLink = $('#joinMeeting');
     if (payload.booking.meeting?.url) {
       renderMeetingBrandIcon($('#meetingBrandIcon'), payload.booking.meeting);
+      $('#meetingLink')?.classList.add(`provider-${payload.booking.meeting?.provider || 'custom'}`);
       $('#meetingActionLabel').textContent = payload.booking.meeting.label || 'Join meeting';
       meetingLink.href = payload.booking.meeting.url;
       meetingLink.setAttribute('aria-label', `${payload.booking.meeting.providerName || 'Online meeting'}: ${payload.booking.meeting.label || 'Join meeting'}`);

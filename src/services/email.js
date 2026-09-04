@@ -119,16 +119,23 @@ function appointmentCard(booking, settings) {
     : mode === 'multi_slot'
       ? row('Sessions', occurrences.map(item => `${item.date} · ${item.time}`).join(' | '), `<div style="margin-top:3px;color:#98A5B5;font-size:11px;font-weight:400">${escapeHtml(booking.timezone || 'UTC')}</div>`)
       : row('Date & time', `${booking.date} · ${booking.time}`, `<div style="margin-top:3px;color:#98A5B5;font-size:11px;font-weight:400">${escapeHtml(booking.timezone || 'UTC')}</div>`);
-  const providerName = ({ zoom: 'Zoom', google_meet: 'Google Meet', teams: 'Microsoft Teams', custom: 'Online meeting' }[booking.onlineMeeting?.provider] || 'Online meeting');
-  const defaultMeetingLabel = ({ zoom: 'Join Zoom', google_meet: 'Join Google Meet', teams: 'Join Microsoft Teams', custom: 'Join meeting' }[booking.onlineMeeting?.provider] || 'Join meeting');
+  const provider = booking.onlineMeeting?.provider || 'custom';
+  const providerName = ({ zoom: 'Zoom', google_meet: 'Google Meet', teams: 'Microsoft Teams', custom: 'Online meeting' }[provider] || 'Online meeting');
+  const defaultMeetingLabel = ({ zoom: 'Join Zoom', google_meet: 'Join Google Meet', teams: 'Join Microsoft Teams', custom: 'Join meeting' }[provider] || 'Join meeting');
   const meetingLabel = String(booking.onlineMeeting?.label || '').trim() || defaultMeetingLabel;
-  const meetingBrand = booking.onlineMeeting?.provider === 'zoom'
-    ? `<span style="display:inline-block;margin:0 8px 0 0;color:#0B5CFF;font-size:13px;font-weight:800;line-height:1;letter-spacing:-.06em;vertical-align:middle">zoom</span>`
-    : '';
+  const brand = ({
+    zoom: { accent: '#0B5CFF', soft: '#F2F6FF', border: '#C9D8FF', mark: 'zoom' },
+    google_meet: { accent: '#0F9D58', soft: '#F1FAF5', border: '#C8E8D7', mark: 'Meet' },
+    teams: { accent: '#5558AF', soft: '#F4F3FF', border: '#D9D8FF', mark: 'Teams' },
+    custom: { accent: '#475467', soft: '#F7F8FA', border: '#E1E5EA', mark: 'Online' }
+  }[provider] || { accent: '#475467', soft: '#F7F8FA', border: '#E1E5EA', mark: 'Online' });
+  const meetingBrand = provider === 'zoom'
+    ? `<span style="display:inline-block;margin-right:8px;padding:4px 7px;border-radius:7px;background:${brand.soft};color:${brand.accent};font-size:11px;font-weight:800;line-height:1">zoom</span>`
+    : `<span style="display:inline-block;margin-right:8px;padding:4px 7px;border-radius:7px;background:${brand.soft};color:${brand.accent};font-size:11px;font-weight:800;line-height:1">${escapeHtml(brand.mark)}</span>`;
   const meeting = booking.status === 'confirmed' && /^https:\/\/[^\s]+$/i.test(String(booking.onlineMeeting?.url || ''))
-    ? row('Online meeting', providerName, `<div style="margin-top:8px"><a href="${escapeHtml(booking.onlineMeeting.url)}" style="display:inline-block;padding:9px 13px;border:1px solid #DCE5DF;border-radius:999px;background:#FFFFFF;color:#344861;font-size:12px;font-weight:700;text-decoration:none">${meetingBrand}<span style="display:inline-block;vertical-align:middle">${escapeHtml(meetingLabel)}</span></a></div>`)
+    ? `<tr><td style="padding:10px 12px;color:#8A98AA;font-size:12px;font-weight:600;vertical-align:middle;border-bottom:1px solid #EEF2F6;width:110px">Online meeting</td><td style="padding:8px 12px;border-bottom:1px solid #EEF2F6"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse"><tr><td valign="middle" style="color:#344861;font-size:13px;font-weight:700;vertical-align:middle">${meetingBrand}${escapeHtml(providerName)}</td><td valign="middle" align="right" style="vertical-align:middle;text-align:right"><a href="${escapeHtml(booking.onlineMeeting.url)}" style="display:inline-block;padding:8px 12px;border:1px solid ${brand.accent};border-radius:8px;background:${brand.accent};color:#FFFFFF;font-size:12px;font-weight:700;line-height:16px;text-decoration:none;white-space:nowrap">${escapeHtml(meetingLabel)}</a></td></tr></table></td></tr>`
     : '';
-  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:separate;border-spacing:0;border:1px solid #E3E9F1;border-radius:12px;overflow:hidden;background:#FBFCFE;font-family:'Poppins','PingFang SC','Hiragino Sans GB','Microsoft YaHei',Arial,Helvetica,sans-serif">${row('Service', booking.productTitle)}${when}${row('Location', booking.location || 'To be confirmed')}${meeting}${row('Staff', booking.staff || 'To be confirmed')}</table>`;
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:separate;border-spacing:0;border:1px solid #E3E9F1;border-radius:12px;background:#FBFCFE;font-family:'Poppins','PingFang SC','Hiragino Sans GB','Microsoft YaHei',Arial,Helvetica,sans-serif">${row('Service', booking.productTitle)}${when}${row('Location', booking.location || 'To be confirmed')}${meeting}${row('Staff', booking.staff || 'To be confirmed')}</table>`;
 }
 
 
@@ -169,7 +176,7 @@ function templateFor(settings, key, booking) {
   const template = settings.templates[key] || DEFAULT_EMAIL_SETTINGS.templates[key];
   const variables = templateVariables(booking, { storeName: settings.brandName });
   return {
-    subject: interpolateTemplate(template.subject, variables),
+    subject: (() => { const rendered = interpolateTemplate(template.subject, variables); return key === 'confirmation' && rendered === `Your appointment is confirmed — ${variables.product_title}` ? `${rendered} · ${variables.date} ${variables.time}` : rendered; })(),
     heading: interpolateTemplate(template.heading, variables),
     body: escapeHtml(interpolateTemplate(template.body, variables)).replace(/\n/g, '<br>')
   };
