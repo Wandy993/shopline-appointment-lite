@@ -40,7 +40,7 @@ export function adminPage() {
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light">
   <title>Appointment Lite</title>
-  <link rel="stylesheet" href="/admin/styles.css?v=0.8.11&build=0.8.11">
+  <link rel="stylesheet" href="/admin/styles.css?v=0.8.12&build=0.8.12">
 </head>
 <body>
   <div class="app-shell">
@@ -161,7 +161,7 @@ export function adminPage() {
         </section>
 
         <section id="emailView" class="view hidden">
-          <div class="page-heading"><div><span class="eyebrow">CUSTOMER COMMUNICATION</span><h1>Email Studio</h1><p>Give every appointment email a consistent voice and visual identity.</p></div><div class="heading-actions"><button id="sendTestEmail" class="secondary" type="button">Send test</button><button id="saveEmailSettings" class="primary" type="button">Save email design</button></div></div>
+          <div class="page-heading"><div><span class="eyebrow">CUSTOMER COMMUNICATION</span><h1>Email Studio</h1><p>Give every appointment email a consistent voice and visual identity.</p></div><div class="heading-actions settings-save-actions"><span id="emailUnsavedBadge" class="unsaved-badge hidden" role="status">Unsaved changes</span><button id="sendTestEmail" class="secondary" type="button">Send test</button><button id="saveEmailSettings" class="primary" type="button">Save email design</button></div></div>
           <div class="email-status-bar"><span id="emailStatusDot" class="status-dot"></span><div><strong id="emailStatusTitle">Checking email notifications…</strong><span id="emailStatusText"></span></div><span id="emailFromText" class="sender-chip"></span></div>
           <div class="email-studio-grid">
             <div class="email-controls">
@@ -213,7 +213,7 @@ export function adminPage() {
         <section id="setupView" class="view hidden">
           <div class="page-heading"><div><span class="eyebrow">STOREFRONT</span><h1>Storefront setup</h1><p>Connect Appointment Lite to your theme and customize the booking entry and dialog to match your storefront.</p></div><span class="status-badge success">Store connected</span></div>
           <article class="panel storefront-customizer">
-            <div class="storefront-customizer-head"><div><span class="eyebrow">STOREFRONT DESIGN</span><h2>Booking appearance</h2><p>Choose a polished booking theme and keep the staff selector, calendar, customer form, and confirmation experience visually consistent.</p></div><button id="saveStorefrontSettings" class="primary" type="button">Save storefront</button></div>
+            <div class="storefront-customizer-head"><div><span class="eyebrow">STOREFRONT DESIGN</span><h2>Booking appearance</h2><p>Choose a polished booking theme and keep the staff selector, calendar, customer form, and confirmation experience visually consistent.</p></div><div class="storefront-save-actions"><span id="storefrontUnsavedBadge" class="unsaved-badge hidden" role="status">Unsaved changes</span><button id="saveStorefrontSettings" class="primary" type="button">Save storefront</button></div></div>
             <div class="storefront-customizer-grid">
               <div class="storefront-customizer-controls">
                 <section class="storefront-config-group booking-theme-config">
@@ -409,8 +409,14 @@ export function adminPage() {
     <div class="modal-actions"><button id="dismissQuickstart" type="button" class="secondary">I'll finish later</button><button id="quickstartDone" type="button" class="primary hidden">Done</button></div>
   </dialog>
 
+  <dialog id="unsavedChangesDialog" class="confirm-modal unsaved-changes-modal">
+    <div class="unsaved-changes-icon">●</div>
+    <div class="confirm-copy"><span class="eyebrow">UNSAVED CHANGES</span><h2 id="unsavedChangesTitle">Save your changes?</h2><p id="unsavedChangesMessage">You have changes that have not been saved yet.</p></div>
+    <div class="modal-actions unsaved-changes-actions"><button id="keepEditingUnsaved" class="secondary" type="button">Keep editing</button><button id="discardUnsaved" class="secondary discard-button" type="button">Discard changes</button><button id="saveAndLeaveUnsaved" class="primary" type="button">Save &amp; leave</button></div>
+  </dialog>
+
   <dialog id="confirmDialog" class="confirm-modal"><div class="confirm-icon">!</div><div class="confirm-copy"><h2 id="confirmTitle">Please confirm</h2><p id="confirmMessage"></p></div><div class="modal-actions"><button id="confirmNo" class="secondary">Keep it</button><button id="confirmYes" class="danger">Confirm</button></div></dialog>
-  <script type="module" src="/admin/app.js?v=0.8.11&build=0.8.11"></script>
+  <script type="module" src="/admin/app.js?v=0.8.12&build=0.8.12"></script>
 </body>
 </html>`;
 }

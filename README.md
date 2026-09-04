@@ -759,3 +759,12 @@ Staff schedule exceptions now explicitly explain that they only change the emplo
 - Keeps online meeting provider and join action on one email row.
 - Uses provider-aware Zoom, Google Meet, Microsoft Teams and neutral custom meeting themes across customer booking/manage surfaces.
 - Makes the default confirmation subject date/time-specific to reduce Gmail conversation trimming of repeated transactional messages.
+
+
+## v0.8.12 — Unsaved Changes Guard
+
+- Email Studio and Storefront Setup now track unsaved configuration changes.
+- Any edited input, toggle, theme option, color, template field, or notification setting shows an `Unsaved changes` state.
+- Internal navigation and language switching are protected by an application-native dialog with `Keep editing`, `Discard changes`, and `Save & leave`.
+- Closing or reloading the browser tab while changes are pending uses the browser's standard unsaved-form protection as a final safety net.
+- Save actions reset the dirty state only after the backend confirms the settings were persisted.

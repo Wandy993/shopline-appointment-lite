@@ -1060,3 +1060,17 @@ body.subscription-archive #bookingsView .view-switch{display:none}body.subscript
 .staff-modal{height:auto;max-height:min(90dvh,860px);overflow:hidden}.staff-modal form{height:auto;max-height:min(90dvh,860px);min-height:0;display:flex;flex-direction:column;overflow:hidden}.staff-modal .modal-head,.staff-modal .modal-actions{flex:0 0 auto}.staff-modal .modal-body{flex:1 1 auto;min-height:0;max-height:calc(min(90dvh,860px) - 142px);overflow-y:auto;overscroll-behavior:contain}
 @media(max-width:900px){.booking-theme-grid{grid-template-columns:1fr}.booking-theme-option{min-height:92px;display:grid;grid-template-columns:112px minmax(0,1fr);align-items:center}.booking-theme-swatch{height:66px}.booking-theme-option>b{top:10px}}
 @media(max-width:600px){.staff-modal{height:100dvh;max-height:100dvh}.staff-modal form{height:100%;max-height:100dvh}.staff-modal .modal-body{max-height:none}.booking-theme-option{grid-template-columns:92px minmax(0,1fr)}}
+
+
+/* v0.8.12 — unsaved changes guard for Storefront Setup and Email Studio */
+.settings-save-actions,.storefront-save-actions{display:flex;align-items:center;justify-content:flex-end;gap:9px;flex-wrap:wrap}
+.unsaved-badge{display:inline-flex;align-items:center;gap:6px;min-height:30px;padding:5px 10px;border:1px solid #f2d59a;border-radius:999px;background:#fff9e8;color:#8a5310;font-size:10px;font-weight:760;letter-spacing:.01em;white-space:nowrap;box-shadow:0 1px 2px rgba(75,53,15,.04)}
+.unsaved-badge::before{content:"";width:7px;height:7px;border-radius:999px;background:#e3a52f;box-shadow:0 0 0 3px rgba(227,165,47,.14)}
+button.save-attention{border-color:#87aaf0;box-shadow:0 0 0 3px rgba(47,111,237,.09),0 5px 14px rgba(47,111,237,.10)}
+.storefront-save-actions{flex:0 0 auto}.storefront-save-actions .primary{width:auto;min-width:126px}
+.unsaved-changes-modal{width:min(520px,calc(100% - 28px));padding:26px 26px 0;text-align:left}
+.unsaved-changes-modal .confirm-copy{padding:0 2px}.unsaved-changes-modal .confirm-copy .eyebrow{display:block;margin-bottom:7px;color:#9a651a}.unsaved-changes-modal .confirm-copy h2{font-size:21px}.unsaved-changes-modal .confirm-copy p{margin:9px 0 22px;font-size:12px;line-height:1.65}
+.unsaved-changes-icon{width:46px;height:46px;margin-bottom:15px;display:grid;place-items:center;border:1px solid #f1d49b;border-radius:14px;background:#fff8e6;color:#d39523;font-size:17px;box-shadow:inset 0 0 0 6px #fffdf7}
+.unsaved-changes-modal .modal-actions{margin:0 -26px;padding:14px 20px;display:grid;grid-template-columns:1fr 1fr auto;gap:9px;justify-content:stretch;border-radius:0 0 16px 16px}
+.unsaved-changes-modal .modal-actions button{width:100%;white-space:nowrap}.unsaved-changes-modal .discard-button{color:#a83b46;border-color:#e7b9bf;background:#fffafb}.unsaved-changes-modal .discard-button:hover{border-color:#d9949d;background:#fff2f4}
+@media(max-width:720px){.settings-save-actions,.storefront-save-actions{width:100%;justify-content:stretch}.settings-save-actions .unsaved-badge,.storefront-save-actions .unsaved-badge{flex:1;justify-content:center}.storefront-save-actions .primary{flex:1;width:auto}.unsaved-changes-modal .modal-actions{grid-template-columns:1fr}.unsaved-changes-modal .modal-actions #saveAndLeaveUnsaved{grid-row:1}.unsaved-changes-modal .modal-actions #keepEditingUnsaved{grid-row:2}.unsaved-changes-modal .modal-actions #discardUnsaved{grid-row:3}}

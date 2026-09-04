@@ -1,6 +1,6 @@
 {
   "name": "appointment-lite",
-  "version": "0.8.11",
+  "version": "0.8.12",
   "description": "SHOPLINE appointment scheduling with standalone page booking, public staff directories, private online meeting links, paid booking flows, staff scheduling, Google Calendar sync, notifications, and order lifecycle visibility.",
   "type": "module",
   "engines": {

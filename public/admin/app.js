@@ -5,7 +5,8 @@ const state = {
   calendarSync: null, calendarStaffId: '', calendarPopup: null, calendarDayItems: {}, paidVariants: [], orderAccess: null, locations: [], locationAccess: null, storefrontSettings: null,
   subscription: null, subscriptionSyncError: '', restricted: false, archiveMode: false, accessMode: 'full',
   subscriptionRecoveryLastCheckAt: 0, subscriptionRecoveryInFlight: false,
-  productPickerMode: 'checkout', ruleProductSelection: { trigger: [], placement: [] }, productPlacementScope: 'all'
+  productPickerMode: 'checkout', ruleProductSelection: { trigger: [], placement: [] }, productPlacementScope: 'all',
+  emailSavedSnapshot: '', storefrontSavedSnapshot: ''
 };
 const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const viewLabels = {
@@ -61,6 +62,99 @@ function storefrontThemeTokens(settings = defaultStorefrontSettings) {
 const productStatusLabels = { active: 'Published', draft: 'Draft' };
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
+
+let pendingUnsavedAction = null;
+let pendingUnsavedDestination = '';
+
+function settingsSnapshot(value) {
+  try { return JSON.stringify(value || {}); }
+  catch { return ''; }
+}
+
+function currentSettingsSnapshot(view) {
+  if (view === 'email' && state.emailSettings) return settingsSnapshot(emailSettingsPayload());
+  if (view === 'setup' && state.storefrontSettings) return settingsSnapshot(storefrontSettingsFromForm());
+  return '';
+}
+
+function savedSettingsSnapshot(view) {
+  if (view === 'email') return state.emailSavedSnapshot || '';
+  if (view === 'setup') return state.storefrontSavedSnapshot || '';
+  return '';
+}
+
+function hasUnsavedChanges(view = state.currentView) {
+  if (!['email', 'setup'].includes(view)) return false;
+  const baseline = savedSettingsSnapshot(view);
+  if (!baseline) return false;
+  return currentSettingsSnapshot(view) !== baseline;
+}
+
+function updateUnsavedUi(view) {
+  if (!['email', 'setup'].includes(view)) return;
+  const dirty = hasUnsavedChanges(view);
+  const badge = view === 'email' ? $('#emailUnsavedBadge') : $('#storefrontUnsavedBadge');
+  const saveButton = view === 'email' ? $('#saveEmailSettings') : $('#saveStorefrontSettings');
+  badge?.classList.toggle('hidden', !dirty);
+  saveButton?.classList.toggle('save-attention', dirty);
+  saveButton?.setAttribute('data-unsaved', dirty ? 'true' : 'false');
+}
+
+function captureSavedSettings(view) {
+  if (view === 'email' && state.emailSettings) state.emailSavedSnapshot = currentSettingsSnapshot('email');
+  if (view === 'setup' && state.storefrontSettings) state.storefrontSavedSnapshot = currentSettingsSnapshot('setup');
+  updateUnsavedUi(view);
+}
+
+function discardUnsavedChanges(view) {
+  const baseline = savedSettingsSnapshot(view);
+  if (!baseline) return;
+  let saved;
+  try { saved = JSON.parse(baseline); } catch { return; }
+  if (view === 'email') {
+    state.emailSettings = clone(saved);
+    renderEmailStudio();
+  } else if (view === 'setup') {
+    state.storefrontSettings = normalizeStorefrontClient(saved);
+    if (state.bootstrap) state.bootstrap.storefrontSettings = clone(state.storefrontSettings);
+    renderStorefrontSettings(state.storefrontSettings);
+  }
+}
+
+function closeUnsavedDialog() {
+  const dialog = $('#unsavedChangesDialog');
+  if (dialog?.open) dialog.close();
+  pendingUnsavedAction = null;
+  pendingUnsavedDestination = '';
+}
+
+function openUnsavedDialog(action, destination = '') {
+  const view = state.currentView;
+  if (!hasUnsavedChanges(view)) {
+    action?.();
+    return;
+  }
+  pendingUnsavedAction = action;
+  pendingUnsavedDestination = destination;
+  const section = t(view === 'email' ? 'Email Studio' : 'Storefront setup');
+  $('#unsavedChangesTitle').textContent = t('Save your changes?');
+  $('#unsavedChangesMessage').textContent = destination
+    ? t('You have unsaved changes in {section}. Save them before going to {destination}.', { section, destination })
+    : t('You have unsaved changes in {section}. Save them before leaving this page.', { section });
+  $('#unsavedChangesDialog').showModal();
+}
+
+function requestViewSwitch(name) {
+  if (!name || name === state.currentView) return;
+  const destination = t(viewLabels[name]?.[1] || 'Appointment Lite');
+  openUnsavedDialog(() => switchView(name), destination);
+}
+
+function requestLocaleChange(locale) {
+  if (locale === state.locale) return;
+  const destination = locale === 'zh-CN' ? '简体中文' : 'English';
+  openUnsavedDialog(() => setLocale(locale), destination);
+}
 
 function googleGMark(className = '') {
   return `<span class="google-g ${className}" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill="#4285F4" d="M21.6 12.23c0-.71-.06-1.24-.2-1.8H12v3.28h5.52a4.72 4.72 0 0 1-2.05 3.01l-.02.11 2.98 2.31.21.02c1.93-1.78 3.04-4.4 3.04-6.93Z"/><path fill="#34A853" d="M12 22c2.76 0 5.08-.91 6.78-2.48l-3.23-2.5c-.86.6-2.04 1.01-3.55 1.01a6.17 6.17 0 0 1-5.83-4.26l-.1.01-3.1 2.4-.04.1A10.24 10.24 0 0 0 12 22Z"/><path fill="#FBBC05" d="M6.17 13.77A6.3 6.3 0 0 1 5.83 12c0-.62.12-1.22.33-1.78l-.01-.12-3.14-2.44-.1.05A10 10 0 0 0 1.82 12c0 1.55.38 3.02 1.08 4.29l3.27-2.52Z"/><path fill="#EA4335" d="M12 5.97c1.92 0 3.22.83 3.97 1.52l2.88-2.81C17.08 3.03 14.76 2 12 2a10.24 10.24 0 0 0-9.08 5.71l3.24 2.51A6.19 6.19 0 0 1 12 5.97Z"/></svg></span>`;
@@ -814,6 +908,18 @@ Object.assign(zh, {
   'Paid order required':'需要已付款订单', 'Private scheduling link':'私密预约链接'
 });
 
+
+Object.assign(zh, {
+  'Unsaved changes': '有未保存的更改',
+  'Save your changes?': '要保存当前更改吗？',
+  'You have unsaved changes in {section}. Save them before going to {destination}.': '{section} 中有未保存的更改。前往 {destination} 前请先保存。',
+  'You have unsaved changes in {section}. Save them before leaving this page.': '{section} 中有未保存的更改。离开当前页面前请先保存。',
+  'Keep editing': '继续编辑',
+  'Discard changes': '放弃更改',
+  'Save & leave': '保存并离开',
+  'UNSAVED CHANGES': '未保存更改'
+});
+
 const enByZh = new Map(Object.entries(zh).map(([english, chinese]) => [chinese, english]));
 
 function t(value, variables = {}) {
@@ -865,7 +971,7 @@ const staffAvatarPresets = ['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunse
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
 function staffPresetImage(preset) {
   const file = staffAvatarFiles[preset] || staffAvatarFiles.aurora;
-  return `<img src="/assets/staff/${file}?v=0.8.11" alt="" loading="lazy" decoding="async">`;
+  return `<img src="/assets/staff/${file}?v=0.8.12" alt="" loading="lazy" decoding="async">`;
 }
 let staffAvatarDraft = { kind: 'preset', value: 'aurora' };
 
@@ -3025,9 +3131,10 @@ function renderStorefrontSettings(settings = state.storefrontSettings) {
   $('#storefrontShowNotes').checked = value.modal.showNotes;
   $('#storefrontShowFooterNote').checked = value.modal.showFooterNote;
   renderStorefrontPreview();
+  captureSavedSettings('setup');
 }
 
-async function saveStorefrontSettings() {
+async function saveStorefrontSettings({ silent = false } = {}) {
   const button = $('#saveStorefrontSettings');
   button.disabled = true;
   try {
@@ -3035,9 +3142,12 @@ async function saveStorefrontSettings() {
     state.storefrontSettings = normalizeStorefrontClient(payload.settings);
     if (state.bootstrap) state.bootstrap.storefrontSettings = clone(state.storefrontSettings);
     renderStorefrontSettings(state.storefrontSettings);
-    toast(t('Storefront settings saved.'));
-  } catch (error) { showError(error); }
-  finally { button.disabled = false; }
+    if (!silent) toast(t('Storefront settings saved.'));
+    return true;
+  } catch (error) {
+    showError(error);
+    return false;
+  } finally { button.disabled = false; }
 }
 
 function storeCurrentTemplate() {
@@ -3076,6 +3186,7 @@ function renderTemplateTabs() {
     input.setSelectionRange(start + token.length, start + token.length);
     storeCurrentTemplate();
     renderEmailPreview();
+    updateUnsavedUi('email');
   }));
 }
 
@@ -3121,6 +3232,7 @@ function renderEmailStudio() {
   $('#merchantNotifyCancelled').checked = state.emailSettings.merchantNotifications?.bookingCancelled !== false;
   $('#merchantNotifyReminder').checked = state.emailSettings.merchantNotifications?.upcomingReminder !== false;
   selectTemplate(state.activeTemplate);
+  captureSavedSettings('email');
 }
 
 function emailSettingsPayload() {
@@ -3416,13 +3528,13 @@ function bind() {
   window.addEventListener('pageshow', event => { if (event.persisted) void recoverSubscriptionIfNeeded({ force: true }); });
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') void recoverSubscriptionIfNeeded(); });
   renderTemplateTabs();
-  $$('.nav-item').forEach(button => button.addEventListener('click', () => switchView(button.dataset.view)));
+  $$('.nav-item').forEach(button => button.addEventListener('click', () => requestViewSwitch(button.dataset.view)));
   $('#startSubscription')?.addEventListener('click', startSubscriptionCheckout);
   $('#syncSubscriptionGate')?.addEventListener('click', refreshSubscription);
   $('#syncSubscriptionBilling')?.addEventListener('click', refreshSubscription);
   $('#renewSubscriptionBilling')?.addEventListener('click', openShoplineRenewal);
   $('#renewFromBookings')?.addEventListener('click', openShoplineRenewal);
-  $$('[data-go-view]').forEach(button => button.addEventListener('click', () => switchView(button.dataset.goView)));
+  $$('[data-go-view]').forEach(button => button.addEventListener('click', () => requestViewSwitch(button.dataset.goView)));
   $$('[data-new-rule]').forEach(button => button.addEventListener('click', () => openRule()));
   $$('[data-close-dialog]').forEach(button => button.addEventListener('click', () => { closeRuleSelect(); closeServiceTimezonePicker(); closeLocationPicker(); $('#ruleDialog').close(); }));
   $$('[data-close-product-dialog]').forEach(button => button.addEventListener('click', () => $('#productDialog').close()));
@@ -3471,7 +3583,7 @@ function bind() {
   $$('[data-locale]').forEach(button => button.addEventListener('click', () => {
     $('#languageMenu').classList.add('hidden');
     $('#languageButton').setAttribute('aria-expanded', 'false');
-    setLocale(button.dataset.locale);
+    requestLocaleChange(button.dataset.locale);
   }));
   document.addEventListener('click', event => {
     if (!$('#languagePicker').contains(event.target)) {
@@ -3580,7 +3692,55 @@ function bind() {
     $('#confirmDialog').close();
     if (action) try { await action(); } catch (error) { showError(error); }
   });
-  $('#saveStorefrontSettings')?.addEventListener('click', saveStorefrontSettings);
+  const emailView = $('#emailView');
+  const storefrontCustomizer = document.querySelector('#setupView .storefront-customizer');
+  const trackEmailUnsaved = event => {
+    if (event.target.matches('input,textarea,select')) queueMicrotask(() => updateUnsavedUi('email'));
+  };
+  emailView?.addEventListener('input', trackEmailUnsaved);
+  emailView?.addEventListener('change', trackEmailUnsaved);
+  const trackStorefrontUnsaved = event => {
+    if (event.target.matches('input,textarea,select')) queueMicrotask(() => updateUnsavedUi('setup'));
+  };
+  storefrontCustomizer?.addEventListener('input', trackStorefrontUnsaved);
+  storefrontCustomizer?.addEventListener('change', trackStorefrontUnsaved);
+  storefrontCustomizer?.addEventListener('click', event => {
+    if (event.target.closest('[data-storefront-theme],[data-storefront-intensity],[data-storefront-corner],[data-storefront-primary-style],[data-storefront-width],[data-storefront-alignment],[data-storefront-primary-width],[data-storefront-primary-alignment]')) {
+      queueMicrotask(() => updateUnsavedUi('setup'));
+    }
+  });
+  $('#keepEditingUnsaved')?.addEventListener('click', closeUnsavedDialog);
+  $('#discardUnsaved')?.addEventListener('click', () => {
+    const action = pendingUnsavedAction;
+    const view = state.currentView;
+    discardUnsavedChanges(view);
+    closeUnsavedDialog();
+    action?.();
+  });
+  $('#saveAndLeaveUnsaved')?.addEventListener('click', async () => {
+    const action = pendingUnsavedAction;
+    const view = state.currentView;
+    const button = $('#saveAndLeaveUnsaved');
+    const keep = $('#keepEditingUnsaved');
+    const discard = $('#discardUnsaved');
+    [button, keep, discard].filter(Boolean).forEach(item => { item.disabled = true; });
+    try {
+      const saved = view === 'email'
+        ? await saveEmailSettings({ silent: true })
+        : await saveStorefrontSettings({ silent: true });
+      if (!saved) return;
+      closeUnsavedDialog();
+      action?.();
+    } finally {
+      [button, keep, discard].filter(Boolean).forEach(item => { item.disabled = false; });
+    }
+  });
+  window.addEventListener('beforeunload', event => {
+    if (!hasUnsavedChanges()) return;
+    event.preventDefault();
+    event.returnValue = '';
+  });
+  $('#saveStorefrontSettings')?.addEventListener('click', () => saveStorefrontSettings());
   $$('#storefrontThemeOptions [data-storefront-theme]').forEach(button => button.addEventListener('click', () => setStorefrontTheme(button.dataset.storefrontTheme)));
   $$('#storefrontIntensityOptions [data-storefront-intensity]').forEach(button => button.addEventListener('click', () => setStorefrontIntensity(button.dataset.storefrontIntensity)));
   $$('#storefrontCornerOptions [data-storefront-corner]').forEach(button => button.addEventListener('click', () => setStorefrontCornerStyle(button.dataset.storefrontCorner)));
