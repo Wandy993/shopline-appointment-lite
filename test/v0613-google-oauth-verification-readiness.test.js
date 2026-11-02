@@ -174,7 +174,7 @@ test('v0.8.14 exposes Google Calendar data use before merchant authorization', a
   assert.match(adminUi, /Google Calendar data use/);
   assert.match(adminUi, /Google Calendar data policy/);
   assert.match(adminUi, /google-calendar-data/);
-  assert.match(adminCss, /\\.calendar-privacy-note/);
+  assert.ok(adminCss.includes('.calendar-privacy-note'));
   assert.ok(config.includes("process.env.LEGAL_SUPPORT_EMAIL || 'help@appointment.vip'"));
   assert.ok(env.includes('LEGAL_SUPPORT_EMAIL=help@appointment.vip'));
 });
