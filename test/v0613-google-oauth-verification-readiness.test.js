@@ -137,9 +137,9 @@ test('v0.6.16 release documentation lists the production Google Auth Platform va
   assert.match(doc, /calendar\.events\.owned/);
   assert.match(env, /Homepage: https:\/\/appointment\.shoplineapp\.vip\//);
   assert.match(env, /Authorized domain: shoplineapp\.vip/);
-  assert.equal(JSON.parse(pkg).version, '0.8.18');
-  assert.ok(app.includes("version: '0.8.18'"));
-  assert.ok(release.includes('RELEASE_VERSION="0.8.18"'));
+  assert.equal(JSON.parse(pkg).version, '0.8.19');
+  assert.ok(app.includes("version: '0.8.19'"));
+  assert.ok(release.includes('RELEASE_VERSION="0.8.19"'));
   assert.match(app, /version: '\d+\.\d+\.\d+'/);
   assert.match(adminView, /styles\.css\?v=\d+\.\d+\.\d+/);
   assert.match(bookView, /styles\.css\?v=\d+\.\d+\.\d+/);
@@ -148,7 +148,7 @@ test('v0.6.16 release documentation lists the production Google Auth Platform va
   assert.match(release, /NAME="appointment-lite-v\$\{RELEASE_LABEL\}-[^"]+"/);
 });
 
-test('v0.8.18 storefront extension assets use the new production API domain', async () => {
+test('v0.8.19 storefront extension assets use the new production API domain', async () => {
   const [product, page, embed, env] = await Promise.all([
     source('theme-extension-source/public/appointment-lite.js'),
     source('theme-extension-source/public/appointment-lite-page.js'),
@@ -158,12 +158,12 @@ test('v0.8.18 storefront extension assets use the new production API domain', as
   for (const asset of [product, page, embed]) {
     assert.ok(asset.includes("const API_BASE = 'https://appointment.shoplineapp.vip'"));
     assert.ok(!asset.includes('toolkit.fans'));
-    assert.ok(asset.includes("const VERSION = '0.8.18'"));
+    assert.ok(asset.includes("const VERSION = '0.8.19'"));
   }
   assert.ok(env.includes('GOOGLE_CALENDAR_REDIRECT_URI=https://appointment.shoplineapp.vip/integrations/google/callback'));
 });
 
-test('v0.8.18 exposes Google Calendar data use before merchant authorization', async () => {
+test('v0.8.19 exposes Google Calendar data use before merchant authorization', async () => {
   const [adminUi, adminCss, config, env] = await Promise.all([
     source('public/admin/app.js'),
     source('public/admin/styles.css'),
