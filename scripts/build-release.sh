@@ -2,10 +2,10 @@
 set -u
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd -P)"
-RELEASE_VERSION="0.8.16"
-RELEASE_LABEL="0.8.16"
-RELEASE_BUILD="email-studio-layout.1"
-NAME="appointment-lite-v${RELEASE_LABEL}-email-studio-layout"
+RELEASE_VERSION="0.8.17"
+RELEASE_LABEL="0.8.17"
+RELEASE_BUILD="storefront-layout-recovery.1"
+NAME="appointment-lite-v${RELEASE_LABEL}-storefront-layout-recovery"
 DIST_DIR="$ROOT_DIR/dist"
 STAGE_DIR="${TMPDIR:-/tmp}/${NAME}.$$"
 OUTPUT="$DIST_DIR/${NAME}.zip"
