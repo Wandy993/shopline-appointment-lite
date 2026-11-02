@@ -1,6 +1,6 @@
 (() => {
-  const VERSION = '0.8.12';
-  const API_BASE = 'https://appointment.toolkit.fans';
+  const VERSION = '0.8.13';
+  const API_BASE = 'https://appointment.shoplineapp.vip';
   const SELECTOR = '[data-appointment-lite-embed]:not([data-al-embed-ready])';
 
   function escapeHtml(value) {
