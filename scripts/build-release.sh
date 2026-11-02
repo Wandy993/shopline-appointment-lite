@@ -2,10 +2,10 @@
 set -u
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd -P)"
-RELEASE_VERSION="0.8.18"
-RELEASE_LABEL="0.8.18"
-RELEASE_BUILD="setup-checklist-layout.1"
-NAME="appointment-lite-v${RELEASE_LABEL}-setup-checklist-layout"
+RELEASE_VERSION="0.8.19"
+RELEASE_LABEL="0.8.19"
+RELEASE_BUILD="unified-paid-product-selection.1"
+NAME="appointment-lite-v${RELEASE_LABEL}-unified-paid-product-selection"
 DIST_DIR="$ROOT_DIR/dist"
 STAGE_DIR="${TMPDIR:-/tmp}/${NAME}.$$"
 OUTPUT="$DIST_DIR/${NAME}.zip"
