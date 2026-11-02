@@ -113,13 +113,13 @@ test('v0.6.16 release documentation lists the production Google Auth Platform va
     source('theme-extension-source/public/appointment-lite.js'),
     source('scripts/build-release.sh')
   ]);
-  assert.match(doc, /https:\/\/appointment\.toolkit\.fans\//);
-  assert.match(doc, /Authorized domain: `toolkit\.fans`/);
-  assert.match(doc, /https:\/\/appointment\.toolkit\.fans\/integrations\/google\/callback/);
+  assert.match(doc, /https:\/\/appointment\.shoplineapp\.vip\//);
+  assert.match(doc, /Authorized domain: `shoplineapp\.vip`/);
+  assert.match(doc, /https:\/\/appointment\.shoplineapp\.vip\/integrations\/google\/callback/);
   assert.match(doc, /calendar\.calendarlist\.readonly/);
   assert.match(doc, /calendar\.events\.owned/);
-  assert.match(env, /Homepage: https:\/\/appointment\.toolkit\.fans\//);
-  assert.match(env, /Authorized domain: toolkit\.fans/);
+  assert.match(env, /Homepage: https:\/\/appointment\.shoplineapp\.vip\//);
+  assert.match(env, /Authorized domain: shoplineapp\.vip/);
   assert.match(JSON.parse(pkg).version, /^\d+\.\d+\.\d+$/);
   assert.match(app, /version: '\d+\.\d+\.\d+'/);
   assert.match(adminView, /styles\.css\?v=\d+\.\d+\.\d+/);
