@@ -27,7 +27,9 @@ test('merchant admin normalizes typography, form controls, and responsive config
   assert.match(css, /\.app-shell button[^}]*font-size:14px[^}]*border-radius:6px/);
   assert.match(css, /\.app-shell input:not\(\[type=checkbox\]\)[^}]*font-size:14px[^}]*border-radius:6px/);
   assert.match(css, /\.app-shell code[^}]*font-family:var\(--font-mono\);font-size:13px/);
-  assert.match(css, /\.config-layout,\.configuration-layout,\.settings-layout,\.setup-layout\{display:grid;grid-template-columns:280px minmax\(0,1fr\)/);
+  assert.match(css, /\.config-layout,\.configuration-layout,\.settings-layout\{display:grid;grid-template-columns:280px minmax\(0,1fr\)/);
+  assert.doesNotMatch(css, /\.config-layout,\.configuration-layout,\.settings-layout,\.setup-layout\{display:grid;/);
+  assert.match(css, /\.app-shell \.setup-layout\{\s*display:grid;\s*grid-template-columns:minmax\(0,1fr\)/);
   assert.match(css, /@media\(max-width:960px\)\{\.config-layout/);
   assert.match(css, /\.app-shell \.form-section\{display:grid;grid-template-columns:280px minmax\(0,1fr\)/);
   assert.match(css, /\.app-shell \.form-section>:not\(\.section-title\)\{grid-column:2/);
