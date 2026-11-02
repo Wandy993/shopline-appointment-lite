@@ -50,32 +50,32 @@ test('admin font loading is scoped to the merchant admin and allowed by CSP', as
 
 test('Email Studio uses full-width configuration sections instead of a permanent empty left column', async () => {
   const css = await readFile(new URL('../public/admin/styles.css', import.meta.url), 'utf8');
-  assert.match(css, /v0\\.8\\.16 — Email Studio full-width form layout/);
-  assert.match(css, /\\.app-shell \\.email-controls \\.form-section\\{\\s*grid-template-columns:minmax\\(0,1fr\\)/);
-  assert.match(css, /\\.app-shell \\.email-controls \\.form-section>:not\\(\\.section-title\\)\\{\\s*grid-column:1;\\s*width:100%;/);
-  assert.match(css, /\\.app-shell \\.notification-preferences\\{\\s*grid-template-columns:repeat\\(2,minmax\\(0,1fr\\)/);
-  assert.match(css, /\\.app-shell \\.template-editor #templateBody\\{min-height:190px/);
-  assert.match(css, /@media\\(max-width:560px\\)/);
+  assert.ok(css.includes('/* v0.8.16 — Email Studio full-width form layout */'));
+  assert.ok(css.includes('.app-shell .email-controls .form-section{\n  grid-template-columns:minmax(0,1fr);'));
+  assert.ok(css.includes('.app-shell .email-controls .form-section>:not(.section-title){\n  grid-column:1;\n  width:100%;'));
+  assert.ok(css.includes('.app-shell .notification-preferences{\n  grid-template-columns:repeat(2,minmax(0,1fr));'));
+  assert.ok(css.includes('.app-shell .template-editor #templateBody{min-height:190px'));
+  assert.ok(css.includes('@media(max-width:560px){'));
 });
 
 test('Email Studio keeps the live preview layout separate from full-width form sections', async () => {
   const css = await readFile(new URL('../public/admin/styles.css', import.meta.url), 'utf8');
-  assert.match(css, /\\.email-studio-grid\\{grid-template-columns:minmax\\(620px,1\\.15fr\\) minmax\\(360px,\\.85fr\\)\\}/);
-  assert.match(css, /\.preview-sticky\s*\{\s*position:sticky;top:92px;?\s*\}/);
+  assert.ok(css.includes('.email-studio-grid{grid-template-columns:minmax(620px,1.15fr) minmax(360px,.85fr)}'));
+  assert.ok(css.includes('.preview-sticky { position:sticky;top:92px; }'));
 });
 
 test('Storefront Setup configuration cards keep full-width controls inside the editor column', async () => {
   const css = await readFile(new URL('../public/admin/styles.css', import.meta.url), 'utf8');
-  assert.match(css, /v0\\.8\\.17 — Storefront Setup layout recovery/);
-  assert.match(css, /\\.app-shell \\.storefront-config-group\\{\\s*display:grid;\\s*grid-template-columns:minmax\\(0,1fr\\)/);
-  assert.match(css, /\\.app-shell \\.storefront-config-group>\\*\\{\\s*grid-column:1;\\s*width:100%;\\s*min-width:0/);
-  assert.match(css, /\\.app-shell \\.booking-theme-grid\\{\\s*grid-template-columns:repeat\\(3,minmax\\(0,1fr\\)/);
-  assert.match(css, /\\.app-shell \\.storefront-option-row\\{\\s*grid-template-columns:minmax\\(0,1fr\\) minmax\\(220px,auto)/);
-  assert.doesNotMatch(css, /\\.app-shell \\.storefront-config-group\\{display:grid;grid-template-columns:280px/);
+  assert.ok(css.includes('/* v0.8.17 — Storefront Setup layout recovery */'));
+  assert.ok(css.includes('.app-shell .storefront-config-group{\n  display:grid;\n  grid-template-columns:minmax(0,1fr);'));
+  assert.ok(css.includes('.app-shell .storefront-config-group>*{\n  grid-column:1;\n  width:100%;\n  min-width:0;'));
+  assert.ok(css.includes('.app-shell .booking-theme-grid{\n  grid-template-columns:repeat(3,minmax(0,1fr));'));
+  assert.ok(css.includes('.app-shell .storefront-option-row{\n  grid-template-columns:minmax(0,1fr) minmax(220px,auto);'));
+  assert.equal(css.includes('.app-shell .storefront-config-group{display:grid;grid-template-columns:280px'), false);
 });
 
 test('Storefront Setup live preview stays visible while scrolling and returns to normal flow on narrow screens', async () => {
   const css = await readFile(new URL('../public/admin/styles.css', import.meta.url), 'utf8');
-  assert.match(css, /\\.app-shell \\.storefront-preview-panel\\{\\s*position:sticky;\\s*top:96px/);
-  assert.match(css, /@media\\(max-width:1100px\\)\\s*\\{\\s*\\.app-shell \\.storefront-preview-panel\\{\\s*position:static/);
+  assert.ok(css.includes('.app-shell .storefront-preview-panel{\n  position:sticky;\n  top:96px;'));
+  assert.ok(css.includes('@media(max-width:1100px){\n  .app-shell .storefront-preview-panel{\n    position:static;'));
 });
