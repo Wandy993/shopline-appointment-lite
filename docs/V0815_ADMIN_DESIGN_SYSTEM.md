@@ -49,7 +49,7 @@ Checkboxes and radio controls retain their existing native/custom interaction ge
 
 ## Configuration layout utility
 
-The reusable `.config-layout`, `.configuration-layout`, and `.settings-layout` classes define a 280px description column plus a flexible content column, with a 24px gap. At widths up to 960px, the layout becomes a single column. The utility is available for configuration sections without forcing the Email Studio form/preview or Storefront Setup control/preview workspaces into an unsuitable narrow column.
+The `.form-section` cards in Email Studio and `.storefront-config-group` cards in Storefront Setup use a 280px description column plus a flexible control column, with a 24px gap. The reusable `.config-layout`, `.configuration-layout`, and `.settings-layout` classes expose the same pattern for other configuration sections. At widths up to 960px, the layout becomes a single column. The outer Email Studio form/preview and Storefront Setup controls/preview workspaces retain their existing purpose-specific split.
 
 ## Preserved behavior
 
