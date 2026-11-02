@@ -1208,3 +1208,8 @@ html,body{background:var(--bg-color);color:var(--text-main);font-family:var(--fo
 }
 
 .app-shell button.primary:hover:not(.email-preview button):not(.preview-email-card button):not(.storefront-dialog-preview-actions button){color:#fff;border-color:var(--accent-hover);background:var(--accent-hover)}
+
+/* v0.8.15 admin config-card heading scale */
+.app-shell .storefront-config-group{border-color:var(--border);background:var(--card-bg)}
+.app-shell .storefront-config-title strong{color:var(--text-main);font-size:16px;font-weight:600;line-height:1.4}
+.app-shell .storefront-config-title small{color:var(--text-muted);font-size:13px;font-weight:400;line-height:1.5}
