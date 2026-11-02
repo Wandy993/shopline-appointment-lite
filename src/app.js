@@ -21,8 +21,8 @@ export function createApp() {
   app.disable('x-powered-by');
   app.use(helmet({ contentSecurityPolicy: {
     directives: {
-      defaultSrc: ["'self'"], scriptSrc: ["'self'"], styleSrc: ["'self'", "'unsafe-inline'"], imgSrc: ["'self'", 'data:', 'https:'],
-      fontSrc: ["'self'", 'data:'], connectSrc: ["'self'"], frameAncestors: ["'self'", 'https://*.myshopline.com']
+      defaultSrc: ["'self'"], scriptSrc: ["'self'"], styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'], imgSrc: ["'self'", 'data:', 'https:'],
+      fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com'], connectSrc: ["'self'"], frameAncestors: ["'self'", 'https://*.myshopline.com']
     }
   }}));
   app.post('/webhooks/shopline', express.raw({ type: 'application/json', limit: '1mb' }), shoplinePaidBookingWebhook);
@@ -37,7 +37,7 @@ export function createApp() {
   app.use('/integration-assets', express.static('public/integrations', { maxAge: config.nodeEnv === 'production' ? '1h' : 0 }));
   app.use('/legal/assets', express.static('public/legal', { maxAge: config.nodeEnv === 'production' ? '1h' : 0 }));
 
-  app.get('/health', (req, res) => res.set('Cache-Control', 'no-store').json({ ok: true, service: 'appointment-lite', version: '0.8.14', build: '0.8.14-google-oauth-brand-readiness', release: 'v0.8.14-google-oauth-brand-readiness' }));
+  app.get('/health', (req, res) => res.set('Cache-Control', 'no-store').json({ ok: true, service: 'appointment-lite', version: '0.8.15', build: '0.8.15-admin-design-system', release: 'v0.8.15-admin-design-system' }));
   const legalHeaders = { 'Cache-Control': 'public, max-age=3600', 'Referrer-Policy': 'strict-origin-when-cross-origin' };
   app.get('/privacy', (req, res) => res.redirect(302, `/${preferredLegalLocale(req.get('accept-language'))}/privacy`));
   app.get('/terms', (req, res) => res.redirect(302, `/${preferredLegalLocale(req.get('accept-language'))}/terms`));

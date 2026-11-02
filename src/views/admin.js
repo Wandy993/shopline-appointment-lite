@@ -39,8 +39,11 @@ export function adminPage() {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <title>Appointment Lite</title>
-  <link rel="stylesheet" href="/admin/styles.css?v=0.8.14&build=0.8.14">
+  <link rel="stylesheet" href="/admin/styles.css?v=0.8.15&build=0.8.15">
 </head>
 <body>
   <div class="app-shell">
@@ -416,7 +419,7 @@ export function adminPage() {
   </dialog>
 
   <dialog id="confirmDialog" class="confirm-modal"><div class="confirm-icon">!</div><div class="confirm-copy"><h2 id="confirmTitle">Please confirm</h2><p id="confirmMessage"></p></div><div class="modal-actions"><button id="confirmNo" class="secondary">Keep it</button><button id="confirmYes" class="danger">Confirm</button></div></dialog>
-  <script type="module" src="/admin/app.js?v=0.8.14&build=0.8.14"></script>
+  <script type="module" src="/admin/app.js?v=0.8.15&build=0.8.15"></script>
 </body>
 </html>`;
 }
