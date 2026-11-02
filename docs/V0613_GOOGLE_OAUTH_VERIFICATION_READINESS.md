@@ -6,20 +6,20 @@ v0.6.13 prepares Appointment Lite's public website and legal surface for Google 
 
 Production base URL:
 
-- `https://appointment.toolkit.fans/`
+- `https://appointment.shoplineapp.vip/`
 
 Google / App Store-ready pages:
 
-- App homepage: `https://appointment.toolkit.fans/`
-- Chinese homepage: `https://appointment.toolkit.fans/zh-cn`
-- English privacy policy: `https://appointment.toolkit.fans/en/privacy`
-- Chinese privacy policy: `https://appointment.toolkit.fans/zh-cn/privacy`
-- English Terms of Service: `https://appointment.toolkit.fans/en/terms`
-- Chinese Terms of Service: `https://appointment.toolkit.fans/zh-cn/terms`
-- English FAQ: `https://appointment.toolkit.fans/en/faq`
-- Chinese FAQ: `https://appointment.toolkit.fans/zh-cn/faq`
-- Sitemap: `https://appointment.toolkit.fans/sitemap.xml`
-- Robots: `https://appointment.toolkit.fans/robots.txt`
+- App homepage: `https://appointment.shoplineapp.vip/`
+- Chinese homepage: `https://appointment.shoplineapp.vip/zh-cn`
+- English privacy policy: `https://appointment.shoplineapp.vip/en/privacy`
+- Chinese privacy policy: `https://appointment.shoplineapp.vip/zh-cn/privacy`
+- English Terms of Service: `https://appointment.shoplineapp.vip/en/terms`
+- Chinese Terms of Service: `https://appointment.shoplineapp.vip/zh-cn/terms`
+- English FAQ: `https://appointment.shoplineapp.vip/en/faq`
+- Chinese FAQ: `https://appointment.shoplineapp.vip/zh-cn/faq`
+- Sitemap: `https://appointment.shoplineapp.vip/sitemap.xml`
+- Robots: `https://appointment.shoplineapp.vip/robots.txt`
 
 The public pages do not require a SHOPLINE admin session, App Bridge, OAuth session, or `shop` query parameter.
 
@@ -30,10 +30,10 @@ Use the following values in Google Auth Platform after the production domain is 
 ### Branding
 
 - App name: `Appointment Lite`
-- Application homepage: `https://appointment.toolkit.fans/`
-- Privacy policy: `https://appointment.toolkit.fans/en/privacy`
-- Terms of service: `https://appointment.toolkit.fans/en/terms`
-- Authorized domain: `toolkit.fans`
+- Application homepage: `https://appointment.shoplineapp.vip/`
+- Privacy policy: `https://appointment.shoplineapp.vip/en/privacy`
+- Terms of service: `https://appointment.shoplineapp.vip/en/terms`
+- Authorized domain: `shoplineapp.vip`
 
 Set a real support email and legal operator in Railway before submitting verification:
 
@@ -49,14 +49,14 @@ OAuth client type: **Web application**
 Authorized redirect URI:
 
 ```text
-https://appointment.toolkit.fans/integrations/google/callback
+https://appointment.shoplineapp.vip/integrations/google/callback
 ```
 
 Railway must use the same callback:
 
 ```env
-APP_URL=https://appointment.toolkit.fans
-GOOGLE_CALENDAR_REDIRECT_URI=https://appointment.toolkit.fans/integrations/google/callback
+APP_URL=https://appointment.shoplineapp.vip
+GOOGLE_CALENDAR_REDIRECT_URI=https://appointment.shoplineapp.vip/integrations/google/callback
 ```
 
 ### Calendar scopes used by Appointment Lite
@@ -74,15 +74,15 @@ Do not add broader Calendar scopes unless a future feature requires them.
 
 ## Search Console / domain ownership
 
-Before OAuth verification, verify `toolkit.fans` in Google Search Console using the Google account that owns or edits the Google Cloud project. Domain-property verification normally uses a DNS TXT record.
+Before OAuth verification, verify `shoplineapp.vip` in Google Search Console using the Google account that owns or edits the Google Cloud project. Domain-property verification normally uses a DNS TXT record.
 
-The OAuth Authorized domain should remain `toolkit.fans`; the production app itself can continue to run on the `appointment.toolkit.fans` subdomain.
+The OAuth Authorized domain should remain `shoplineapp.vip`; the production app itself can continue to run on the `appointment.shoplineapp.vip` subdomain.
 
 ## Verification flow
 
 1. Deploy v0.6.13 and confirm every public URL returns `200`.
 2. Set the real legal operator and support email in Railway.
-3. Verify `toolkit.fans` in Google Search Console.
+3. Verify `shoplineapp.vip` in Google Search Console.
 4. Complete Google Auth Platform Branding with the homepage, privacy, terms, logo, and support email.
 5. In Data Access, keep only the Calendar scopes currently used by Appointment Lite.
 6. In Clients, set the exact production callback URL.
