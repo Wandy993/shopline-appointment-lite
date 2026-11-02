@@ -103,7 +103,7 @@ Partner Token 只放 Railway，不要放前端、Theme Extension，也不要提�
 使用已有 Endpoint：
 
 ```text
-https://appointment.toolkit.fans/webhooks/shopline
+https://appointment.shoplineapp.vip/webhooks/shopline
 ```
 
 新增订阅：
@@ -125,7 +125,7 @@ railway up -d
 部署后检查：
 
 ```bash
-curl -sS https://appointment.toolkit.fans/health
+curl -sS https://appointment.shoplineapp.vip/health
 ```
 
 应该看到 `0.7.0` / `0.7.0-subscription.1`。

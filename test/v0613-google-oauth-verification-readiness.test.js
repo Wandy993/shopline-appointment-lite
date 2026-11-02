@@ -113,13 +113,13 @@ test('v0.6.16 release documentation lists the production Google Auth Platform va
     source('theme-extension-source/public/appointment-lite.js'),
     source('scripts/build-release.sh')
   ]);
-  assert.match(doc, /https:\/\/appointment\.toolkit\.fans\//);
-  assert.match(doc, /Authorized domain: `toolkit\.fans`/);
-  assert.match(doc, /https:\/\/appointment\.toolkit\.fans\/integrations\/google\/callback/);
+  assert.match(doc, /https:\/\/appointment\.shoplineapp\.vip\//);
+  assert.match(doc, /Authorized domain: `shoplineapp\.vip`/);
+  assert.match(doc, /https:\/\/appointment\.shoplineapp\.vip\/integrations\/google\/callback/);
   assert.match(doc, /calendar\.calendarlist\.readonly/);
   assert.match(doc, /calendar\.events\.owned/);
-  assert.match(env, /Homepage: https:\/\/appointment\.toolkit\.fans\//);
-  assert.match(env, /Authorized domain: toolkit\.fans/);
+  assert.match(env, /Homepage: https:\/\/appointment\.shoplineapp\.vip\//);
+  assert.match(env, /Authorized domain: shoplineapp\.vip/);
   assert.match(JSON.parse(pkg).version, /^\d+\.\d+\.\d+$/);
   assert.match(app, /version: '\d+\.\d+\.\d+'/);
   assert.match(adminView, /styles\.css\?v=\d+\.\d+\.\d+/);
@@ -127,4 +127,19 @@ test('v0.6.16 release documentation lists the production Google Auth Platform va
   assert.match(theme, /const VERSION = '\d+\.\d+\.\d+'/);
   assert.match(release, /RELEASE_VERSION="\d+\.\d+\.\d+"/);
   assert.match(release, /NAME="appointment-lite-v\$\{RELEASE_LABEL\}-[^"]+"/);
+});
+
+test('v0.8.13 storefront extension assets use the new production API domain', async () => {
+  const [product, page, embed, env] = await Promise.all([
+    source('theme-extension-source/public/appointment-lite.js'),
+    source('theme-extension-source/public/appointment-lite-page.js'),
+    source('theme-extension-source/public/appointment-lite-embed.js'),
+    source('.env.example')
+  ]);
+  for (const asset of [product, page, embed]) {
+    assert.ok(asset.includes("const API_BASE = 'https://appointment.shoplineapp.vip'"));
+    assert.ok(!asset.includes('toolkit.fans'));
+    assert.ok(asset.includes("const VERSION = '0.8.13'"));
+  }
+  assert.ok(env.includes('GOOGLE_CALENDAR_REDIRECT_URI=https://appointment.shoplineapp.vip/integrations/google/callback'));
 });

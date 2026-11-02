@@ -122,14 +122,14 @@ Appointment Lite v0.6.13 turns the production root domain into a public product 
 
 ## v0.6.13 Google OAuth Verification Readiness
 
-- Replaces the root runtime placeholder with a public English Appointment Lite homepage at `https://appointment.toolkit.fans/`.
+- Replaces the root runtime placeholder with a public English Appointment Lite homepage at `https://appointment.shoplineapp.vip/`.
 - Adds a public Chinese homepage at `/zh-cn` and keeps language switching across public pages.
 - Adds bilingual Terms of Service at `/en/terms` and `/zh-cn/terms`.
 - Links Home, Privacy, Terms, and FAQ consistently from the public header and footer.
 - Describes Google Calendar data use on the public homepage using the same owned-calendar model implemented by the app.
 - Adds `robots.txt` and `sitemap.xml` for the public verification surface.
 - Preserves SHOPLINE install behavior when the root URL carries `handle` or `appkey`.
-- Keeps the production Google callback at `https://appointment.toolkit.fans/integrations/google/callback` and does not broaden Calendar scopes.
+- Keeps the production Google callback at `https://appointment.shoplineapp.vip/integrations/google/callback` and does not broaden Calendar scopes.
 
 See [Google OAuth Verification Readiness](docs/V0613_GOOGLE_OAUTH_VERIFICATION_READINESS.md).
 
@@ -178,10 +178,10 @@ Appointment Lite v0.6.10 publishes App Store-ready Chinese and English Privacy P
 
 Production URLs after Railway deploy:
 
-- `https://appointment.toolkit.fans/zh-cn/privacy`
-- `https://appointment.toolkit.fans/en/privacy`
-- `https://appointment.toolkit.fans/zh-cn/faq`
-- `https://appointment.toolkit.fans/en/faq`
+- `https://appointment.shoplineapp.vip/zh-cn/privacy`
+- `https://appointment.shoplineapp.vip/en/privacy`
+- `https://appointment.shoplineapp.vip/zh-cn/faq`
+- `https://appointment.shoplineapp.vip/en/faq`
 
 See [Legal Pages & FAQ](docs/V0610_LEGAL_PAGES_FAQ.md).
 
@@ -584,7 +584,7 @@ SHOPLINE_APP_SECRET=...
 SESSION_SECRET=...
 GOOGLE_CALENDAR_CLIENT_ID=...
 GOOGLE_CALENDAR_CLIENT_SECRET=...
-GOOGLE_CALENDAR_REDIRECT_URI=https://appointment.toolkit.fans/integrations/google/callback
+GOOGLE_CALENDAR_REDIRECT_URI=https://appointment.shoplineapp.vip/integrations/google/callback
 GOOGLE_TOKEN_ENCRYPTION_KEY=...
 ```
 
@@ -682,7 +682,7 @@ In the Theme Editor, add **Appointment Lite** to the product template. The block
 
 After CLI creation, copy the extension's `EXTENSION_UUID` value into `SHOPLINE_THEME_EXTENSION_UUID` in the app service and redeploy. **Storefront setup** can then locate the published theme and open the official product-template App Block deep link in a new window. If an older installation has not granted `read_content`, the button safely opens the theme list until the app is authorized again.
 
-The App Block starts hidden and only appears after the public rule endpoint confirms that the current product has an enabled rule. Theme-editor re-renders are handled through SHOPLINE events plus a DOM observer. The production API origin is `https://appointment.toolkit.fans`. Open the preview console and filter for `[Appointment Lite]` to see store/product identity, cache, request status, visibility decisions, availability, and booking diagnostics without logging customer PII. SHOPLINE documents the OS 3.0 [extension structure](https://developer.shopline.com/docs/online-store-3-0-themes/integrate-apps-with-themes/theme-app-extension/structure?version=v20231201) and [`sl extension push`](https://developer.shopline.com/docs/online-store-3-0-themes/development-tools/cli/app-extension-commands/).
+The App Block starts hidden and only appears after the public rule endpoint confirms that the current product has an enabled rule. Theme-editor re-renders are handled through SHOPLINE events plus a DOM observer. The production API origin is `https://appointment.shoplineapp.vip`. Open the preview console and filter for `[Appointment Lite]` to see store/product identity, cache, request status, visibility decisions, availability, and booking diagnostics without logging customer PII. SHOPLINE documents the OS 3.0 [extension structure](https://developer.shopline.com/docs/online-store-3-0-themes/integrate-apps-with-themes/theme-app-extension/structure?version=v20231201) and [`sl extension push`](https://developer.shopline.com/docs/online-store-3-0-themes/development-tools/cli/app-extension-commands/).
 
 After a successful booking, the storefront stores a minimal receipt (booking ID, private management token, date, time, location, staff, reschedule count, and—only for a confirmed online booking—the meeting snapshot needed by the inline management dialog) in that browser's local storage. On later visits to the same product, the block shows the confirmed appointment and a “Manage appointment” action. The confirmation email also contains a cross-device magic link. Email links carry a high-entropy `access` value for compatibility with clients that discard URL fragments. The management response is `no-store` with a `no-referrer` policy; JavaScript immediately moves the token to session storage and replaces the visible URL with the booking ID only. Legacy fragment links remain supported.
 
