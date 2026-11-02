@@ -138,7 +138,7 @@ test('v0.6.16 release documentation lists the production Google Auth Platform va
   assert.match(env, /Homepage: https:\/\/appointment\.shoplineapp\.vip\//);
   assert.match(env, /Authorized domain: shoplineapp\.vip/);
   assert.equal(JSON.parse(pkg).version, '0.8.14');
-  assert.match(app, /version: '\\d+\\.\\d+\\.\\d+'/);
+  assert.ok(app.includes("version: '0.8.14'"));
   assert.ok(release.includes('RELEASE_VERSION="0.8.14"'));
   assert.match(app, /version: '\d+\.\d+\.\d+'/);
   assert.match(adminView, /styles\.css\?v=\d+\.\d+\.\d+/);
