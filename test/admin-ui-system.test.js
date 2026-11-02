@@ -47,3 +47,19 @@ test('admin font loading is scoped to the merchant admin and allowed by CSP', as
   assert.match(css, /\.email-preview,\.email-preview button,\.email-preview a,\.preview-mail-shell,\.preview-mail-shell \*\{font-family:"Poppins"/);
   assert.match(css, /\.preview-email-card h2\{font-family:"Jost"/);
 });
+
+test('Email Studio uses full-width configuration sections instead of a permanent empty left column', async () => {
+  const css = await readFile(new URL('../public/admin/styles.css', import.meta.url), 'utf8');
+  assert.match(css, /v0\\.8\\.16 — Email Studio full-width form layout/);
+  assert.match(css, /\\.app-shell \\.email-controls \\.form-section\\{\\s*grid-template-columns:minmax\\(0,1fr\\)/);
+  assert.match(css, /\\.app-shell \\.email-controls \\.form-section>:not\\(\\.section-title\\)\\{\\s*grid-column:1;\\s*width:100%;/);
+  assert.match(css, /\\.app-shell \\.notification-preferences\\{\\s*grid-template-columns:repeat\\(2,minmax\\(0,1fr\\)/);
+  assert.match(css, /\\.app-shell \\.template-editor #templateBody\\{min-height:190px/);
+  assert.match(css, /@media\\(max-width:560px\\)/);
+});
+
+test('Email Studio keeps the live preview layout separate from full-width form sections', async () => {
+  const css = await readFile(new URL('../public/admin/styles.css', import.meta.url), 'utf8');
+  assert.match(css, /\\.email-studio-grid\\{grid-template-columns:minmax\\(620px,1\\.15fr\\) minmax\\(360px,\\.85fr\\)\\}/);
+  assert.match(css, /\\.preview-sticky\\{position:sticky;top:92px\\}/);
+});
