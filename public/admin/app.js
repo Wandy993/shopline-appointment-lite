@@ -866,6 +866,19 @@ Object.assign(zh, {
 });
 
 Object.assign(zh, {
+  'Choose the SHOPLINE checkout product once. If you enable its Product detail App Block, this product page is selected automatically.': '只需选择一次 SHOPLINE 结账商品。启用商品详情页 App Block 后，系统会自动在该商品页展示预约入口。',
+  'Show this service on product pages. Paid bookings use the checkout product by default.': '在商品页展示预约服务。预约时付款默认使用所选的结账商品页。',
+  'LINKED PRODUCT': '关联商品',
+  'Same product for display and checkout': '展示与结账使用同一商品',
+  'Custom product-page placement': '自定义商品页展示范围',
+  'The booking button appears on this product page. SHOPLINE checkout charges its selected variant.': '预约按钮在此商品页展示，SHOPLINE 结账使用你选定的商品规格收款。',
+  'Other pages may show this booking button, but SHOPLINE checkout still charges this product.': '预约按钮可以在其他商品页展示，但 SHOPLINE 结账仍使用这个商品收款。',
+  'Customize display pages': '自定义展示页面',
+  'Use checkout product': '使用结账商品',
+  'Choose where the booking button appears. Payment still uses the checkout product chosen in Step 1.': '选择预约按钮的展示商品。付款仍使用第一步选择的结账商品。'
+});
+
+Object.assign(zh, {
   'BOOKING MODEL':'预约模式', 'STOREFRONT PLACEMENT':'前台展示', 'AVAILABILITY':'可预约时间', 'DETAILS':'服务信息',
   'Placement':'展示位置', 'Details':'服务信息',
   'How can customers book this service?':'客户如何预约这项服务？',
