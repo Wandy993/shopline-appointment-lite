@@ -70,6 +70,7 @@ test('paid App Block binding uses one product choice by default with an explicit
   assert.match(admin, /setProductPlacementScope\(button\.dataset\.productPlacementScope, \{ explicit: true \}\)/);
   assert.match(admin, /checkoutPlacementRestore/);
   assert.match(admin, /checkoutPlacementCustomize/);
+  assert.match(admin, /\$\$\('\[data-product-placement-scope\]'\)\.forEach/);
   assert.match(css, /\.app-shell \.checkout-placement-sync\{/);
   assert.match(css, /\.app-shell #productPlacementAdvanced\.hidden\{display:none\}/);
 });
