@@ -5,7 +5,7 @@ const state = {
   calendarSync: null, calendarStaffId: '', calendarPopup: null, calendarDayItems: {}, paidVariants: [], orderAccess: null, locations: [], locationAccess: null, storefrontSettings: null,
   subscription: null, subscriptionSyncError: '', restricted: false, archiveMode: false, accessMode: 'full',
   subscriptionRecoveryLastCheckAt: 0, subscriptionRecoveryInFlight: false,
-  productPickerMode: 'checkout', ruleProductSelection: { trigger: [], placement: [] }, productPlacementScope: 'all',
+  productPickerMode: 'checkout', ruleProductSelection: { trigger: [], placement: [] }, productPlacementScope: 'all', checkoutPlacementAuto: true,
   emailSavedSnapshot: '', storefrontSavedSnapshot: ''
 };
 const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -1819,7 +1819,9 @@ function renderSelectedProductSummary(kind) {
   root.querySelectorAll(`[data-remove-${kind}-product]`).forEach(button => button.addEventListener('click', () => {
     const id = button.getAttribute(`data-remove-${kind}-product`);
     state.ruleProductSelection[kind] = ids.filter(value => String(value) !== String(id));
+    if (kind === 'placement') state.checkoutPlacementAuto = false;
     renderSelectedProductSummary(kind);
+    if (kind === 'placement') refreshPlacementUi();
   }));
 }
 
@@ -1843,7 +1845,9 @@ async function chooseProductForActivePicker(productId) {
   const values = new Set((state.ruleProductSelection[mode] || []).map(String));
   if (values.has(String(productId))) values.delete(String(productId)); else values.add(String(productId));
   state.ruleProductSelection[mode] = [...values];
+  if (mode === 'placement') state.checkoutPlacementAuto = false;
   renderSelectedProductSummary(mode);
+  if (mode === 'placement') refreshPlacementUi();
   renderProductOptions($('#productSearch').value);
 }
 
@@ -1859,6 +1863,7 @@ async function selectProduct(productId, { preserveVariant = false } = {}) {
     $('#productVariantPrice').value = '';
   }
   if ($('#paymentMode')?.value === 'checkout') await loadPaidVariants(productId, { preserveVariant });
+  refreshPlacementUi();
 }
 
 async function openProductPicker(mode) {
@@ -1983,18 +1988,58 @@ function setPaymentMode(mode = 'none') {
   $('#commerceMode').value = paid ? 'standalone_paid' : 'standalone_free';
   $('#bookingSource').value = 'direct';
   $('#sourceType').value = 'standalone';
+  refreshPlacementUi();
 }
 
-function setProductPlacementScope(scope = 'all') {
+// Checkout and product-page visibility are independent for advanced use cases.
+// For the typical paid booking, selecting one checkout product also selects its product page.
+function resolveCheckoutProductPlacement({ bookingType, paymentMode, checkoutProductId, enabled, auto, scope, productIds }) {
+  const productId = String(checkoutProductId || '').trim();
+  const hasCheckout = bookingType === 'standalone' && paymentMode === 'checkout' && Boolean(productId);
+  const usingAuto = hasCheckout && enabled && auto;
+  return {
+    hasCheckout,
+    usingAuto,
+    scope: usingAuto ? 'selected' : scope,
+    productIds: usingAuto ? [productId] : productIds
+  };
+}
+
+function setProductPlacementScope(scope = 'all', { explicit = false } = {}) {
+  if (explicit) state.checkoutPlacementAuto = false;
   state.productPlacementScope = scope === 'selected' ? 'selected' : 'all';
-  $$('[data-product-placement-scope]').forEach(button => button.classList.toggle('selected', button.dataset.productPlacementScope === state.productPlacementScope));
+  $('[data-product-placement-scope]').forEach(button => button.classList.toggle('selected', button.dataset.productPlacementScope === state.productPlacementScope));
   $('#selectedPlacementProducts')?.classList.toggle('hidden', state.productPlacementScope !== 'selected');
+  if (explicit) refreshPlacementUi();
 }
 
 function refreshPlacementUi() {
   const enabled = $('#placementProductBlock')?.checked === true;
+  const productId = String($('#productSelect')?.value || '').trim();
+  const placement = resolveCheckoutProductPlacement({
+    bookingType: $('#bookingType')?.value, paymentMode: $('#paymentMode')?.value,
+    checkoutProductId: productId, enabled, auto: state.checkoutPlacementAuto,
+    scope: state.productPlacementScope, productIds: state.ruleProductSelection.placement
+  });
+  if (placement.usingAuto) {
+    state.productPlacementScope = placement.scope;
+    state.ruleProductSelection.placement = placement.productIds;
+    renderSelectedProductSummary('placement');
+  }
   $('#productPlacementConfig')?.classList.toggle('hidden', !enabled);
   if (enabled) setProductPlacementScope(state.productPlacementScope);
+  const showShortcut = enabled && placement.hasCheckout;
+  $('#checkoutPlacementSync')?.classList.toggle('hidden', !showShortcut);
+  $('#productPlacementAdvanced')?.classList.toggle('hidden', showShortcut && state.checkoutPlacementAuto);
+  $('#checkoutPlacementCustomize')?.classList.toggle('hidden', !state.checkoutPlacementAuto);
+  $('#checkoutPlacementRestore')?.classList.toggle('hidden', state.checkoutPlacementAuto);
+  if (showShortcut) {
+    const title = productById(productId)?.title || t('Checkout product');
+    $('#checkoutPlacementTitle').textContent = t(state.checkoutPlacementAuto ? 'Same product for display and checkout' : 'Custom product-page placement');
+    $('#checkoutPlacementDescription').textContent = state.checkoutPlacementAuto
+      ? `${title} · ${t('The booking button appears on this product page. SHOPLINE checkout charges its selected variant.')}`
+      : `${title} · ${t('Other pages may show this booking button, but SHOPLINE checkout still charges this product.')}`;
+  }
 }
 
 function placementPayload() {
