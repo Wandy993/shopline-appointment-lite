@@ -2022,7 +2022,7 @@ function resolveCheckoutProductPlacement({ bookingType, paymentMode, checkoutPro
 function setProductPlacementScope(scope = 'all', { explicit = false } = {}) {
   if (explicit) state.checkoutPlacementAuto = false;
   state.productPlacementScope = scope === 'selected' ? 'selected' : 'all';
-  $('[data-product-placement-scope]').forEach(button => button.classList.toggle('selected', button.dataset.productPlacementScope === state.productPlacementScope));
+  document.querySelectorAll('[data-product-placement-scope]').forEach(button => button.classList.toggle('selected', button.dataset.productPlacementScope === state.productPlacementScope));
   $('#selectedPlacementProducts')?.classList.toggle('hidden', state.productPlacementScope !== 'selected');
   if (explicit) refreshPlacementUi();
 }
@@ -3758,7 +3758,7 @@ function bind() {
     state.checkoutPlacementAuto = true;
     refreshPlacementUi();
   });
-  $('[data-product-placement-scope]').forEach(button => button.addEventListener('click', () => setProductPlacementScope(button.dataset.productPlacementScope, { explicit: true })));
+  document.querySelectorAll('[data-product-placement-scope]').forEach(button => button.addEventListener('click', () => setProductPlacementScope(button.dataset.productPlacementScope, { explicit: true })));
   $$('#commerceModeGrid [data-commerce-mode]').forEach(button => button.addEventListener('click', () => {}));
   $$('#bookingSourceGrid [data-booking-source]').forEach(button => button.addEventListener('click', () => {}));
   $$('#bookingModeGrid [data-booking-mode]').forEach(button => button.addEventListener('click', () => setBookingMode(button.dataset.bookingMode)));
