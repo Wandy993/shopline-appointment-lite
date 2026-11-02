@@ -2,10 +2,10 @@
 set -u
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd -P)"
-RELEASE_VERSION="0.8.13"
-RELEASE_LABEL="0.8.13"
-RELEASE_BUILD="domain-migration.1"
-NAME="appointment-lite-v${RELEASE_LABEL}-domain-migration"
+RELEASE_VERSION="0.8.14"
+RELEASE_LABEL="0.8.14"
+RELEASE_BUILD="google-oauth-brand-readiness.1"
+NAME="appointment-lite-v${RELEASE_LABEL}-google-oauth-brand-readiness"
 DIST_DIR="$ROOT_DIR/dist"
 STAGE_DIR="${TMPDIR:-/tmp}/${NAME}.$$"
 OUTPUT="$DIST_DIR/${NAME}.zip"
