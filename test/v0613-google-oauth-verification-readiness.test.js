@@ -24,13 +24,30 @@ test('v0.6.16 root is a public Google-verification-ready Appointment Lite homepa
   assert.match(response.headers.get('cache-control') || '', /public/);
   const html = await response.text();
   assert.match(html, /Appointment Lite/);
-  assert.match(html, /Connect SHOPLINE commerce with service scheduling/);
+  assert.match(html, /<h1>Appointment Lite<\/h1>/);
+  assert.match(html, /Appointment scheduling and service management for SHOPLINE merchants/i);
+  assert.match(html, /Google API Data Use & Limited Use/);
+  assert.match(html, /Google API Safety/);
+  assert.match(html, /AI-generated non-consensual intimate imagery \\(NCII\\)/i);
+  assert.match(html, /help@appointment\\.vip/);
   assert.match(html, /Google Calendar/);
   assert.match(html, /\/en\/privacy/);
   assert.match(html, /\/en\/terms/);
   assert.match(html, /\/en\/faq/);
   assert.doesNotMatch(html, /Appointment Lite is running/);
   assert.doesNotMatch(html, /Open this app from SHOPLINE Admin/);
+  const privacy = privacyPage('en');
+  assert.match(privacy, /calendar\\.calendarlist\\.readonly/);
+  assert.match(privacy, /calendar\\.events\\.owned/);
+  assert.match(privacy, /AES-256-GCM/);
+  assert.match(privacy, /does not use the Google Calendar API to list, search, or read the contents of existing calendar events/i);
+  assert.match(privacy, /does not add customers as event attendees/i);
+  assert.match(privacy, /Disconnecting does not automatically delete events previously created/i);
+  assert.match(privacy, /Limited Use requirements/);
+  assert.match(privacy, /help@appointment\\.vip/);
+  const zhPrivacy = privacyPage('zh-cn');
+  assert.match(zhPrivacy, /AES-256-GCM/);
+  assert.match(zhPrivacy, /help@appointment\\.vip/);
 });
 
 test('v0.6.16 keeps SHOPLINE install entry behavior on root query parameters', async t => {
@@ -120,7 +137,9 @@ test('v0.6.16 release documentation lists the production Google Auth Platform va
   assert.match(doc, /calendar\.events\.owned/);
   assert.match(env, /Homepage: https:\/\/appointment\.shoplineapp\.vip\//);
   assert.match(env, /Authorized domain: shoplineapp\.vip/);
-  assert.match(JSON.parse(pkg).version, /^\d+\.\d+\.\d+$/);
+  assert.equal(JSON.parse(pkg).version, '0.8.14');
+  assert.match(app, /version: '0\\.8\\.14', build: '0\\.8\\.14-google-oauth-brand-readiness'/);
+  assert.match(release, /RELEASE_VERSION="0\\.8\\.14"/);
   assert.match(app, /version: '\d+\.\d+\.\d+'/);
   assert.match(adminView, /styles\.css\?v=\d+\.\d+\.\d+/);
   assert.match(bookView, /styles\.css\?v=\d+\.\d+\.\d+/);
@@ -142,4 +161,20 @@ test('v0.8.13 storefront extension assets use the new production API domain', as
     assert.ok(asset.includes("const VERSION = '0.8.13'"));
   }
   assert.ok(env.includes('GOOGLE_CALENDAR_REDIRECT_URI=https://appointment.shoplineapp.vip/integrations/google/callback'));
+});
+
+test('v0.8.14 exposes Google Calendar data use before merchant authorization', async () => {
+  const [adminUi, adminCss, config, env] = await Promise.all([
+    source('public/admin/app.js'),
+    source('public/admin/styles.css'),
+    source('src/config.js'),
+    source('.env.example')
+  ]);
+  assert.match(adminUi, /calendar-privacy-note/);
+  assert.match(adminUi, /Google Calendar data use/);
+  assert.match(adminUi, /Google Calendar data policy/);
+  assert.match(adminUi, /google-calendar-data/);
+  assert.match(adminCss, /\\.calendar-privacy-note/);
+  assert.ok(config.includes("process.env.LEGAL_SUPPORT_EMAIL || 'help@appointment.vip'"));
+  assert.match(env, /LEGAL_SUPPORT_EMAIL=help@appointment\\.vip/);
 });
