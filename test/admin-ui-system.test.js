@@ -22,6 +22,8 @@ test('merchant admin normalizes typography, form controls, and responsive config
   const css = await readFile(new URL('../public/admin/styles.css', import.meta.url), 'utf8');
   assert.match(css, /\.page-heading h1,\.hero-copy h1\{[^}]*font-size:20px/);
   assert.match(css, /\.panel-head h2,\.section-title h2[^}]*font-size:16px/);
+  assert.match(css, /\.app-shell \.storefront-config-title strong\{[^}]*font-size:16px;font-weight:600/);
+  assert.match(css, /\.app-shell \.storefront-config-title small\{[^}]*font-size:13px/);
   assert.match(css, /\.app-shell button[^}]*font-size:14px[^}]*border-radius:6px/);
   assert.match(css, /\.app-shell input:not\(\[type=checkbox\]\)[^}]*font-size:14px[^}]*border-radius:6px/);
   assert.match(css, /\.app-shell code[^}]*font-family:var\(--font-mono\);font-size:13px/);
