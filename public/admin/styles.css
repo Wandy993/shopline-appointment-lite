@@ -1559,3 +1559,43 @@ html,body{background:var(--bg-color);color:var(--text-main);font-family:var(--fo
   .app-shell .setup-step-actions .button-link,
   .app-shell .setup-step-actions button{width:100%}
 }
+
+
+/* v0.8.19: Single-selection paid checkout product placement */
+.app-shell .checkout-placement-sync{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  min-width:0;
+  padding:16px;
+  border:1px solid var(--border);
+  border-radius:10px;
+  background:var(--card-bg,#fff);
+}
+.app-shell .checkout-placement-sync.hidden,
+.app-shell #productPlacementAdvanced.hidden{display:none}
+.app-shell .checkout-placement-copy{display:grid;gap:4px;min-width:0}
+.app-shell .checkout-placement-kicker{
+  color:var(--accent);
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:.04em;
+}
+.app-shell .checkout-placement-copy strong{color:var(--text-main);font-size:14px;font-weight:600}
+.app-shell .checkout-placement-copy p{
+  margin:0;
+  color:var(--text-muted);
+  font-size:13px;
+  font-weight:400;
+  line-height:1.5;
+  overflow-wrap:anywhere;
+}
+.app-shell .checkout-placement-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;flex-shrink:0}
+.app-shell .checkout-placement-actions button{min-height:38px;border-radius:6px;font-size:14px;white-space:normal}
+.app-shell #productPlacementAdvanced{display:grid;gap:12px;min-width:0}
+@media(max-width:760px){
+  .app-shell .checkout-placement-sync{flex-direction:column;align-items:stretch;padding:14px}
+  .app-shell .checkout-placement-actions{width:100%}
+  .app-shell .checkout-placement-actions button{max-width:100%}
+}
