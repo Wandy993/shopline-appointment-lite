@@ -455,7 +455,7 @@ export function homePage(locale = 'en') {
   return legalShell({
     locale: normalized,
     type: 'home',
-    title: 'Appointment Lite',
+    title: normalized === 'zh-cn' ? 'SHOPLINE 预约与服务管理' : 'Scheduling and service management for SHOPLINE',
     lead: normalized === 'zh-cn' ? 'Appointment Lite 是面向 SHOPLINE 商家的预约与服务管理应用，连接商品、订单、员工、地点、通知和 Google Calendar。' : 'Appointment Lite is a scheduling and service management app for SHOPLINE merchants, connecting products, orders, staff, locations, notifications, and Google Calendar.',
     body: homeBody(normalized)
   });
