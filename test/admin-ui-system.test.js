@@ -29,7 +29,7 @@ test('merchant admin normalizes typography, form controls, and responsive config
   assert.match(css, /@media\(max-width:960px\)\{\.config-layout/);
   assert.match(css, /\.app-shell \.form-section,\.app-shell \.storefront-config-group\{display:grid;grid-template-columns:280px minmax\(0,1fr\)/);
   assert.match(css, /\.app-shell \.form-section>:not\(\.section-title\),\.app-shell \.storefront-config-group>:not\(\.storefront-config-title\)\{grid-column:2/);
-  assert.match(css, /@media\\(max-width:960px\\)\\s*\\{\\s*\\.app-shell \\.form-section/);
+  assert.match(css, /@media\(max-width:960px\)\s*\{\s*\.app-shell \.form-section/);
 });
 
 test('admin font loading is scoped to the merchant admin and allowed by CSP', async () => {
