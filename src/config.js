@@ -55,7 +55,7 @@ export const config = Object.freeze({
   publicAllowedOrigins: (process.env.PUBLIC_ALLOWED_ORIGINS || '').split(',').map(v => v.trim()).filter(Boolean),
   legal: {
     operatorName: process.env.LEGAL_OPERATOR_NAME || 'Appointment Lite',
-    supportEmail: process.env.LEGAL_SUPPORT_EMAIL || ''
+    supportEmail: process.env.LEGAL_SUPPORT_EMAIL || 'help@appointment.vip'
   },
   googleCalendar: {
     clientId: process.env.GOOGLE_CALENDAR_CLIENT_ID || '',
