@@ -21,13 +21,15 @@ export function createApp() {
   app.disable('x-powered-by');
   app.use(helmet({ contentSecurityPolicy: {
     directives: {
-      defaultSrc: ["'self'"], scriptSrc: ["'self'"], styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'], imgSrc: ["'self'", 'data:', 'https:'],
-      fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com'], connectSrc: ["'self'"], frameAncestors: ["'self'", 'https://*.myshopline.com']
+      defaultSrc: ["'self'"], scriptSrc: ["'self'"], styleSrc: ["'self'", "'unsafe-inline'"], imgSrc: ["'self'", 'data:', 'https:'],
+      fontSrc: ["'self'", 'data:'], connectSrc: ["'self'"], frameAncestors: ["'self'", 'https://*.myshopline.com']
     }
   }}));
   app.post('/webhooks/shopline', express.raw({ type: 'application/json', limit: '1mb' }), shoplinePaidBookingWebhook);
   app.use(express.json({ limit: '100kb' }));
   app.use(express.urlencoded({ extended: false, limit: '20kb' }));
+  app.use('/admin-fonts/plus-jakarta-sans', express.static('node_modules/@fontsource-variable/plus-jakarta-sans/files', { maxAge: '365d', immutable: true }));
+  app.use('/admin-fonts/jetbrains-mono', express.static('node_modules/@fontsource-variable/jetbrains-mono/files', { maxAge: '365d', immutable: true }));
   app.use('/admin', express.static('public/admin', { maxAge: 0, etag: true, setHeaders(res) { res.setHeader('Cache-Control', 'no-store'); } }));
   app.use('/customer-fonts/jost', express.static('node_modules/@fontsource/jost/files', { maxAge: '365d', immutable: true }));
   app.use('/customer-fonts/poppins', express.static('node_modules/@fontsource/poppins/files', { maxAge: '365d', immutable: true }));
