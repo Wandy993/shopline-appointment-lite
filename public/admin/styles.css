@@ -1213,3 +1213,122 @@ html,body{background:var(--bg-color);color:var(--text-main);font-family:var(--fo
 .app-shell .storefront-config-group{border-color:var(--border);background:var(--card-bg)}
 .app-shell .storefront-config-title strong{color:var(--text-main);font-size:16px;font-weight:600;line-height:1.4}
 .app-shell .storefront-config-title small{color:var(--text-muted);font-size:13px;font-weight:400;line-height:1.5}
+
+
+/* v0.8.16 — Email Studio full-width form layout */
+.app-shell .email-controls .form-section{
+  grid-template-columns:minmax(0,1fr);
+  column-gap:0;
+  row-gap:18px;
+  align-items:start;
+}
+.app-shell .email-controls .form-section>.section-title{
+  grid-column:1;
+  grid-row:auto;
+  margin:0;
+  align-items:flex-start;
+}
+.app-shell .email-controls .form-section>:not(.section-title){
+  grid-column:1;
+  width:100%;
+  min-width:0;
+}
+.app-shell .email-controls .form-section .field-row{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:16px;
+  align-items:start;
+}
+.app-shell .email-controls .form-section .field{min-width:0;margin:0}
+.app-shell .email-controls .form-section .field-help,
+.app-shell .email-controls .form-section .hint{
+  color:var(--text-muted);
+  font-size:13px;
+  font-weight:400;
+  line-height:1.5;
+}
+.app-shell .email-controls .form-section .section-title h2{font-size:16px;font-weight:600}
+.app-shell .email-controls .form-section .section-title p{font-size:13px;font-weight:400;line-height:1.5}
+.app-shell .email-controls .form-section .section-number{font-size:12px}
+.app-shell .notification-preferences{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px;
+  margin-top:4px;
+  padding-top:20px;
+}
+.app-shell .notification-preferences-head,
+.app-shell .notification-preferences>.reminder-timing-row{grid-column:1/-1}
+.app-shell .notification-preferences-head strong{color:var(--text-main);font-size:16px;font-weight:600}
+.app-shell .notification-preferences-head small{color:var(--text-muted);font-size:13px;line-height:1.5}
+.app-shell .notification-group{min-width:0;border-color:var(--border);border-radius:10px}
+.app-shell .notification-group-head strong{color:var(--text-main);font-size:14px;font-weight:600}
+.app-shell .notification-group-head small{color:var(--text-muted);font-size:13px;line-height:1.5}
+.app-shell .notification-toggle-grid.four{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+  padding:12px;
+}
+.app-shell .notification-option{
+  min-height:74px;
+  padding:12px;
+  grid-template-columns:18px minmax(0,1fr);
+  gap:10px;
+  border-color:var(--border);
+  border-radius:8px;
+}
+.app-shell .notification-option-copy strong{color:var(--text-main);font-size:13px;font-weight:600;line-height:1.4}
+.app-shell .notification-option-copy small{color:var(--text-muted);font-size:12px;font-weight:400;line-height:1.45}
+.app-shell .reminder-timing-row{
+  grid-template-columns:minmax(0,1fr) 220px;
+  gap:20px;
+  padding:16px;
+  border-color:var(--border);
+  border-radius:10px;
+  background:#f9fafb;
+}
+.app-shell .reminder-timing-row>div strong{color:var(--text-main);font-size:14px;font-weight:600}
+.app-shell .reminder-timing-row>div small{color:var(--text-muted);font-size:13px;line-height:1.5}
+.app-shell .reminder-select-wrap{color:var(--text-muted);font-size:13px;font-weight:500}
+.app-shell .reminder-select-wrap select{min-height:40px;font-size:14px}
+.app-shell .template-editor .template-tabs{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin:0;
+}
+.app-shell .template-editor .template-tabs button{
+  min-height:38px;
+  padding:8px 14px;
+  border-radius:6px;
+  font-size:14px;
+  font-weight:500;
+  line-height:1.35;
+  white-space:normal;
+}
+.app-shell .template-editor .template-tabs button.active{
+  color:var(--accent);
+  border-color:#c7d2fe;
+  background:#eef2ff;
+}
+.app-shell .template-editor .field-label{margin-bottom:8px;color:var(--text-main);font-size:14px;font-weight:500}
+.app-shell .template-editor #templateBody{min-height:190px;line-height:1.6}
+.app-shell .template-editor .variable-chips{gap:8px}
+.app-shell .template-editor .variable-chips button{
+  min-height:34px;
+  padding:7px 10px;
+  border-radius:6px;
+  font-size:13px;
+}
+@media(max-width:760px){
+  .app-shell .notification-preferences{grid-template-columns:minmax(0,1fr)}
+  .app-shell .notification-preferences-head,
+  .app-shell .notification-preferences>.reminder-timing-row{grid-column:1}
+  .app-shell .notification-toggle-grid.four{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .app-shell .reminder-timing-row{grid-template-columns:minmax(0,1fr) 200px;align-items:center;flex-direction:initial}
+}
+@media(max-width:560px){
+  .app-shell .email-controls .form-section .field-row,
+  .app-shell .notification-toggle-grid.four{grid-template-columns:minmax(0,1fr)}
+  .app-shell .reminder-timing-row{grid-template-columns:minmax(0,1fr)}
+  .app-shell .reminder-select-wrap{width:100%}
+}
