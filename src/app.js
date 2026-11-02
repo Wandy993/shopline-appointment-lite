@@ -21,8 +21,8 @@ export function createApp() {
   app.disable('x-powered-by');
   app.use(helmet({ contentSecurityPolicy: {
     directives: {
-      defaultSrc: ["'self'"], scriptSrc: ["'self'"], styleSrc: ["'self'", "'unsafe-inline'"], imgSrc: ["'self'", 'data:', 'https:'],
-      fontSrc: ["'self'", 'data:'], connectSrc: ["'self'"], frameAncestors: ["'self'", 'https://*.myshopline.com']
+      defaultSrc: ["'self'"], scriptSrc: ["'self'"], styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'], imgSrc: ["'self'", 'data:', 'https:'],
+      fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com'], connectSrc: ["'self'"], frameAncestors: ["'self'", 'https://*.myshopline.com']
     }
   }}));
   app.post('/webhooks/shopline', express.raw({ type: 'application/json', limit: '1mb' }), shoplinePaidBookingWebhook);
