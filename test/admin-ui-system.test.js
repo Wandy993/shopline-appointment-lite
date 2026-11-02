@@ -61,5 +61,5 @@ test('Email Studio uses full-width configuration sections instead of a permanent
 test('Email Studio keeps the live preview layout separate from full-width form sections', async () => {
   const css = await readFile(new URL('../public/admin/styles.css', import.meta.url), 'utf8');
   assert.match(css, /\\.email-studio-grid\\{grid-template-columns:minmax\\(620px,1\\.15fr\\) minmax\\(360px,\\.85fr\\)\\}/);
-  assert.match(css, /\\.preview-sticky\\{position:sticky;top:92px\\}/);
+  assert.match(css, /\.preview-sticky\s*\{\s*position:sticky;top:92px;?\s*\}/);
 });
