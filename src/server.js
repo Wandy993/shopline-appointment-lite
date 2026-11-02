@@ -8,7 +8,7 @@ import { startOpsHubScheduler } from './services/ops-hub-sync-job.js';
 
 assertProductionConfig();
 await connectDatabase();
-const server = createApp().listen(config.port, () => console.log(`Appointment Lite v0.8.18 (setup-checklist-layout) listening on port ${config.port}`));
+const server = createApp().listen(config.port, () => console.log(`Appointment Lite v0.8.19 (self-hosted-admin-fonts) listening on port ${config.port}`));
 const reminderScheduler = startReminderScheduler();
 const paidBookingScheduler = startPaidBookingScheduler();
 const postPurchaseNotificationScheduler = startPostPurchaseNotificationScheduler();
