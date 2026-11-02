@@ -137,10 +137,10 @@ test('v0.8.13 storefront extension assets use the new production API domain', as
     source('.env.example')
   ]);
   for (const asset of [product, page, embed]) {
-    assert.match(asset, /const API_BASE = 'https:\\/\\/appointment\\.shoplineapp\\.vip'/);
-    assert.doesNotMatch(asset, /toolkit\\.fans/);
-    assert.match(asset, /const VERSION = '0\\.8\\.13'/);
+    assert.ok(asset.includes("const API_BASE = 'https://appointment.shoplineapp.vip'"));
+    assert.ok(!asset.includes('toolkit.fans'));
+    assert.ok(asset.includes("const VERSION = '0.8.13'"));
   }
-  assert.match(env, /APP_URL=https:\\/\\/appointment\\.shoplineapp\\.vip/);
-  assert.match(env, /GOOGLE_CALENDAR_REDIRECT_URI=https:\\/\\/appointment\\.shoplineapp\\.vip\\/integrations\\/google\\/callback/);
+  assert.ok(env.includes('APP_URL=https://appointment.shoplineapp.vip'));
+  assert.ok(env.includes('GOOGLE_CALENDAR_REDIRECT_URI=https://appointment.shoplineapp.vip/integrations/google/callback'));
 });
