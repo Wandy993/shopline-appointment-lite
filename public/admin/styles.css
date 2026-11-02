@@ -1187,11 +1187,11 @@ html,body{background:var(--bg-color);color:var(--text-main);font-family:var(--fo
 .calendar-privacy-note{border-color:var(--border);border-radius:8px;background:#f9fafb}
 .email-preview,.email-preview button,.email-preview a,.preview-mail-shell,.preview-mail-shell *{font-family:"Poppins",Arial,Helvetica,sans-serif}
 .preview-email-card h2{font-family:"Jost",Arial,Helvetica,sans-serif;font-weight:600}
-.config-layout,.configuration-layout,.settings-layout,.setup-layout{display:grid;grid-template-columns:280px minmax(0,1fr);gap:24px;align-items:start}
+.config-layout,.configuration-layout,.settings-layout{display:grid;grid-template-columns:280px minmax(0,1fr);gap:24px;align-items:start}
 .config-layout__description,.configuration-description,.settings-description{color:var(--text-muted);font-size:13px;font-weight:400;line-height:1.5}
 .config-layout__content,.configuration-content,.settings-content{min-width:0}
 .config-layout__card,.configuration-card,.settings-card{min-width:0;padding:24px;border:1px solid var(--border);border-radius:12px;background:var(--card-bg);box-shadow:var(--shadow-sm)}
-@media(max-width:960px){.config-layout,.configuration-layout,.settings-layout,.setup-layout{grid-template-columns:minmax(0,1fr);gap:16px}.config-layout__description,.configuration-description,.settings-description{position:static}}
+@media(max-width:960px){.config-layout,.configuration-layout,.settings-layout{grid-template-columns:minmax(0,1fr);gap:16px}.config-layout__description,.configuration-description,.settings-description{position:static}}
 @media(max-width:820px){.sidebar{background:rgba(255,255,255,.98);border-top:1px solid var(--border);border-right:0}.nav-item{font-size:12px}.topbar{background:rgba(255,255,255,.98)}}
 @media(max-width:600px){.page-heading h1,.hero-copy h1{font-size:20px}.app-shell .field label,.app-shell legend,.app-shell .label-row label,.app-shell .field-label{font-size:14px}.config-layout__card,.configuration-card,.settings-card{padding:16px}}
 
@@ -1407,4 +1407,155 @@ html,body{background:var(--bg-color);color:var(--text-main);font-family:var(--fo
   .app-shell .storefront-option-row{grid-template-columns:minmax(0,1fr)}
   .app-shell .storefront-segmented{width:100%;min-width:0}
   .app-shell .storefront-segmented button{flex:1}
+}
+
+
+/* v0.8.18 — Setup checklist and quick setup layout */
+.app-shell .setup-layout{
+  display:grid;
+  grid-template-columns:minmax(0,1fr);
+  gap:14px;
+  align-items:start;
+}
+.app-shell .diagnostics{
+  display:grid;
+  grid-template-columns:44px minmax(0,1fr) minmax(300px,auto);
+  grid-template-areas:"icon title meta" "icon copy list";
+  gap:5px 16px;
+  align-items:center;
+  min-width:0;
+  padding:16px 20px;
+  border-color:var(--border);
+  border-radius:12px;
+  background:var(--card-bg);
+  box-shadow:var(--shadow-sm);
+}
+.app-shell .diagnostic-icon{
+  grid-area:icon;
+  width:40px;
+  height:40px;
+  border-radius:10px;
+}
+.app-shell .diagnostics h2{
+  grid-area:title;
+  align-self:end;
+  margin:0;
+  color:var(--text-main);
+  font-size:16px;
+  font-weight:600;
+}
+.app-shell .diagnostics p{
+  grid-area:copy;
+  align-self:start;
+  max-width:720px;
+  margin:0;
+  color:var(--text-muted);
+  font-size:13px;
+  line-height:1.5;
+}
+.app-shell .diagnostics .setup-meta{
+  grid-area:meta;
+  justify-self:end;
+  align-self:center;
+  white-space:nowrap;
+  font-size:12px;
+}
+.app-shell .diagnostics ul{
+  grid-area:list;
+  display:grid;
+  gap:3px;
+  margin:0;
+  padding-left:18px;
+  color:var(--text-muted);
+}
+.app-shell .diagnostics li{
+  font-size:12px;
+  line-height:1.45;
+}
+.app-shell .setup-steps{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:0;
+  padding:8px 14px;
+  border-color:var(--border);
+  border-radius:12px;
+  background:var(--card-bg);
+}
+.app-shell .setup-step{
+  min-width:0;
+  min-height:100%;
+  padding:18px 16px;
+  display:grid;
+  grid-template-columns:34px minmax(0,1fr);
+  align-content:start;
+  align-items:start;
+  gap:12px;
+  border-right:1px solid var(--border);
+  border-bottom:0;
+}
+.app-shell .setup-step:last-child{border-right:0}
+.app-shell .setup-step>span{
+  width:32px;
+  height:32px;
+  border-radius:9px;
+  font-size:12px;
+}
+.app-shell .setup-step>div{min-width:0}
+.app-shell .setup-step strong{
+  color:var(--text-main);
+  font-size:14px;
+  font-weight:600;
+  line-height:1.45;
+}
+.app-shell .setup-step p{
+  margin:7px 0 10px;
+  color:var(--text-muted);
+  font-size:13px;
+  line-height:1.55;
+}
+.app-shell .setup-step-actions{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:8px;
+  margin-top:12px;
+}
+.app-shell .setup-step-actions .button-link,
+.app-shell .setup-step-actions button{
+  width:auto;
+  min-height:38px;
+  max-width:100%;
+  white-space:normal;
+}
+.app-shell .setup-step .hint{
+  font-size:12px;
+  line-height:1.5;
+}
+@media(max-width:1100px){
+  .app-shell .setup-steps{grid-template-columns:minmax(0,1fr);padding:6px 18px}
+  .app-shell .setup-step{
+    min-height:0;
+    padding:16px 4px;
+    border-right:0;
+    border-bottom:1px solid var(--border);
+  }
+  .app-shell .setup-step:last-child{border-bottom:0}
+  .app-shell .setup-step-actions{flex-direction:row;align-items:center}
+}
+@media(max-width:960px){
+  .app-shell .diagnostics{
+    grid-template-columns:40px minmax(0,1fr);
+    grid-template-areas:"icon title" "copy copy" "meta meta" "list list";
+    gap:8px 12px;
+  }
+  .app-shell .diagnostics .setup-meta{justify-self:start}
+  .app-shell .diagnostics ul{display:grid}
+}
+@media(max-width:560px){
+  .app-shell .diagnostics{padding:14px}
+  .app-shell .setup-steps{padding:4px 14px}
+  .app-shell .setup-step{grid-template-columns:30px minmax(0,1fr);gap:10px}
+  .app-shell .setup-step-actions{align-items:stretch;flex-direction:column}
+  .app-shell .setup-step-actions .button-link,
+  .app-shell .setup-step-actions button{width:100%}
 }

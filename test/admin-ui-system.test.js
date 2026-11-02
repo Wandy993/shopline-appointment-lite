@@ -79,3 +79,25 @@ test('Storefront Setup live preview stays visible while scrolling and returns to
   assert.ok(css.includes('.app-shell .storefront-preview-panel{\n  position:sticky;\n  top:96px;'));
   assert.ok(css.includes('@media(max-width:1100px){\n  .app-shell .storefront-preview-panel{\n    position:static;'));
 });
+
+test('Storefront launch checklist uses full-width three-step cards with a compact Quick setup banner', async () => {
+  const [css, admin] = await Promise.all([
+    readFile(new URL('../public/admin/styles.css', import.meta.url), 'utf8'),
+    readFile(new URL('../src/views/admin.js', import.meta.url), 'utf8')
+  ]);
+  assert.ok(css.includes('.app-shell .setup-layout{\n  display:grid;\n  grid-template-columns:minmax(0,1fr);'));
+  assert.ok(css.includes('.app-shell .setup-steps{\n  display:grid;\n  grid-template-columns:repeat(3,minmax(0,1fr));'));
+  assert.ok(css.includes('.app-shell .diagnostics{\n  display:grid;\n  grid-template-columns:44px minmax(0,1fr) minmax(300px,auto);'));
+  assert.ok(!css.includes('.config-layout,.configuration-layout,.settings-layout,.setup-layout{display:grid;'));
+  assert.ok(admin.indexOf('<aside class="panel diagnostics">') < admin.indexOf('<article class="panel setup-steps">'));
+  assert.ok(admin.includes('id="setupBlockStep"'));
+  assert.ok(admin.includes('id="setupServiceStep"'));
+  assert.ok(admin.includes('id="setupTestStep"'));
+});
+
+test('Storefront launch checklist stacks its steps and Quick setup banner responsively', async () => {
+  const css = await readFile(new URL('../public/admin/styles.css', import.meta.url), 'utf8');
+  assert.ok(css.includes('@media(max-width:1100px){\n  .app-shell .setup-steps{grid-template-columns:minmax(0,1fr);'));
+  assert.ok(css.includes('@media(max-width:960px){\n  .app-shell .diagnostics{'));
+  assert.ok(css.includes('@media(max-width:560px){\n  .app-shell .diagnostics{padding:14px}'));
+});

@@ -43,7 +43,7 @@ export function adminPage() {
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <title>Appointment Lite</title>
-  <link rel="stylesheet" href="/admin/styles.css?v=0.8.17&build=0.8.17">
+  <link rel="stylesheet" href="/admin/styles.css?v=0.8.18&build=0.8.18">
 </head>
 <body>
   <div class="app-shell">
@@ -279,12 +279,12 @@ export function adminPage() {
           </article>
           <div class="setup-section-label"><span class="eyebrow">CONNECTION</span><h2>Theme & launch checklist</h2></div>
           <div class="setup-layout">
+            <aside class="panel diagnostics"><div class="diagnostic-icon">${icons.check}</div><h2>Quick setup</h2><p>Appointment Lite separates booking rules from storefront placement. A standalone service can use direct links, Page Blocks, Product Blocks, Staff Directory, or App Embed.</p><span id="setupStoreId" class="setup-meta">Loading store…</span><ul><li>Step 1 connects product-page services to the storefront App Block</li><li>Step 2 creates the first appointment service</li><li>Step 3 verifies the complete customer booking experience</li></ul></aside>
             <article class="panel setup-steps">
               <div id="setupBlockStep" class="setup-step"><span>1</span><div><strong>Enable the Appointment Lite App Block</strong><p>Required when a service uses the SHOPLINE product page. Open the product template, add or activate the Appointment Lite App Block, then save the theme. Direct-booking-only services can continue without it.</p><div class="setup-step-actions"><a id="openThemeEditor" class="button-link primary disabled" href="#" target="_blank" rel="noopener noreferrer">Open theme editor ${icons.arrow}</a><button id="confirmAppBlock" class="secondary" type="button">I've enabled the App Block</button></div><p id="themeEditorHint" class="hint">Preparing your theme editor link…</p></div></div>
               <div id="setupServiceStep" class="setup-step"><span>2</span><div><strong>Create your first appointment service</strong><p>Choose the booking model and storefront placement, then configure availability, location, and staff.</p><button class="text-button" data-new-rule>Create a service ${icons.arrow}</button></div></div>
               <div id="setupTestStep" class="setup-step"><span>3</span><div><strong>Test the storefront booking flow</strong><p>Open the configured product page or direct booking page and submit one test booking. The booking should appear in Bookings.</p><a id="setupPreviewProduct" class="button-link secondary-link disabled" href="#" target="_blank" rel="noopener noreferrer">Open booking experience ${icons.arrow}</a></div></div>
             </article>
-            <aside class="panel diagnostics"><div class="diagnostic-icon">${icons.check}</div><h2>Quick setup</h2><p>Appointment Lite separates booking rules from storefront placement. A standalone service can use direct links, Page Blocks, Product Blocks, Staff Directory, or App Embed.</p><span id="setupStoreId" class="setup-meta">Loading store…</span><ul><li>Step 1 connects product-page services to the storefront App Block</li><li>Step 2 creates the first appointment service</li><li>Step 3 verifies the complete customer booking experience</li></ul></aside>
           </div>
         </section>
       </main>
@@ -419,7 +419,7 @@ export function adminPage() {
   </dialog>
 
   <dialog id="confirmDialog" class="confirm-modal"><div class="confirm-icon">!</div><div class="confirm-copy"><h2 id="confirmTitle">Please confirm</h2><p id="confirmMessage"></p></div><div class="modal-actions"><button id="confirmNo" class="secondary">Keep it</button><button id="confirmYes" class="danger">Confirm</button></div></dialog>
-  <script type="module" src="/admin/app.js?v=0.8.17&build=0.8.17"></script>
+  <script type="module" src="/admin/app.js?v=0.8.18&build=0.8.18"></script>
 </body>
 </html>`;
 }
