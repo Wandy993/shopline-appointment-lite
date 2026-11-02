@@ -128,3 +128,19 @@ test('v0.6.16 release documentation lists the production Google Auth Platform va
   assert.match(release, /RELEASE_VERSION="\d+\.\d+\.\d+"/);
   assert.match(release, /NAME="appointment-lite-v\$\{RELEASE_LABEL\}-[^"]+"/);
 });
+
+test('v0.8.13 storefront extension assets use the new production API domain', async () => {
+  const [product, page, embed, env] = await Promise.all([
+    source('theme-extension-source/public/appointment-lite.js'),
+    source('theme-extension-source/public/appointment-lite-page.js'),
+    source('theme-extension-source/public/appointment-lite-embed.js'),
+    source('.env.example')
+  ]);
+  for (const asset of [product, page, embed]) {
+    assert.match(asset, /const API_BASE = 'https:\\/\\/appointment\\.shoplineapp\\.vip'/);
+    assert.doesNotMatch(asset, /toolkit\\.fans/);
+    assert.match(asset, /const VERSION = '0\\.8\\.13'/);
+  }
+  assert.match(env, /APP_URL=https:\\/\\/appointment\\.shoplineapp\\.vip/);
+  assert.match(env, /GOOGLE_CALENDAR_REDIRECT_URI=https:\\/\\/appointment\\.shoplineapp\\.vip\\/integrations\\/google\\/callback/);
+});
