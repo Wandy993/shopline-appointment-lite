@@ -27,7 +27,9 @@ test('merchant admin normalizes typography, form controls, and responsive config
   assert.match(css, /\.app-shell button[^}]*font-size:14px[^}]*border-radius:6px/);
   assert.match(css, /\.app-shell input:not\(\[type=checkbox\]\)[^}]*font-size:14px[^}]*border-radius:6px/);
   assert.match(css, /\.app-shell code[^}]*font-family:var\(--font-mono\);font-size:13px/);
-  assert.match(css, /\.config-layout,\.configuration-layout,\.settings-layout,\.setup-layout\{display:grid;grid-template-columns:280px minmax\(0,1fr\)/);
+  assert.match(css, /\.config-layout,\.configuration-layout,\.settings-layout\{display:grid;grid-template-columns:280px minmax\(0,1fr\)/);
+  assert.doesNotMatch(css, /\.config-layout,\.configuration-layout,\.settings-layout,\.setup-layout\{display:grid;/);
+  assert.match(css, /\.app-shell \.setup-layout\{\s*display:grid;\s*grid-template-columns:minmax\(0,1fr\)/);
   assert.match(css, /@media\(max-width:960px\)\{\.config-layout/);
   assert.match(css, /\.app-shell \.form-section\{display:grid;grid-template-columns:280px minmax\(0,1fr\)/);
   assert.match(css, /\.app-shell \.form-section>:not\(\.section-title\)\{grid-column:2/);
@@ -40,10 +42,15 @@ test('admin font loading is scoped to the merchant admin and allowed by CSP', as
     readFile(new URL('../src/app.js', import.meta.url), 'utf8'),
     readFile(new URL('../public/admin/styles.css', import.meta.url), 'utf8')
   ]);
-  assert.match(view, /fonts\.googleapis\.com\/css2\?family=JetBrains\+Mono/);
-  assert.match(view, /family=Plus\+Jakarta\+Sans/);
-  assert.match(app, /https:\/\/fonts\.googleapis\.com/);
-  assert.match(app, /https:\/\/fonts\.gstatic\.com/);
+  assert.ok(view.includes('/admin-fonts/plus-jakarta-sans/plus-jakarta-sans-latin-wght-normal.woff2'));
+  assert.ok(!view.includes('fonts.googleapis.com') && !view.includes('fonts.gstatic.com'));
+  assert.ok(app.includes("node_modules/@fontsource-variable/plus-jakarta-sans/files"));
+  assert.ok(app.includes("node_modules/@fontsource-variable/jetbrains-mono/files"));
+  assert.ok(!app.includes('fonts.googleapis.com') && !app.includes('fonts.gstatic.com'));
+  assert.ok(css.includes('@font-face{font-family:"Plus Jakarta Sans"'));
+  assert.ok(css.includes('/admin-fonts/plus-jakarta-sans/plus-jakarta-sans-latin-wght-normal.woff2'));
+  assert.ok(css.includes('@font-face{font-family:"JetBrains Mono"'));
+  assert.ok(css.includes('/admin-fonts/jetbrains-mono/jetbrains-mono-latin-wght-normal.woff2'));
   assert.match(css, /\.email-preview,\.email-preview button,\.email-preview a,\.preview-mail-shell,\.preview-mail-shell \*\{font-family:"Poppins"/);
   assert.match(css, /\.preview-email-card h2\{font-family:"Jost"/);
 });
