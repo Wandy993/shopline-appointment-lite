@@ -66,7 +66,7 @@ function legalShell({ locale, type, title, lead, body }) {
   <link rel="alternate" hreflang="zh-CN" href="${esc(alternateZh)}">
   <link rel="alternate" hreflang="en" href="${esc(alternateEn)}">
   <link rel="alternate" hreflang="x-default" href="${esc(`${config.appUrl}/`)}">
-  <link rel="stylesheet" href="/legal/assets/styles.css?v=0.8.12">
+  <link rel="stylesheet" href="/legal/assets/styles.css?v=0.8.14">
   <title>${pageTitle}</title>
 </head>
 <body>
@@ -88,7 +88,7 @@ function legalShell({ locale, type, title, lead, body }) {
   ${body}
   <footer class="legal-footer"><div class="legal-footer-inner"><span>© 2026 Appointment Lite</span><span class="footer-links"><a href="${privacyHref}">${zh ? '隐私政策' : 'Privacy'}</a><a href="${termsHref}">${zh ? '服务条款' : 'Terms'}</a><a href="${faqHref}">FAQ</a></span><span>${zh ? '面向 SHOPLINE 商家的预约与服务管理应用' : 'Scheduling and service management for SHOPLINE merchants'}</span></div></footer>
 </div>
-${type === 'faq' ? '<script src="/legal/assets/faq.js?v=0.8.12" defer></script>' : ''}
+${type === 'faq' ? '<script src="/legal/assets/faq.js?v=0.8.14" defer></script>' : ''}
 </body>
 </html>`;
 }
@@ -455,8 +455,8 @@ export function homePage(locale = 'en') {
   return legalShell({
     locale: normalized,
     type: 'home',
-    title: normalized === 'zh-cn' ? 'SHOPLINE 预约与服务管理' : 'Scheduling for SHOPLINE stores',
-    lead: normalized === 'zh-cn' ? 'Appointment Lite 将 SHOPLINE 商品、订单与服务预约连接起来，并提供员工、地点、通知和 Google Calendar 管理。' : 'Appointment Lite connects SHOPLINE products and orders with service scheduling, staff, locations, notifications, and Google Calendar.',
+    title: 'Appointment Lite',
+    lead: normalized === 'zh-cn' ? 'Appointment Lite 是面向 SHOPLINE 商家的预约与服务管理应用，连接商品、订单、员工、地点、通知和 Google Calendar。' : 'Appointment Lite is a scheduling and service management app for SHOPLINE merchants, connecting products, orders, staff, locations, notifications, and Google Calendar.',
     body: homeBody(normalized)
   });
 }
