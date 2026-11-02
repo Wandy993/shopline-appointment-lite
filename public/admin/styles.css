@@ -1196,15 +1196,17 @@ html,body{background:var(--bg-color);color:var(--text-main);font-family:var(--fo
 @media(max-width:600px){.page-heading h1,.hero-copy h1{font-size:20px}.app-shell .field label,.app-shell legend,.app-shell .label-row label,.app-shell .field-label{font-size:14px}.config-layout__card,.configuration-card,.settings-card{padding:16px}}
 
 
-/* Configuration cards: 280px explanation column + flexible control column. */
-.app-shell .form-section,.app-shell .storefront-config-group{display:grid;grid-template-columns:280px minmax(0,1fr);column-gap:24px;row-gap:16px;align-items:start}
-.app-shell .form-section>.section-title,.app-shell .storefront-config-group>.storefront-config-title{grid-column:1;grid-row:1;margin:0;align-self:start}
-.app-shell .form-section>:not(.section-title),.app-shell .storefront-config-group>:not(.storefront-config-title){grid-column:2;min-width:0}
-.app-shell .form-section>.section-title p,.app-shell .storefront-config-group>.storefront-config-title small{max-width:260px}
+/* Configuration cards: 280px explanation column + flexible control column.
+   Keep this pattern scoped to form-section cards; Storefront Setup has its own
+   full-width controls + live-preview workspace. */
+.app-shell .form-section{display:grid;grid-template-columns:280px minmax(0,1fr);column-gap:24px;row-gap:16px;align-items:start}
+.app-shell .form-section>.section-title{grid-column:1;grid-row:1;margin:0;align-self:start}
+.app-shell .form-section>:not(.section-title){grid-column:2;min-width:0}
+.app-shell .form-section>.section-title p{max-width:260px}
 @media(max-width:960px){
-  .app-shell .form-section,.app-shell .storefront-config-group{grid-template-columns:minmax(0,1fr);gap:16px}
-  .app-shell .form-section>.section-title,.app-shell .storefront-config-group>.storefront-config-title{grid-column:1;grid-row:auto}
-  .app-shell .form-section>:not(.section-title),.app-shell .storefront-config-group>:not(.storefront-config-title){grid-column:1}
+  .app-shell .form-section{grid-template-columns:minmax(0,1fr);gap:16px}
+  .app-shell .form-section>.section-title{grid-column:1;grid-row:auto}
+  .app-shell .form-section>:not(.section-title){grid-column:1}
 }
 
 .app-shell button.primary:hover:not(.email-preview button):not(.preview-email-card button):not(.storefront-dialog-preview-actions button){color:#fff;border-color:var(--accent-hover);background:var(--accent-hover)}
@@ -1331,4 +1333,78 @@ html,body{background:var(--bg-color);color:var(--text-main);font-family:var(--fo
   .app-shell .notification-toggle-grid.four{grid-template-columns:minmax(0,1fr)}
   .app-shell .reminder-timing-row{grid-template-columns:minmax(0,1fr)}
   .app-shell .reminder-select-wrap{width:100%}
+}
+
+
+/* v0.8.17 — Storefront Setup layout recovery */
+.app-shell .storefront-customizer{overflow:clip}
+.app-shell .storefront-config-group{
+  display:grid;
+  grid-template-columns:minmax(0,1fr);
+  gap:14px;
+  align-items:start;
+  border-color:var(--border);
+  background:var(--card-bg);
+}
+.app-shell .storefront-config-group>*{
+  grid-column:1;
+  width:100%;
+  min-width:0;
+}
+.app-shell .storefront-config-title{
+  margin:0 0 2px;
+  align-items:flex-start;
+}
+.app-shell .storefront-config-title strong{
+  color:var(--text-main);
+  font-size:16px;
+  font-weight:600;
+  line-height:1.4;
+}
+.app-shell .storefront-config-title small{
+  max-width:none;
+  color:var(--text-muted);
+  font-size:13px;
+  font-weight:400;
+  line-height:1.5;
+}
+.app-shell .booking-theme-grid{
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+}
+.app-shell .booking-theme-option{min-width:0}
+.app-shell .storefront-option-row{
+  grid-template-columns:minmax(0,1fr) minmax(220px,auto);
+  gap:16px;
+}
+.app-shell .storefront-option-row>div:first-child{min-width:0}
+.app-shell .storefront-option-row>div:first-child strong{font-size:14px;font-weight:600;color:var(--text-main)}
+.app-shell .storefront-option-row>div:first-child small{font-size:13px;line-height:1.5;color:var(--text-muted)}
+.app-shell .storefront-segmented{min-width:220px;max-width:100%}
+.app-shell .storefront-segmented button{min-width:0;white-space:normal}
+.app-shell .storefront-color-row{grid-template-columns:repeat(2,minmax(0,1fr))}
+.app-shell .storefront-element-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.app-shell .storefront-toggle{min-width:0}
+.app-shell .storefront-preview-panel{
+  position:sticky;
+  top:96px;
+  align-self:start;
+  max-height:calc(100vh - 112px);
+  overflow-y:auto;
+  overscroll-behavior:contain;
+}
+@media(max-width:1100px){
+  .app-shell .storefront-preview-panel{
+    position:static;
+    max-height:none;
+    overflow:visible;
+  }
+}
+@media(max-width:720px){
+  .app-shell .booking-theme-grid{grid-template-columns:1fr}
+  .app-shell .storefront-color-row,
+  .app-shell .storefront-element-grid{grid-template-columns:minmax(0,1fr)}
+  .app-shell .storefront-option-row{grid-template-columns:minmax(0,1fr)}
+  .app-shell .storefront-segmented{width:100%;min-width:0}
+  .app-shell .storefront-segmented button{flex:1}
 }
