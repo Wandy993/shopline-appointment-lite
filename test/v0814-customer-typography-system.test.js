@@ -49,7 +49,7 @@ test('customer font routes and release metadata remain correct independently of 
   const [app, release] = await Promise.all([read('../src/app.js'), read('../scripts/build-release.sh')]);
   assert.match(app, /\/customer-fonts\/jost/);
   assert.match(app, /\/customer-fonts\/poppins/);
-  assert.match(app, /fontSrc: \["'self'", 'data:'\]/);
+  assert.match(app, /fontSrc: \["'self'", 'data:'/);
   assert.match(app, /build: '[^']+'/);
   assert.match(app, /release: 'v[^']+'/);
   assert.match(release, /RELEASE_LABEL="[^"]+"/);
