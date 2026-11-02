@@ -29,8 +29,8 @@ test('merchant admin normalizes typography, form controls, and responsive config
   assert.match(css, /\.app-shell code[^}]*font-family:var\(--font-mono\);font-size:13px/);
   assert.match(css, /\.config-layout,\.configuration-layout,\.settings-layout,\.setup-layout\{display:grid;grid-template-columns:280px minmax\(0,1fr\)/);
   assert.match(css, /@media\(max-width:960px\)\{\.config-layout/);
-  assert.match(css, /\.app-shell \.form-section,\.app-shell \.storefront-config-group\{display:grid;grid-template-columns:280px minmax\(0,1fr\)/);
-  assert.match(css, /\.app-shell \.form-section>:not\(\.section-title\),\.app-shell \.storefront-config-group>:not\(\.storefront-config-title\)\{grid-column:2/);
+  assert.match(css, /\.app-shell \.form-section\{display:grid;grid-template-columns:280px minmax\(0,1fr\)/);
+  assert.match(css, /\.app-shell \.form-section>:not\(\.section-title\)\{grid-column:2/);
   assert.match(css, /@media\(max-width:960px\)\s*\{\s*\.app-shell \.form-section/);
 });
 
@@ -62,4 +62,20 @@ test('Email Studio keeps the live preview layout separate from full-width form s
   const css = await readFile(new URL('../public/admin/styles.css', import.meta.url), 'utf8');
   assert.match(css, /\\.email-studio-grid\\{grid-template-columns:minmax\\(620px,1\\.15fr\\) minmax\\(360px,\\.85fr\\)\\}/);
   assert.match(css, /\.preview-sticky\s*\{\s*position:sticky;top:92px;?\s*\}/);
+});
+
+test('Storefront Setup configuration cards keep full-width controls inside the editor column', async () => {
+  const css = await readFile(new URL('../public/admin/styles.css', import.meta.url), 'utf8');
+  assert.match(css, /v0\\.8\\.17 — Storefront Setup layout recovery/);
+  assert.match(css, /\\.app-shell \\.storefront-config-group\\{\\s*display:grid;\\s*grid-template-columns:minmax\\(0,1fr\\)/);
+  assert.match(css, /\\.app-shell \\.storefront-config-group>\\*\\{\\s*grid-column:1;\\s*width:100%;\\s*min-width:0/);
+  assert.match(css, /\\.app-shell \\.booking-theme-grid\\{\\s*grid-template-columns:repeat\\(3,minmax\\(0,1fr\\)/);
+  assert.match(css, /\\.app-shell \\.storefront-option-row\\{\\s*grid-template-columns:minmax\\(0,1fr\\) minmax\\(220px,auto)/);
+  assert.doesNotMatch(css, /\\.app-shell \\.storefront-config-group\\{display:grid;grid-template-columns:280px/);
+});
+
+test('Storefront Setup live preview stays visible while scrolling and returns to normal flow on narrow screens', async () => {
+  const css = await readFile(new URL('../public/admin/styles.css', import.meta.url), 'utf8');
+  assert.match(css, /\\.app-shell \\.storefront-preview-panel\\{\\s*position:sticky;\\s*top:96px/);
+  assert.match(css, /@media\\(max-width:1100px\\)\\s*\\{\\s*\\.app-shell \\.storefront-preview-panel\\{\\s*position:static/);
 });
