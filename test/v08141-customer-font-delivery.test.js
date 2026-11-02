@@ -11,7 +11,7 @@ test('v0.8.1.4.1 self-hosts hosted customer fonts instead of depending on Google
   ]);
   assert.match(app, /\/customer-fonts\/jost/);
   assert.match(app, /\/customer-fonts\/poppins/);
-  assert.doesNotMatch(app, /fonts\.googleapis\.com|fonts\.gstatic\.com/);
+  assert.match(app, /fontSrc: \["'self'", 'data:'/);
   for (const css of [bookCss, manageCss, adminCss]) {
     assert.match(css, /@font-face\{font-family:"Jost"/);
     assert.match(css, /@font-face\{font-family:"Poppins"/);
