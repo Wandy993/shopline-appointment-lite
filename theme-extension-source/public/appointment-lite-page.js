@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = '0.8.13';
+  const VERSION = '0.8.15';
   const API_BASE = 'https://appointment.shoplineapp.vip';
   const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;' }[c]));
   const clean = value => {
