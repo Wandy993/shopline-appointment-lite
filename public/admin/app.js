@@ -1977,6 +1977,7 @@ function setBookingType(type = 'standalone') {
     $('#bookingSource').value = 'direct';
     $('#sourceType').value = 'standalone';
   } else setPaymentMode($('#paymentMode').value || 'none');
+  refreshPlacementUi();
 }
 
 function setPaymentMode(mode = 'none') {
@@ -2368,6 +2369,15 @@ async function openRule(rule = null) {
     placement: (rule?.storefrontPlacement?.productBlock?.productIds || (legacyMode === 'product_pre_purchase' && rule?.productId ? [rule.productId] : [])).map(String)
   };
   state.productPlacementScope = rule?.storefrontPlacement?.productBlock?.scope === 'selected' ? 'selected' : 'all';
+  const oldProductBlock = rule?.storefrontPlacement?.productBlock;
+  const savedCheckoutId = String(rule?.checkoutProduct?.productId || (paymentMode === 'checkout' ? rule?.productId || '' : '')).trim();
+  const savedDisplayIds = (oldProductBlock?.productIds || []).map(String);
+  // Preserve custom display placements on existing services. Auto-link only when
+  // no placement was enabled, or it already used the checkout product exclusively.
+  state.checkoutPlacementAuto = !rule || !oldProductBlock?.enabled || (
+    paymentMode === 'checkout' && oldProductBlock?.scope === 'selected' &&
+    savedDisplayIds.length === 1 && savedDisplayIds[0] === savedCheckoutId
+  );
   setBookingType(bookingType);
   setPaymentMode(paymentMode);
   setBookingMode(rule?.bookingMode || 'slot', { touched: false });
@@ -3727,7 +3737,15 @@ function bind() {
   $$('#bookingTypeGrid [data-booking-type]').forEach(button => button.addEventListener('click', () => setBookingType(button.dataset.bookingType)));
   $$('#paymentModeGrid [data-payment-mode]').forEach(button => button.addEventListener('click', () => setPaymentMode(button.dataset.paymentMode)));
   $('#placementProductBlock')?.addEventListener('change', refreshPlacementUi);
-  $$('[data-product-placement-scope]').forEach(button => button.addEventListener('click', () => setProductPlacementScope(button.dataset.productPlacementScope)));
+  $('#checkoutPlacementCustomize')?.addEventListener('click', () => {
+    state.checkoutPlacementAuto = false;
+    refreshPlacementUi();
+  });
+  $('#checkoutPlacementRestore')?.addEventListener('click', () => {
+    state.checkoutPlacementAuto = true;
+    refreshPlacementUi();
+  });
+  $('[data-product-placement-scope]').forEach(button => button.addEventListener('click', () => setProductPlacementScope(button.dataset.productPlacementScope, { explicit: true })));
   $$('#commerceModeGrid [data-commerce-mode]').forEach(button => button.addEventListener('click', () => {}));
   $$('#bookingSourceGrid [data-booking-source]').forEach(button => button.addEventListener('click', () => {}));
   $$('#bookingModeGrid [data-booking-mode]').forEach(button => button.addEventListener('click', () => setBookingMode(button.dataset.bookingMode)));
