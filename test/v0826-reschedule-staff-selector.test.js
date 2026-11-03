@@ -11,7 +11,7 @@ test('customer reschedule renders a staff selector and preselects the existing a
   const source = asset.slice(start, end);
   assert.ok(start >= 0 && end > start);
   assert.match(source, /staffMode === 'customer_choice'/);
-  assert.match(source, /class="al-reschedule-staff"/);
+  assert.match(source, /class="al-field al-reschedule-staff"/);
   assert.match(source, /data-staff-id/);
   assert.match(source, /receipt\.staffId \|\| occurrenceStaffId/);
   assert.match(source, /staffOptions\.find\(item => String\(item\.name/);
