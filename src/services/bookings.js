@@ -511,7 +511,7 @@ export async function getLegacyBookingStatus({ bookingId, shopObjectId, productI
   return { id: booking._id, status: booking.status };
 }
 
-export async function getManagedAvailability({ bookingId, token, date, BookingModel = Booking, RuleModel = AppointmentRule, now = new Date() }) {
+export async function getManagedAvailability({ bookingId, token, date, requestedStaffId = '', BookingModel = Booking, RuleModel = AppointmentRule, StaffModel = Staff, StaffReservationModel, now = new Date() }) {
   const booking = await getManagedBooking({ bookingId, token, BookingModel });
   if (booking.status !== 'confirmed' || (booking.bookingMode || 'slot') !== 'slot') return { date, slots: [] };
   const rule = await RuleModel.findOne({ _id: booking.ruleId, shopId: booking.shopId, enabled: true });
@@ -519,10 +519,28 @@ export async function getManagedAvailability({ bookingId, token, date, BookingMo
   const allSlots = futureSlotsForDate(rule, date, booking.timezone || 'UTC', now);
   const booked = await confirmedBookingsForDate(BookingModel, { shopId: booking.shopId, ruleId: booking.ruleId, date, status: 'confirmed', _id: { $ne: booking._id } });
   const capacitySlots = filterSlotsByCapacity(allSlots, booked, capacityFor(rule));
-  const activeStaffReservationModel = staffReservationModelFor(BookingModel);
+  const assignment = normalizedStaffAssignment(rule);
+  const activeStaffReservationModel = staffReservationModelFor(BookingModel, StaffReservationModel)
+    || (assignment.mode === 'customer_choice' ? StaffReservation : null);
   if (!activeStaffReservationModel) return { date, slots: capacitySlots };
-  const staffResult = await staffAvailabilityForDate({ shopId: booking.shopId, rule, date, baseSlots: capacitySlots, requestedStaffId: booking.staffId ? String(booking.staffId) : '', ignoreBookingId: booking._id, StaffReservationModel: activeStaffReservationModel });
-  return { date, slots: staffResult.slots };
+  const selectedStaffId = assignment.mode === 'customer_choice'
+    ? String(requestedStaffId || booking.staffId || '')
+    : String(booking.staffId || '');
+  const staffResult = await staffAvailabilityForDate({
+    shopId: booking.shopId,
+    rule,
+    date,
+    baseSlots: capacitySlots,
+    requestedStaffId: selectedStaffId,
+    ignoreBookingId: booking._id,
+    StaffModel,
+    StaffReservationModel: activeStaffReservationModel
+  });
+  return {
+    date,
+    slots: staffResult.slots,
+    ...(staffResult.requiresStaffSelection ? { requiresStaffSelection: true } : {})
+  };
 }
 
 export async function cancelManagedBooking({ bookingId, token, BookingModel = Booking, ReservationModel, StaffReservationModel, notify = sendBookingCancelledNotification, now = new Date() }) {
@@ -565,24 +583,33 @@ async function restorePreviousStaffReservation({ booking, rule, StaffModel, Staf
   }
 }
 
-export async function rescheduleManagedBooking({ bookingId, token, date, time, BookingModel = Booking, ReservationModel, StaffReservationModel, StaffModel = Staff, RuleModel = AppointmentRule, notify = sendCustomerRescheduledNotification, now = new Date() }) {
+export async function rescheduleManagedBooking({ bookingId, token, date, time, staffId = '', BookingModel = Booking, ReservationModel, StaffReservationModel, StaffModel = Staff, RuleModel = AppointmentRule, notify = sendCustomerRescheduledNotification, now = new Date() }) {
   const booking = await getManagedBooking({ bookingId, token, BookingModel });
   if ((booking.bookingMode || 'slot') !== 'slot') throw Object.assign(new Error('Online rescheduling is currently available for minute/hour appointments only.'), { status: 409, code: 'BOOKING_MODE_RESCHEDULE_UNSUPPORTED' });
   if (booking.status !== 'confirmed') throw Object.assign(new Error('This appointment is no longer active.'), { status: 409, code: 'BOOKING_INACTIVE' });
   if (Number(booking.customerRescheduleCount || 0) >= 1) throw Object.assign(new Error('You have already used your online change. Please contact the store for another change.'), { status: 409, code: 'RESCHEDULE_LIMIT' });
   const rule = await RuleModel.findOne({ _id: booking.ruleId, shopId: booking.shopId, enabled: true });
   if (!rule || !futureSlotsForDate(rule, date, booking.timezone || 'UTC', now).includes(time)) throw Object.assign(new Error('The selected time is unavailable or outside the current scheduling policy.'), { code: 'VALIDATION_ERROR' });
+  const assignment = normalizedStaffAssignment(rule);
+  const requestedStaffId = assignment.mode === 'customer_choice'
+    ? String(staffId || booking.staffId || '').trim()
+    : String(booking.staffId || '');
+  if (assignment.mode === 'customer_choice' && !requestedStaffId) {
+    throw Object.assign(new Error('Choose a staff member before rescheduling.'), { code: 'VALIDATION_ERROR' });
+  }
   const nextOccurrence = { date, time, slotKey: slotKey(date, time), slotPosition: 0 };
   const activeStaffReservationModel = staffReservationModelFor(BookingModel, StaffReservationModel);
   let assignedStaff = null;
   if (activeStaffReservationModel) {
     await releaseStaffReservations({ bookingId: booking._id, StaffReservationModel: activeStaffReservationModel });
     try {
-      assignedStaff = await reserveStaffForBooking({ shopId: booking.shopId, rule, occurrences: [nextOccurrence], bookingId: booking._id, requestedStaffId: booking.staffId ? String(booking.staffId) : '', StaffModel, StaffReservationModel: activeStaffReservationModel });
+      assignedStaff = await reserveStaffForBooking({ shopId: booking.shopId, rule, occurrences: [nextOccurrence], bookingId: booking._id, requestedStaffId, StaffModel, StaffReservationModel: activeStaffReservationModel });
     } catch (error) {
       await restorePreviousStaffReservation({ booking, rule, StaffModel, StaffReservationModel: activeStaffReservationModel });
       throw error;
     }
+  } else if (assignment.mode === 'customer_choice') {
+    throw Object.assign(new Error('Staff availability could not be verified. Please contact the store.'), { status: 409, code: 'STAFF_UNAVAILABLE' });
   }
   const nextStaff = assignedStaff?.name || booking.staff || rule.staff || '';
   const nextStaffId = assignedStaff?._id || booking.staffId || null;
