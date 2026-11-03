@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = '0.8.21';
+  const VERSION = '0.8.22';
   const API_BASE = 'https://appointment.shoplineapp.vip';
   const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;' }[c]));
   const clean = value => {
@@ -74,13 +74,17 @@
     const role = clean(item.roleTitle);
     const expertise = clean(item.expertise);
     const bio = clean(item.bio);
-    const expertiseMarkup = expertise ? `<div class="al-dir-tags"><span><strong>Expertise</strong> ${escapeHtml(expertise)}</span></div>` : '';
+    const expertiseMarkup = expertise ? `<div class="al-dir-tags"><span class="al-dir-expertise-chip" aria-label="Expertise: ${escapeHtml(expertise)}">${escapeHtml(expertise)}</span></div>` : '';
     const bioMarkup = bio ? `<p class="al-dir-bio">${escapeHtml(bio)}</p>` : '';
     const services = serviceList(item);
     const servicesMarkup = services.length
       ? `<ul class="al-dir-services-list">${services.map(service => `<li><span class="al-dir-check" aria-hidden="true">✓</span><span>${escapeHtml(service)}</span></li>`).join('')}</ul>`
       : '<span class="al-dir-services-empty">Service details not added yet</span>';
-    return `<article class="al-dir-card"><div class="al-dir-person">${avatar(item)}<div class="al-dir-person-copy"><h3>${escapeHtml(item.name)}</h3>${role ? `<p>${escapeHtml(role)}</p>` : ''}${expertiseMarkup}${bioMarkup}</div></div><div class="al-dir-services"><strong>Services</strong>${servicesMarkup}</div><a class="al-dir-select" href="${API_BASE}/book/${encodeURIComponent(serviceId)}?staffId=${encodeURIComponent(item.id)}" aria-label="Select ${escapeHtml(item.name)}"><span>Select</span><span aria-hidden="true">›</span></a></article>`;
+    return `<article class="al-dir-card">
+      <div class="al-dir-person">${avatar(item)}<div class="al-dir-person-copy"><h3>${escapeHtml(item.name)}</h3>${role ? `<p>${escapeHtml(role)}</p>` : ''}${expertiseMarkup}${bioMarkup}</div></div>
+      <a class="al-dir-select" href="${API_BASE}/book/${encodeURIComponent(serviceId)}?staffId=${encodeURIComponent(item.id)}" aria-label="Select ${escapeHtml(item.name)}"><span>Select</span><span aria-hidden="true">›</span></a>
+      <div class="al-dir-services"><strong>Services</strong>${servicesMarkup}</div>
+    </article>`;
   }
 
   async function directory(root) {

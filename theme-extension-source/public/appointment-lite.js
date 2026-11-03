@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = '0.8.21';
+  const VERSION = '0.8.22';
   const API_BASE = 'https://appointment.shoplineapp.vip';
   const CACHE_TTL = 5 * 60 * 1000;
   const RULE_CACHE = new Map();
@@ -214,7 +214,7 @@
 
   const staffPresetClasses = new Set(['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose', 'nova']);
   const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
-  function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="${API_BASE}/assets/staff/${file}?v=0.8.21" alt="" loading="lazy" decoding="async">`;}
+  function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="${API_BASE}/assets/staff/${file}?v=0.8.22" alt="" loading="lazy" decoding="async">`;}
 
   function staffAvatar(item, className = '') {
     const avatar = item?.avatar || {};
@@ -528,13 +528,17 @@
       const role = publicProfileValue(item.roleTitle);
       const expertise = publicProfileValue(item.expertise);
       const bio = publicProfileValue(item.bio);
-      const expertiseMarkup = expertise ? `<p class="al-directory-expertise"><strong>Expertise</strong> ${text(expertise)}</p>` : '';
+      const expertiseMarkup = expertise ? `<div class="al-directory-expertise"><span class="al-directory-expertise-chip" aria-label="Expertise: ${text(expertise)}">${text(expertise)}</span></div>` : '';
       const bioMarkup = bio ? `<p class="al-directory-bio">${text(bio)}</p>` : '';
       const services = publicServiceList(item);
       const servicesMarkup = services.length
         ? `<ul class="al-directory-services-list">${services.map(service => `<li><span class="al-directory-check" aria-hidden="true">✓</span><span>${text(service)}</span></li>`).join('')}</ul>`
         : '<span class="al-directory-services-empty">Service details not added yet</span>';
-      return `<article class="al-directory-card"><div class="al-directory-person">${staffAvatar(item, 'al-directory-avatar')}<div class="al-directory-person-copy"><h3>${text(item.name)}</h3>${role ? `<p>${text(role)}</p>` : ''}${expertiseMarkup}${bioMarkup}</div></div><div class="al-directory-services"><strong>Services</strong>${servicesMarkup}</div><button type="button" class="al-directory-book" data-book-with-staff="${text(item.id)}" aria-label="Select ${text(item.name)}"><span>Select</span><span aria-hidden="true">›</span></button></article>`;
+      return `<article class="al-directory-card">
+        <div class="al-directory-person">${staffAvatar(item, 'al-directory-avatar')}<div class="al-directory-person-copy"><h3>${text(item.name)}</h3>${role ? `<p>${text(role)}</p>` : ''}${expertiseMarkup}${bioMarkup}</div></div>
+        <button type="button" class="al-directory-book" data-book-with-staff="${text(item.id)}" aria-label="Select ${text(item.name)}"><span>Select</span><span aria-hidden="true">›</span></button>
+        <div class="al-directory-services"><strong>Services</strong>${servicesMarkup}</div>
+      </article>`;
     }).join('');
     dialog.innerHTML = `<div class="al-head al-directory-head"><div><span class="al-directory-kicker">${text(teamBookingLabel)}</span><h2>Choose your specialist</h2><p>${text(teamBookingDescription)}</p></div><button class="al-close" type="button" aria-label="Close">×</button></div><div class="al-directory-body"><div class="al-directory-grid">${cards}</div></div>`;
     mountDialog(dialog, 'al-staff-directory-dialog', storefront);
