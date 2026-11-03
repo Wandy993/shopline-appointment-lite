@@ -4,35 +4,46 @@ import { readFile } from 'node:fs/promises';
 
 const read = path => readFile(new URL(path, import.meta.url), 'utf8');
 
-test('Product App Block staff cards prioritize profile and Select before secondary services', async () => {
+test('Product staff directory preserves the previous visual styling and changes desktop card order only', async () => {
   const [asset, css] = await Promise.all([read('../theme-extension-source/public/appointment-lite.js'), read('../theme-extension-source/public/appointment-lite.css')]);
   const start = asset.indexOf('function openStaffDirectory(');
   const end = asset.indexOf('\n  async function init(', start);
   const markup = asset.slice(start, end);
   assert.ok(start >= 0 && end > start);
   assert.match(markup, /al-directory-person[\s\S]*al-directory-book[\s\S]*al-directory-services/);
-  assert.match(markup, /al-directory-expertise-chip/);
-  assert.doesNotMatch(markup, /<strong>Expertise<\/strong>/);
+  assert.match(markup, /<p class="al-directory-expertise"><strong>Expertise<\/strong>/);
+  assert.doesNotMatch(markup, /al-directory-expertise-chip/);
+  assert.match(css, /\.al-directory-card\{display:grid;grid-template-columns:minmax\(210px,\.8fr\) minmax\(280px,1\.25fr\) 90px/);
   assert.match(css, /grid-template-areas:"person button" "services services"/);
-  assert.match(css, /\.al-directory-person-copy \.al-directory-bio\{[\s\S]*-webkit-line-clamp:2/);
-  assert.match(css, /\.al-directory-services-list li\{[\s\S]*border-radius:999px/);
+  assert.doesNotMatch(css, /\.al-directory-services-list li\{display:inline-flex/);
+  assert.doesNotMatch(css, /\.al-directory-book\{grid-area:button;align-self:start;justify-self:end;display:inline-flex;align-items:center;justify-content:center/);
 });
 
-test('Page Block uses the same profile, CTA and services hierarchy', async () => {
+test('Standalone Staff Directory preserves its previous profile and service styling', async () => {
   const [asset, css] = await Promise.all([read('../theme-extension-source/public/appointment-lite-page.js'), read('../theme-extension-source/public/appointment-lite-page.css')]);
   const start = asset.indexOf('function staffCard(');
   const end = asset.indexOf('\n  async function directory(', start);
   const markup = asset.slice(start, end);
   assert.ok(start >= 0 && end > start);
   assert.match(markup, /al-dir-person[\s\S]*al-dir-select[\s\S]*al-dir-services/);
-  assert.match(markup, /al-dir-expertise-chip/);
-  assert.doesNotMatch(markup, /<strong>Expertise<\/strong>/);
+  assert.match(markup, /<span><strong>Expertise<\/strong>/);
+  assert.doesNotMatch(markup, /al-dir-expertise-chip/);
+  assert.match(css, /\.al-dir-tags span\{border:1px solid #d9e5f7;border-radius:999px/);
+  assert.match(css, /-webkit-line-clamp:3/);
   assert.match(css, /grid-template-areas:"person cta" "services services"/);
-  assert.match(css, /\.al-dir-person-copy \.al-dir-bio\{[\s\S]*-webkit-line-clamp:2/);
-  assert.match(css, /\.al-dir-services-list li\{[\s\S]*border-radius:999px/);
 });
 
-test('Staff Directory keeps public-profile filtering and private contact data unchanged', async () => {
+test('Booking dialog scrolls the complete form body while keeping action footer separate', async () => {
+  const css = await read('../theme-extension-source/public/appointment-lite.css');
+  assert.match(css, /\.al-booking-dialog:not\(\.al-confirmed\) \.al-form-body\{[\s\S]*overflow-y:auto!important/);
+  assert.match(css, /\.al-booking-dialog:not\(\.al-confirmed\) \.al-booking-layout\{[\s\S]*height:auto!important/);
+  assert.match(css, /\.al-booking-dialog:not\(\.al-confirmed\) \.al-booking-panel\{[\s\S]*overflow:visible!important/);
+  assert.match(css, /\.al-actions\{flex:0 0 auto/);
+  assert.match(css, /padding-bottom:20px!important/);
+  assert.match(css, /-webkit-overflow-scrolling:touch/);
+});
+
+test('Staff Directory keeps public profile filtering and private contact data unchanged', async () => {
   const staffing = await read('../src/services/staffing.js');
   assert.match(staffing, /staff\.filter\(item => item\.publicProfile === true\)/);
   assert.match(staffing, /expertise: publicProfileText\(item\.expertise\)/);
