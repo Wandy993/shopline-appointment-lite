@@ -132,3 +132,96 @@ test('merchant can edit a confirmed booking without consuming customer change al
   assert.equal(result.booking.customerRescheduleCount, 1);
   assert.equal(notified, true);
 });
+
+
+test('managed availability requires a staff selection and filters slots for the selected employee', async () => {
+  const token = 'f'.repeat(43);
+  const staffId = 'aaaaaaaaaaaaaaaaaaaaaaaa';
+  const current = { _id: 'b1', shopId: 'shop1', ruleId: 'rule1', status: 'confirmed', timezone: 'Asia/Shanghai', staffId: null };
+  const ruleWithStaff = {
+    ...rule,
+    staffAssignment: { mode: 'customer_choice', staffIds: [staffId] },
+    weeklyAvailability: [{ weekday: 1, enabled: true, windows: [{ start: '09:00', end: '11:00' }] }]
+  };
+  const staff = {
+    _id: staffId, shopId: 'shop1', status: 'active',
+    weeklyAvailability: [{ weekday: 1, enabled: true, windows: [{ start: '09:00', end: '11:00' }] }]
+  };
+  const BookingModel = {
+    async findOne() { return current; },
+    async find() { return []; }
+  };
+  const RuleModel = { async findOne() { return ruleWithStaff; } };
+  const StaffModel = { find() { return { lean: async () => [staff] }; } };
+  const StaffReservationModel = {
+    find() { return { select() { return { lean: async () => [] }; } }; }
+  };
+
+  const missing = await getManagedAvailability({
+    bookingId: 'b1', token, date: '2026-08-24', BookingModel, RuleModel,
+    StaffModel, StaffReservationModel, now: beforeOpening
+  });
+  assert.deepEqual(missing.slots, []);
+  assert.equal(missing.requiresStaffSelection, true);
+
+  const selected = await getManagedAvailability({
+    bookingId: 'b1', token, date: '2026-08-24', requestedStaffId: staffId,
+    BookingModel, RuleModel, StaffModel, StaffReservationModel, now: beforeOpening
+  });
+  assert.deepEqual(selected.slots, ['09:00', '10:00']);
+  assert.equal(selected.requiresStaffSelection, undefined);
+});
+
+test('customer reschedule reserves and records the newly selected staff member', async () => {
+  const token = 'g'.repeat(43);
+  const oldStaffId = 'aaaaaaaaaaaaaaaaaaaaaaaa';
+  const newStaffId = 'bbbbbbbbbbbbbbbbbbbbbbbb';
+  let update;
+  const createdStaffReservations = [];
+  const existing = {
+    _id: 'b1', shopId: 'shop1', ruleId: 'rule1', status: 'confirmed',
+    slotKey: '2026-08-24T09:00', date: '2026-08-24', time: '09:00',
+    timezone: 'Asia/Shanghai', customerRescheduleCount: 0,
+    staff: 'Alex', staffId: oldStaffId, staffEmail: 'alex@example.com'
+  };
+  const BookingModel = {
+    async findOne() { return existing; },
+    async findOneAndUpdate(filter, value) {
+      update = { filter, value };
+      return { ...existing, ...value.$set, customerRescheduleCount: 1 };
+    }
+  };
+  const ruleWithStaff = {
+    ...rule,
+    capacity: 1,
+    staffAssignment: { mode: 'customer_choice', staffIds: [oldStaffId, newStaffId] },
+    weeklyAvailability: [{ weekday: 1, enabled: true, windows: [{ start: '09:00', end: '11:00' }] }]
+  };
+  const staffRows = [
+    { _id: oldStaffId, shopId: 'shop1', status: 'active', name: 'Alex', email: 'alex@example.com', weeklyAvailability: [{ weekday: 1, enabled: true, windows: [{ start: '09:00', end: '11:00' }] }] },
+    { _id: newStaffId, shopId: 'shop1', status: 'active', name: 'Taylor', email: 'taylor@example.com', weeklyAvailability: [{ weekday: 1, enabled: true, windows: [{ start: '09:00', end: '11:00' }] }] }
+  ];
+  const RuleModel = { async findOne() { return ruleWithStaff; } };
+  const StaffModel = { find() { return { lean: async () => staffRows }; } };
+  const StaffReservationModel = {
+    async updateMany() { return {}; },
+    async deleteMany() { return {}; },
+    find() { return { select() { return { lean: async () => [] }; } }; },
+    async findOne() { return null; },
+    async create(value) { createdStaffReservations.push(value); return value; }
+  };
+
+  await rescheduleManagedBooking({
+    bookingId: 'b1', token, date: '2026-08-24', time: '10:00', staffId: newStaffId,
+    BookingModel, RuleModel, StaffModel, StaffReservationModel,
+    notify: async () => ({ skipped: true }), now: beforeOpening
+  });
+
+  assert.equal(createdStaffReservations.length, 1);
+  assert.equal(String(createdStaffReservations[0].staffId), newStaffId);
+  assert.equal(String(update.value.$set.staffId), newStaffId);
+  assert.equal(update.value.$set.staff, 'Taylor');
+  assert.equal(update.value.$set.staffEmail, 'taylor@example.com');
+  assert.equal(String(update.value.$set.occurrences[0].staffId), newStaffId);
+  assert.equal(update.value.$push.events.to.staff, 'Taylor');
+});
