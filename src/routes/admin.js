@@ -294,6 +294,7 @@ adminRouter.get('/bootstrap', async (req, res) => {
     shop: { handle: req.shop.handle, storeId: req.shop.shoplineStoreId || '', locale: req.shop.locale, adminLocale: req.shop.adminLocale || 'en', timezone: req.shop.timezone, email: req.shop.email || '' },
     email: { configured: delivery.configured, from: delivery.from || '' }, emailSettings: normalizeEmailSettings(req.shop.emailSettings || {}), storefrontSettings: normalizeStorefrontSettings(req.shop.storefrontSettings || {}), nextBookings, orderAccess,
     calendar: { connectedCount: calendarConnectedCount, connectionErrorCount: calendarConnectionErrorCount, bookingErrorCount: calendarErrorBookingCount, issueCount: calendarIssueCount },
+    staffManagedRuleIds: [...managedStaffRuleIds],
     onboarding: onboardingStatus(req.shop, { ruleCount, activeRuleCount, bookingCount, firstActiveRule }),
     csrfToken: req.csrfToken,
     stats: { ruleCount, activeRuleCount, bookingCount, upcomingCount, todayAppointmentCount, next7AppointmentCount, unassignedUpcomingCount, pendingPaymentCount, paymentConflictCount, calendarIssueCount }
