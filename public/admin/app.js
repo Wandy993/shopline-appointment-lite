@@ -980,6 +980,11 @@ Object.assign(zh, {
   'Email delivery': '邮件发送',
   'Google Calendar': 'Google 日历',
   'SHOPLINE order sync': 'SHOPLINE 订单同步',
+  'Used by paid booking services.': '付费预约服务需要此授权。',
+  'No current service requires order access.': '当前没有服务需要订单授权。',
+  'Connected': '已连接',
+  'Ready': '已就绪',
+  'Setup needed': '需要配置',
   'Email sending service is configured.': '邮件发送服务已完成配置。',
   'No Google Calendar connection is active.': '当前没有已连接的 Google 日历。',
   '{count} calendar connection(s) active.': '已连接 {count} 个日历。',
@@ -992,7 +997,7 @@ Object.assign(zh, {
   'active services': '项已启用服务',
   '{count} items': '{count} 项',
   'Next appointments': '接下来的预约',
-  'Open an appointment to review its details and activity.': '点击预约可查看详情及操作记录。',
+  'Open a booking to review its activity history.': '点击预约可查看详情及操作记录。',
   'Staff not assigned': '未分配员工'
 });
 
@@ -2861,11 +2866,20 @@ function filteredBookings() {
     if (query && ![booking.productTitle, booking.customer?.name, booking.customer?.email, booking.customer?.phone, booking.staff, booking.location, booking.shoplineOrder?.name, booking.shoplineOrder?.id].some(value => String(value || '').toLowerCase().includes(query))) return false;
     if (serviceId && String(booking.ruleId) !== serviceId) return false;
     if (status && (booking.appointmentStatus || booking.status) !== status && booking.status !== status) return false;
-    if (staffId === '__unassigned__') {
-      const occurrences = Array.isArray(booking.occurrences) && booking.occurrences.length ? booking.occurrences : [{ staffId: booking.staffId }];
-      if (!occurrences.some(item => !(item.staffId || booking.staffId))) return false;
-    } else if (staffId && String(booking.staffId || '') !== staffId && !(booking.occurrences || []).some(item => String(item.staffId || '') === staffId)) return false;
     const dates = bookingOccurrenceDates(booking);
+    if (staffId === '__unassigned__') {
+      const managedRuleIds = new Set((state.bootstrap?.staffManagedRuleIds || []).map(String));
+      if (!managedRuleIds.has(String(booking.ruleId))) return false;
+      const occurrences = Array.isArray(booking.occurrences) && booking.occurrences.length
+        ? booking.occurrences
+        : [{ date: booking.date, staffId: booking.staffId }];
+      const hasUnassignedInRange = occurrences.some(item => {
+        const date = item.date || booking.date;
+        const inRange = (!from || date >= from) && (!to || date <= to);
+        return inRange && !(item.staffId || booking.staffId);
+      });
+      if (!hasUnassignedInRange) return false;
+    } else if (staffId && String(booking.staffId || '') !== staffId && !(booking.occurrences || []).some(item => String(item.staffId || '') === staffId)) return false;
     if ((from || to) && booking.recordType === 'order_lifecycle') return false;
     if (from && !dates.some(date => date >= from)) return false;
     if (to && !dates.some(date => date <= to)) return false;
