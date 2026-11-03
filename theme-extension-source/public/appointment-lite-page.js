@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = '0.8.19';
+  const VERSION = '0.8.20';
   const API_BASE = 'https://appointment.shoplineapp.vip';
   const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;' }[c]));
   const clean = value => {
@@ -8,6 +8,12 @@
     return text;
   };
   const serviceList = item => [...new Set((Array.isArray(item?.supportedServices) ? item.supportedServices : []).map(clean).filter(Boolean))].slice(0, 12);
+  const teamBookingCopy = (storefront = {}, serviceTitle = 'Appointment') => {
+    const settings = storefront.teamBooking || {};
+    const label = clean(settings.label) || 'Team Booking';
+    const description = clean(settings.description) || 'Select a team member for {{service}}, then continue to their available calendar.';
+    return { label, description: description.replace(/\\{\\{\\s*service\\s*\\}\\}/gi, serviceTitle) };
+  };
   const themePresets = {
     minimal_light: { accent:'#344054', primaryText:'#FFFFFF', surface:'#FFFFFF', soft:'#F7F8FA', text:'#1D2939', muted:'#667085', line:'#E4E7EC', success:'#5D8A70', backgrounds:{ soft:'#FAFBFC', medium:'#F5F7F9', strong:'#EEF1F4' } },
     warm_luxe: { accent:'#4B342B', primaryText:'#FFFDFC', surface:'#FFFDFC', soft:'#F5ECE5', text:'#2C211D', muted:'#74645C', line:'#E4D6CD', success:'#6F8B73', backgrounds:{ soft:'#FAF6F2', medium:'#F3EBE4', strong:'#E9DDD4' } },
@@ -66,11 +72,15 @@
 
   function staffCard(item, serviceId) {
     const role = clean(item.roleTitle);
+    const expertise = clean(item.expertise);
+    const bio = clean(item.bio);
+    const expertiseMarkup = expertise ? `<div class="al-dir-tags"><span><strong>Expertise</strong> ${escapeHtml(expertise)}</span></div>` : '';
+    const bioMarkup = bio ? `<p class="al-dir-bio">${escapeHtml(bio)}</p>` : '';
     const services = serviceList(item);
     const servicesMarkup = services.length
       ? `<ul class="al-dir-services-list">${services.map(service => `<li><span class="al-dir-check" aria-hidden="true">✓</span><span>${escapeHtml(service)}</span></li>`).join('')}</ul>`
       : '<span class="al-dir-services-empty">Service details not added yet</span>';
-    return `<article class="al-dir-card"><div class="al-dir-person">${avatar(item)}<div class="al-dir-person-copy"><h3>${escapeHtml(item.name)}</h3>${role ? `<p>${escapeHtml(role)}</p>` : ''}</div></div><div class="al-dir-services"><strong>Services</strong>${servicesMarkup}</div><a class="al-dir-select" href="${API_BASE}/book/${encodeURIComponent(serviceId)}?staffId=${encodeURIComponent(item.id)}" aria-label="Select ${escapeHtml(item.name)}"><span>Select</span><span aria-hidden="true">›</span></a></article>`;
+    return `<article class="al-dir-card"><div class="al-dir-person">${avatar(item)}<div class="al-dir-person-copy"><h3>${escapeHtml(item.name)}</h3>${role ? `<p>${escapeHtml(role)}</p>` : ''}${expertiseMarkup}${bioMarkup}</div></div><div class="al-dir-services"><strong>Services</strong>${servicesMarkup}</div><a class="al-dir-select" href="${API_BASE}/book/${encodeURIComponent(serviceId)}?staffId=${encodeURIComponent(item.id)}" aria-label="Select ${escapeHtml(item.name)}"><span>Select</span><span aria-hidden="true">›</span></a></article>`;
   }
 
   async function directory(root) {
@@ -86,8 +96,10 @@
         return;
       }
       const serviceId = String(payload.service?.id || id);
-      applyTheme(root, payload.storefront || {});
-      root.innerHTML = `<section class="al-dir"><div class="al-dir-head"><span class="al-page-kicker">TEAM BOOKING</span><h2>${escapeHtml(root.dataset.heading || 'Meet our team')}</h2><p>Select a team member for <strong>${escapeHtml(payload.service.title)}</strong>, then continue to their available calendar.</p></div><div class="al-dir-grid">${payload.staff.map(item => staffCard(item, serviceId)).join('')}</div></section>`;
+      const storefront = payload.storefront || {};
+      applyTheme(root, storefront);
+      const copy = teamBookingCopy(storefront, clean(payload.service?.title) || 'Appointment');
+      root.innerHTML = `<section class="al-dir"><div class="al-dir-head"><span class="al-page-kicker">${escapeHtml(copy.label)}</span><h2>${escapeHtml(root.dataset.heading || 'Meet our team')}</h2><p>${escapeHtml(copy.description)}</p></div><div class="al-dir-grid">${payload.staff.map(item => staffCard(item, serviceId)).join('')}</div></section>`;
     } catch (error) {
       root.innerHTML = `<div class="al-page-empty"><strong>Team unavailable</strong><span>${escapeHtml(error.message)}</span></div>`;
     }

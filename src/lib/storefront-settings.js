@@ -35,6 +35,10 @@ export const DEFAULT_STOREFRONT_SETTINGS = Object.freeze({
     showPhone: true,
     showNotes: true,
     showFooterNote: true
+  }),
+  teamBooking: Object.freeze({
+    label: 'Team Booking',
+    description: 'Select a team member for {{service}}, then continue to their available calendar.'
   })
 });
 
@@ -71,6 +75,10 @@ export function normalizeStorefrontSettings(input = {}) {
       showPhone: booleanValue(input.modal?.showPhone, DEFAULT_STOREFRONT_SETTINGS.modal.showPhone),
       showNotes: booleanValue(input.modal?.showNotes, DEFAULT_STOREFRONT_SETTINGS.modal.showNotes),
       showFooterNote: booleanValue(input.modal?.showFooterNote, DEFAULT_STOREFRONT_SETTINGS.modal.showFooterNote)
+    },
+    teamBooking: {
+      label: text(input.teamBooking?.label, 48) || DEFAULT_STOREFRONT_SETTINGS.teamBooking.label,
+      description: text(input.teamBooking?.description, 240) || DEFAULT_STOREFRONT_SETTINGS.teamBooking.description
     }
   };
 }
@@ -93,5 +101,7 @@ export function validateStorefrontSettings(input = {}) {
   if (input.modal?.primaryTextColor && !HEX_COLOR_PATTERN.test(String(input.modal.primaryTextColor))) errors.push('Booking dialog button text color must be a six-digit hex color.');
   if (input.modal?.primaryButtonWidth && !PRIMARY_BUTTON_WIDTHS.has(input.modal.primaryButtonWidth)) errors.push('Choose a supported booking action width.');
   if (input.modal?.primaryButtonAlignment && !PRIMARY_BUTTON_ALIGNMENTS.has(input.modal.primaryButtonAlignment)) errors.push('Choose a supported booking action alignment.');
+  if (input.teamBooking?.label != null && String(input.teamBooking.label).trim().length > 48) errors.push('Team booking label must be 48 characters or fewer.');
+  if (input.teamBooking?.description != null && String(input.teamBooking.description).trim().length > 240) errors.push('Team booking description must be 240 characters or fewer.');
   return { errors: [...new Set(errors)], value };
 }

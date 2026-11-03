@@ -43,7 +43,7 @@ export function adminPage() {
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <title>Appointment Lite</title>
-  <link rel="stylesheet" href="/admin/styles.css?v=0.8.19&build=0.8.19">
+  <link rel="stylesheet" href="/admin/styles.css?v=0.8.20&build=0.8.20">
 </head>
 <body>
   <div class="app-shell">
@@ -261,6 +261,11 @@ export function adminPage() {
                   </div>
                   <p class="hint">Name and email stay visible. Customer address stays required for services configured with Customer address, and staff selection stays visible when the customer must choose a staff member.</p>
                 </section>
+                <section class="storefront-config-group">
+                  <div class="storefront-config-title"><span class="section-number">04</span><div><strong>Team booking</strong><small>Customize the label and guidance shown above the public staff list.</small></div></div>
+                  <div class="field"><label for="storefrontTeamBookingLabel">Section label</label><input id="storefrontTeamBookingLabel" maxlength="48" placeholder="Team Booking"></div>
+                  <div class="field"><label for="storefrontTeamBookingDescription">Description</label><textarea id="storefrontTeamBookingDescription" rows="3" maxlength="240" placeholder="Select a team member for {{service}}, then continue to their available calendar."></textarea><p class="hint">Use <code>{{service}}</code> to insert the current service name. Leave blank to restore the default text.</p></div>
+                </section>
               </div>
               <aside class="storefront-preview-panel">
                 <div class="storefront-preview-toolbar"><div><span class="eyebrow">LIVE STOREFRONT PREVIEW</span><strong>Product page + dialog</strong></div><span>Desktop</span></div>
@@ -428,7 +433,7 @@ export function adminPage() {
   </dialog>
 
   <dialog id="confirmDialog" class="confirm-modal"><div class="confirm-icon">!</div><div class="confirm-copy"><h2 id="confirmTitle">Please confirm</h2><p id="confirmMessage"></p></div><div class="modal-actions"><button id="confirmNo" class="secondary">Keep it</button><button id="confirmYes" class="danger">Confirm</button></div></dialog>
-  <script type="module" src="/admin/app.js?v=0.8.19&build=0.8.19"></script>
+  <script type="module" src="/admin/app.js?v=0.8.20&build=0.8.20"></script>
 </body>
 </html>`;
 }
