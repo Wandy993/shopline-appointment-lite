@@ -43,7 +43,7 @@ export function adminPage() {
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <title>Appointment Lite</title>
-  <link rel="stylesheet" href="/admin/styles.css?v=0.8.28&build=0.8.28">
+  <link rel="stylesheet" href="/admin/styles.css?v=0.8.29&build=0.8.29">
 </head>
 <body>
   <div class="app-shell">
@@ -96,22 +96,77 @@ export function adminPage() {
         </section>
 
         <section id="dashboardView" class="view">
-          <div class="hero-panel">
-            <div class="hero-copy"><span class="eyebrow">APPOINTMENT MANAGEMENT</span><h1>Manage every appointment with clarity.</h1><p>Configure bookable services, coordinate schedules, and keep customer updates consistent.</p><div class="hero-actions"><button class="primary" data-new-rule>${icons.plus} Create service rule</button><button class="ghost" data-go-view="bookings">View bookings ${icons.arrow}</button></div></div>
-            <div class="hero-orbit" aria-hidden="true"><span class="orbit orbit-a"></span><span class="orbit orbit-b"></span><div class="orbit-core">${icons.spark}</div><i class="dot dot-a"></i><i class="dot dot-b"></i><i class="dot dot-c"></i></div>
+          <div class="dashboard-intro panel">
+            <div class="dashboard-intro-copy">
+              <span class="eyebrow">APPOINTMENT OPERATIONS</span>
+              <h1>Today's overview</h1>
+              <p>See upcoming demand and take action before appointments are affected.</p>
+              <div class="dashboard-context">
+                <span id="dashboardDateLabel">—</span>
+                <span id="dashboardTimezoneLabel">—</span>
+                <button type="button" class="dashboard-service-link" data-go-view="rules"><span id="dashboardServiceCount">—</span> <span aria-hidden="true">→</span></button>
+              </div>
+            </div>
+            <div class="dashboard-quick-actions">
+              <button class="primary" data-new-rule><span aria-hidden="true">＋</span> Create service</button>
+              <button class="secondary" data-go-view="bookings">View bookings <span aria-hidden="true">→</span></button>
+            </div>
           </div>
 
-          <div class="stats">
-            <article><div class="stat-icon violet">${icons.rules}</div><div><span>Active services</span><strong id="activeRuleCount">—</strong><small id="ruleCountNote">Loading rules</small></div></article>
-            <article><div class="stat-icon cyan">${icons.bookings}</div><div><span>All bookings</span><strong id="bookingCount">—</strong><small>Lifetime records</small></div></article>
-            <article><div class="stat-icon green">${icons.check}</div><div><span>Upcoming</span><strong id="upcomingCount">—</strong><small>Store-local schedule</small></div></article>
-            <article><div class="stat-icon amber">${icons.email}</div><div><span>Email notifications</span><strong id="planName">—</strong><small>Customer updates</small></div></article>
+          <div class="dashboard-kpis">
+            <button type="button" class="dashboard-kpi" data-dashboard-range="today">
+              <span class="dashboard-kpi-icon violet">${icons.bookings}</span>
+              <span class="dashboard-kpi-label">Today's appointments</span>
+              <strong id="dashboardTodayCount">—</strong>
+              <small>Confirmed appointments today</small>
+              <span class="dashboard-kpi-arrow" aria-hidden="true">→</span>
+            </button>
+            <button type="button" class="dashboard-kpi" data-dashboard-range="next7">
+              <span class="dashboard-kpi-icon cyan">${icons.calendarSync}</span>
+              <span class="dashboard-kpi-label">Next 7 days</span>
+              <strong id="dashboardNext7Count">—</strong>
+              <small>Confirmed appointments this week</small>
+              <span class="dashboard-kpi-arrow" aria-hidden="true">→</span>
+            </button>
+            <button type="button" class="dashboard-kpi" data-dashboard-range="unassigned">
+              <span class="dashboard-kpi-icon amber">${icons.staff}</span>
+              <span class="dashboard-kpi-label">Unassigned sessions</span>
+              <strong id="dashboardUnassignedCount">—</strong>
+              <small>Upcoming sessions needing staff</small>
+              <span class="dashboard-kpi-arrow" aria-hidden="true">→</span>
+            </button>
+            <button type="button" class="dashboard-kpi" data-dashboard-range="payment_conflict">
+              <span class="dashboard-kpi-icon rose">${icons.billing}</span>
+              <span class="dashboard-kpi-label">Payment conflicts</span>
+              <strong id="dashboardPaymentConflictCount">—</strong>
+              <small>Payments requiring review</small>
+              <span class="dashboard-kpi-arrow" aria-hidden="true">→</span>
+            </button>
           </div>
 
-          <div class="dashboard-grid">
-            <article class="panel upcoming-panel"><div class="panel-head"><div><span class="eyebrow">NEXT UP</span><h2>Upcoming appointments</h2></div><button class="text-button" data-go-view="bookings">View all ${icons.arrow}</button></div><div id="upcomingList" class="timeline-list"><div class="skeleton-line"></div><div class="skeleton-line"></div></div></article>
-            <article class="panel launch-panel"><div class="panel-head"><div><span class="eyebrow">LAUNCH PATH</span><h2>Workspace readiness</h2></div><strong id="setupPercent" class="progress-number">0%</strong></div><div class="progress-track"><span id="setupProgress"></span></div><div id="setupChecklist" class="checklist"></div></article>
+          <div class="dashboard-main-grid">
+            <article class="panel dashboard-attention-panel">
+              <div class="panel-head">
+                <div><span class="eyebrow">ACTION CENTER</span><h2>Needs attention</h2><p>Items that may affect upcoming appointments.</p></div>
+                <span id="dashboardAttentionCount" class="dashboard-count-pill">—</span>
+              </div>
+              <div id="dashboardAttentionList" class="dashboard-attention-list"><div class="empty-compact">Checking booking and connection status…</div></div>
+            </article>
+            <article class="panel dashboard-status-panel">
+              <div class="panel-head">
+                <div><span class="eyebrow">SERVICE HEALTH</span><h2>System status</h2><p>Notification and integration status at a glance.</p></div>
+              </div>
+              <div id="dashboardSystemStatus" class="dashboard-system-status"><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line"></div></div>
+            </article>
           </div>
+
+          <article class="panel dashboard-next-panel">
+            <div class="panel-head">
+              <div><span class="eyebrow">NEXT UP</span><h2>Next appointments</h2><p>Open an appointment to review its details and activity.</p></div>
+              <button class="text-button" data-go-view="bookings">View all <span aria-hidden="true">→</span></button>
+            </div>
+            <div id="upcomingList" class="dashboard-next-list"><div class="skeleton-line"></div><div class="skeleton-line"></div></div>
+          </article>
         </section>
 
         <section id="rulesView" class="view hidden">
@@ -127,7 +182,7 @@ export function adminPage() {
             <div class="booking-filter-main">
               <label class="booking-search">${icons.search}<input id="bookingSearch" type="search" placeholder="Search customer, service, or email"></label>
               <label class="filter-control"><span>Service</span><select id="bookingServiceFilter"><option value="">All services</option></select></label>
-              <label class="filter-control"><span>Staff</span><select id="bookingStaffFilter"><option value="">All staff</option></select></label><label class="filter-control"><span>Status</span><select id="bookingStatusFilter"><option value="">All statuses</option><option value="pending_payment">Awaiting payment</option><option value="confirmed">Confirmed</option><option value="completed">Completed</option><option value="no_show">No-show</option><option value="cancelled">Cancelled</option><option value="payment_expired">Payment expired</option><option value="payment_conflict">Payment needs review</option><option value="awaiting_schedule">Awaiting scheduling</option><option value="partially_scheduled">Partially scheduled</option></select></label>
+              <label class="filter-control"><span>Staff</span><select id="bookingStaffFilter"><option value="">All staff</option><option value="__unassigned__">Unassigned</option></select></label><label class="filter-control"><span>Status</span><select id="bookingStatusFilter"><option value="">All statuses</option><option value="pending_payment">Awaiting payment</option><option value="confirmed">Confirmed</option><option value="completed">Completed</option><option value="no_show">No-show</option><option value="cancelled">Cancelled</option><option value="payment_expired">Payment expired</option><option value="payment_conflict">Payment needs review</option><option value="awaiting_schedule">Awaiting scheduling</option><option value="partially_scheduled">Partially scheduled</option></select></label>
               <label class="filter-control filter-date"><span>From</span><input id="bookingFrom" type="date"></label>
               <label class="filter-control filter-date"><span>To</span><input id="bookingTo" type="date"></label>
               <button id="clearBookingFilters" class="secondary filter-reset hidden" type="button">Clear</button>
@@ -433,7 +488,7 @@ export function adminPage() {
   </dialog>
 
   <dialog id="confirmDialog" class="confirm-modal"><div class="confirm-icon">!</div><div class="confirm-copy"><h2 id="confirmTitle">Please confirm</h2><p id="confirmMessage"></p></div><div class="modal-actions"><button id="confirmNo" class="secondary">Keep it</button><button id="confirmYes" class="danger">Confirm</button></div></dialog>
-  <script type="module" src="/admin/app.js?v=0.8.28&build=0.8.28"></script>
+  <script type="module" src="/admin/app.js?v=0.8.29&build=0.8.29"></script>
 </body>
 </html>`;
 }

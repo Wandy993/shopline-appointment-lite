@@ -134,6 +134,22 @@ function nextOccurrenceForDashboard(booking, storeNow) {
     .sort((a, b) => `${a.date}T${a.time || ''}`.localeCompare(`${b.date}T${b.time || ''}`))[0] || null;
 }
 
+function addDashboardDays(date, days) {
+  const value = new Date(`${date}T12:00:00.000Z`);
+  value.setUTCDate(value.getUTCDate() + days);
+  return value.toISOString().slice(0, 10);
+}
+
+function dashboardOccurrencesInRange(booking, from, to) {
+  const hasSessions = booking.bookingMode === 'multi_slot' && Array.isArray(booking.occurrences) && booking.occurrences.length;
+  const source = hasSessions
+    ? booking.occurrences
+    : [{ date: booking.date, time: booking.time, staffId: booking.staffId }];
+  return source
+    .filter(item => item?.date && item.date >= from && item.date <= to)
+    .map(item => ({ ...item, staffId: item.staffId || booking.staffId || null }));
+}
+
 function onboardingStatus(shop, { ruleCount = 0, activeRuleCount = 0, bookingCount = 0, firstActiveRule = null } = {}) {
   const onboarding = shop.onboarding || {};
   const firstBookingSource = firstActiveRule?.bookingSource || (firstActiveRule?.sourceType === 'standalone' ? 'direct' : 'product');
@@ -201,6 +217,16 @@ adminRouter.get('/bootstrap', async (req, res) => {
     });
   }
   const storeNow = zonedNow(req.shop.timezone || 'UTC');
+  const next7DaysEnd = addDashboardDays(storeNow.date, 6);
+  const next7DaysFilter = {
+    shopId: req.shop._id,
+    adminDeletedAt: null,
+    status: 'confirmed',
+    $or: [
+      { date: { $gte: storeNow.date, $lte: next7DaysEnd } },
+      { 'occurrences.date': { $gte: storeNow.date, $lte: next7DaysEnd } }
+    ]
+  };
   const upcomingFilter = {
     shopId: req.shop._id,
     adminDeletedAt: null,
@@ -212,7 +238,11 @@ adminRouter.get('/bootstrap', async (req, res) => {
       { bookingMode: { $exists: false }, $or: [{ date: { $gt: storeNow.date } }, { date: storeNow.date, time: { $gt: storeNow.time } }] }
     ]
   };
-  const [ruleCount, activeRuleCount, bookingCount, upcomingCount, upcomingCandidates, firstActiveRule, commerceRuleCount] = await Promise.all([
+  const [
+    ruleCount, activeRuleCount, bookingCount, upcomingCount, upcomingCandidates,
+    firstActiveRule, commerceRuleCount, pendingPaymentCount, paymentConflictCount,
+    calendarErrorBookingCount, calendarConnections, managedStaffRules, next7Bookings
+  ] = await Promise.all([
     AppointmentRule.countDocuments({ shopId: req.shop._id }),
     AppointmentRule.countDocuments({ shopId: req.shop._id, enabled: true }),
     Booking.countDocuments({ shopId: req.shop._id, adminDeletedAt: null }),
@@ -220,14 +250,40 @@ adminRouter.get('/bootstrap', async (req, res) => {
     Booking.find(upcomingFilter)
       .sort({ date: 1, time: 1 }).limit(100).select('productTitle date time bookingMode occurrences timezone location staff customer.name').lean(),
     AppointmentRule.findOne({ shopId: req.shop._id, enabled: true }).sort({ updatedAt: -1 }).select('serviceTitle productTitle productHandle bookingSource sourceType').lean(),
-    AppointmentRule.countDocuments({ shopId: req.shop._id, commerceMode: { $in: ['standalone_paid', 'product_post_purchase'] } })
+    AppointmentRule.countDocuments({ shopId: req.shop._id, commerceMode: { $in: ['standalone_paid', 'product_post_purchase'] } }),
+    Booking.countDocuments({ shopId: req.shop._id, adminDeletedAt: null, status: 'pending_payment' }),
+    Booking.countDocuments({ shopId: req.shop._id, adminDeletedAt: null, status: 'payment_conflict' }),
+    Booking.countDocuments({ shopId: req.shop._id, adminDeletedAt: null, status: 'confirmed', calendarSyncStatus: 'error' }),
+    CalendarConnection.find({ shopId: req.shop._id }).select('connectionType status').lean(),
+    AppointmentRule.find({ shopId: req.shop._id, 'staffAssignment.mode': { $in: ['any', 'customer_choice', 'fixed'] } }).select('_id').lean(),
+    Booking.find(next7DaysFilter).select('ruleId date time bookingMode occurrences staffId').lean()
   ]);
+
   const nextBookings = upcomingCandidates
     .map(booking => ({ booking, occurrence: nextOccurrenceForDashboard(booking, storeNow) }))
     .filter(item => item.occurrence)
     .sort((a, b) => `${a.occurrence.date}T${a.occurrence.time || ''}`.localeCompare(`${b.occurrence.date}T${b.occurrence.time || ''}`))
     .slice(0, 4)
     .map(({ booking, occurrence }) => ({ ...booking, date: occurrence.date, time: occurrence.time }));
+  const managedStaffRuleIds = new Set(managedStaffRules.map(rule => String(rule._id)));
+  let todayAppointmentCount = 0;
+  let next7AppointmentCount = 0;
+  let unassignedUpcomingCount = 0;
+  for (const booking of next7Bookings) {
+    const occurrences = dashboardOccurrencesInRange(booking, storeNow.date, next7DaysEnd);
+    const upcomingOccurrences = occurrences.filter(item =>
+      item.date > storeNow.date
+      || (item.date === storeNow.date && (booking.bookingMode === 'all_day' || String(item.time || booking.time || '') > storeNow.time))
+    );
+    next7AppointmentCount += upcomingOccurrences.length;
+    todayAppointmentCount += occurrences.filter(item => item.date === storeNow.date).length;
+    if (managedStaffRuleIds.has(String(booking.ruleId))) {
+      unassignedUpcomingCount += upcomingOccurrences.filter(item => !item.staffId).length;
+    }
+  }
+  const calendarConnectedCount = calendarConnections.filter(item => item.status === 'connected').length;
+  const calendarConnectionErrorCount = calendarConnections.filter(item => item.status === 'error').length;
+  const calendarIssueCount = calendarConnectionErrorCount + calendarErrorBookingCount;
   const delivery = emailStatus();
   const orderAccessState = shoplineOrderAccessStatus(req.shop);
   const orderAccess = {
@@ -238,11 +294,14 @@ adminRouter.get('/bootstrap', async (req, res) => {
   };
   res.json({
     restricted: false, accessMode: 'full', archiveMode: false, subscription, subscriptionSyncError, subscriptionRecovery,
+    today: storeNow.date, storeTime: storeNow.time, next7DaysEnd,
     shop: { handle: req.shop.handle, storeId: req.shop.shoplineStoreId || '', locale: req.shop.locale, adminLocale: req.shop.adminLocale || 'en', timezone: req.shop.timezone, email: req.shop.email || '' },
     email: { configured: delivery.configured, from: delivery.from || '' }, emailSettings: normalizeEmailSettings(req.shop.emailSettings || {}), storefrontSettings: normalizeStorefrontSettings(req.shop.storefrontSettings || {}), nextBookings, orderAccess,
+    calendar: { connectedCount: calendarConnectedCount, connectionErrorCount: calendarConnectionErrorCount, bookingErrorCount: calendarErrorBookingCount, issueCount: calendarIssueCount },
+    staffManagedRuleIds: [...managedStaffRuleIds],
     onboarding: onboardingStatus(req.shop, { ruleCount, activeRuleCount, bookingCount, firstActiveRule }),
     csrfToken: req.csrfToken,
-    stats: { ruleCount, activeRuleCount, bookingCount, upcomingCount }
+    stats: { ruleCount, activeRuleCount, bookingCount, upcomingCount, todayAppointmentCount, next7AppointmentCount, unassignedUpcomingCount, pendingPaymentCount, paymentConflictCount, calendarIssueCount }
   });
 });
 
