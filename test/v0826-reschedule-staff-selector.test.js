@@ -12,6 +12,7 @@ test('customer reschedule renders a staff selector and preselects the existing a
   assert.ok(start >= 0 && end > start);
   assert.match(source, /staffMode === 'customer_choice'/);
   assert.match(source, /class="al-field al-reschedule-staff"/);
+  assert.match(source, /id="al-reschedule-staff" name="staffId"/);
   assert.match(source, /data-staff-id/);
   assert.match(source, /receipt\.staffId \|\| occurrenceStaffId/);
   assert.match(source, /staffOptions\.find\(item => String\(item\.name/);
