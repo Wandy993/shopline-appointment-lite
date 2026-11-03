@@ -82,3 +82,10 @@ fieldset{border:0;margin:0;padding:0}.slots{display:flex;flex-wrap:wrap;gap:8px}
 footer{max-width:620px;margin:18px auto 0;color:#89938B;font-size:12px;font-weight:400;line-height:1.6;text-align:center}
 @media(max-width:640px){.shell{width:calc(100% - 28px);padding:20px 0 24px}.shell>header{gap:10px;margin-bottom:15px}.shell>header strong{font-size:16px}.mark{width:36px;height:36px}.card{padding:23px 19px;border-radius:18px}.heading{gap:10px;align-items:flex-start}.heading h1{font-size:27px}.badge{padding:5px 9px;font-size:11px}.summary{grid-template-columns:42px minmax(0,1fr);gap:12px;margin:19px 0 22px;padding:14px}.summary-icon{width:42px;height:42px}.summary-art{display:none}.summary-copy strong{font-size:16px}.summary-copy span{font-size:12px}.notice{align-items:flex-start;margin:18px 0;padding:12px 13px}#changeForm{margin-top:23px;padding-top:20px}#changeForm h2,.confirm h2{font-size:24px}.actions{flex-direction:column;gap:9px}.actions button{width:100%;min-height:47px}.slot{min-width:calc(25% - 6px);flex:1 0 calc(25% - 6px);padding:10px 7px}#saveButton{margin-top:18px}footer{padding:0 10px;font-size:11px}}
 @media(max-width:380px){.card{padding:20px 15px}.heading h1{font-size:25px}.summary-copy span{font-size:11px}.slot{min-width:calc(33.333% - 6px);flex-basis:calc(33.333% - 6px)}}
+
+
+/* v0.8.28 — Prevent native date input overflow on narrow screens */
+#changeForm{width:100%;min-width:0;max-width:100%}
+#changeForm>label,#changeForm>input[type="date"],#changeForm>fieldset{min-width:0;max-width:100%}
+#newDate{display:block;width:100%;min-width:0;max-width:100%;min-inline-size:0;max-inline-size:100%;box-sizing:border-box;-webkit-box-sizing:border-box;font-size:16px}
+@media(max-width:640px){#changeForm{width:100%;min-width:0;max-width:100%}#newDate{width:100%;min-width:0;max-width:100%;min-inline-size:0;max-inline-size:100%}}
