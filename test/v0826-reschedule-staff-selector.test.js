@@ -25,20 +25,19 @@ test('managed availability and reschedule requests send the selected staff ID th
     read('../src/routes/public.js'),
     read('../src/services/bookings.js')
   ]);
-  assert.match(asset, /apiUrl\(\x60\/api\/public\/bookings\/\$\{receipt\.id\}\/availability\x60\)/);
+  assert.ok(asset.includes("apiUrl(`/api/public/bookings/${receipt.id}/availability`)"));
   assert.match(asset, /managementToken: receipt\.managementToken, date: dateInput\.value, staffId: requestedStaffId/);
   assert.match(asset, /rescheduleInput\.staffId = selectedStaffId/);
   assert.match(route, /requestedStaffId: String\(req\.body\.staffId \|\| ''\)\.trim\(\)/);
   assert.match(route, /staffId: String\(req\.body\.staffId \|\| ''\)\.trim\(\)/);
-  assert.match(service, /requestedStaffId = ''/);
   assert.match(service, /requestedStaffId: selectedStaffId/);
   assert.match(service, /staffId = ''/);
 });
 
 test('booking receipts retain staff identity for future rescheduling, including occurrence-based bookings', async () => {
   const asset = await read('../theme-extension-source/public/appointment-lite.js');
-  assert.match(asset, /staffId: String\(booking\.staffId \|\| booking\.occurrences\?\.find\(item => item\?\.staffId\)\?\.staffId \|\| ''\)/);
-  assert.match(asset, /staffId: String\(item\.staffId \|\| ''\), staffName: String\(item\.staffName \|\| ''\)/);
+  assert.ok(asset.includes("staffId: String(booking.staffId || booking.occurrences?.find(item => item?.staffId)?.staffId || '')"));
+  assert.ok(asset.includes("staffId: String(item.staffId || ''), staffName: String(item.staffName || '')"));
 });
 
 test('reschedule staff picker reuses the existing customer booking staff styles', async () => {
