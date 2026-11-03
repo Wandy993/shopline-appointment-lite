@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = '0.8.19';
+  const VERSION = '0.8.20';
   const API_BASE = 'https://appointment.shoplineapp.vip';
   const CACHE_TTL = 5 * 60 * 1000;
   const RULE_CACHE = new Map();
@@ -209,7 +209,7 @@
 
   const staffPresetClasses = new Set(['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose', 'nova']);
   const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
-  function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="${API_BASE}/assets/staff/${file}?v=0.8.19" alt="" loading="lazy" decoding="async">`;}
+  function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="${API_BASE}/assets/staff/${file}?v=0.8.20" alt="" loading="lazy" decoding="async">`;}
 
   function staffAvatar(item, className = '') {
     const avatar = item?.avatar || {};
@@ -516,15 +516,22 @@
     const dialog = document.createElement('dialog');
     const storefront = storefrontForWidget(widget);
     const serviceTitle = publicProfileValue(rule.serviceTitle || rule.productTitle) || 'Appointment';
+    const teamBooking = storefront.teamBooking || {};
+    const teamBookingLabel = publicProfileValue(teamBooking.label) || 'Team Booking';
+    const teamBookingDescription = (publicProfileValue(teamBooking.description) || 'Select a team member for {{service}}, then continue to their available calendar.').replace(/\{\{\s*service\s*\}\}/gi, serviceTitle);
     const cards = staff.map(item => {
       const role = publicProfileValue(item.roleTitle);
+      const expertise = publicProfileValue(item.expertise);
+      const bio = publicProfileValue(item.bio);
+      const expertiseMarkup = expertise ? `<p class="al-directory-expertise"><strong>Expertise</strong> ${text(expertise)}</p>` : '';
+      const bioMarkup = bio ? `<p class="al-directory-bio">${text(bio)}</p>` : '';
       const services = publicServiceList(item);
       const servicesMarkup = services.length
         ? `<ul class="al-directory-services-list">${services.map(service => `<li><span class="al-directory-check" aria-hidden="true">✓</span><span>${text(service)}</span></li>`).join('')}</ul>`
         : '<span class="al-directory-services-empty">Service details not added yet</span>';
-      return `<article class="al-directory-card"><div class="al-directory-person">${staffAvatar(item, 'al-directory-avatar')}<div class="al-directory-person-copy"><h3>${text(item.name)}</h3>${role ? `<p>${text(role)}</p>` : ''}</div></div><div class="al-directory-services"><strong>Services</strong>${servicesMarkup}</div><button type="button" class="al-directory-book" data-book-with-staff="${text(item.id)}" aria-label="Select ${text(item.name)}"><span>Select</span><span aria-hidden="true">›</span></button></article>`;
+      return `<article class="al-directory-card"><div class="al-directory-person">${staffAvatar(item, 'al-directory-avatar')}<div class="al-directory-person-copy"><h3>${text(item.name)}</h3>${role ? `<p>${text(role)}</p>` : ''}${expertiseMarkup}${bioMarkup}</div></div><div class="al-directory-services"><strong>Services</strong>${servicesMarkup}</div><button type="button" class="al-directory-book" data-book-with-staff="${text(item.id)}" aria-label="Select ${text(item.name)}"><span>Select</span><span aria-hidden="true">›</span></button></article>`;
     }).join('');
-    dialog.innerHTML = `<div class="al-head al-directory-head"><div><span class="al-directory-kicker">TEAM BOOKING</span><h2>Choose your specialist</h2><p>Select a team member for <strong>${text(serviceTitle)}</strong>, then continue to their available calendar.</p></div><button class="al-close" type="button" aria-label="Close">×</button></div><div class="al-directory-body"><div class="al-directory-grid">${cards}</div></div>`;
+    dialog.innerHTML = `<div class="al-head al-directory-head"><div><span class="al-directory-kicker">${text(teamBookingLabel)}</span><h2>Choose your specialist</h2><p>${text(teamBookingDescription)}</p></div><button class="al-close" type="button" aria-label="Close">×</button></div><div class="al-directory-body"><div class="al-directory-grid">${cards}</div></div>`;
     mountDialog(dialog, 'al-staff-directory-dialog', storefront);
     dialog.querySelectorAll('[data-book-with-staff]').forEach(button => button.addEventListener('click', () => {
       const staffId = String(button.dataset.bookWithStaff || '');

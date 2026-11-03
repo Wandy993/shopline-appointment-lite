@@ -76,10 +76,16 @@ const storefrontAppearanceSettingsSchema = new mongoose.Schema({
   unifiedBookingFlow: { type: Boolean, default: true }
 }, { _id: false });
 
+const storefrontTeamBookingSettingsSchema = new mongoose.Schema({
+  label: { type: String, trim: true, maxlength: 48, default: 'Team Booking' },
+  description: { type: String, trim: true, maxlength: 240, default: 'Select a team member for {{service}}, then continue to their available calendar.' }
+}, { _id: false });
+
 const storefrontSettingsSchema = new mongoose.Schema({
   appearance: { type: storefrontAppearanceSettingsSchema, default: () => ({}) },
   button: { type: storefrontButtonSettingsSchema, default: () => ({}) },
-  modal: { type: storefrontModalSettingsSchema, default: () => ({}) }
+  modal: { type: storefrontModalSettingsSchema, default: () => ({}) },
+  teamBooking: { type: storefrontTeamBookingSettingsSchema, default: () => ({}) }
 }, { _id: false });
 
 const onboardingSchema = new mongoose.Schema({

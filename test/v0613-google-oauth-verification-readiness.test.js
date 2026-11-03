@@ -137,9 +137,10 @@ test('v0.6.16 release documentation lists the production Google Auth Platform va
   assert.match(doc, /calendar\.events\.owned/);
   assert.match(env, /Homepage: https:\/\/appointment\.shoplineapp\.vip\//);
   assert.match(env, /Authorized domain: shoplineapp\.vip/);
-  assert.equal(JSON.parse(pkg).version, '0.8.19');
-  assert.ok(app.includes("version: '0.8.19'"));
-  assert.ok(release.includes('RELEASE_VERSION="0.8.19"'));
+  const version = JSON.parse(pkg).version;
+  assert.match(version, /^\d+\.\d+\.\d+$/);
+  assert.ok(app.includes(`version: '${version}'`));
+  assert.ok(release.includes(`RELEASE_VERSION="${version}"`));
   assert.match(app, /version: '\d+\.\d+\.\d+'/);
   assert.match(adminView, /styles\.css\?v=\d+\.\d+\.\d+/);
   assert.match(bookView, /styles\.css\?v=\d+\.\d+\.\d+/);
@@ -149,16 +150,18 @@ test('v0.6.16 release documentation lists the production Google Auth Platform va
 });
 
 test('v0.8.19 storefront extension assets use the new production API domain', async () => {
-  const [product, page, embed, env] = await Promise.all([
+  const [product, page, embed, env, pkg] = await Promise.all([
     source('theme-extension-source/public/appointment-lite.js'),
     source('theme-extension-source/public/appointment-lite-page.js'),
     source('theme-extension-source/public/appointment-lite-embed.js'),
-    source('.env.example')
+    source('.env.example'),
+    source('package.json')
   ]);
+  const version = JSON.parse(pkg).version;
   for (const asset of [product, page, embed]) {
     assert.ok(asset.includes("const API_BASE = 'https://appointment.shoplineapp.vip'"));
     assert.ok(!asset.includes('toolkit.fans'));
-    assert.ok(asset.includes("const VERSION = '0.8.19'"));
+    assert.ok(asset.includes(`const VERSION = '${version}'`));
   }
   assert.ok(env.includes('GOOGLE_CALENDAR_REDIRECT_URI=https://appointment.shoplineapp.vip/integrations/google/callback'));
 });

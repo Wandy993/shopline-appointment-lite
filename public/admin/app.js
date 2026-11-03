@@ -36,7 +36,8 @@ const activeCommerceModes = new Set(['standalone_free', 'standalone_paid', 'prod
 const defaultStorefrontSettings = Object.freeze({
   appearance: Object.freeze({ template: 'warm_luxe', backgroundIntensity: 'medium', cornerStyle: 'rounded', primaryStyle: 'template', unifiedBookingFlow: true }),
   button: Object.freeze({ label: 'Book an appointment', backgroundColor: '#2F6FED', textColor: '#FFFFFF', width: 'content', alignment: 'left', borderRadius: 8 }),
-  modal: Object.freeze({ title: 'Book an appointment', accentColor: '#2F6FED', primaryTextColor: '#FFFFFF', primaryButtonWidth: 'content', primaryButtonAlignment: 'right', showServiceSummary: true, showTimezoneSelector: true, showPhone: true, showNotes: true, showFooterNote: true })
+  modal: Object.freeze({ title: 'Book an appointment', accentColor: '#2F6FED', primaryTextColor: '#FFFFFF', primaryButtonWidth: 'content', primaryButtonAlignment: 'right', showServiceSummary: true, showTimezoneSelector: true, showPhone: true, showNotes: true, showFooterNote: true }),
+  teamBooking: Object.freeze({ label: 'Team Booking', description: 'Select a team member for {{service}}, then continue to their available calendar.' })
 });
 const storefrontThemePresets = Object.freeze({
   minimal_light: Object.freeze({ label: 'Minimal Light', accent: '#344054', primaryText: '#FFFFFF', surface: '#FFFFFF', soft: '#F7F8FA', text: '#1D2939', muted: '#667085', line: '#E4E7EC', success: '#5D8A70', backgrounds: Object.freeze({ soft: '#FAFBFC', medium: '#F5F7F9', strong: '#EEF1F4' }) }),
@@ -987,7 +988,7 @@ const staffAvatarPresets = ['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunse
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
 function staffPresetImage(preset) {
   const file = staffAvatarFiles[preset] || staffAvatarFiles.aurora;
-  return `<img src="/assets/staff/${file}?v=0.8.19" alt="" loading="lazy" decoding="async">`;
+  return `<img src="/assets/staff/${file}?v=0.8.20" alt="" loading="lazy" decoding="async">`;
 }
 let staffAvatarDraft = { kind: 'preset', value: 'aurora' };
 
@@ -3022,7 +3023,8 @@ function normalizeStorefrontClient(input = {}) {
   return {
     appearance: { ...clone(defaultStorefrontSettings.appearance), ...(input.appearance || {}) },
     button: { ...clone(defaultStorefrontSettings.button), ...(input.button || {}) },
-    modal: { ...clone(defaultStorefrontSettings.modal), ...(input.modal || {}) }
+    modal: { ...clone(defaultStorefrontSettings.modal), ...(input.modal || {}) },
+    teamBooking: { ...clone(defaultStorefrontSettings.teamBooking), ...(input.teamBooking || {}) }
   };
 }
 
@@ -3125,6 +3127,10 @@ function storefrontSettingsFromForm() {
       showPhone: $('#storefrontShowPhone').checked,
       showNotes: $('#storefrontShowNotes').checked,
       showFooterNote: $('#storefrontShowFooterNote').checked
+    },
+    teamBooking: {
+      label: $('#storefrontTeamBookingLabel')?.value.trim() || defaultStorefrontSettings.teamBooking.label,
+      description: $('#storefrontTeamBookingDescription')?.value.trim() || defaultStorefrontSettings.teamBooking.description
     }
   };
 }
@@ -3202,6 +3208,8 @@ function renderStorefrontSettings(settings = state.storefrontSettings) {
   $('#storefrontShowPhone').checked = value.modal.showPhone;
   $('#storefrontShowNotes').checked = value.modal.showNotes;
   $('#storefrontShowFooterNote').checked = value.modal.showFooterNote;
+  $('#storefrontTeamBookingLabel').value = value.teamBooking.label;
+  $('#storefrontTeamBookingDescription').value = value.teamBooking.description;
   renderStorefrontPreview();
   captureSavedSettings('setup');
 }
@@ -3831,6 +3839,7 @@ function bind() {
   $$('#storefrontPrimaryWidthOptions [data-storefront-primary-width]').forEach(button => button.addEventListener('click', () => setStorefrontPrimaryWidth(button.dataset.storefrontPrimaryWidth)));
   $$('#storefrontPrimaryAlignmentOptions [data-storefront-primary-alignment]').forEach(button => button.addEventListener('click', () => { if (!button.disabled) setStorefrontPrimaryAlignment(button.dataset.storefrontPrimaryAlignment); }));
   ['storefrontButtonLabel', 'storefrontButtonRadius', 'storefrontModalTitle', 'storefrontShowSummary', 'storefrontShowTimezone', 'storefrontShowPhone', 'storefrontShowNotes', 'storefrontShowFooterNote'].forEach(id => $(`#${id}`)?.addEventListener('input', renderStorefrontPreview));
+  ['storefrontTeamBookingLabel', 'storefrontTeamBookingDescription'].forEach(id => $(`#${id}`)?.addEventListener('input', () => updateUnsavedUi('setup')));
   [['storefrontButtonColor','storefrontButtonColorHex'],['storefrontButtonTextColor','storefrontButtonTextColorHex'],['storefrontModalAccent','storefrontModalAccentHex'],['storefrontModalTextColor','storefrontModalTextColorHex']].forEach(([colorId, hexId]) => {
     $(`#${colorId}`)?.addEventListener('input', () => syncStorefrontColor(colorId, hexId, 'color'));
     $(`#${hexId}`)?.addEventListener('input', () => syncStorefrontColor(colorId, hexId, 'hex'));
