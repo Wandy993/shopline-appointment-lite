@@ -55,7 +55,8 @@ test('dashboard layout remains responsive and supports clickable card feedback',
   assert.match(styles, /\.dashboard-kpis/);
   assert.match(styles, /\.dashboard-kpi:hover/);
   assert.match(styles, /\.dashboard-attention-item/);
-  assert.match(styles, /\.dashboard-next-list\{display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(styles, /\.dashboard-next-list\{max-width:1280px;display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(styles, /\.dashboard-attention-list\{max-width:1280px;display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(styles, /\.dashboard-attention-item\.severity-danger/);
   assert.doesNotMatch(styles, /\.dashboard-attention-item\.danger/);
   assert.doesNotMatch(styles, /\.dashboard-system-row/);
