@@ -995,7 +995,7 @@ Object.assign(zh, {
   'Open settings': '打开设置',
   'Store time zone': '店铺时区',
   'active services': '项已启用服务',
-  '{count} items': '{count} 项',
+  '{count} alerts': '{count} 项提醒',
   'Next appointments': '接下来的预约',
   'Open a booking to review its activity history.': '点击预约可查看详情及操作记录。',
   'Staff not assigned': '未分配员工',
@@ -1424,7 +1424,7 @@ function renderDashboard(payload) {
     action: 'new_service', actionLabel: t('Create a service')
   });
 
-  $('#dashboardAttentionCount').textContent = t('{count} items', { count: String(attention.length) });
+  $('#dashboardAttentionCount').textContent = t('{count} alerts', { count: String(attention.length) });
   $('#dashboardAttentionList').innerHTML = attention.length
     ? attention.map(item => `<div class="dashboard-attention-item ${item.severity}">
         <span class="dashboard-attention-mark" aria-hidden="true">${item.severity === 'danger' ? '!' : item.severity === 'warning' ? '•' : 'i'}</span>
@@ -3802,7 +3802,7 @@ function bind() {
   $('#syncSubscriptionBilling')?.addEventListener('click', refreshSubscription);
   $('#renewSubscriptionBilling')?.addEventListener('click', openShoplineRenewal);
   $('#renewFromBookings')?.addEventListener('click', openShoplineRenewal);
-  $('[data-go-view]').forEach(button => button.addEventListener('click', () => requestViewSwitch(button.dataset.goView)));
+  $$('[data-go-view]').forEach(button => button.addEventListener('click', () => requestViewSwitch(button.dataset.goView)));
   $('#dashboardView')?.addEventListener('click', event => {
     const rangeButton = event.target.closest('[data-dashboard-range]');
     if (rangeButton) {
@@ -3824,7 +3824,7 @@ function bind() {
     const actionButton = event.target.closest('[data-dashboard-action]');
     if (actionButton) dashboardHandleAction(actionButton.dataset.dashboardAction);
   });
-  $('[data-new-rule]').forEach(button => button.addEventListener('click', () => openRule()));
+  $$('[data-new-rule]').forEach(button => button.addEventListener('click', () => openRule()));
   $$('[data-close-dialog]').forEach(button => button.addEventListener('click', () => { closeRuleSelect(); closeServiceTimezonePicker(); closeLocationPicker(); $('#ruleDialog').close(); }));
   $$('[data-close-product-dialog]').forEach(button => button.addEventListener('click', () => $('#productDialog').close()));
   $$('[data-close-booking-dialog]').forEach(button => button.addEventListener('click', () => $('#bookingDialog').close()));
