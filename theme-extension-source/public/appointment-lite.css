@@ -679,11 +679,13 @@ body.al-dialog-open{position:fixed!important;top:var(--al-dialog-scroll-y,0)!imp
 /* v0.8.20 — public staff profile details */
 .al-staff-directory-dialog .al-directory-person-copy .al-directory-expertise{display:flex;flex-wrap:wrap;gap:4px;margin:8px 0 0!important;color:var(--al-theme-muted)!important;font-size:11px;line-height:1.4}.al-staff-directory-dialog .al-directory-person-copy .al-directory-expertise strong{color:var(--al-theme-text)!important}.al-staff-directory-dialog .al-directory-person-copy .al-directory-bio{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;margin:7px 0 0!important;color:var(--al-theme-muted)!important;font-size:11px;line-height:1.5;overflow-wrap:anywhere}
 
-/* v0.8.23 — Preserve original staff card styling; change desktop layout only */
+/* v0.8.24 — Keep staff profile, services and Select in one desktop row */
 @media(min-width:761px){
   .al-staff-directory-dialog .al-directory-card{
-    grid-template-columns:minmax(0,1fr) 78px;
-    grid-template-areas:"person button" "services services";
+    grid-template-columns:minmax(190px,.82fr) minmax(240px,1.18fr) 78px;
+    grid-template-areas:"person services button";
+    align-items:center;
+    gap:18px;
   }
 }
 
