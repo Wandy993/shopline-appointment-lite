@@ -994,7 +994,9 @@ Object.assign(zh, {
   'Authorization needed': '需要授权',
   'Open settings': '打开设置',
   'Store time zone': '店铺时区',
+  'active service': '项已启用服务',
   'active services': '项已启用服务',
+  'Review services': '查看预约服务',
   '{count} alerts': '{count} 项提醒',
   'Next appointments': '接下来的预约',
   'Open a booking to review its activity history.': '点击预约可查看详情及操作记录。',
@@ -1384,11 +1386,13 @@ function renderDashboard(payload) {
   const orderAccess = payload.orderAccess || {};
   $('#dashboardDateLabel').textContent = formatDashboardDate(payload.today);
   $('#dashboardTimezoneLabel').textContent = `${t('Store time zone')}: ${state.shop?.timezone || 'UTC'}`;
-  $('#dashboardServiceCount').textContent = `${stats.activeRuleCount || 0} ${t('active services')}`;
-  $('#dashboardTodayCount').textContent = Number(stats.todayAppointmentCount || 0).toLocaleString();
-  $('#dashboardNext7Count').textContent = Number(stats.next7AppointmentCount || 0).toLocaleString();
-  $('#dashboardUnassignedCount').textContent = Number(stats.unassignedUpcomingCount || 0).toLocaleString();
-  $('#dashboardPaymentConflictCount').textContent = Number(stats.paymentConflictCount || 0).toLocaleString();
+  const activeServiceCount = Number(stats.activeRuleCount || 0);
+  const numberLocale = state.locale === 'zh-CN' ? 'zh-CN' : 'en';
+  $('#dashboardServiceCount').textContent = `${activeServiceCount} ${t(activeServiceCount === 1 ? 'active service' : 'active services')}`;
+  $('#dashboardTodayCount').textContent = Number(stats.todayAppointmentCount || 0).toLocaleString(numberLocale);
+  $('#dashboardNext7Count').textContent = Number(stats.next7AppointmentCount || 0).toLocaleString(numberLocale);
+  $('#dashboardUnassignedCount').textContent = Number(stats.unassignedUpcomingCount || 0).toLocaleString(numberLocale);
+  $('#dashboardPaymentConflictCount').textContent = Number(stats.paymentConflictCount || 0).toLocaleString(numberLocale);
 
   const attention = [];
   if (Number(stats.paymentConflictCount || 0) > 0) attention.push({
@@ -1442,10 +1446,12 @@ function renderDashboard(payload) {
   const calendarTone = calendarIssueCount > 0 ? 'warning' : calendarConnectedCount > 0 ? 'good' : 'neutral';
   const orderStatus = !orderAccess.required ? 'Not required' : orderAccess.granted ? 'Connected' : 'Authorization needed';
   const orderTone = !orderAccess.required || orderAccess.granted ? 'good' : 'warning';
+  const orderAction = orderAccess.required ? (orderAccess.granted ? 'bookings' : 'order') : 'rules';
+  const orderActionLabel = orderAccess.required ? (orderAccess.granted ? 'View bookings' : 'Authorize SHOPLINE') : 'Review services';
   const systemRows = [
     { label: t('Email delivery'), detail: t(payload.email?.configured ? 'Email sending service is configured.' : 'Email service is not configured.'), status: t(payload.email?.configured ? 'Ready' : 'Setup needed'), tone: payload.email?.configured ? 'good' : 'warning', action: 'email', actionLabel: t('Open settings') },
     { label: t('Google Calendar'), detail: calendarConnectedCount ? t('{count} calendar connection(s) active.', { count: String(calendarConnectedCount) }) : t('No Google Calendar connection is active.'), status: t(calendarStatus), tone: calendarTone, action: 'calendar', actionLabel: t('Open settings') },
-    { label: t('SHOPLINE order sync'), detail: t(orderAccess.required ? 'Used by paid booking services.' : 'No current service requires order access.'), status: t(orderStatus), tone: orderTone, action: orderAccess.required && !orderAccess.granted ? 'order' : 'bookings', actionLabel: t(orderAccess.required && !orderAccess.granted ? 'Authorize SHOPLINE' : 'View bookings') }
+    { label: t('SHOPLINE order sync'), detail: t(orderAccess.required ? 'Used by paid booking services.' : 'No current service requires order access.'), status: t(orderStatus), tone: orderTone, action: orderAction, actionLabel: t(orderActionLabel) }
   ];
   $('#dashboardSystemStatus').innerHTML = systemRows.map(item => `<div class="dashboard-system-row">
     <div class="dashboard-system-copy"><strong>${escapeHtml(item.label)}</strong><span>${escapeHtml(item.detail)}</span></div>
