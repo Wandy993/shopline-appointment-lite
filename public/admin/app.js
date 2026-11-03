@@ -2881,13 +2881,18 @@ function filteredBookings() {
     if (staffId === '__unassigned__') {
       const managedRuleIds = new Set((state.bootstrap?.staffManagedRuleIds || []).map(String));
       if (!managedRuleIds.has(String(booking.ruleId))) return false;
+      if (booking.status !== 'confirmed') return false;
       const occurrences = Array.isArray(booking.occurrences) && booking.occurrences.length
         ? booking.occurrences
-        : [{ date: booking.date, staffId: booking.staffId }];
+        : [{ date: booking.date, time: booking.time, staffId: booking.staffId }];
+      const storeDate = state.bootstrap?.today || '';
+      const storeTime = state.bootstrap?.storeTime || '';
       const hasUnassignedInRange = occurrences.some(item => {
         const date = item.date || booking.date;
+        const time = item.time || booking.time || '';
         const inRange = (!from || date >= from) && (!to || date <= to);
-        return inRange && !(item.staffId || booking.staffId);
+        const upcoming = date > storeDate || (date === storeDate && (booking.bookingMode === 'all_day' || time > storeTime));
+        return inRange && upcoming && !(item.staffId || booking.staffId);
       });
       if (!hasUnassignedInRange) return false;
     } else if (staffId && String(booking.staffId || '') !== staffId && !(booking.occurrences || []).some(item => String(item.staffId || '') === staffId)) return false;
