@@ -998,7 +998,8 @@ Object.assign(zh, {
   '{count} items': '{count} 项',
   'Next appointments': '接下来的预约',
   'Open a booking to review its activity history.': '点击预约可查看详情及操作记录。',
-  'Staff not assigned': '未分配员工'
+  'Staff not assigned': '未分配员工',
+  'Unassigned': '未分配'
 });
 
 const enByZh = new Map(Object.entries(zh).map(([english, chinese]) => [chinese, english]));
@@ -1369,6 +1370,7 @@ function dashboardHandleAction(action) {
   if (action === 'calendar') return requestViewSwitch('calendar');
   if (action === 'email') return requestViewSwitch('email');
   if (action === 'rules') return requestViewSwitch('rules');
+  if (action === 'new_service') return openRule();
   if (action === 'order') return openOrderAuthorization();
   if (action === 'bookings') return requestViewSwitch('bookings');
 }
@@ -1419,7 +1421,7 @@ function renderDashboard(payload) {
   if (Number(stats.activeRuleCount || 0) === 0) attention.push({
     severity: 'neutral', title: t('No active booking service'),
     detail: t('No active service is available for customers to book.'),
-    action: 'rules', actionLabel: t('Create a service')
+    action: 'new_service', actionLabel: t('Create a service')
   });
 
   $('#dashboardAttentionCount').textContent = t('{count} items', { count: String(attention.length) });
