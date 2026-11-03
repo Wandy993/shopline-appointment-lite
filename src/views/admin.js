@@ -115,28 +115,28 @@ export function adminPage() {
 
           <div class="dashboard-kpis">
             <button type="button" class="dashboard-kpi" data-dashboard-range="today">
-              <span class="dashboard-kpi-icon violet" aria-hidden="true">▦</span>
+              <span class="dashboard-kpi-icon violet">${icons.bookings}</span>
               <span class="dashboard-kpi-label">Today's appointments</span>
               <strong id="dashboardTodayCount">—</strong>
               <small>Confirmed appointments today</small>
               <span class="dashboard-kpi-arrow" aria-hidden="true">→</span>
             </button>
             <button type="button" class="dashboard-kpi" data-dashboard-range="next7">
-              <span class="dashboard-kpi-icon cyan" aria-hidden="true">▣</span>
+              <span class="dashboard-kpi-icon cyan">${icons.calendarSync}</span>
               <span class="dashboard-kpi-label">Next 7 days</span>
               <strong id="dashboardNext7Count">—</strong>
               <small>Confirmed appointments this week</small>
               <span class="dashboard-kpi-arrow" aria-hidden="true">→</span>
             </button>
             <button type="button" class="dashboard-kpi" data-dashboard-range="unassigned">
-              <span class="dashboard-kpi-icon amber" aria-hidden="true">♙</span>
+              <span class="dashboard-kpi-icon amber">${icons.staff}</span>
               <span class="dashboard-kpi-label">Unassigned sessions</span>
               <strong id="dashboardUnassignedCount">—</strong>
               <small>Upcoming sessions needing staff</small>
               <span class="dashboard-kpi-arrow" aria-hidden="true">→</span>
             </button>
             <button type="button" class="dashboard-kpi" data-dashboard-range="payment_conflict">
-              <span class="dashboard-kpi-icon rose" aria-hidden="true">＄</span>
+              <span class="dashboard-kpi-icon rose">${icons.billing}</span>
               <span class="dashboard-kpi-label">Payment conflicts</span>
               <strong id="dashboardPaymentConflictCount">—</strong>
               <small>Payments requiring review</small>
@@ -182,7 +182,7 @@ export function adminPage() {
             <div class="booking-filter-main">
               <label class="booking-search">${icons.search}<input id="bookingSearch" type="search" placeholder="Search customer, service, or email"></label>
               <label class="filter-control"><span>Service</span><select id="bookingServiceFilter"><option value="">All services</option></select></label>
-              <label class="filter-control"><span>Staff</span><select id="bookingStaffFilter"><option value="">All staff</option></select></label><label class="filter-control"><span>Status</span><select id="bookingStatusFilter"><option value="">All statuses</option><option value="pending_payment">Awaiting payment</option><option value="confirmed">Confirmed</option><option value="completed">Completed</option><option value="no_show">No-show</option><option value="cancelled">Cancelled</option><option value="payment_expired">Payment expired</option><option value="payment_conflict">Payment needs review</option><option value="awaiting_schedule">Awaiting scheduling</option><option value="partially_scheduled">Partially scheduled</option></select></label>
+              <label class="filter-control"><span>Staff</span><select id="bookingStaffFilter"><option value="">All staff</option><option value="__unassigned__">Unassigned</option></select></label><label class="filter-control"><span>Status</span><select id="bookingStatusFilter"><option value="">All statuses</option><option value="pending_payment">Awaiting payment</option><option value="confirmed">Confirmed</option><option value="completed">Completed</option><option value="no_show">No-show</option><option value="cancelled">Cancelled</option><option value="payment_expired">Payment expired</option><option value="payment_conflict">Payment needs review</option><option value="awaiting_schedule">Awaiting scheduling</option><option value="partially_scheduled">Partially scheduled</option></select></label>
               <label class="filter-control filter-date"><span>From</span><input id="bookingFrom" type="date"></label>
               <label class="filter-control filter-date"><span>To</span><input id="bookingTo" type="date"></label>
               <button id="clearBookingFilters" class="secondary filter-reset hidden" type="button">Clear</button>
