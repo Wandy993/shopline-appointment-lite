@@ -999,7 +999,10 @@ Object.assign(zh, {
   'Next appointments': '接下来的预约',
   'Open a booking to review its activity history.': '点击预约可查看详情及操作记录。',
   'Staff not assigned': '未分配员工',
-  'Unassigned': '未分配'
+  'Unassigned': '未分配',
+  'Create service': '创建服务',
+  'Awaiting payment': '等待付款',
+  'Checking booking and connection status…': '正在检查预约和连接状态…'
 });
 
 const enByZh = new Map(Object.entries(zh).map(([english, chinese]) => [chinese, english]));
