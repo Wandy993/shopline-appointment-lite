@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = '0.8.20';
+  const VERSION = '0.8.21';
   const API_BASE = 'https://appointment.shoplineapp.vip';
   const CACHE_TTL = 5 * 60 * 1000;
   const RULE_CACHE = new Map();
@@ -58,7 +58,8 @@
   const defaultStorefrontSettings = {
     appearance: { template: 'warm_luxe', backgroundIntensity: 'medium', cornerStyle: 'rounded', primaryStyle: 'template', unifiedBookingFlow: true },
     button: { label: 'Book an appointment', backgroundColor: '#2F6FED', textColor: '#FFFFFF', width: 'content', alignment: 'left', borderRadius: 8 },
-    modal: { title: 'Book an appointment', accentColor: '#2F6FED', primaryTextColor: '#FFFFFF', primaryButtonWidth: 'content', primaryButtonAlignment: 'right', showServiceSummary: true, showTimezoneSelector: true, showPhone: true, showNotes: true, showFooterNote: true }
+    modal: { title: 'Book an appointment', accentColor: '#2F6FED', primaryTextColor: '#FFFFFF', primaryButtonWidth: 'content', primaryButtonAlignment: 'right', showServiceSummary: true, showTimezoneSelector: true, showPhone: true, showNotes: true, showFooterNote: true },
+    teamBooking: { label: 'Team Booking', description: 'Select a team member for {{service}}, then continue to their available calendar.' }
   };
   const bookingThemePresets = {
     minimal_light: { accent: '#344054', primaryText: '#FFFFFF', surface: '#FFFFFF', soft: '#F7F8FA', text: '#1D2939', muted: '#667085', line: '#E4E7EC', success: '#5D8A70', backgrounds: { soft: '#FAFBFC', medium: '#F5F7F9', strong: '#EEF1F4' } },
@@ -136,6 +137,10 @@
         showPhone: input.modal?.showPhone !== false,
         showNotes: input.modal?.showNotes !== false,
         showFooterNote: input.modal?.showFooterNote !== false
+      },
+      teamBooking: {
+        label: String(input.teamBooking?.label || defaultStorefrontSettings.teamBooking.label).trim().slice(0, 48) || defaultStorefrontSettings.teamBooking.label,
+        description: String(input.teamBooking?.description || defaultStorefrontSettings.teamBooking.description).trim().slice(0, 240) || defaultStorefrontSettings.teamBooking.description
       }
     };
   }
@@ -209,7 +214,7 @@
 
   const staffPresetClasses = new Set(['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose', 'nova']);
   const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
-  function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="${API_BASE}/assets/staff/${file}?v=0.8.20" alt="" loading="lazy" decoding="async">`;}
+  function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="${API_BASE}/assets/staff/${file}?v=0.8.21" alt="" loading="lazy" decoding="async">`;}
 
   function staffAvatar(item, className = '') {
     const avatar = item?.avatar || {};

@@ -56,3 +56,21 @@ test('Public Staff Directory renders Expertise and Profile description with priv
   assert.match(modalCss, /\.al-directory-bio/);
   assert.match(pageCss, /\.al-dir-bio/);
 });
+
+test('Product Theme App Block preserves Team Booking settings from the public service payload', async () => {
+  const product = await read('../theme-extension-source/public/appointment-lite.js');
+  const start = product.indexOf('function storefrontSettings(input = {})');
+  const end = product.indexOf('function applyStorefrontToWidget', start);
+  const normalizer = product.slice(start, end);
+  const defaultsStart = product.indexOf('const defaultStorefrontSettings = {');
+  const defaultsEnd = product.indexOf('const bookingThemePresets', defaultsStart);
+  const defaults = product.slice(defaultsStart, defaultsEnd);
+
+  assert.ok(defaults.includes("teamBooking: { label: 'Team Booking'"));
+  assert.ok(defaults.includes('Select a team member for {{service}}'));
+  assert.ok(normalizer.includes('teamBooking: {'));
+  assert.ok(normalizer.includes('input.teamBooking?.label'));
+  assert.ok(normalizer.includes('input.teamBooking?.description'));
+  assert.ok(product.includes('storefrontSettings(payload.storefront || {})'));
+  assert.ok(product.includes('teamBookingDescription'));
+});
