@@ -10,7 +10,9 @@ test('overview presents operational metrics instead of duplicating setup and lif
   assert.match(dashboard, /data-dashboard-range="unassigned"/);
   assert.match(dashboard, /data-dashboard-range="payment_conflict"/);
   assert.match(dashboard, /id="dashboardAttentionList"/);
-  assert.match(dashboard, /id="dashboardSystemStatus"/);
+  assert.doesNotMatch(dashboard, /dashboardSystemStatus/);
+  assert.ok(dashboard.indexOf('id="upcomingList"') < dashboard.indexOf('class="dashboard-kpis"'));
+  assert.ok(dashboard.indexOf('class="dashboard-kpis"') < dashboard.indexOf('id="dashboardAttentionList"'));
   assert.match(dashboard, /data-go-view="bookings"/);
   assert.match(view, /<option value="__unassigned__">Unassigned<\/option>/);
   assert.doesNotMatch(dashboard, /id="bookingCount"/);
@@ -40,6 +42,9 @@ test('dashboard cards and attention items navigate to filtered operational desti
   assert.match(app, /data-dashboard-range/);
   assert.match(app, /data-dashboard-action/);
   assert.match(app, /data-dashboard-booking/);
+  assert.match(app, /dashboard-attention-item severity-\$\{item\.severity\}/);
+  assert.doesNotMatch(app, /dashboard-attention-item \$\{item\.severity\}/);
+  assert.doesNotMatch(app, /dashboardSystemStatus/);
   assert.match(app, /state\.pendingDashboardBookingId/);
   assert.match(app, /staffId === '__unassigned__'/);
   assert.match(app, /state\.bootstrap\?\.staffManagedRuleIds/);
@@ -50,6 +55,10 @@ test('dashboard layout remains responsive and supports clickable card feedback',
   assert.match(styles, /\.dashboard-kpis/);
   assert.match(styles, /\.dashboard-kpi:hover/);
   assert.match(styles, /\.dashboard-attention-item/);
-  assert.match(styles, /\.dashboard-system-row/);
+  assert.match(styles, /\.dashboard-next-list\{max-width:1280px;display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(styles, /\.dashboard-attention-list\{max-width:1280px;display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(styles, /\.dashboard-attention-item\.severity-danger/);
+  assert.doesNotMatch(styles, /\.dashboard-attention-item\.danger/);
+  assert.doesNotMatch(styles, /\.dashboard-system-row/);
   assert.match(styles, /@media\(max-width:480px\)/);
 });

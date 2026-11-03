@@ -43,7 +43,7 @@ export function adminPage() {
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <title>Appointment Lite</title>
-  <link rel="stylesheet" href="/admin/styles.css?v=0.8.29&build=0.8.29">
+  <link rel="stylesheet" href="/admin/styles.css?v=0.8.30&build=0.8.30">
 </head>
 <body>
   <div class="app-shell">
@@ -113,6 +113,14 @@ export function adminPage() {
             </div>
           </div>
 
+          <article class="panel dashboard-next-panel">
+            <div class="panel-head">
+              <div><span class="eyebrow">UPCOMING SCHEDULE</span><h2>Upcoming appointments</h2></div>
+              <button class="text-button" data-go-view="bookings">View all <span aria-hidden="true">→</span></button>
+            </div>
+            <div id="upcomingList" class="dashboard-next-list"><div class="skeleton-line"></div><div class="skeleton-line"></div></div>
+          </article>
+
           <div class="dashboard-kpis">
             <button type="button" class="dashboard-kpi" data-dashboard-range="today">
               <span class="dashboard-kpi-icon violet">${icons.bookings}</span>
@@ -144,32 +152,16 @@ export function adminPage() {
             </button>
           </div>
 
-          <div class="dashboard-main-grid">
-            <article class="panel dashboard-attention-panel">
-              <div class="panel-head">
-                <div><span class="eyebrow">ACTION CENTER</span><h2>Needs attention</h2><p>Items that may affect upcoming appointments.</p></div>
-                <span id="dashboardAttentionCount" class="dashboard-count-pill">—</span>
-              </div>
-              <div id="dashboardAttentionList" class="dashboard-attention-list"><div class="empty-compact">Checking booking and connection status…</div></div>
-            </article>
-            <article class="panel dashboard-status-panel">
-              <div class="panel-head">
-                <div><span class="eyebrow">SERVICE HEALTH</span><h2>System status</h2><p>Notification and integration status at a glance.</p></div>
-              </div>
-              <div id="dashboardSystemStatus" class="dashboard-system-status"><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line"></div></div>
-            </article>
-          </div>
-
-          <article class="panel dashboard-next-panel">
+          <article class="panel dashboard-attention-panel">
             <div class="panel-head">
-              <div><span class="eyebrow">NEXT UP</span><h2>Next appointments</h2><p>Open a booking to review its activity history.</p></div>
-              <button class="text-button" data-go-view="bookings">View all <span aria-hidden="true">→</span></button>
+              <div><span class="eyebrow">ACTION CENTER</span><h2>Needs attention</h2></div>
+              <span id="dashboardAttentionCount" class="dashboard-count-pill">—</span>
             </div>
-            <div id="upcomingList" class="dashboard-next-list"><div class="skeleton-line"></div><div class="skeleton-line"></div></div>
+            <div id="dashboardAttentionList" class="dashboard-attention-list"><div class="empty-compact">Checking booking and connection status…</div></div>
           </article>
         </section>
 
-        <section id="rulesView" class="view hidden">
+<section id="rulesView" class="view hidden">
           <div class="page-heading"><div><span class="eyebrow">SERVICE CATALOG</span><h1>Services & appointment rules</h1><p>Create appointment services, bind them to SHOPLINE products when needed, and choose product-page, direct, or dual booking channels.</p></div><button class="primary" data-new-rule>${icons.plus} New service</button></div>
           <div class="toolbar"><label class="search-field">${icons.search}<input id="ruleSearch" type="search" placeholder="Search services, staff, or location"></label><div class="toolbar-meta"><span id="ruleResultCount">0 services</span></div></div>
           <div id="rulesList" class="service-grid"><div class="panel loading">Loading services…</div></div>
@@ -488,7 +480,7 @@ export function adminPage() {
   </dialog>
 
   <dialog id="confirmDialog" class="confirm-modal"><div class="confirm-icon">!</div><div class="confirm-copy"><h2 id="confirmTitle">Please confirm</h2><p id="confirmMessage"></p></div><div class="modal-actions"><button id="confirmNo" class="secondary">Keep it</button><button id="confirmYes" class="danger">Confirm</button></div></dialog>
-  <script type="module" src="/admin/app.js?v=0.8.29&build=0.8.29"></script>
+  <script type="module" src="/admin/app.js?v=0.8.30&build=0.8.30"></script>
 </body>
 </html>`;
 }
