@@ -1166,26 +1166,3 @@
   const observer = new MutationObserver(compact);
   observer.observe(document.documentElement, { childList: true, subtree: true });
 })();
-
-/* v0.8.22 — Staff Directory card hierarchy and responsive layout */
-.al-staff-directory-dialog .al-directory-card{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;grid-template-areas:"person button" "services services"!important;align-items:start!important;gap:12px 20px!important;min-width:0!important;padding:18px 22px!important;border-color:var(--al-theme-line)!important;border-bottom:1px solid var(--al-theme-line)!important;border-radius:0!important;background:var(--al-theme-surface)!important;box-shadow:none!important}
-.al-staff-directory-dialog .al-directory-card:last-child{border-bottom:0!important}
-.al-staff-directory-dialog .al-directory-person{grid-area:person;align-items:flex-start;gap:14px;min-width:0}
-.al-staff-directory-dialog .al-directory-avatar{width:64px;height:64px;flex:0 0 64px}
-.al-staff-directory-dialog .al-directory-person-copy{display:flex;flex-direction:column;align-items:flex-start;min-width:0}
-.al-staff-directory-dialog .al-directory-person-copy h3{margin:0;color:var(--al-theme-text)!important;font-size:17px;line-height:1.3}
-.al-staff-directory-dialog .al-directory-person-copy>p:not(.al-directory-expertise):not(.al-directory-bio){margin:3px 0 0!important;color:var(--al-theme-muted)!important;font-size:12px;line-height:1.4}
-.al-staff-directory-dialog .al-directory-expertise{display:flex;margin:8px 0 0!important}
-.al-staff-directory-dialog .al-directory-expertise-chip,.al-dir-person-copy .al-dir-expertise-chip{display:inline-flex;align-items:center;max-width:100%;padding:4px 9px;border:1px solid var(--al-theme-line);border-radius:999px;background:var(--al-theme-soft);color:var(--al-theme-text);font-size:10px;font-weight:650;line-height:1.35;overflow-wrap:anywhere}
-.al-staff-directory-dialog .al-directory-person-copy .al-directory-bio{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;margin:7px 0 0!important;max-width:68ch;color:var(--al-theme-muted)!important;font-size:11px;line-height:1.5;overflow-wrap:anywhere}
-.al-staff-directory-dialog .al-directory-services{grid-area:services;display:flex;align-items:flex-start;flex-wrap:wrap;gap:8px 12px;min-width:0;margin:0;padding:11px 0 0;border-top:1px solid var(--al-theme-line)}
-.al-staff-directory-dialog .al-directory-services>strong{flex:0 0 auto;margin:4px 2px 0 0;color:var(--al-theme-muted)!important;font-size:10px;font-weight:650;line-height:1.35}
-.al-staff-directory-dialog .al-directory-services-list{display:flex;flex:1 1 260px;flex-wrap:wrap;gap:6px;min-width:0;margin:0;padding:0;list-style:none}
-.al-staff-directory-dialog .al-directory-services-list li{display:inline-flex;align-items:center;gap:6px;min-width:0;padding:5px 9px;border:1px solid var(--al-theme-line);border-radius:999px;background:var(--al-theme-soft);color:var(--al-theme-muted)!important;font-size:10px;line-height:1.35}
-.al-staff-directory-dialog .al-directory-services-list li>span:last-child{overflow-wrap:anywhere}
-.al-staff-directory-dialog .al-directory-check{flex:0 0 10px}
-.al-staff-directory-dialog .al-directory-services-empty{align-self:center;color:var(--al-theme-muted)!important;font-size:10px;line-height:1.4}
-.al-staff-directory-dialog .al-directory-book{grid-area:button;align-self:start;justify-self:end;display:inline-flex;align-items:center;justify-content:center;gap:6px;width:auto;min-width:78px;min-height:36px;padding:7px 12px;border:1px solid var(--al-theme-line)!important;border-radius:999px;background:transparent!important;color:var(--al-accent)!important;font-size:10px;font-weight:700;letter-spacing:.055em;box-shadow:none!important}
-.al-staff-directory-dialog .al-directory-book:hover{border-color:color-mix(in srgb,var(--al-accent) 35%,var(--al-theme-line))!important;background:var(--al-theme-soft)!important;color:var(--al-theme-text)!important}
-@media(max-width:760px){.al-staff-directory-dialog .al-directory-card{gap:10px 12px!important;padding:14px 13px!important}.al-staff-directory-dialog .al-directory-person{gap:10px}.al-staff-directory-dialog .al-directory-avatar{width:54px;height:54px;flex-basis:54px}.al-staff-directory-dialog .al-directory-person-copy h3{font-size:15px}.al-staff-directory-dialog .al-directory-person-copy .al-directory-bio{-webkit-line-clamp:2}.al-staff-directory-dialog .al-directory-services{gap:7px 9px;padding-top:10px}.al-staff-directory-dialog .al-directory-services-list{flex-basis:100%;gap:6px}.al-staff-directory-dialog .al-directory-book{min-width:68px;min-height:34px;padding:6px 9px}}
-@media(max-width:380px){.al-staff-directory-dialog .al-directory-avatar{width:48px;height:48px;flex-basis:48px}.al-staff-directory-dialog .al-directory-person-copy h3{font-size:14px}.al-staff-directory-dialog .al-directory-book{min-width:62px;padding:6px 8px}}
