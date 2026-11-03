@@ -12,6 +12,7 @@ test('overview presents operational metrics instead of duplicating setup and lif
   assert.match(dashboard, /id="dashboardAttentionList"/);
   assert.match(dashboard, /id="dashboardSystemStatus"/);
   assert.match(dashboard, /data-go-view="bookings"/);
+  assert.match(view, /<option value="__unassigned__">Unassigned<\/option>/);
   assert.doesNotMatch(dashboard, /id="bookingCount"/);
   assert.doesNotMatch(dashboard, /id="setupChecklist"/);
   assert.doesNotMatch(dashboard, /id="setupPercent"/);
@@ -34,6 +35,8 @@ test('dashboard cards and attention items navigate to filtered operational desti
   const app = await readFile(new URL('../public/admin/app.js', import.meta.url), 'utf8');
   assert.match(app, /function dashboardGoToBookings/);
   assert.match(app, /function dashboardHandleAction/);
+  assert.match(app, /\$\$\('\[data-go-view\]'\)\.forEach/);
+  assert.match(app, /\$\$\('\[data-new-rule\]'\)\.forEach/);
   assert.match(app, /data-dashboard-range/);
   assert.match(app, /data-dashboard-action/);
   assert.match(app, /data-dashboard-booking/);
