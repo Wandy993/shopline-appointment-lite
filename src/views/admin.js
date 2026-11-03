@@ -162,7 +162,7 @@ export function adminPage() {
 
           <article class="panel dashboard-next-panel">
             <div class="panel-head">
-              <div><span class="eyebrow">NEXT UP</span><h2>Next appointments</h2><p>Open an appointment to review its details and activity.</p></div>
+              <div><span class="eyebrow">NEXT UP</span><h2>Next appointments</h2><p>Open a booking to review its activity history.</p></div>
               <button class="text-button" data-go-view="bookings">View all <span aria-hidden="true">→</span></button>
             </div>
             <div id="upcomingList" class="dashboard-next-list"><div class="skeleton-line"></div><div class="skeleton-line"></div></div>
