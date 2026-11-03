@@ -1655,6 +1655,16 @@ function staffTimeMinutes(value = '') {
   return match ? (Number(match[1]) * 60) + Number(match[2]) : null;
 }
 
+function staffOperationsAvatarMarkup(staff = {}, unassigned = false) {
+  if (unassigned) return '<span class="staff-avatar initials">?</span>';
+  const staffId = staff._id || staff.id || '';
+  const cached = staffId ? state.staff.find(item => String(item._id) === String(staffId)) : null;
+  return staffAvatarMarkup({
+    name: staff.name || cached?.name || 'Staff',
+    avatar: staff.avatar || cached?.avatar
+  });
+}
+
 function renderStaffOperationsList(payload) {
   const rows = [];
   for (const group of payload.staff || []) {
@@ -1663,7 +1673,7 @@ function renderStaffOperationsList(payload) {
   }
   for (const item of payload.unassigned || []) rows.push({ ...item, staffName: t('Unassigned'), staffMember: { name: t('Unassigned'), avatar: { kind:'initials', value:'' } }, unassigned: true });
   rows.sort((a,b) => String(a.time || '99:99').localeCompare(String(b.time || '99:99')) || String(a.staffName).localeCompare(String(b.staffName)));
-  return `<div class="staff-schedule-list"><div class="staff-schedule-list-head"><span>${t('Staff')}</span><span>${t('Time')}</span><span>${t('Services')}</span><span>${t('Customer')}</span><span>${t('Status')}</span><span></span></div>${rows.map(item => `<div class="staff-schedule-list-row"><div class="staff-schedule-list-person">${item.unassigned ? '<span class="staff-avatar initials small">?</span>' : staffAvatarMarkup(item.staffMember,'small')}<strong>${escapeHtml(item.staffName)}</strong></div><time>${escapeHtml(item.bookingMode === 'all_day' ? t('All day') : item.time)}</time><div><strong>${escapeHtml(item.serviceTitle)}</strong>${item.location ? `<small>${escapeHtml(item.location)}</small>` : ''}</div><span>${escapeHtml(item.customerName)}</span><span class="status-badge enabled">${t('Confirmed')}</span><button type="button" class="text-button" data-open-staff-booking="${item.bookingId}">${t('Open booking')}</button></div>`).join('')}</div>`;
+  return `<div class="staff-schedule-list"><div class="staff-schedule-list-head"><span>${t('Staff')}</span><span>${t('Time')}</span><span>${t('Services')}</span><span>${t('Customer')}</span><span>${t('Status')}</span><span></span></div>${rows.map(item => `<div class="staff-schedule-list-row"><div class="staff-schedule-list-person">${item.unassigned ? '<span class="staff-avatar initials small">?</span>' : staffOperationsAvatarMarkup(item.staffMember, item.unassigned)}<strong>${escapeHtml(item.staffName)}</strong></div><time>${escapeHtml(item.bookingMode === 'all_day' ? t('All day') : item.time)}</time><div><strong>${escapeHtml(item.serviceTitle)}</strong>${item.location ? `<small>${escapeHtml(item.location)}</small>` : ''}</div><span>${escapeHtml(item.customerName)}</span><span class="status-badge enabled">${t('Confirmed')}</span><button type="button" class="text-button" data-open-staff-booking="${item.bookingId}">${t('Open booking')}</button></div>`).join('')}</div>`;
 }
 
 function renderStaffOperationsCalendar(payload) {
@@ -1688,7 +1698,7 @@ function renderStaffOperationsCalendar(payload) {
       const width = Math.max(8, Math.min(100 - left, (duration / rangeMinutes) * 100));
       return `<button type="button" class="staff-calendar-block" style="left:${left}%;width:${width}%" data-open-staff-booking="${item.bookingId}" title="${escapeHtml(`${item.time} · ${item.serviceTitle} · ${item.customerName}`)}"><strong>${escapeHtml(item.time)}</strong><span>${escapeHtml(item.serviceTitle)}</span><small>${escapeHtml(item.customerName)}</small></button>`;
     }).join('');
-    return `<div class="staff-calendar-row"><div class="staff-calendar-person">${group.unassigned ? '<span class="staff-avatar initials small">?</span>' : staffAvatarMarkup(member,'small')}<span><strong>${escapeHtml(group.name)}</strong><small>${(group.assignments || []).length} ${t((group.assignments || []).length === 1 ? 'appointment' : 'appointments')}</small></span></div><div class="staff-calendar-track"><div class="staff-calendar-grid">${hours.slice(0,-1).map(() => '<i></i>').join('')}</div>${blocks || `<span class="staff-calendar-empty">${t('No scheduled bookings')}</span>`}</div></div>`;
+    return `<div class="staff-calendar-row"><div class="staff-calendar-person">${group.unassigned ? '<span class="staff-avatar initials small">?</span>' : staffOperationsAvatarMarkup(member, group.unassigned)}<span><strong>${escapeHtml(group.name)}</strong><small>${(group.assignments || []).length} ${t((group.assignments || []).length === 1 ? 'appointment' : 'appointments')}</small></span></div><div class="staff-calendar-track"><div class="staff-calendar-grid">${hours.slice(0,-1).map(() => '<i></i>').join('')}</div>${blocks || `<span class="staff-calendar-empty">${t('No scheduled bookings')}</span>`}</div></div>`;
   }).join('');
   return `<div class="staff-calendar"><div class="staff-calendar-axis"><span>${t('Staff')}</span><div>${axis}</div></div>${rows}</div>`;
 }
