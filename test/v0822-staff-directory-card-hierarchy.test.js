@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 
 const read = path => readFile(new URL(path, import.meta.url), 'utf8');
 
-test('Product staff directory preserves the previous visual styling and changes desktop card order only', async () => {
+test('Product staff directory keeps Services in the right-hand column on desktop', async () => {
   const [asset, css] = await Promise.all([read('../theme-extension-source/public/appointment-lite.js'), read('../theme-extension-source/public/appointment-lite.css')]);
   const start = asset.indexOf('function openStaffDirectory(');
   const end = asset.indexOf('\n  async function init(', start);
@@ -14,12 +14,12 @@ test('Product staff directory preserves the previous visual styling and changes 
   assert.match(markup, /<p class="al-directory-expertise"><strong>Expertise<\/strong>/);
   assert.doesNotMatch(markup, /al-directory-expertise-chip/);
   assert.match(css, /\.al-directory-card\{display:grid;grid-template-columns:minmax\(210px,\.8fr\) minmax\(280px,1\.25fr\) 90px/);
-  assert.match(css, /grid-template-areas:"person button" "services services"/);
+  assert.match(css, /grid-template-columns:minmax\(190px,\.82fr\) minmax\(240px,1\.18fr\) 78px/);\n  assert.match(css, /grid-template-areas:"person services button"/);
   assert.doesNotMatch(css, /\.al-directory-services-list li\{display:inline-flex/);
   assert.doesNotMatch(css, /\.al-directory-book\{grid-area:button;align-self:start;justify-self:end;display:inline-flex;align-items:center;justify-content:center/);
 });
 
-test('Standalone Staff Directory preserves its previous profile and service styling', async () => {
+test('Standalone Staff Directory keeps Services in the right-hand column on desktop', async () => {
   const [asset, css] = await Promise.all([read('../theme-extension-source/public/appointment-lite-page.js'), read('../theme-extension-source/public/appointment-lite-page.css')]);
   const start = asset.indexOf('function staffCard(');
   const end = asset.indexOf('\n  async function directory(', start);
@@ -30,7 +30,7 @@ test('Standalone Staff Directory preserves its previous profile and service styl
   assert.doesNotMatch(markup, /al-dir-expertise-chip/);
   assert.match(css, /\.al-dir-tags span\{border:1px solid #d9e5f7;border-radius:999px/);
   assert.match(css, /-webkit-line-clamp:3/);
-  assert.match(css, /grid-template-areas:"person cta" "services services"/);
+  assert.match(css, /grid-template-columns:minmax\(190px,\.82fr\) minmax\(240px,1\.18fr\) 90px/);\n  assert.match(css, /grid-template-areas:"person services cta"/);
 });
 
 test('Booking dialog scrolls the complete form body while keeping action footer separate', async () => {
