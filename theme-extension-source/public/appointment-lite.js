@@ -380,9 +380,10 @@
       date: String(booking.date || ''),
       time: String(booking.time || ''),
       bookingMode: String(booking.bookingMode || 'slot'),
-      occurrences: Array.isArray(booking.occurrences) ? booking.occurrences.map(item => ({ date: String(item.date || ''), time: String(item.time || '') })) : [],
+      occurrences: Array.isArray(booking.occurrences) ? booking.occurrences.map(item => ({ date: String(item.date || ''), time: String(item.time || ''), staffId: String(item.staffId || ''), staffName: String(item.staffName || '') })) : [],
       location: String(booking.location || ''),
       staff: String(booking.staff || ''),
+      staffId: String(booking.staffId || booking.occurrences?.find(item => item?.staffId)?.staffId || ''),
       timezone: String(booking.timezone || ''),
       meeting: booking.meeting?.url ? {
         provider: String(booking.meeting.provider || 'custom'),
@@ -754,12 +755,32 @@
     return value ? `max="${text(value)}"` : '';
   }
 
+
   function openReschedule(widget, rule, context, receipt) {
     info('Booking reschedule dialog opened.', { ...context, bookingId: receipt.id });
     const dialog = document.createElement('dialog');
     const today = rule.storeDate || new Date().toISOString().slice(0, 10);
     const minDate = rule.dateFrom && rule.dateFrom > today ? rule.dateFrom : today;
-    dialog.innerHTML = `<div class="al-head"><div><button type="button" class="al-back">← Back</button><h2>Change date or time</h2><p>${text(rule.serviceTitle || rule.productTitle)}</p></div><button class="al-close" type="button" aria-label="Close">×</button></div><form class="al-form"><div class="al-form-body">${appointmentDetails(receipt)}<div class="al-notice"><strong>This is your only online change</strong><span>After you save, contact the store if you need another change.</span></div><div class="al-grid"><div class="al-field"><label for="al-reschedule-date">New date</label><input id="al-reschedule-date" name="date" type="date" min="${minDate}" ${maxDateAttribute(rule)} required></div><div><span class="al-legend">New time</span><div class="al-times"><span class="al-muted">Choose a date first.</span></div></div></div><p class="al-muted">All times are shown in the service time zone: ${text(rule.timezone || 'UTC')}.</p></div><div class="al-actions"><div class="al-error" hidden role="alert"></div><button class="al-submit" type="submit">Save changes</button></div></form>`;
+    const staffMode = rule.staffAssignment?.mode || 'none';
+    const staffOptions = Array.isArray(rule.staffOptions) ? rule.staffOptions : [];
+    const requiresStaffChoice = staffMode === 'customer_choice';
+    const occurrenceStaffId = Array.isArray(receipt.occurrences) ? receipt.occurrences.find(item => item?.staffId)?.staffId : '';
+    const receiptStaffId = String(receipt.staffId || occurrenceStaffId || '');
+    const currentStaff = staffOptions.find(item => String(item.id) === receiptStaffId)
+      || staffOptions.find(item => String(item.name || '').trim().toLowerCase() === String(receipt.staff || '').trim().toLowerCase());
+    const initialStaffId = currentStaff ? String(currentStaff.id) : '';
+    const initialStaffValue = currentStaff
+      ? ``{staffAvatar(currentStaff, 'al-staff-small')}<span><strong>`{text(currentStaff.name)}</strong><small>`{text(staffPickerCaption(currentStaff))}</small></span>`
+      : '<span class="al-staff-avatar al-staff-initials al-staff-small">?</span><span><strong>Choose staff</strong><small>Select a team member</small></span>';
+    const staffSelector = requiresStaffChoice
+      ? staffOptions.length
+        ? `<div class="al-field al-reschedule-staff"><label for="al-reschedule-staff">Staff member</label><div class="al-staff-picker"><button type="button" class="al-staff-trigger" aria-haspopup="listbox" aria-expanded="false"><span class="al-staff-value">`{initialStaffValue}</span><span class="al-staff-chevron">⌄</span></button><div class="al-staff-menu" role="listbox" hidden>`{staffOptions.map(item => `<button type="button" class="al-staff-option`{String(item.id) === initialStaffId ? ' selected' : ''}" data-staff-id="`{text(item.id)}">`{staffAvatar(item, 'al-staff-small')}<span><strong>`{text(item.name)}</strong><small>`{text(staffPickerCaption(item))}</small></span><i>✓</i></button>`).join('')}</div><input type="hidden" name="staffId" value="`{text(initialStaffId)}"></div></div>`
+        : '<div class="al-field al-reschedule-staff"><label>Staff member</label><span class="al-muted">No active staff members are available for this service. Please contact the store.</span></div>'
+      : '';
+    const initialTimeMessage = requiresStaffChoice
+      ? initialStaffId ? 'Choose a date to see availability.' : 'Choose a staff member to see availability.'
+      : 'Choose a date first.';
+    dialog.innerHTML = `<div class="al-head"><div><button type="button" class="al-back">← Back</button><h2>Change date or time</h2><p>`{text(rule.serviceTitle || rule.productTitle)}</p></div><button class="al-close" type="button" aria-label="Close">×</button></div><form class="al-form"><div class="al-form-body">`{appointmentDetails(receipt)}<div class="al-notice"><strong>This is your only online change</strong><span>After you save, contact the store if you need another change.</span></div><div class="al-grid"><div class="al-field"><label for="al-reschedule-date">New date</label><input id="al-reschedule-date" name="date" type="date" min="`{minDate}" `{maxDateAttribute(rule)} required></div><div><span class="al-legend">New time</span>`{staffSelector}<div class="al-times"><span class="al-muted">`{initialTimeMessage}</span></div></div></div><p class="al-muted">All times are shown in the service time zone: `{text(rule.timezone || 'UTC')}.</p></div><div class="al-actions"><div class="al-error" hidden role="alert"></div><button class="al-submit" type="submit">Save changes</button></div></form>`;
     mountDialog(dialog, '', storefrontForWidget(widget));
     dialog.querySelector('.al-back').addEventListener('click', () => {
       dialog.close();
@@ -767,24 +788,79 @@
     });
     const dateInput = dialog.querySelector('[name=date]');
     const times = dialog.querySelector('.al-times');
+    const staffSelect = dialog.querySelector('[name=staffId]');
+    const staffPicker = dialog.querySelector('.al-reschedule-staff .al-staff-picker');
+    const staffTrigger = staffPicker?.querySelector('.al-staff-trigger');
+    const staffMenu = staffPicker?.querySelector('.al-staff-menu');
     let selectedTime = '';
-    dateInput.addEventListener('change', async () => {
+    let availabilityRequestId = 0;
+
+    async function loadAvailability() {
+      const requestId = ++availabilityRequestId;
       selectedTime = '';
+      if (!dateInput.value) {
+        times.innerHTML = '<span class="al-muted">Choose a date first.</span>';
+        return;
+      }
+      const requestedStaffId = requiresStaffChoice ? String(staffSelect?.value || '') : '';
+      if (requiresStaffChoice && !requestedStaffId) {
+        times.innerHTML = '<span class="al-muted">Choose a staff member to see availability.</span>';
+        return;
+      }
       times.innerHTML = '<span class="al-muted">Loading times…</span>';
       try {
-        const payload = await requestJson(apiUrl('/api/public/availability', { ...context, date: dateInput.value }), {}, 'reschedule availability');
-        times.innerHTML = payload.slots.length ? payload.slots.map(time => `<button type="button" class="al-time" data-time="${time}" aria-pressed="false">${time}</button>`).join('') : `<span class="al-muted">${text(emptyAvailabilityMessage(payload))}</span>`;
-        times.querySelectorAll('.al-time').forEach(button => button.addEventListener('click', async () => {
+        const payload = await requestJson(apiUrl(`/api/public/bookings/`{receipt.id}/availability`), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ managementToken: receipt.managementToken, date: dateInput.value, staffId: requestedStaffId })
+        }, 'reschedule availability');
+        if (requestId !== availabilityRequestId) return;
+        if (payload.requiresStaffSelection) {
+          times.innerHTML = '<span class="al-muted">Choose a staff member to see availability.</span>';
+          return;
+        }
+        const slots = Array.isArray(payload.slots) ? payload.slots : [];
+        times.innerHTML = slots.length
+          ? slots.map(time => `<button type="button" class="al-time" data-time="`{text(time)}" aria-pressed="false">`{text(time)}</button>`).join('')
+          : `<span class="al-muted">`{text(emptyAvailabilityMessage(payload))}</span>`;
+        times.querySelectorAll('.al-time').forEach(button => button.addEventListener('click', () => {
           selectedTime = button.dataset.time;
           times.querySelectorAll('.al-time').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
         }));
       } catch (error) {
-        times.innerHTML = '<span class="al-muted">Could not load times. Please try another date.</span>';
+        if (requestId !== availabilityRequestId) return;
+        times.innerHTML = `<span class="al-muted">`{text(error.message || 'Could not load times. Please try another date.')}</span>`;
       }
-    });
+    }
+
+    dateInput.addEventListener('change', loadAvailability);
+    if (staffTrigger && staffMenu && staffSelect) {
+      staffTrigger.addEventListener('click', () => {
+        staffMenu.hidden = !staffMenu.hidden;
+        staffTrigger.setAttribute('aria-expanded', String(!staffMenu.hidden));
+      });
+      staffMenu.querySelectorAll('[data-staff-id]').forEach(button => button.addEventListener('click', async () => {
+        const item = staffOptions.find(option => String(option.id) === button.dataset.staffId);
+        if (!item) return;
+        staffSelect.value = String(item.id);
+        staffTrigger.querySelector('.al-staff-value').innerHTML = ``{staffAvatar(item, 'al-staff-small')}<span><strong>`{text(item.name)}</strong><small>`{text(staffPickerCaption(item))}</small></span>`;
+        staffMenu.querySelectorAll('[data-staff-id]').forEach(option => option.classList.toggle('selected', option.dataset.staffId === staffSelect.value));
+        staffMenu.hidden = true;
+        staffTrigger.setAttribute('aria-expanded', 'false');
+        if (dateInput.value) await loadAvailability();
+        else times.innerHTML = '<span class="al-muted">Choose a date to see availability.</span>';
+      }));
+    }
+
     dialog.querySelector('form').addEventListener('submit', async event => {
       event.preventDefault();
       const errorBox = dialog.querySelector('.al-error');
+      const selectedStaffId = requiresStaffChoice ? String(staffSelect?.value || '') : '';
+      if (requiresStaffChoice && !selectedStaffId) {
+        errorBox.textContent = 'Please choose a staff member.';
+        errorBox.hidden = false;
+        return;
+      }
       if (!selectedTime) {
         errorBox.textContent = 'Please select a new time.';
         errorBox.hidden = false;
@@ -794,15 +870,17 @@
       submit.disabled = true;
       submit.textContent = 'Saving…';
       errorBox.hidden = true;
+      const rescheduleInput = { managementToken: receipt.managementToken, date: dateInput.value, time: selectedTime };
+      if (requiresStaffChoice) rescheduleInput.staffId = selectedStaffId;
       try {
-        const payload = await requestJson(apiUrl(`/api/public/bookings/${receipt.id}/reschedule`), {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ managementToken: receipt.managementToken, date: dateInput.value, time: selectedTime })
+        const payload = await requestJson(apiUrl(`/api/public/bookings/`{receipt.id}/reschedule`), {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(rescheduleInput)
         }, 'booking reschedule');
         const refreshed = saveBookingReceipt(context, payload.booking, receipt.managementToken);
         renderBookingState(widget, rule, context, refreshed);
-        dialog.querySelector('.al-form').innerHTML = `<div class="al-success"><h3>Appointment updated</h3><p>${text(payload.booking.date)} at ${text(payload.booking.time)}</p><p>Service time zone: ${text(payload.booking.timezone || rule.timezone || 'UTC')}</p><button class="al-submit" type="button">Done</button></div>`;
+        dialog.querySelector('.al-form').innerHTML = `<div class="al-success"><h3>Appointment updated</h3><p>`{text(payload.booking.date)} at `{text(payload.booking.time)}</p>`{payload.booking.staff ? `<p>`{text(payload.booking.staff)}</p>` : ''}<p>Service time zone: `{text(payload.booking.timezone || rule.timezone || 'UTC')}</p><button class="al-submit" type="button">Done</button></div>`;
         dialog.querySelector('.al-submit').addEventListener('click', () => dialog.close());
-        info('Booking rescheduled by customer.', { ...context, bookingId: receipt.id, date: payload.booking.date, time: payload.booking.time });
+        info('Booking rescheduled by customer.', { ...context, bookingId: receipt.id, date: payload.booking.date, time: payload.booking.time, staffId: payload.booking.staffId || '' });
       } catch (error) {
         errorBox.textContent = error.payload?.error === 'RESCHEDULE_LIMIT' ? 'Your online change has already been used. Please contact the store.' : error.status === 409 ? 'That time is no longer available. Please choose another time.' : error.message;
         errorBox.hidden = false;
@@ -812,6 +890,7 @@
       }
     });
   }
+
 
   function open(widget, rule, context, options = {}) {
     info('Booking dialog opened.', { ...context, ruleId: rule.id, bookingMode: rule.bookingMode || 'slot' });
