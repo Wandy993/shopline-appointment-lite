@@ -271,10 +271,14 @@ adminRouter.get('/bootstrap', async (req, res) => {
   let unassignedUpcomingCount = 0;
   for (const booking of next7Bookings) {
     const occurrences = dashboardOccurrencesInRange(booking, storeNow.date, next7DaysEnd);
-    next7AppointmentCount += occurrences.length;
+    const upcomingOccurrences = occurrences.filter(item =>
+      item.date > storeNow.date
+      || (item.date === storeNow.date && (booking.bookingMode === 'all_day' || String(item.time || booking.time || '') > storeNow.time))
+    );
+    next7AppointmentCount += upcomingOccurrences.length;
     todayAppointmentCount += occurrences.filter(item => item.date === storeNow.date).length;
     if (managedStaffRuleIds.has(String(booking.ruleId))) {
-      unassignedUpcomingCount += occurrences.filter(item => !item.staffId).length;
+      unassignedUpcomingCount += upcomingOccurrences.filter(item => !item.staffId).length;
     }
   }
   const calendarConnectedCount = calendarConnections.filter(item => item.status === 'connected').length;
@@ -290,7 +294,7 @@ adminRouter.get('/bootstrap', async (req, res) => {
   };
   res.json({
     restricted: false, accessMode: 'full', archiveMode: false, subscription, subscriptionSyncError, subscriptionRecovery,
-    today: storeNow.date, next7DaysEnd,
+    today: storeNow.date, storeTime: storeNow.time, next7DaysEnd,
     shop: { handle: req.shop.handle, storeId: req.shop.shoplineStoreId || '', locale: req.shop.locale, adminLocale: req.shop.adminLocale || 'en', timezone: req.shop.timezone, email: req.shop.email || '' },
     email: { configured: delivery.configured, from: delivery.from || '' }, emailSettings: normalizeEmailSettings(req.shop.emailSettings || {}), storefrontSettings: normalizeStorefrontSettings(req.shop.storefrontSettings || {}), nextBookings, orderAccess,
     calendar: { connectedCount: calendarConnectedCount, connectionErrorCount: calendarConnectionErrorCount, bookingErrorCount: calendarErrorBookingCount, issueCount: calendarIssueCount },
