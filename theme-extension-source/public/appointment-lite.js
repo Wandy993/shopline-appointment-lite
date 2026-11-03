@@ -518,7 +518,7 @@
     const serviceTitle = publicProfileValue(rule.serviceTitle || rule.productTitle) || 'Appointment';
     const teamBooking = storefront.teamBooking || {};
     const teamBookingLabel = publicProfileValue(teamBooking.label) || 'Team Booking';
-    const teamBookingDescription = (publicProfileValue(teamBooking.description) || 'Select a team member for {{service}}, then continue to their available calendar.').replace(/\\{\\{\\s*service\\s*\\}\\}/gi, serviceTitle);
+    const teamBookingDescription = (publicProfileValue(teamBooking.description) || 'Select a team member for {{service}}, then continue to their available calendar.').replace(/\{\{\s*service\s*\}\}/gi, serviceTitle);
     const cards = staff.map(item => {
       const role = publicProfileValue(item.roleTitle);
       const expertise = publicProfileValue(item.expertise);

@@ -12,7 +12,7 @@
     const settings = storefront.teamBooking || {};
     const label = clean(settings.label) || 'Team Booking';
     const description = clean(settings.description) || 'Select a team member for {{service}}, then continue to their available calendar.';
-    return { label, description: description.replace(/\\{\\{\\s*service\\s*\\}\\}/gi, serviceTitle) };
+    return { label, description: description.replace(/\{\{\s*service\s*\}\}/gi, serviceTitle) };
   };
   const themePresets = {
     minimal_light: { accent:'#344054', primaryText:'#FFFFFF', surface:'#FFFFFF', soft:'#F7F8FA', text:'#1D2939', muted:'#667085', line:'#E4E7EC', success:'#5D8A70', backgrounds:{ soft:'#FAFBFC', medium:'#F5F7F9', strong:'#EEF1F4' } },
