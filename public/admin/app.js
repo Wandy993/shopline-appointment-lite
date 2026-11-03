@@ -1,5 +1,5 @@
 const state = {
-  csrf: '', shop: null, email: null, emailSettings: null, rules: [], bookings: [], products: [], staff: [], staffOperations: { date: '', timezone: '', staff: [], unassigned: [] }, staffOperationsView: 'list',
+  csrf: '', shop: null, email: null, emailSettings: null, rules: [], bookings: [], products: [], staff: [], staffOperations: { date: '', timezone: '', staff: [], unassigned: [] }, staffOperationsView: 'list', pendingDashboardBookingId: '',
   ruleStep: 0, activeTemplate: 'confirmation', emailEditorReady: false, bookingView: 'list', calendarMonth: '',
   locale: 'en', currentView: 'dashboard', themeLinkLoaded: false, bootstrap: null, onboarding: null, lastTestEmail: '', ruleModeTouched: false, editingRule: false,
   calendarSync: null, calendarStaffId: '', calendarPopup: null, calendarDayItems: {}, paidVariants: [], orderAccess: null, locations: [], locationAccess: null, storefrontSettings: null,
@@ -937,6 +937,65 @@ Object.assign(zh, {
   'UNSAVED CHANGES': '未保存更改'
 });
 
+Object.assign(zh, {
+  'APPOINTMENT OPERATIONS': '预约运营',
+  "Today's overview": '今日概览',
+  'See upcoming demand and take action before appointments are affected.': '了解近期预约需求，并及时处理可能影响预约的事项。',
+  'Today': '今日',
+  'Next 7 days': '未来 7 天',
+  "Today's appointments": '今日预约',
+  'Confirmed appointments today': '今日已确认的预约时段',
+  'Confirmed appointments this week': '未来 7 天内已确认的预约时段',
+  'Unassigned sessions': '未分配员工',
+  'Upcoming sessions needing staff': '未来预约中需要安排员工的时段',
+  'Payment conflicts': '付款异常',
+  'Payments requiring review': '需要核查的付款记录',
+  'ACTION CENTER': '待处理事项',
+  'Needs attention': '需要处理',
+  'Items that may affect upcoming appointments.': '可能影响后续预约的事项。',
+  'All clear': '目前没有待处理事项',
+  'No payment, staff, or connection issues were found.': '暂未发现付款、员工分配或连接异常。',
+  'Payment needs review': '付款需要核查',
+  'There are {count} payment conflict(s) to review.': '有 {count} 笔付款冲突需要核查。',
+  'There are {count} booking(s) waiting for payment.': '有 {count} 笔预约正在等待付款。',
+  'Staff assignment needed': '需要分配员工',
+  'There are {count} upcoming session(s) without a staff assignment.': '有 {count} 个未来预约时段尚未分配员工。',
+  'Calendar sync issue': '日历同步异常',
+  'There are {count} calendar sync issue(s).': '有 {count} 项日历同步异常。',
+  'Email delivery needs setup': '邮件服务需要配置',
+  'Email service is not configured.': '邮件服务尚未完成配置。',
+  'SHOPLINE order access required': '需要 SHOPLINE 订单授权',
+  'SHOPLINE order access is required for paid booking services.': '付费预约服务需要 SHOPLINE 订单访问授权。',
+  'No active booking service': '尚未启用预约服务',
+  'No active service is available for customers to book.': '目前没有可供客户预约的启用服务。',
+  'Review bookings': '查看预约',
+  'Assign staff': '分配员工',
+  'Open Calendar Sync': '打开日历同步',
+  'Open Email Studio': '打开邮件设计',
+  'Authorize SHOPLINE': '授权 SHOPLINE',
+  'Create a service': '创建服务',
+  'SERVICE HEALTH': '系统状态',
+  'System status': '系统状态',
+  'Notification and integration status at a glance.': '邮件通知与外部连接状态。',
+  'Email delivery': '邮件发送',
+  'Google Calendar': 'Google 日历',
+  'SHOPLINE order sync': 'SHOPLINE 订单同步',
+  'Email sending service is configured.': '邮件发送服务已完成配置。',
+  'No Google Calendar connection is active.': '当前没有已连接的 Google 日历。',
+  '{count} calendar connection(s) active.': '已连接 {count} 个日历。',
+  'Sync issues': '同步异常',
+  'Not connected': '未连接',
+  'Not required': '无需授权',
+  'Authorization needed': '需要授权',
+  'Open settings': '打开设置',
+  'Store time zone': '店铺时区',
+  'active services': '项已启用服务',
+  '{count} items': '{count} 项',
+  'Next appointments': '接下来的预约',
+  'Open an appointment to review its details and activity.': '点击预约可查看详情及操作记录。',
+  'Staff not assigned': '未分配员工'
+});
+
 const enByZh = new Map(Object.entries(zh).map(([english, chinese]) => [chinese, english]));
 
 function t(value, variables = {}) {
@@ -1275,31 +1334,125 @@ function formatDateParts(date) {
   return { day: String(parsed.getUTCDate()).padStart(2, '0'), month: parsed.toLocaleString(state.locale === 'zh-CN' ? 'zh-CN' : 'en', { month: 'short', timeZone: 'UTC' }) };
 }
 
+function formatDashboardDate(value) {
+  const date = new Date(`${value || ''}T12:00:00.000Z`);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat(state.locale === 'zh-CN' ? 'zh-CN' : 'en', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC'
+  }).format(date);
+}
+
+function dashboardGoToBookings(filters = {}) {
+  const apply = () => {
+    $('#bookingSearch').value = '';
+    $('#bookingServiceFilter').value = '';
+    $('#bookingStaffFilter').value = filters.staffId || '';
+    $('#bookingStatusFilter').value = filters.status || '';
+    $('#bookingFrom').value = filters.from || '';
+    $('#bookingTo').value = filters.to || '';
+    switchView('bookings');
+  };
+  openUnsavedDialog(apply, t('Bookings'));
+}
+
+function dashboardHandleAction(action) {
+  const today = state.bootstrap?.today || '';
+  const next7DaysEnd = state.bootstrap?.next7DaysEnd || today;
+  if (action === 'payment_conflict') return dashboardGoToBookings({ status: 'payment_conflict' });
+  if (action === 'pending_payment') return dashboardGoToBookings({ status: 'pending_payment' });
+  if (action === 'unassigned') return dashboardGoToBookings({ from: today, to: next7DaysEnd, staffId: '__unassigned__' });
+  if (action === 'calendar') return requestViewSwitch('calendar');
+  if (action === 'email') return requestViewSwitch('email');
+  if (action === 'rules') return requestViewSwitch('rules');
+  if (action === 'order') return openOrderAuthorization();
+  if (action === 'bookings') return requestViewSwitch('bookings');
+}
+
 function renderDashboard(payload) {
-  $('#activeRuleCount').textContent = payload.stats.activeRuleCount;
-  $('#bookingCount').textContent = payload.stats.bookingCount;
-  $('#upcomingCount').textContent = payload.stats.upcomingCount;
-  $('#planName').textContent = payload.email.configured ? t('Ready') : t('Setup needed');
-  $('#ruleCountNote').textContent = state.locale === 'zh-CN' ? `共 ${payload.stats.ruleCount} 条服务规则` : `${payload.stats.ruleCount} total service rule${payload.stats.ruleCount === 1 ? '' : 's'}`;
+  const stats = payload.stats || {};
+  const calendar = payload.calendar || {};
+  const orderAccess = payload.orderAccess || {};
+  $('#dashboardDateLabel').textContent = formatDashboardDate(payload.today);
+  $('#dashboardTimezoneLabel').textContent = `${t('Store time zone')}: ${state.shop?.timezone || 'UTC'}`;
+  $('#dashboardServiceCount').textContent = `${stats.activeRuleCount || 0} ${t('active services')}`;
+  $('#dashboardTodayCount').textContent = Number(stats.todayAppointmentCount || 0).toLocaleString();
+  $('#dashboardNext7Count').textContent = Number(stats.next7AppointmentCount || 0).toLocaleString();
+  $('#dashboardUnassignedCount').textContent = Number(stats.unassignedUpcomingCount || 0).toLocaleString();
+  $('#dashboardPaymentConflictCount').textContent = Number(stats.paymentConflictCount || 0).toLocaleString();
+
+  const attention = [];
+  if (Number(stats.paymentConflictCount || 0) > 0) attention.push({
+    severity: 'danger', title: t('Payment needs review'),
+    detail: t('There are {count} payment conflict(s) to review.', { count: String(stats.paymentConflictCount) }),
+    action: 'payment_conflict', actionLabel: t('Review bookings')
+  });
+  if (Number(stats.pendingPaymentCount || 0) > 0) attention.push({
+    severity: 'neutral', title: t('Awaiting payment'),
+    detail: t('There are {count} booking(s) waiting for payment.', { count: String(stats.pendingPaymentCount) }),
+    action: 'pending_payment', actionLabel: t('Review bookings')
+  });
+  if (Number(stats.unassignedUpcomingCount || 0) > 0) attention.push({
+    severity: 'warning', title: t('Staff assignment needed'),
+    detail: t('There are {count} upcoming session(s) without a staff assignment.', { count: String(stats.unassignedUpcomingCount) }),
+    action: 'unassigned', actionLabel: t('Assign staff')
+  });
+  if (Number(stats.calendarIssueCount || 0) > 0) attention.push({
+    severity: 'warning', title: t('Calendar sync issue'),
+    detail: t('There are {count} calendar sync issue(s).', { count: String(stats.calendarIssueCount) }),
+    action: 'calendar', actionLabel: t('Open Calendar Sync')
+  });
+  if (!payload.email?.configured) attention.push({
+    severity: 'warning', title: t('Email delivery needs setup'),
+    detail: t('Email service is not configured.'),
+    action: 'email', actionLabel: t('Open Email Studio')
+  });
+  if (orderAccess.required && !orderAccess.granted) attention.push({
+    severity: 'warning', title: t('SHOPLINE order access required'),
+    detail: t('SHOPLINE order access is required for paid booking services.'),
+    action: 'order', actionLabel: t('Authorize SHOPLINE')
+  });
+  if (Number(stats.activeRuleCount || 0) === 0) attention.push({
+    severity: 'neutral', title: t('No active booking service'),
+    detail: t('No active service is available for customers to book.'),
+    action: 'rules', actionLabel: t('Create a service')
+  });
+
+  $('#dashboardAttentionCount').textContent = t('{count} items', { count: String(attention.length) });
+  $('#dashboardAttentionList').innerHTML = attention.length
+    ? attention.map(item => `<div class="dashboard-attention-item ${item.severity}">
+        <span class="dashboard-attention-mark" aria-hidden="true">${item.severity === 'danger' ? '!' : item.severity === 'warning' ? '•' : 'i'}</span>
+        <div class="dashboard-attention-copy"><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.detail)}</span></div>
+        <button type="button" data-dashboard-action="${item.action}">${escapeHtml(item.actionLabel)} <span aria-hidden="true">→</span></button>
+      </div>`).join('')
+    : `<div class="dashboard-all-clear"><span aria-hidden="true">✓</span><div><strong>${t('All clear')}</strong><p>${t('No payment, staff, or connection issues were found.')}</p></div></div>`;
+
+  const calendarConnectedCount = Number(calendar.connectedCount || 0);
+  const calendarIssueCount = Number(calendar.issueCount || stats.calendarIssueCount || 0);
+  const calendarStatus = calendarIssueCount > 0 ? 'Sync issues' : calendarConnectedCount > 0 ? 'Connected' : 'Not connected';
+  const calendarTone = calendarIssueCount > 0 ? 'warning' : calendarConnectedCount > 0 ? 'good' : 'neutral';
+  const orderStatus = !orderAccess.required ? 'Not required' : orderAccess.granted ? 'Connected' : 'Authorization needed';
+  const orderTone = !orderAccess.required || orderAccess.granted ? 'good' : 'warning';
+  const systemRows = [
+    { label: t('Email delivery'), detail: t(payload.email?.configured ? 'Email sending service is configured.' : 'Email service is not configured.'), status: t(payload.email?.configured ? 'Ready' : 'Setup needed'), tone: payload.email?.configured ? 'good' : 'warning', action: 'email', actionLabel: t('Open settings') },
+    { label: t('Google Calendar'), detail: calendarConnectedCount ? t('{count} calendar connection(s) active.', { count: String(calendarConnectedCount) }) : t('No Google Calendar connection is active.'), status: t(calendarStatus), tone: calendarTone, action: 'calendar', actionLabel: t('Open settings') },
+    { label: t('SHOPLINE order sync'), detail: t(orderAccess.required ? 'Used by paid booking services.' : 'No current service requires order access.'), status: t(orderStatus), tone: orderTone, action: orderAccess.required && !orderAccess.granted ? 'order' : 'bookings', actionLabel: t(orderAccess.required && !orderAccess.granted ? 'Authorize SHOPLINE' : 'View bookings') }
+  ];
+  $('#dashboardSystemStatus').innerHTML = systemRows.map(item => `<div class="dashboard-system-row">
+    <div class="dashboard-system-copy"><strong>${escapeHtml(item.label)}</strong><span>${escapeHtml(item.detail)}</span></div>
+    <span class="dashboard-system-state ${item.tone}">${escapeHtml(item.status)}</span>
+    <button type="button" data-dashboard-action="${item.action}">${escapeHtml(item.actionLabel)} <span aria-hidden="true">→</span></button>
+  </div>`).join('');
 
   const upcoming = payload.nextBookings || [];
   $('#upcomingList').innerHTML = upcoming.length ? upcoming.map(booking => {
     const date = formatDateParts(booking.date);
     const displayTime = booking.bookingMode === 'all_day' ? t('All day') : booking.time;
-    return `<div class="timeline-item"><div class="timeline-date"><strong>${date.day}</strong><span>${date.month}</span></div><div><strong>${escapeHtml(booking.productTitle)}</strong><span>${escapeHtml(booking.customer?.name || t('Customer'))}${booking.staff ? ` · ${escapeHtml(booking.staff)}` : ''}</span></div><time>${escapeHtml(displayTime)}</time></div>`;
+    return `<button type="button" class="dashboard-next-item" data-dashboard-booking="${escapeHtml(String(booking._id || ''))}">
+      <span class="timeline-date"><strong>${date.day}</strong><span>${date.month}</span></span>
+      <span class="dashboard-next-copy"><strong>${escapeHtml(booking.productTitle)}</strong><span>${escapeHtml(booking.customer?.name || t('Customer'))}${booking.staff ? ` · ${escapeHtml(booking.staff)}` : ` · ${t('Staff not assigned')}`}</span></span>
+      <time>${escapeHtml(displayTime)}</time><span class="dashboard-next-arrow" aria-hidden="true">→</span>
+    </button>`;
   }).join('') : `<div class="empty-compact">${t('No upcoming appointments yet. Your next confirmed booking will appear here.')}</div>`;
-
-  const checks = [
-    { done: Boolean(payload.shop.storeId), label: t('SHOPLINE store connected') },
-    { done: Boolean(payload.onboarding?.appBlockConfirmed), label: t('Enable the Appointment Lite App Block') },
-    { done: payload.stats.activeRuleCount > 0, label: t('At least one active service rule') },
-    { done: payload.stats.bookingCount > 0, label: t('Test the storefront booking flow') }
-  ];
-  const completed = checks.filter(item => item.done).length;
-  const percent = Math.round(completed / checks.length * 100);
-  $('#setupPercent').textContent = `${percent}%`;
-  $('#setupProgress').style.width = `${percent}%`;
-  $('#setupChecklist').innerHTML = checks.map(item => `<div class="check-item ${item.done ? 'done' : ''}"><i>✓</i><span>${escapeHtml(item.label)}</span></div>`).join('');
 }
 
 function minutesFromClock(value) {
@@ -1824,8 +1977,8 @@ function renderBookingStaffFilter() {
     });
     staffRows = [...archived.entries()].map(([id, name]) => ({ id, name })).sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
   }
-  select.innerHTML = `<option value="">${t('All staff')}</option>${staffRows.map(item => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}</option>`).join('')}`;
-  select.value = staffRows.some(item => String(item.id) === current) ? current : '';
+  select.innerHTML = `<option value="">${t('All staff')}</option><option value="__unassigned__">${t('Unassigned')}</option>${staffRows.map(item => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}</option>`).join('')}`;
+  select.value = current === '__unassigned__' || staffRows.some(item => String(item.id) === current) ? current : '';
 }
 
 function productById(id) { return state.products.find(item => String(item.id) === String(id)); }
@@ -2708,7 +2861,10 @@ function filteredBookings() {
     if (query && ![booking.productTitle, booking.customer?.name, booking.customer?.email, booking.customer?.phone, booking.staff, booking.location, booking.shoplineOrder?.name, booking.shoplineOrder?.id].some(value => String(value || '').toLowerCase().includes(query))) return false;
     if (serviceId && String(booking.ruleId) !== serviceId) return false;
     if (status && (booking.appointmentStatus || booking.status) !== status && booking.status !== status) return false;
-    if (staffId && String(booking.staffId || '') !== staffId && !(booking.occurrences || []).some(item => String(item.staffId || '') === staffId)) return false;
+    if (staffId === '__unassigned__') {
+      const occurrences = Array.isArray(booking.occurrences) && booking.occurrences.length ? booking.occurrences : [{ staffId: booking.staffId }];
+      if (!occurrences.some(item => !(item.staffId || booking.staffId))) return false;
+    } else if (staffId && String(booking.staffId || '') !== staffId && !(booking.occurrences || []).some(item => String(item.staffId || '') === staffId)) return false;
     const dates = bookingOccurrenceDates(booking);
     if ((from || to) && booking.recordType === 'order_lifecycle') return false;
     if (from && !dates.some(date => date >= from)) return false;
@@ -2968,6 +3124,12 @@ async function loadBookings() {
     renderBookingStaffFilter();
     if (!state.calendarMonth) state.calendarMonth = monthKey(state.bookings.find(booking => booking.status === 'confirmed')?.date || new Date().toISOString().slice(0, 10));
     renderBookings();
+    if (state.pendingDashboardBookingId) {
+      const pendingId = state.pendingDashboardBookingId;
+      state.pendingDashboardBookingId = '';
+      const target = state.bookings.find(item => String(item._id) === String(pendingId));
+      if (target) openBookingFlow(target);
+    }
   } catch (error) { showError(error); }
   finally { root.classList.remove('is-loading'); root.setAttribute('aria-busy', 'false'); }
 }
@@ -3624,8 +3786,29 @@ function bind() {
   $('#syncSubscriptionBilling')?.addEventListener('click', refreshSubscription);
   $('#renewSubscriptionBilling')?.addEventListener('click', openShoplineRenewal);
   $('#renewFromBookings')?.addEventListener('click', openShoplineRenewal);
-  $$('[data-go-view]').forEach(button => button.addEventListener('click', () => requestViewSwitch(button.dataset.goView)));
-  $$('[data-new-rule]').forEach(button => button.addEventListener('click', () => openRule()));
+  $('[data-go-view]').forEach(button => button.addEventListener('click', () => requestViewSwitch(button.dataset.goView)));
+  $('#dashboardView')?.addEventListener('click', event => {
+    const rangeButton = event.target.closest('[data-dashboard-range]');
+    if (rangeButton) {
+      const today = state.bootstrap?.today || '';
+      const end = state.bootstrap?.next7DaysEnd || today;
+      const range = rangeButton.dataset.dashboardRange;
+      if (range === 'today') dashboardGoToBookings({ from: today, to: today });
+      else if (range === 'next7') dashboardGoToBookings({ from: today, to: end });
+      else if (range === 'unassigned') dashboardGoToBookings({ from: today, to: end, staffId: '__unassigned__' });
+      else if (range === 'payment_conflict') dashboardGoToBookings({ status: 'payment_conflict' });
+      return;
+    }
+    const bookingButton = event.target.closest('[data-dashboard-booking]');
+    if (bookingButton) {
+      state.pendingDashboardBookingId = bookingButton.dataset.dashboardBooking || '';
+      requestViewSwitch('bookings');
+      return;
+    }
+    const actionButton = event.target.closest('[data-dashboard-action]');
+    if (actionButton) dashboardHandleAction(actionButton.dataset.dashboardAction);
+  });
+  $('[data-new-rule]').forEach(button => button.addEventListener('click', () => openRule()));
   $$('[data-close-dialog]').forEach(button => button.addEventListener('click', () => { closeRuleSelect(); closeServiceTimezonePicker(); closeLocationPicker(); $('#ruleDialog').close(); }));
   $$('[data-close-product-dialog]').forEach(button => button.addEventListener('click', () => $('#productDialog').close()));
   $$('[data-close-booking-dialog]').forEach(button => button.addEventListener('click', () => $('#bookingDialog').close()));
