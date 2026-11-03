@@ -711,3 +711,9 @@ body.al-dialog-open{position:fixed!important;top:var(--al-dialog-scroll-y,0)!imp
   min-height:0;
   overflow:visible!important;
 }
+
+/* v0.8.26 — Staff selection in customer rescheduling */
+.al-reschedule-staff{margin:0 0 10px}
+.al-reschedule-staff>label{display:block;margin:0 0 6px;font-size:12px;font-weight:600;line-height:1.4}
+.al-reschedule-staff .al-staff-trigger{min-height:44px}
+.al-reschedule-staff .al-staff-menu{max-height:220px;overflow:auto}
