@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import vm from 'node:vm';
 
 test('overview presents operational metrics instead of duplicating setup and lifetime totals', async () => {
   const view = await readFile(new URL('../src/views/admin.js', import.meta.url), 'utf8');
@@ -61,4 +62,9 @@ test('dashboard layout remains responsive and supports clickable card feedback',
   assert.doesNotMatch(styles, /\.dashboard-attention-item\.danger/);
   assert.doesNotMatch(styles, /\.dashboard-system-row/);
   assert.match(styles, /@media\(max-width:480px\)/);
+});
+
+test('admin application bundle parses before deployment', async () => {
+  const app = await readFile(new URL('../public/admin/app.js', import.meta.url), 'utf8');
+  assert.doesNotThrow(() => new vm.Script(app, { filename: 'public/admin/app.js' }));
 });

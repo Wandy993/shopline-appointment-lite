@@ -1060,7 +1060,7 @@ const staffAvatarPresets = ['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunse
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
 function staffPresetImage(preset) {
   const file = staffAvatarFiles[preset] || staffAvatarFiles.aurora;
-  return `<img src="/assets/staff/${file}?v=0.8.30" alt="" loading="lazy" decoding="async">`;
+  return `<img src="/assets/staff/${file}?v=0.8.31" alt="" loading="lazy" decoding="async">`;
 }
 let staffAvatarDraft = { kind: 'preset', value: 'aurora' };
 
@@ -1449,7 +1449,7 @@ function renderDashboard(payload) {
       <span class="timeline-date"><strong>${date.day}</strong><span>${date.month}</span></span>
       <span class="dashboard-next-copy"><strong>${escapeHtml(booking.productTitle)}</strong><span>${escapeHtml(booking.customer?.name || t('Customer'))}${booking.staff ? ` · ${escapeHtml(booking.staff)}` : ` · ${t('Staff not assigned')}`}</span></span>
       <time>${escapeHtml(displayTime)}</time><span class="dashboard-next-arrow" aria-hidden="true">→</span>
-    </button>`).join('')
+    </button>`; }).join('')
     : `<div class="dashboard-next-empty">${t('No upcoming appointments yet. Your next confirmed booking will appear here.')}</div>`;
 }
 
