@@ -488,7 +488,7 @@ publicRouter.post('/bookings/:id/availability', bookingLimiter, async (req, res,
     if (!validBookingId(req.params.id)) return res.status(404).json({ error: 'NOT_FOUND', message: 'Booking not found or management access has expired.' });
     const { errors, value } = validateDateInput(req.body);
     if (errors.length) return res.status(422).json({ error: 'VALIDATION_ERROR', message: errors.join(' '), fields: errors });
-    const availability = await getManagedAvailability({ bookingId: req.params.id, token: req.body.managementToken, date: value.date });
+    const availability = await getManagedAvailability({ bookingId: req.params.id, token: req.body.managementToken, date: value.date, requestedStaffId: String(req.body.staffId || '').trim() });
     res.set('Cache-Control', 'no-store');
     res.json(availability);
   } catch (error) { next(error); }
@@ -509,7 +509,7 @@ publicRouter.post('/bookings/:id/reschedule', bookingLimiter, async (req, res, n
     if (!validBookingId(req.params.id)) return res.status(404).json({ error: 'NOT_FOUND', message: 'Booking not found or management access has expired.' });
     const { errors, value } = validateSlotInput(req.body);
     if (errors.length) return res.status(422).json({ error: 'VALIDATION_ERROR', message: errors.join(' '), fields: errors });
-    const booking = await rescheduleManagedBooking({ bookingId: req.params.id, token: req.body.managementToken, date: value.date, time: value.time });
+    const booking = await rescheduleManagedBooking({ bookingId: req.params.id, token: req.body.managementToken, date: value.date, time: value.time, staffId: String(req.body.staffId || '').trim() });
     void incrementOpsUsage(booking.shopId, 'business_bookings_rescheduled', 1);
     res.set('Cache-Control', 'no-store');
     res.json({ booking: publicBooking(booking) });
