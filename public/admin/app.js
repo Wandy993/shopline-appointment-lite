@@ -998,6 +998,8 @@ Object.assign(zh, {
   'active services': '项已启用服务',
   'Review services': '查看预约服务',
   '{count} alerts': '{count} 项提醒',
+  'UPCOMING SCHEDULE': '近期安排',
+  'Upcoming appointments': '即将开始的预约',
   'Next appointments': '接下来的预约',
   'Open a booking to review its activity history.': '点击预约可查看详情及操作记录。',
   'Staff not assigned': '未分配员工',
@@ -1058,7 +1060,7 @@ const staffAvatarPresets = ['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunse
 const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
 function staffPresetImage(preset) {
   const file = staffAvatarFiles[preset] || staffAvatarFiles.aurora;
-  return `<img src="/assets/staff/${file}?v=0.8.29" alt="" loading="lazy" decoding="async">`;
+  return `<img src="/assets/staff/${file}?v=0.8.30" alt="" loading="lazy" decoding="async">`;
 }
 let staffAvatarDraft = { kind: 'preset', value: 'aurora' };
 
@@ -1382,7 +1384,6 @@ function dashboardHandleAction(action) {
 
 function renderDashboard(payload) {
   const stats = payload.stats || {};
-  const calendar = payload.calendar || {};
   const orderAccess = payload.orderAccess || {};
   $('#dashboardDateLabel').textContent = formatDashboardDate(payload.today);
   $('#dashboardTimezoneLabel').textContent = `${t('Store time zone')}: ${state.shop?.timezone || 'UTC'}`;
@@ -1433,31 +1434,12 @@ function renderDashboard(payload) {
 
   $('#dashboardAttentionCount').textContent = t('{count} alerts', { count: String(attention.length) });
   $('#dashboardAttentionList').innerHTML = attention.length
-    ? attention.map(item => `<div class="dashboard-attention-item ${item.severity}">
+    ? attention.map(item => `<div class="dashboard-attention-item severity-${item.severity}">
         <span class="dashboard-attention-mark" aria-hidden="true">${item.severity === 'danger' ? '!' : item.severity === 'warning' ? '•' : 'i'}</span>
         <div class="dashboard-attention-copy"><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.detail)}</span></div>
         <button type="button" data-dashboard-action="${item.action}">${escapeHtml(item.actionLabel)} <span aria-hidden="true">→</span></button>
       </div>`).join('')
     : `<div class="dashboard-all-clear"><span aria-hidden="true">✓</span><div><strong>${t('All clear')}</strong><p>${t('No payment, staff, or connection issues were found.')}</p></div></div>`;
-
-  const calendarConnectedCount = Number(calendar.connectedCount || 0);
-  const calendarIssueCount = Number(calendar.issueCount || stats.calendarIssueCount || 0);
-  const calendarStatus = calendarIssueCount > 0 ? 'Sync issues' : calendarConnectedCount > 0 ? 'Connected' : 'Not connected';
-  const calendarTone = calendarIssueCount > 0 ? 'warning' : calendarConnectedCount > 0 ? 'good' : 'neutral';
-  const orderStatus = !orderAccess.required ? 'Not required' : orderAccess.granted ? 'Connected' : 'Authorization needed';
-  const orderTone = !orderAccess.required || orderAccess.granted ? 'good' : 'warning';
-  const orderAction = orderAccess.required ? (orderAccess.granted ? 'bookings' : 'order') : 'rules';
-  const orderActionLabel = orderAccess.required ? (orderAccess.granted ? 'View bookings' : 'Authorize SHOPLINE') : 'Review services';
-  const systemRows = [
-    { label: t('Email delivery'), detail: t(payload.email?.configured ? 'Email sending service is configured.' : 'Email service is not configured.'), status: t(payload.email?.configured ? 'Ready' : 'Setup needed'), tone: payload.email?.configured ? 'good' : 'warning', action: 'email', actionLabel: t('Open settings') },
-    { label: t('Google Calendar'), detail: calendarConnectedCount ? t('{count} calendar connection(s) active.', { count: String(calendarConnectedCount) }) : t('No Google Calendar connection is active.'), status: t(calendarStatus), tone: calendarTone, action: 'calendar', actionLabel: t('Open settings') },
-    { label: t('SHOPLINE order sync'), detail: t(orderAccess.required ? 'Used by paid booking services.' : 'No current service requires order access.'), status: t(orderStatus), tone: orderTone, action: orderAction, actionLabel: t(orderActionLabel) }
-  ];
-  $('#dashboardSystemStatus').innerHTML = systemRows.map(item => `<div class="dashboard-system-row">
-    <div class="dashboard-system-copy"><strong>${escapeHtml(item.label)}</strong><span>${escapeHtml(item.detail)}</span></div>
-    <span class="dashboard-system-state ${item.tone}">${escapeHtml(item.status)}</span>
-    <button type="button" data-dashboard-action="${item.action}">${escapeHtml(item.actionLabel)} <span aria-hidden="true">→</span></button>
-  </div>`).join('');
 
   const upcoming = payload.nextBookings || [];
   $('#upcomingList').innerHTML = upcoming.length ? upcoming.map(booking => {
@@ -1467,8 +1449,8 @@ function renderDashboard(payload) {
       <span class="timeline-date"><strong>${date.day}</strong><span>${date.month}</span></span>
       <span class="dashboard-next-copy"><strong>${escapeHtml(booking.productTitle)}</strong><span>${escapeHtml(booking.customer?.name || t('Customer'))}${booking.staff ? ` · ${escapeHtml(booking.staff)}` : ` · ${t('Staff not assigned')}`}</span></span>
       <time>${escapeHtml(displayTime)}</time><span class="dashboard-next-arrow" aria-hidden="true">→</span>
-    </button>`;
-  }).join('') : `<div class="empty-compact">${t('No upcoming appointments yet. Your next confirmed booking will appear here.')}</div>`;
+    </button>`).join('')
+    : `<div class="dashboard-next-empty">${t('No upcoming appointments yet. Your next confirmed booking will appear here.')}</div>`;
 }
 
 function minutesFromClock(value) {
