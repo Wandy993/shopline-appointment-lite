@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = '0.8.22';
+  const VERSION = '0.8.23';
   const API_BASE = 'https://appointment.shoplineapp.vip';
   const CACHE_TTL = 5 * 60 * 1000;
   const RULE_CACHE = new Map();
@@ -214,7 +214,7 @@
 
   const staffPresetClasses = new Set(['aurora', 'ocean', 'mint', 'peach', 'violet', 'sunset', 'sky', 'rose', 'nova']);
   const staffAvatarFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
-  function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="${API_BASE}/assets/staff/${file}?v=0.8.22" alt="" loading="lazy" decoding="async">`;}
+  function staffPresetImage(preset){const file=staffAvatarFiles[preset]||staffAvatarFiles.aurora;return `<img src="${API_BASE}/assets/staff/${file}?v=0.8.23" alt="" loading="lazy" decoding="async">`;}
 
   function staffAvatar(item, className = '') {
     const avatar = item?.avatar || {};
@@ -528,7 +528,7 @@
       const role = publicProfileValue(item.roleTitle);
       const expertise = publicProfileValue(item.expertise);
       const bio = publicProfileValue(item.bio);
-      const expertiseMarkup = expertise ? `<div class="al-directory-expertise"><span class="al-directory-expertise-chip" aria-label="Expertise: ${text(expertise)}">${text(expertise)}</span></div>` : '';
+      const expertiseMarkup = expertise ? `<p class="al-directory-expertise"><strong>Expertise</strong> ${text(expertise)}</p>` : '';
       const bioMarkup = bio ? `<p class="al-directory-bio">${text(bio)}</p>` : '';
       const services = publicServiceList(item);
       const servicesMarkup = services.length
