@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = '0.8.22';
+  const VERSION = '0.8.23';
   const API_BASE = 'https://appointment.shoplineapp.vip';
   const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;' }[c]));
   const clean = value => {
@@ -74,7 +74,7 @@
     const role = clean(item.roleTitle);
     const expertise = clean(item.expertise);
     const bio = clean(item.bio);
-    const expertiseMarkup = expertise ? `<div class="al-dir-tags"><span class="al-dir-expertise-chip" aria-label="Expertise: ${escapeHtml(expertise)}">${escapeHtml(expertise)}</span></div>` : '';
+    const expertiseMarkup = expertise ? `<div class="al-dir-tags"><span><strong>Expertise</strong> ${escapeHtml(expertise)}</span></div>` : '';
     const bioMarkup = bio ? `<p class="al-dir-bio">${escapeHtml(bio)}</p>` : '';
     const services = serviceList(item);
     const servicesMarkup = services.length
