@@ -102,7 +102,11 @@ test('v0.8.0 admin exposes a single Pro plan at USD 5.99 per month with SHOPLINE
   assert.match(view, /\$5\.99/);
   assert.match(view, /7-day free trial/);
   assert.match(view, /Continue with SHOPLINE/);
-  assert.match(view, /Plan & billing/);
+  assert.doesNotMatch(view, /Plan & billing/);
+  assert.match(view, /id="subscriptionLauncher"/);
+  assert.match(view, /id="subscriptionTopbarLauncher"/);
+  assert.match(view, /id="subscriptionDialog"/);
+  assert.match(client, /function openSubscriptionDialog/);
   assert.match(client, /startSubscriptionCheckout/);
   assert.match(client, /subscription_return=1/);
   assert.match(css, /subscription-gate-card/);
