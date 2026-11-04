@@ -42,3 +42,12 @@ test('subscription modal remains responsive and the sidebar card is a clear inte
   assert.match(styles, /@media\(max-width:480px\)/);
   assert.match(styles, /@media\(max-width:820px\)\{\.sidebar-status\{display:none\}\}/);
 });
+
+test('subscription modal release refreshes hosted customer asset cache keys', async () => {
+  const book = await readFile(new URL('../src/views/book.js', import.meta.url), 'utf8');
+  const manage = await readFile(new URL('../src/views/manage.js', import.meta.url), 'utf8');
+  assert.match(book, /\/book\/assets\/styles\.css\?v=0\.8\.32/);
+  assert.match(book, /\/book\/assets\/app\.js\?v=0\.8\.32/);
+  assert.match(manage, /\/manage\/assets\/styles\.css\?v=0\.8\.32/);
+  assert.match(manage, /\/manage\/assets\/app\.js\?v=0\.8\.32/);
+});
