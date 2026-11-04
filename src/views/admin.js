@@ -43,7 +43,7 @@ export function adminPage() {
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <title>Appointment Lite</title>
-  <link rel="stylesheet" href="/admin/styles.css?v=0.8.32&build=0.8.32">
+  <link rel="stylesheet" href="/admin/styles.css?v=0.8.33&build=0.8.33">
 </head>
 <body>
   <div class="app-shell">
@@ -60,7 +60,7 @@ export function adminPage() {
         ${navButton('email', 'Email Studio', icons.email)}
         ${navButton('setup', 'Storefront setup', icons.setup)}
       </nav>
-      <button id="subscriptionLauncher" class="sidebar-status" type="button" aria-haspopup="dialog" aria-controls="subscriptionDialog" aria-label="Open store and subscription details">
+      <button id="subscriptionLauncher" class="sidebar-status" type="button" aria-haspopup="dialog" aria-controls="subscriptionPopover" aria-expanded="false" aria-label="Open subscription details">
         <span class="pulse" aria-hidden="true"></span>
         <span class="sidebar-status-copy"><strong id="sidebarStatusTitle">Loading store…</strong><span id="sidebarProvider">Loading subscription…</span></span>
         <span class="sidebar-status-arrow" aria-hidden="true">${icons.chevron}</span>
@@ -73,7 +73,7 @@ export function adminPage() {
         <div class="topbar-copy"><span id="pageEyebrow">Workspace</span><strong id="pageTitle">Overview</strong></div>
         <div class="topbar-actions">
           <div id="languagePicker" class="language-picker"><button id="languageButton" type="button" aria-haspopup="listbox" aria-expanded="false">${icons.globe}<span id="languageLabel">English</span>${icons.chevron}</button><div id="languageMenu" class="language-menu hidden" role="listbox"><button type="button" data-locale="en" role="option">English<span>EN</span></button><button type="button" data-locale="zh-CN" role="option">简体中文<span>中文</span></button></div></div>
-          <button id="subscriptionTopbarLauncher" class="store-context" type="button" aria-haspopup="dialog" aria-controls="subscriptionDialog" aria-label="Open store and subscription details"><span class="store-avatar" id="storeAvatar">S</span><span class="store-context-copy"><strong id="shopBadge">Loading store…</strong><span id="timezoneBadge">Syncing time zone</span></span></button>
+          <a id="storefrontLink" class="store-context" href="#" target="_blank" rel="noopener noreferrer" aria-label="Open store storefront"><span class="store-avatar" id="storeAvatar">S</span><span class="store-context-copy"><strong id="shopBadge">Loading store…</strong></span><span class="store-context-external" aria-hidden="true">↗</span></a><button id="subscriptionTopbarLauncher" class="subscription-topbar-trigger" type="button" aria-haspopup="dialog" aria-controls="subscriptionPopover" aria-expanded="false" aria-label="Open subscription details"><span class="subscription-topbar-dot" aria-hidden="true"></span><span class="subscription-topbar-label" id="subscriptionTopbarStatus">Loading</span></button>
         </div>
       </header>
 
@@ -196,44 +196,31 @@ export function adminPage() {
           <div id="staffList" class="staff-list"><div class="panel loading">Loading staff…</div></div>
         </section>
 
-        <dialog id="subscriptionDialog" class="modal subscription-modal" aria-labelledby="subscriptionDialogTitle">
-    <div class="modal-head">
-      <div><span class="eyebrow">STORE & SUBSCRIPTION</span><h2 id="subscriptionDialogTitle">Store & subscription</h2><p>Review your store connection and current plan.</p></div>
-      <button type="button" class="icon-button" data-close-subscription-dialog aria-label="Close">${icons.close}</button>
-    </div>
-    <div class="modal-body subscription-modal-body">
-      <div class="subscription-store-summary">
-        <span id="subscriptionStoreMark" class="subscription-store-mark">S</span>
-        <span class="subscription-store-copy"><strong id="subscriptionStoreHandle">—</strong><span id="subscriptionStoreTimezone">—</span></span>
-      </div>
-      <div class="billing-grid subscription-billing-grid">
-        <article class="panel billing-plan-card">
-          <div class="billing-plan-head"><div><span class="eyebrow">CURRENT PLAN</span><h2 id="billingPlanName">Appointment Lite Pro</h2></div><span id="billingStatusBadge" class="status-badge">Checking</span></div>
-          <div class="billing-price"><strong id="billingPrice">$5.99</strong><span id="billingPriceInterval">USD / month</span></div>
-          <div id="billingTrialNote" class="billing-trial-note"><strong id="billingTrialNoteTitle">7-day free trial</strong><span id="billingTrialNoteText">Trial eligibility and conversion are controlled by SHOPLINE.</span></div>
-        </article>
-        <article class="panel billing-details-card">
-          <div class="panel-head"><div><span class="eyebrow">SUBSCRIPTION DETAILS</span><h2>Billing status</h2></div></div>
-          <dl class="billing-details">
+        <aside id="subscriptionPopover" class="subscription-popover hidden" role="dialog" aria-modal="false" aria-labelledby="subscriptionPopoverTitle">
+          <div class="subscription-popover-head">
+            <div><span class="eyebrow">STORE & SUBSCRIPTION</span><h2 id="subscriptionPopoverTitle">Subscription</h2></div>
+            <button id="closeSubscriptionPopover" type="button" class="icon-button" data-close-subscription-popover aria-label="Close">${icons.close}</button>
+          </div>
+          <section class="subscription-popover-plan" aria-label="Current plan">
+            <div class="subscription-popover-plan-head">
+              <div><span class="eyebrow">CURRENT PLAN</span><h3 id="billingPlanName">Appointment Lite Pro</h3></div>
+              <span id="billingStatusBadge" class="status-badge">Checking</span>
+            </div>
+            <div class="subscription-popover-price"><strong id="billingPrice">$5.99</strong><span id="billingPriceInterval">USD / month</span></div>
+          </section>
+          <dl class="subscription-popover-details">
             <div><dt>Status</dt><dd id="billingStatus">—</dd></div>
-            <div><dt>Access</dt><dd id="billingAccess">—</dd></div>
-            <div><dt>Trial</dt><dd id="billingTrial">—</dd></div>
             <div><dt>Current period ends</dt><dd id="billingRenewal">—</dd></div>
             <div><dt>Automatic renewal</dt><dd id="billingAutoRenew">—</dd></div>
-            <div><dt>Last synced</dt><dd id="billingLastSynced">—</dd></div>
           </dl>
-          <p class="billing-managed-note">Subscription changes, payment, cancellation, and refunds are managed in SHOPLINE.</p>
-        </article>
-      </div>
-      <div id="subscriptionDialogError" class="subscription-dialog-error hidden" role="status"></div>
-    </div>
-    <div class="modal-actions subscription-modal-actions">
-      <button type="button" class="secondary" data-close-subscription-dialog>Close</button>
-      <span class="action-spacer"></span>
-      <button id="syncSubscriptionBilling" type="button" class="secondary">Refresh subscription</button>
-      <button id="renewSubscriptionBilling" type="button" class="primary">Open SHOPLINE</button>
-    </div>
-  </dialog>
+          <div id="billingTrialNote" class="subscription-popover-trial hidden"><strong id="billingTrialNoteTitle"></strong><span id="billingTrialNoteText"></span></div>
+          <div id="subscriptionExpiryNotice" class="subscription-expiry-notice hidden" role="status"><strong id="subscriptionExpiryNoticeTitle"></strong><span id="subscriptionExpiryNoticeText"></span></div>
+          <div id="subscriptionPopoverError" class="subscription-popover-error hidden" role="status"></div>
+          <div class="subscription-popover-actions">
+            <button id="syncSubscriptionBilling" type="button" class="secondary hidden">Refresh status</button>
+            <button id="renewSubscriptionBilling" type="button" class="primary hidden">Renew</button>
+          </div>
+        </aside>
 
 
         <section id="calendarView" class="view hidden">
@@ -514,7 +501,7 @@ export function adminPage() {
   </dialog>
 
   <dialog id="confirmDialog" class="confirm-modal"><div class="confirm-icon">!</div><div class="confirm-copy"><h2 id="confirmTitle">Please confirm</h2><p id="confirmMessage"></p></div><div class="modal-actions"><button id="confirmNo" class="secondary">Keep it</button><button id="confirmYes" class="danger">Confirm</button></div></dialog>
-  <script type="module" src="/admin/app.js?v=0.8.32&build=0.8.32"></script>
+  <script type="module" src="/admin/app.js?v=0.8.33&build=0.8.33"></script>
 </body>
 </html>`;
 }

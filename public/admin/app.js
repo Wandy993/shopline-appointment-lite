@@ -1166,6 +1166,30 @@ function subscriptionStatusText(subscription = state.subscription) {
   return t('Subscription required');
 }
 
+function storefrontUrlForShop(shop = state.shop) {
+  const handle = String(shop?.handle || '').trim().toLowerCase();
+  if (!handle) return '';
+  const rawDomain = String(shop?.primaryDomain || '').trim();
+  if (rawDomain) {
+    try {
+      const candidate = /^https?:\\/\\//i.test(rawDomain) ? rawDomain : 'https://' + rawDomain;
+      const parsed = new URL(candidate);
+      if (parsed.protocol === 'https:' && parsed.hostname && !parsed.username && !parsed.password) return parsed.origin + '/';
+    } catch { /* Fall back to the SHOPLINE storefront hostname below. */ }
+  }
+  return 'https://' + handle + '.myshopline.com/';
+}
+
+function subscriptionDaysUntilExpiry(subscription = state.subscription) {
+  const end = subscription?.expiresAt ? new Date(subscription.expiresAt).getTime() : NaN;
+  if (Number.isFinite(end)) return Math.ceil((end - Date.now()) / 86_400_000);
+  const trialDays = subscription?.trialDaysRemaining;
+  if (subscription?.isTrial && trialDays !== null && trialDays !== undefined && trialDays !== '' && Number.isFinite(Number(trialDays))) {
+    return Math.ceil(Number(trialDays));
+  }
+  return null;
+}
+
 function renderSubscriptionStatus(subscription = state.subscription, syncError = state.subscriptionSyncError) {
   state.subscription = subscription || null;
   state.subscriptionSyncError = syncError || '';
@@ -1186,45 +1210,60 @@ function renderSubscriptionStatus(subscription = state.subscription, syncError =
   });
 
   const statusText = subscriptionStatusText(subscription);
-  const storeHandle = state.shop?.handle || '';
-  const storeHost = storeHandle ? `${storeHandle}.myshopline.com` : t('Store connected');
+  const storeHandle = String(state.shop?.handle || '').trim();
+  const storeLabel = storeHandle || t('Store connected');
   const planName = subscription?.planName || 'Appointment Lite Pro';
-  const sidebarTitle = $('#sidebarStatusTitle');
-  const sidebarProvider = $('#sidebarProvider');
-  const launcher = $('#subscriptionLauncher');
-  if (sidebarTitle) sidebarTitle.textContent = storeHost;
-  if (sidebarProvider) sidebarProvider.textContent = subscription?.enabled
-    ? `${t(planName)} · ${statusText}`
-    : t('Subscription not enabled');
-  if (launcher) {
-    const needsAttention = Boolean(subscription?.enabled && !subscription?.accessAllowed);
-    launcher.classList.toggle('is-warning', needsAttention);
-    launcher.classList.toggle('is-danger', restricted && subscription?.status !== 'pending');
-    launcher.setAttribute('aria-label', `${storeHost}. ${t(planName)}. ${statusText}. ${t('Open store and subscription details')}`);
+  const storefrontUrl = storefrontUrlForShop(state.shop);
+  const daysUntilExpiry = subscriptionDaysUntilExpiry(subscription);
+  const nearExpiry = daysUntilExpiry !== null && daysUntilExpiry <= 3;
+  const pending = subscription?.status === 'pending';
+  const accessDenied = Boolean(subscription?.enabled && subscription?.accessAllowed === false);
+
+  if ($('#sidebarStatusTitle')) $('#sidebarStatusTitle').textContent = storeLabel;
+  if ($('#sidebarProvider')) {
+    $('#sidebarProvider').textContent = subscription?.enabled
+      ? `${t(planName)} · ${statusText}`
+      : t('Subscription not enabled');
   }
-  const storeMark = $('#subscriptionStoreMark');
-  if (storeMark) storeMark.textContent = (storeHandle || 'S').slice(0, 1).toUpperCase();
-  if ($('#subscriptionStoreHandle')) $('#subscriptionStoreHandle').textContent = storeHost;
-  if ($('#subscriptionStoreTimezone')) $('#subscriptionStoreTimezone').textContent = state.shop?.timezone || 'UTC';
+  const needsAttention = Boolean(subscription?.enabled && (accessDenied || nearExpiry));
+  const sidebarLauncher = $('#subscriptionLauncher');
+  const topbarLauncher = $('#subscriptionTopbarLauncher');
+  [sidebarLauncher, topbarLauncher].filter(Boolean).forEach(button => {
+    button.classList.toggle('is-warning', needsAttention);
+    button.classList.toggle('is-danger', restricted && !pending);
+    button.setAttribute('aria-label', `${storeLabel}. ${t(planName)}. ${statusText}. ${t('Open subscription details')}`);
+  });
+  if ($('#subscriptionTopbarStatus')) $('#subscriptionTopbarStatus').textContent = statusText;
+
+  const storeLink = $('#storefrontLink');
+  if (storeLink) {
+    storeLink.href = storefrontUrl || '#';
+    storeLink.classList.toggle('disabled', !storefrontUrl);
+    storeLink.setAttribute('aria-disabled', String(!storefrontUrl));
+  }
+  if ($('#shopBadge')) $('#shopBadge').textContent = storeLabel;
 
   const gateStatus = $('#subscriptionGateStatus');
   if (gateStatus) {
-    if (subscription?.status === 'pending') gateStatus.textContent = t('SHOPLINE is still processing this subscription. Refresh after payment or trial activation completes.');
+    if (pending) gateStatus.textContent = t('SHOPLINE is still processing this subscription. Refresh after payment or trial activation completes.');
     else if (subscription?.status && subscription.status !== 'none') gateStatus.textContent = `${t('Latest SHOPLINE status')}: ${statusText}`;
     else gateStatus.textContent = t('No active SHOPLINE subscription was found for this store.');
   }
+  const errorMessage = syncError
+    ? t('Could not refresh SHOPLINE subscription right now. The last known status is shown.')
+    : '';
   const gateError = $('#subscriptionGateError');
   if (gateError) {
-    gateError.textContent = syncError ? t('Could not refresh SHOPLINE subscription right now. The last known status is shown.') : '';
+    gateError.textContent = errorMessage;
     gateError.classList.toggle('hidden', !syncError);
   }
-  const dialogError = $('#subscriptionDialogError');
-  if (dialogError) {
-    dialogError.textContent = syncError ? t('Could not refresh SHOPLINE subscription right now. The last known status is shown.') : '';
-    dialogError.classList.toggle('hidden', !syncError);
+  const popoverError = $('#subscriptionPopoverError');
+  if (popoverError) {
+    popoverError.textContent = errorMessage;
+    popoverError.classList.toggle('hidden', !syncError);
   }
 
-  if ($('#billingPlanName')) $('#billingPlanName').textContent = planName;
+  if ($('#billingPlanName')) $('#billingPlanName').textContent = t(planName);
   if ($('#billingPrice')) $('#billingPrice').textContent = `$${Number(subscription?.price?.amount || 5.99).toFixed(2)}`;
   if ($('#billingPriceInterval')) {
     const currency = subscription?.price?.currency || 'USD';
@@ -1232,31 +1271,19 @@ function renderSubscriptionStatus(subscription = state.subscription, syncError =
     $('#billingPriceInterval').textContent = `${currency} / ${t(interval === 'month' ? 'month' : interval)}`;
   }
   if ($('#billingStatus')) $('#billingStatus').textContent = statusText;
-  if ($('#billingAccess')) $('#billingAccess').textContent = t(archiveMode ? 'Read-only' : (subscription?.accessAllowed ? 'Available' : 'Paused'));
-  if ($('#billingTrial')) $('#billingTrial').textContent = subscription?.isTrial
-    ? (Number.isFinite(Number(subscription.trialDaysRemaining)) ? t('{count} days remaining', { count: String(subscription.trialDaysRemaining) }) : t('Active'))
-    : t(subscription?.type === 'paid' ? 'Completed' : 'Not active');
   if ($('#billingRenewal')) $('#billingRenewal').textContent = formatSubscriptionDate(subscription?.expiresAt);
   if ($('#billingAutoRenew')) $('#billingAutoRenew').textContent = t(subscription?.autoRecurring ? 'On' : 'Off');
-  if ($('#billingLastSynced')) $('#billingLastSynced').textContent = formatSubscriptionDate(subscription?.lastSyncedAt);
 
+  const trialNote = $('#billingTrialNote');
   const trialTitle = $('#billingTrialNoteTitle');
   const trialText = $('#billingTrialNoteText');
-  if (trialTitle && trialText) {
-    if (subscription?.isTrial) {
-      const days = Number(subscription.trialDaysRemaining);
-      trialTitle.textContent = Number.isFinite(days) ? t('{count} days left in free trial', { count: String(days) }) : t('Free trial active');
-      trialText.textContent = t('Trial eligibility and conversion are controlled by SHOPLINE.');
-    } else if (subscription?.type === 'paid') {
-      trialTitle.textContent = t('Trial completed');
-      trialText.textContent = t('Your subscription billing is managed by SHOPLINE.');
-    } else if (subscription?.status === 'pending') {
-      trialTitle.textContent = t('Payment pending');
-      trialText.textContent = t('SHOPLINE is still processing this subscription.');
-    } else {
-      trialTitle.textContent = t('7-day free trial');
-      trialText.textContent = t('Trial eligibility and conversion are controlled by SHOPLINE.');
-    }
+  if (trialNote) trialNote.classList.toggle('hidden', !subscription?.isTrial);
+  if (subscription?.isTrial && trialTitle && trialText) {
+    const trialDays = subscription?.trialDaysRemaining;
+    trialTitle.textContent = trialDays !== null && trialDays !== undefined && trialDays !== ''
+      ? t('{count} days left in free trial', { count: String(trialDays) })
+      : t('Free trial active');
+    trialText.textContent = t('Trial eligibility and conversion are controlled by SHOPLINE.');
   }
 
   const badge = $('#billingStatusBadge');
@@ -1264,12 +1291,45 @@ function renderSubscriptionStatus(subscription = state.subscription, syncError =
     badge.textContent = archiveMode ? t('Read-only') : statusText;
     badge.classList.toggle('success', Boolean(subscription?.accessAllowed));
     badge.classList.toggle('disabled', !subscription?.accessAllowed);
-    badge.classList.toggle('warning', Boolean(subscription?.enabled && !subscription?.accessAllowed && !restricted));
+    badge.classList.toggle('warning', Boolean(subscription?.enabled && accessDenied && !restricted));
   }
-  const shoplineButton = $('#renewSubscriptionBilling');
-  if (shoplineButton) {
-    shoplineButton.classList.toggle('hidden', !subscription?.shoplinePlanUrl);
-    shoplineButton.textContent = t('Open SHOPLINE');
+
+  const shouldShowRenewal = Boolean(subscription?.enabled && !pending && (accessDenied || nearExpiry));
+  const renewButton = $('#renewSubscriptionBilling');
+  if (renewButton) {
+    const canOpenPlanPage = Boolean(subscription?.shoplinePlanUrl);
+    const choosePlan = Boolean(subscription?.isTrial || !subscription?.status || subscription.status === 'none');
+    renewButton.classList.toggle('hidden', !(shouldShowRenewal && canOpenPlanPage));
+    renewButton.textContent = t(choosePlan ? 'Choose plan' : 'Renew');
+  }
+  const syncButton = $('#syncSubscriptionBilling');
+  if (syncButton) {
+    syncButton.classList.toggle('hidden', !(pending || Boolean(syncError)));
+    syncButton.textContent = t(syncError ? 'Retry sync' : 'Refresh status');
+  }
+
+  const expiryNotice = $('#subscriptionExpiryNotice');
+  const expiryTitle = $('#subscriptionExpiryNoticeTitle');
+  const expiryText = $('#subscriptionExpiryNoticeText');
+  if (expiryNotice && expiryTitle && expiryText) {
+    if (nearExpiry) {
+      const title = daysUntilExpiry < 0
+        ? 'Subscription period has ended'
+        : daysUntilExpiry === 0
+          ? 'Subscription ends today'
+          : 'Subscription ends in {count} days';
+      expiryTitle.textContent = t(title, { count: String(daysUntilExpiry) });
+      expiryText.textContent = subscription?.isTrial
+        ? t('Choose a plan before your free trial ends to keep using Appointment Lite.')
+        : t('Renew before the current period ends to keep access uninterrupted.');
+      expiryNotice.classList.remove('hidden');
+    } else if (accessDenied && !pending) {
+      expiryTitle.textContent = t('Subscription inactive');
+      expiryText.textContent = t('Choose a plan to restore full access.');
+      expiryNotice.classList.remove('hidden');
+    } else {
+      expiryNotice.classList.add('hidden');
+    }
   }
 
   if (archiveMode) {
@@ -1287,10 +1347,33 @@ function renderSubscriptionStatus(subscription = state.subscription, syncError =
   }
 }
 
-function openSubscriptionDialog() {
+let subscriptionPopoverTrigger = null;
+
+function openSubscriptionPopover(trigger = null) {
   renderSubscriptionStatus();
-  const dialog = $('#subscriptionDialog');
-  if (dialog && !dialog.open) dialog.showModal();
+  const popover = $('#subscriptionPopover');
+  if (!popover) return;
+  subscriptionPopoverTrigger = trigger || document.activeElement;
+  popover.classList.remove('hidden');
+  [$('#subscriptionLauncher'), $('#subscriptionTopbarLauncher')].filter(Boolean)
+    .forEach(button => button.setAttribute('aria-expanded', 'true'));
+  $('#closeSubscriptionPopover')?.focus({ preventScroll: true });
+}
+
+function closeSubscriptionPopover({ restoreFocus = false } = {}) {
+  $('#subscriptionPopover')?.classList.add('hidden');
+  [$('#subscriptionLauncher'), $('#subscriptionTopbarLauncher')].filter(Boolean)
+    .forEach(button => button.setAttribute('aria-expanded', 'false'));
+  const trigger = subscriptionPopoverTrigger;
+  subscriptionPopoverTrigger = null;
+  if (restoreFocus && trigger?.isConnected) trigger.focus({ preventScroll: true });
+}
+
+function toggleSubscriptionPopover(trigger = null) {
+  const popover = $('#subscriptionPopover');
+  if (!popover) return;
+  if (popover.classList.contains('hidden')) openSubscriptionPopover(trigger);
+  else closeSubscriptionPopover();
 }
 
 async function startSubscriptionCheckout() {
@@ -1317,6 +1400,7 @@ async function startSubscriptionCheckout() {
 }
 
 function openShoplineRenewal() {
+  closeSubscriptionPopover();
   const url = String(state.subscription?.shoplinePlanUrl || '').trim();
   if (url) {
     const opened = window.open(url, '_blank', 'noopener,noreferrer');
@@ -1367,7 +1451,7 @@ async function recoverSubscriptionIfNeeded({ force = false } = {}) {
 }
 
 function switchView(name) {
-  if (name === 'billing') { openSubscriptionDialog(); return; }
+  if (name === 'billing') { openSubscriptionPopover($('#subscriptionTopbarLauncher') || $('#subscriptionLauncher')); return; }
   if (state.restricted) {
     state.currentView = 'billing';
     $$('.view').forEach(view => view.classList.add('hidden'));
@@ -3746,7 +3830,7 @@ async function loadBootstrap({ suppressRecoveryToast = false } = {}) {
   state.accessMode = payload.accessMode || (payload.archiveMode ? 'archive' : (payload.restricted ? 'subscription_required' : 'full'));
   state.archiveMode = state.accessMode === 'archive';
   state.restricted = state.accessMode === 'subscription_required';
-  $('#shopBadge').textContent = `${payload.shop.handle}.myshopline.com`;
+  $('#shopBadge').textContent = payload.shop.handle;
   $('#timezoneBadge').textContent = payload.shop.timezone || 'UTC';
   $('#bookingTimezone').textContent = payload.shop.timezone || 'UTC';
   $('#storeAvatar').textContent = payload.shop.handle.slice(0, 1).toUpperCase();
@@ -3847,10 +3931,18 @@ function bind() {
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') void recoverSubscriptionIfNeeded(); });
   renderTemplateTabs();
   $$('.nav-item').forEach(button => button.addEventListener('click', () => requestViewSwitch(button.dataset.view)));
-  $('#subscriptionLauncher')?.addEventListener('click', openSubscriptionDialog);
-  $('#subscriptionTopbarLauncher')?.addEventListener('click', openSubscriptionDialog);
-  $$('[data-close-subscription-dialog]').forEach(button => button.addEventListener('click', () => $('#subscriptionDialog')?.close()));
-  $('#subscriptionDialog')?.addEventListener('click', event => { if (event.target === $('#subscriptionDialog')) $('#subscriptionDialog').close(); });
+  $('#subscriptionLauncher')?.addEventListener('click', event => toggleSubscriptionPopover(event.currentTarget));
+  $('#subscriptionTopbarLauncher')?.addEventListener('click', event => toggleSubscriptionPopover(event.currentTarget));
+  $$('[data-close-subscription-popover]').forEach(button => button.addEventListener('click', () => closeSubscriptionPopover({ restoreFocus: true })));
+  document.addEventListener('click', event => {
+    const popover = $('#subscriptionPopover');
+    if (!popover || popover.classList.contains('hidden')) return;
+    if (event.target.closest?.('#subscriptionPopover, #subscriptionLauncher, #subscriptionTopbarLauncher')) return;
+    closeSubscriptionPopover();
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && !$('#subscriptionPopover')?.classList.contains('hidden')) closeSubscriptionPopover({ restoreFocus: true });
+  });
   $('#startSubscription')?.addEventListener('click', startSubscriptionCheckout);
   $('#syncSubscriptionGate')?.addEventListener('click', refreshSubscription);
   $('#syncSubscriptionBilling')?.addEventListener('click', refreshSubscription);
@@ -4194,4 +4286,27 @@ Object.assign(zh, {
   'Refresh subscription': '刷新订阅',
   'Read-only archive': '只读归档',
   'Store connected': '店铺已连接'
+});
+
+
+Object.assign(zh, {
+  'Open store storefront': '打开店铺前台',
+  'Open subscription details': '查看订阅详情',
+  'Current plan': '当前套餐',
+  'Current period ends': '当前周期结束时间',
+  'Automatic renewal': '自动续费',
+  'Renew': '续费',
+  'Choose plan': '选择套餐',
+  'Refresh status': '刷新状态',
+  'Retry sync': '重试同步',
+  'Subscription ends today': '订阅将于今天到期',
+  'Subscription ends in {count} days': '订阅将在 {count} 天后到期',
+  'Subscription period has ended': '订阅周期已结束',
+  'Subscription inactive': '订阅未生效',
+  'Free trial active': '免费试用中',
+  '{count} days left in free trial': '免费试用剩余 {count} 天',
+  'Trial eligibility and conversion are controlled by SHOPLINE.': '试用资格和转付费由 SHOPLINE 管理。',
+  'Choose a plan before your free trial ends to keep using Appointment Lite.': '请在免费试用结束前选择套餐，以继续使用 Appointment Lite。',
+  'Renew before the current period ends to keep access uninterrupted.': '请在当前周期结束前续费，以免影响使用权限。',
+  'Choose a plan to restore full access.': '选择套餐以恢复完整使用权限。'
 });

@@ -199,7 +199,7 @@ adminRouter.get('/bootstrap', async (req, res) => {
       subscription,
       subscriptionSyncError,
       subscriptionRecovery,
-      shop: { handle: req.shop.handle, storeId: req.shop.shoplineStoreId || '', locale: req.shop.locale, adminLocale: req.shop.adminLocale || 'en', timezone: req.shop.timezone, email: req.shop.email || '' },
+      shop: { handle: req.shop.handle, primaryDomain: req.shop.primaryDomain || '', storeId: req.shop.shoplineStoreId || '', locale: req.shop.locale, adminLocale: req.shop.adminLocale || 'en', timezone: req.shop.timezone, email: req.shop.email || '' },
       csrfToken: req.csrfToken
     });
   }
@@ -212,7 +212,7 @@ adminRouter.get('/bootstrap', async (req, res) => {
       subscription,
       subscriptionSyncError,
       subscriptionRecovery,
-      shop: { handle: req.shop.handle, storeId: req.shop.shoplineStoreId || '', locale: req.shop.locale, adminLocale: req.shop.adminLocale || 'en', timezone: req.shop.timezone, email: req.shop.email || '' },
+      shop: { handle: req.shop.handle, primaryDomain: req.shop.primaryDomain || '', storeId: req.shop.shoplineStoreId || '', locale: req.shop.locale, adminLocale: req.shop.adminLocale || 'en', timezone: req.shop.timezone, email: req.shop.email || '' },
       csrfToken: req.csrfToken
     });
   }
@@ -295,7 +295,7 @@ adminRouter.get('/bootstrap', async (req, res) => {
   res.json({
     restricted: false, accessMode: 'full', archiveMode: false, subscription, subscriptionSyncError, subscriptionRecovery,
     today: storeNow.date, storeTime: storeNow.time, next7DaysEnd,
-    shop: { handle: req.shop.handle, storeId: req.shop.shoplineStoreId || '', locale: req.shop.locale, adminLocale: req.shop.adminLocale || 'en', timezone: req.shop.timezone, email: req.shop.email || '' },
+    shop: { handle: req.shop.handle, primaryDomain: req.shop.primaryDomain || '', storeId: req.shop.shoplineStoreId || '', locale: req.shop.locale, adminLocale: req.shop.adminLocale || 'en', timezone: req.shop.timezone, email: req.shop.email || '' },
     email: { configured: delivery.configured, from: delivery.from || '' }, emailSettings: normalizeEmailSettings(req.shop.emailSettings || {}), storefrontSettings: normalizeStorefrontSettings(req.shop.storefrontSettings || {}), nextBookings, orderAccess,
     calendar: { connectedCount: calendarConnectedCount, connectionErrorCount: calendarConnectionErrorCount, bookingErrorCount: calendarErrorBookingCount, issueCount: calendarIssueCount },
     staffManagedRuleIds: [...managedStaffRuleIds],
