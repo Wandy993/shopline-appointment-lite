@@ -11,10 +11,11 @@ test('backend, package lock, admin, hosted booking, and Theme Extension cache ke
   assert.equal(lock.packages?.['']?.version, pkg.version);
 
   const version = pkg.version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const [adminView, bookView, app, adminJs, bookJs, themeJs] = await Promise.all([
+  const [adminView, bookView, app, server, adminJs, bookJs, themeJs] = await Promise.all([
     read('../src/views/admin.js'),
     read('../src/views/book.js'),
     read('../src/app.js'),
+    read('../src/server.js'),
     read('../public/admin/app.js'),
     read('../public/book/app.js'),
     read('../theme-extension-source/public/appointment-lite.js')
@@ -24,6 +25,7 @@ test('backend, package lock, admin, hosted booking, and Theme Extension cache ke
   assert.match(bookView, new RegExp(`styles\\.css\\?v=${version}`));
   assert.match(bookView, new RegExp(`app\\.js\\?v=${version}`));
   assert.match(app, new RegExp(`version: '${version}'`));
+  assert.match(server, new RegExp(`Appointment Lite v${version} \\(store-subscription-popover\\)`));
   assert.match(adminJs, new RegExp(`\\?v=${version}`));
   assert.match(bookJs, new RegExp(`\\?v=${version}`));
   assert.match(themeJs, new RegExp(`const VERSION = '${version}'`));
