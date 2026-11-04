@@ -22,6 +22,7 @@ test('store name links to the storefront and subscription uses a compact popover
 test('subscription renewal appears only for inactive access or within three days of expiry', async () => {
   const app = await read('../public/admin/app.js');
   assert.doesNotThrow(() => new vm.Script(app, { filename: 'public/admin/app.js' }));
+  assert.ok(app.includes("const candidate = rawDomain.includes('://') ? rawDomain : 'https://' + rawDomain;"));
   assert.match(app, /function storefrontUrlForShop\(/);
   assert.match(app, /function subscriptionDaysUntilExpiry\(/);
   assert.match(app, /daysUntilExpiry !== null && daysUntilExpiry <= 3/);
@@ -50,11 +51,11 @@ test('release asset cache keys stay aligned for hosted pages and Theme Extension
     read('../src/views/manage.js'),
     read('../theme-extension-source/public/appointment-lite.js')
   ]);
-  assert.match(admin, /\/admin\/styles\.css\?v=0\.8\.33&build=0\.8\.33/);
-  assert.match(admin, /\/admin\/app\.js\?v=0\.8\.33&build=0\.8\.33/);
-  assert.match(book, /\/book\/assets\/styles\.css\?v=0\.8\.33/);
-  assert.match(book, /\/book\/assets\/app\.js\?v=0\.8\.33/);
-  assert.match(manage, /\/manage\/assets\/styles\.css\?v=0\.8\.33/);
-  assert.match(manage, /\/manage\/assets\/app\.js\?v=0\.8\.33/);
-  assert.match(theme, /const VERSION = '0\.8\.33'/);
+  assert.match(admin, /\/admin\/styles\.css\?v=0\.8\.33\.1&build=0\.8\.33\.1/);
+  assert.match(admin, /\/admin\/app\.js\?v=0\.8\.33\.1&build=0\.8\.33\.1/);
+  assert.match(book, /\/book\/assets\/styles\.css\?v=0\.8\.33\.1/);
+  assert.match(book, /\/book\/assets\/app\.js\?v=0\.8\.33\.1/);
+  assert.match(manage, /\/manage\/assets\/styles\.css\?v=0\.8\.33\.1/);
+  assert.match(manage, /\/manage\/assets\/app\.js\?v=0\.8\.33\.1/);
+  assert.match(theme, /const VERSION = '0\.8\.33\.1'/);
 });

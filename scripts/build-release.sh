@@ -2,9 +2,9 @@
 set -u
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd -P)"
-RELEASE_VERSION="0.8.33"
-RELEASE_LABEL="0.8.33"
-RELEASE_BUILD="store-subscription-popover.1"
+RELEASE_VERSION="0.8.33.1"
+RELEASE_LABEL="0.8.33.1"
+RELEASE_BUILD="store-subscription-popover.2"
 NAME="appointment-lite-v${RELEASE_LABEL}-store-subscription-popover"
 DIST_DIR="$ROOT_DIR/dist"
 STAGE_DIR="${TMPDIR:-/tmp}/${NAME}.$$"
