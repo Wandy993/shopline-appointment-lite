@@ -6,7 +6,7 @@ import vm from 'node:vm';
 const read = path => readFile(new URL(path, import.meta.url), 'utf8');
 
 test('store name links to the storefront and subscription uses a compact popover', async () => {
-  const [view, routes] = await Promise.all([read('../src/views/admin.js'), read('../src/routes/admin.js')]);
+  const [view, routes, app] = await Promise.all([read('../src/views/admin.js'), read('../src/routes/admin.js'), read('../public/admin/app.js')]);
   assert.match(view, /id="storefrontLink"/);
   assert.match(view, /id="subscriptionTopbarLauncher"/);
   assert.match(view, /id="subscriptionPopover"/);
