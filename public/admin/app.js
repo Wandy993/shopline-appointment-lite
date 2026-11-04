@@ -1172,7 +1172,7 @@ function storefrontUrlForShop(shop = state.shop) {
   const rawDomain = String(shop?.primaryDomain || '').trim();
   if (rawDomain) {
     try {
-      const candidate = /^https?:\\/\\//i.test(rawDomain) ? rawDomain : 'https://' + rawDomain;
+      const candidate = rawDomain.includes('://') ? rawDomain : 'https://' + rawDomain;
       const parsed = new URL(candidate);
       if (parsed.protocol === 'https:' && parsed.hostname && !parsed.username && !parsed.password) return parsed.origin + '/';
     } catch { /* Fall back to the SHOPLINE storefront hostname below. */ }
