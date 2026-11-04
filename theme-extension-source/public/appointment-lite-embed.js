@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = '0.8.26';
+  const VERSION = '0.8.32';
   const API_BASE = 'https://appointment.shoplineapp.vip';
   const SELECTOR = '[data-appointment-lite-embed]:not([data-al-embed-ready])';
 
