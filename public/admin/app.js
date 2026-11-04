@@ -3846,10 +3846,10 @@ function bind() {
   window.addEventListener('pageshow', event => { if (event.persisted) void recoverSubscriptionIfNeeded({ force: true }); });
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') void recoverSubscriptionIfNeeded(); });
   renderTemplateTabs();
-  $('.nav-item').forEach(button => button.addEventListener('click', () => requestViewSwitch(button.dataset.view)));
+  $$('.nav-item').forEach(button => button.addEventListener('click', () => requestViewSwitch(button.dataset.view)));
   $('#subscriptionLauncher')?.addEventListener('click', openSubscriptionDialog);
   $('#subscriptionTopbarLauncher')?.addEventListener('click', openSubscriptionDialog);
-  $('[data-close-subscription-dialog]').forEach(button => button.addEventListener('click', () => $('#subscriptionDialog')?.close()));
+  $$('[data-close-subscription-dialog]').forEach(button => button.addEventListener('click', () => $('#subscriptionDialog')?.close()));
   $('#subscriptionDialog')?.addEventListener('click', event => { if (event.target === $('#subscriptionDialog')) $('#subscriptionDialog').close(); });
   $('#startSubscription')?.addEventListener('click', startSubscriptionCheckout);
   $('#syncSubscriptionGate')?.addEventListener('click', refreshSubscription);
