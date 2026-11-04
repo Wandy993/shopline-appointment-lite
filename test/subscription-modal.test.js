@@ -11,6 +11,8 @@ test('store name links to the storefront and subscription uses a compact popover
   assert.match(view, /id="subscriptionTopbarLauncher"/);
   assert.match(view, /id="subscriptionPopover"/);
   assert.doesNotMatch(view, /id="subscriptionDialog"/);
+  assert.doesNotMatch(view, /id="timezoneBadge"/);
+  assert.doesNotMatch(app, /\$\('#timezoneBadge'\)/);
   assert.match(view, /id="subscriptionExpiryNotice"/);
   assert.match(view, /id="billingRenewal"/);
   assert.match(view, /id="billingAutoRenew"/);

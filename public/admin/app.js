@@ -3831,7 +3831,6 @@ async function loadBootstrap({ suppressRecoveryToast = false } = {}) {
   state.archiveMode = state.accessMode === 'archive';
   state.restricted = state.accessMode === 'subscription_required';
   $('#shopBadge').textContent = payload.shop.handle;
-  $('#timezoneBadge').textContent = payload.shop.timezone || 'UTC';
   $('#bookingTimezone').textContent = payload.shop.timezone || 'UTC';
   $('#storeAvatar').textContent = payload.shop.handle.slice(0, 1).toUpperCase();
   await setLocale(payload.shop.adminLocale || 'en', { save: false });
