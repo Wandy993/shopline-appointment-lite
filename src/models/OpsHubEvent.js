@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from '../db/orm.js';
 
 const EVENT_TYPES = [
   'app.heartbeat',

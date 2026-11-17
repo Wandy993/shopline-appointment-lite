@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from '../db/orm.js';
 
 const customerSchema = new mongoose.Schema({
   name: { type: String, default: '', maxlength: 120 },

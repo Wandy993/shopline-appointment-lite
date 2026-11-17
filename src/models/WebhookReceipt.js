@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from '../db/orm.js';
 
 const webhookReceiptSchema = new mongoose.Schema({
   webhookId: { type: String, required: true, unique: true, index: true, maxlength: 120 },
