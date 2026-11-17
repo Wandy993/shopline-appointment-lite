@@ -18,14 +18,6 @@ function publicProfileText(value = '') {
   return normalized;
 }
 
-function publicStaffAvatar(avatar = {}) {
-  if (avatar.kind === 'custom' && /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(String(avatar.value || ''))) return { kind: 'custom', value: avatar.value };
-  if (avatar.kind === 'initials') return { kind: 'initials', value: '' };
-  const preset = Object.hasOwn(staffAvatarPresetFiles, avatar.value) ? avatar.value : 'aurora';
-  const embedded = staffAvatarPresetData.get(preset);
-  return embedded ? { kind: 'custom', value: embedded } : { kind: 'preset', value: preset };
-}
-
 function publicServiceList(values = []) {
   return [...new Set((Array.isArray(values) ? values : []).map(publicProfileText).filter(Boolean))].slice(0, 12);
 }
