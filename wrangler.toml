@@ -1,0 +1,22 @@
+name = "appointment-lite"
+main = "src/worker.js"
+compatibility_date = "2026-11-17"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "appointment-lite"
+database_id = "REPLACE_WITH_CLOUDFLARE_D1_DATABASE_ID"
+migrations_dir = "migrations"
+
+[vars]
+NODE_ENV = "production"
+APP_URL = "https://appointment.shoplineapp.vip"
+SHOPLINE_CALLBACK_PATH = "/auth/callback"
+SHOPLINE_API_VERSION = "v20260301"
+COOKIE_SAME_SITE = "lax"
