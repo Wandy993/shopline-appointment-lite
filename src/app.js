@@ -14,7 +14,7 @@ import { bookingPage } from './views/book.js';
 import { homePage, privacyPage, termsPage, faqPage, preferredLegalLocale } from './views/legal.js';
 import { shoplinePaidBookingWebhook } from './routes/shopline-webhooks.js';
 import { subscriptionRouter } from './routes/subscription.js';
-import { runWithDatabase } from './db/orm.js';
+import { getDatabase, runWithDatabase } from './db/orm.js';
 
 export function createApp({ database = null, assets = null, bookingRateLimiter = null } = {}) {
   const app = express();
@@ -40,7 +40,27 @@ export function createApp({ database = null, assets = null, bookingRateLimiter =
   if (!assets) app.use('/integration-assets', express.static('public/integrations', { maxAge: config.nodeEnv === 'production' ? '1h' : 0 }));
   if (!assets) app.use('/legal/assets', express.static('public/legal', { maxAge: config.nodeEnv === 'production' ? '1h' : 0 }));
 
-  app.get('/health', (req, res) => res.set('Cache-Control', 'no-store').json({ ok: true, service: 'appointment-lite', version: '0.8.33.1', build: '0.8.33.1-store-subscription-popover', release: 'v0.8.33.1-store-subscription-popover' }));
+  app.get('/health', async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    const database = getDatabase();
+    if (!database) {
+      return res.status(503).json({ ok: false, service: 'appointment-lite', checks: { d1: 'unavailable' } });
+    }
+    try {
+      await database.prepare('SELECT COUNT(*) AS count FROM app_documents').first();
+      return res.json({
+        ok: true,
+        service: 'appointment-lite',
+        version: '0.8.33.1',
+        build: '0.8.33.1-store-subscription-popover',
+        release: 'v0.8.33.1-store-subscription-popover',
+        checks: { d1: 'ok' }
+      });
+    } catch (error) {
+      console.error('Appointment Lite D1 health check failed:', error?.message || error);
+      return res.status(503).json({ ok: false, service: 'appointment-lite', checks: { d1: 'failed' } });
+    }
+  });
   const legalHeaders = { 'Cache-Control': 'public, max-age=3600', 'Referrer-Policy': 'strict-origin-when-cross-origin' };
   app.get('/privacy', (req, res) => res.redirect(302, `/${preferredLegalLocale(req.get('accept-language'))}/privacy`));
   app.get('/terms', (req, res) => res.redirect(302, `/${preferredLegalLocale(req.get('accept-language'))}/terms`));
