@@ -45,13 +45,13 @@ export class Schema {
   path(path) {
     const parts = String(path || '').split('.');
     let definition = this.obj;
-    for (const part of parts) {
-      if (!definition || typeof definition !== 'object' || !Object.prototype.hasOwnProperty.call(definition, part)) return undefined;
-      const info = fieldInfo(definition[part]);
-      definition = info.schema ? info.schema.obj : info.nested;
-      if (part === parts[parts.length - 1]) return definition ? definition : fieldInfo(this.obj[part]).options;
+    let info;
+    for (let index = 0; index < parts.length; index += 1) {
+      if (!definition || typeof definition !== 'object' || !Object.prototype.hasOwnProperty.call(definition, parts[index])) return undefined;
+      info = fieldInfo(definition[parts[index]]);
+      if (index < parts.length - 1) definition = info.schema ? info.schema.obj : info.nested;
     }
-    return undefined;
+    return info;
   }
   set() { return this; }
   pre() { return this; }
