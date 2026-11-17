@@ -1,4 +1,5 @@
 name = "shopline-appointment-lite"
+keep_vars = true
 main = "src/worker.js"
 compatibility_date = "2026-11-17"
 compatibility_flags = ["nodejs_compat", "nodejs_compat_populate_process_env"]
