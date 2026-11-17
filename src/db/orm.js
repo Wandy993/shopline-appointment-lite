@@ -969,6 +969,15 @@ function createModel(name, schema) {
     constructor(document = {}) {
       Object.assign(this, applySchemaDefaults(schema, document));
     }
+    validateSync() {
+      try { validateSchema(schema, this); return null; }
+      catch (error) { return error; }
+    }
+    async validate() {
+      const error = this.validateSync();
+      if (error) throw error;
+      return this;
+    }
     async save() {
       await persistDocument(Model, this, null);
       return this;
