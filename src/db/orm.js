@@ -1020,3 +1020,8 @@ const mongoose = {
 };
 
 export default mongoose;
+
+
+let activeDatabase = null;
+export function setDatabase(database) { activeDatabase = database || null; }
+export function getDatabase() { return activeDatabase; }
