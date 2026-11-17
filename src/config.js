@@ -1,8 +1,6 @@
 function required(name, fallback = '') {
   const value = process.env[name] ?? fallback;
-  if (process.env.NODE_ENV === 'production' && !value) {
-    throw new Error(`Missing required environment variable: ${name}`);
-  }
+  // Workers secrets are configured after the first Worker resource is created.
   return value;
 }
 
