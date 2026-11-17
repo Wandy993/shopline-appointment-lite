@@ -25,16 +25,3 @@ CREATE TABLE IF NOT EXISTS app_unique_keys (
 CREATE INDEX IF NOT EXISTS idx_app_unique_keys_document
   ON app_unique_keys(collection, document_id);
 
-CREATE TABLE IF NOT EXISTS staff_reservation_buckets (
-  reservation_id TEXT NOT NULL,
-  shop_id TEXT NOT NULL,
-  staff_id TEXT NOT NULL,
-  bucket_key TEXT NOT NULL,
-  PRIMARY KEY (shop_id, staff_id, bucket_key),
-  FOREIGN KEY (reservation_id)
-    REFERENCES app_documents(id)
-    ON DELETE CASCADE
-) WITHOUT ROWID;
-
-CREATE INDEX IF NOT EXISTS idx_staff_reservation_buckets_reservation
-  ON staff_reservation_buckets(reservation_id);

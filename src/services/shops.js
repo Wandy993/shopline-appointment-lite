@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from '../db/orm.js';
 import { Shop } from '../models/Shop.js';
 
 export function validShopHandle(value) {

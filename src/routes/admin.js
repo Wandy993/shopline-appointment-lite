@@ -487,16 +487,12 @@ function normalizedRuleModelForAdmin(rule = {}) {
 adminRouter.get('/rules', async (req, res) => {
   const [rules, bookingCounts] = await Promise.all([
     AppointmentRule.find({ shopId: req.shop._id }).sort({ updatedAt: -1 }).lean(),
-    Booking.aggregate([
-      { $match: { shopId: req.shop._id } },
-      { $group: {
-        _id: '$ruleId',
-        count: { $sum: 1 },
-        confirmedCount: { $sum: { $cond: [{ $eq: ['$status', 'confirmed'] }, 1, 0] } }
-      } }
-    ])
+    Promise.resolve(null)
   ]);
-  const counts = new Map(bookingCounts.map(item => [String(item._id), { count: Number(item.count || 0), confirmedCount: Number(item.confirmedCount || 0) }]));
+  const counts = new Map(await Promise.all(rules.map(async rule => [String(rule._id), {
+    count: await Booking.countDocuments({ shopId: req.shop._id, ruleId: rule._id }),
+    confirmedCount: await Booking.countDocuments({ shopId: req.shop._id, ruleId: rule._id, status: 'confirmed' })
+  }])));
   res.json({ rules: rules.map(rule => {
     const model = normalizedRuleModelForAdmin(rule);
     return {

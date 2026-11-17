@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
-import mongoose from 'mongoose';
+import mongoose from '../db/orm.js';
 import { AppointmentRule } from '../models/AppointmentRule.js';
 import { Booking } from '../models/Booking.js';
 import { BookingReservation } from '../models/BookingReservation.js';
