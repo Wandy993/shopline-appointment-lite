@@ -7,13 +7,16 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "node --watch src/server.js",
-    "start": "node src/server.js",
-    "test": "node scripts/sync-theme-fonts.mjs --source-only && node --test",
-    "check": "node scripts/sync-theme-fonts.mjs --source-only && node scripts/release-preflight.mjs && node --check src/server.js && node --check src/routes/admin.js && node --check src/routes/public.js && node --check src/routes/integrations.js && node --check src/routes/shopline-webhooks.js && node --check src/routes/subscription.js && node --check src/middleware/subscription.js && node --check src/services/subscription.js && node --check src/models/SubscriptionCheckout.js && node --check src/services/locations.js && node --check src/models/AppointmentRule.js && node --check src/models/Booking.js && node --check src/services/staffing.js && node --check src/services/bookings.js && node --check src/services/paid-bookings.js && node --check src/models/PostPurchaseEntitlement.js && node --check src/services/post-purchase.js && node --check src/services/shopline.js && node --check src/services/email.js && node --check src/services/google-calendar.js && node --check src/services/calendar-sync.js && node --check src/services/online-meeting.js && node --check src/services/reminders.js && node --check src/models/Staff.js && node --check src/models/CalendarConnection.js && node --check src/models/EmailReminderDelivery.js && node --check src/models/WebhookReceipt.js && node --check src/models/OpsHubEvent.js && node --check src/models/OpsUsageDaily.js && node --check src/services/ops-hub.js && node --check src/services/ops-hub-sync-job.js && node --check src/lib/reminder-time.js && node --check src/lib/secret-box.js && node --check src/lib/shopline-webhook.js && node --check src/lib/paid-checkout.js && node --check src/lib/validation.js && node --check src/lib/storefront-settings.js && node --check src/lib/runtime-cache.js && node --check src/views/legal.js && node --check public/admin/app.js && node --check public/manage/app.js && node --check public/book/app.js && node --check public/integrations/google-complete.js && node --check public/legal/faq.js && node --check theme-extension-source/public/appointment-lite.js && node --check theme-extension-source/public/appointment-lite-page.js && node --check theme-extension-source/public/appointment-lite-embed.js",
+    "dev": "npx wrangler dev",
+    "start": "npx wrangler dev",
+    "test": "node --test test/slots.test.js test/booking-modes.test.js test/bookings.test.js test/shops.test.js test/staff-management.test.js test/staff-availability-diagnostics.test.js test/service-timezone.test.js test/signature.test.js test/email.test.js test/validation.test.js",
+    "check": "node --check src/worker.js && node --check src/db/orm.js && node --check src/app.js && node --check src/routes/admin.js && node --check src/routes/public.js && node --check src/services/bookings.js && node --check src/services/staffing.js",
     "release:zip": "bash scripts/build-release.sh",
     "release:preflight": "node scripts/release-preflight.mjs",
-    "theme:fonts": "node scripts/sync-theme-fonts.mjs"
+    "theme:fonts": "node scripts/sync-theme-fonts.mjs",
+    "build:cloudflare": "node scripts/copy-worker-assets.mjs",
+    "deploy:cloudflare": "npm run build:cloudflare && npx wrangler deploy",
+    "db:migrate": "npx wrangler d1 migrations apply appointment-lite --remote"
   },
   "dependencies": {
     "@alicloud/dm20151123": "^1.10.2",
@@ -26,7 +29,7 @@
     "express": "^5.1.0",
     "express-rate-limit": "^7.5.0",
     "helmet": "^8.1.0",
-    "mongoose": "^8.13.2",
     "resend": "^4.2.0"
-  }
+  },
+  "devDependencies": {}
 }

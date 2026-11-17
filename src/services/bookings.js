@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from '../db/orm.js';
 import { createHash, randomBytes } from 'node:crypto';
 import { AppointmentRule } from '../models/AppointmentRule.js';
 import { Booking } from '../models/Booking.js';

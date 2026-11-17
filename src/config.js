@@ -1,10 +1,6 @@
-import 'dotenv/config';
-
 function required(name, fallback = '') {
   const value = process.env[name] ?? fallback;
-  if (process.env.NODE_ENV === 'production' && !value) {
-    throw new Error(`Missing required environment variable: ${name}`);
-  }
+  // Workers secrets are configured after the first Worker resource is created.
   return value;
 }
 
@@ -26,8 +22,6 @@ export const config = Object.freeze({
   nodeEnv: process.env.NODE_ENV || 'development',
   port: Number(process.env.PORT || 3000),
   appUrl,
-  mongoUri: required('MONGODB_URI', 'mongodb://127.0.0.1:27017/appointment-lite'),
-  mongoDbName: process.env.MONGODB_DB_NAME || 'shopline_appointment_lite',
   shopline: {
     appKey: required('SHOPLINE_APP_KEY'),
     appSecret: required('SHOPLINE_APP_SECRET'),

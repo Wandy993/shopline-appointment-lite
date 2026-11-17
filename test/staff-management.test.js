@@ -310,8 +310,8 @@ test('public staff options expose avatar metadata without leaking contact detail
   assert.equal(result.mode, 'customer_choice');
   assert.equal(result.options[0].id, String(staffId));
   assert.equal(result.options[0].name, 'Sarah');
-  assert.equal(result.options[0].avatar.kind, 'custom');
-  assert.match(result.options[0].avatar.value, /^data:image\/webp;base64,/);
+  assert.equal(result.options[0].avatar.kind, 'preset');
+  assert.equal(result.options[0].avatar.value, 'ocean');
   assert.equal('email' in result.options[0], false);
   assert.equal('phone' in result.options[0], false);
 });

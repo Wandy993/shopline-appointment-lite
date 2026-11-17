@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from '../db/orm.js';
 
 const answerSchema = new mongoose.Schema({
   question: { type: String, required: true, maxlength: 120 },

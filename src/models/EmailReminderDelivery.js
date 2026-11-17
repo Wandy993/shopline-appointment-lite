@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from '../db/orm.js';
 const schema = new mongoose.Schema({
   bookingId:{type:mongoose.Schema.Types.ObjectId,ref:'Booking',required:true,index:true}, shopId:{type:mongoose.Schema.Types.ObjectId,ref:'Shop',required:true,index:true},
   occurrenceKey:{type:String,required:true,maxlength:300}, audience:{type:String,enum:['customer','merchant'],required:true}, leadHours:{type:Number,default:24},

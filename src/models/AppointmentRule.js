@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from '../db/orm.js';
 
 const windowSchema = new mongoose.Schema({
   start: { type: String, required: true, match: /^([01]\d|2[0-3]):[0-5]\d$/ },

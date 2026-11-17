@@ -1,33 +1,21 @@
-import mongoose from 'mongoose';
-import { readFileSync } from 'node:fs';
+import mongoose from '../db/orm.js';
 import { Staff } from '../models/Staff.js';
 import { StaffReservation } from '../models/StaffReservation.js';
 import { bookingModeFor, minutesFromTime, windowsForDate, isDateAllowed } from '../lib/slots.js';
 
 const staffAvatarPresetFiles = { aurora:'staff-1.webp', ocean:'staff-2.webp', mint:'staff-3.webp', peach:'staff-4.webp', violet:'staff-5.webp', sunset:'staff-6.webp', sky:'staff-7.webp', rose:'staff-8.webp', nova:'staff-9.webp' };
-const staffAvatarPresetData = new Map(Object.entries(staffAvatarPresetFiles).map(([preset, file]) => {
-  try {
-    const bytes = readFileSync(new URL(`../../public/staff-avatars/${file}`, import.meta.url));
-    return [preset, `data:image/webp;base64,${bytes.toString('base64')}`];
-  } catch {
-    return [preset, ''];
-  }
-}));
-
+function publicStaffAvatar(avatar = {}) {
+  if (avatar.kind === 'custom' && /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(String(avatar.value || ''))) return { kind: 'custom', value: avatar.value };
+  if (avatar.kind === 'initials') return { kind: 'initials', value: '' };
+  const preset = Object.hasOwn(staffAvatarPresetFiles, avatar.value) ? avatar.value : 'aurora';
+  return { kind: 'preset', value: preset };
+}
 function publicProfileText(value = '') {
   const normalized = String(value || '').trim();
   if (!normalized) return '';
   if (/^(?:select|choose)\s+(?:a\s+)?(?:state|region|location|option)(?:\.\.\.)?$/i.test(normalized)) return '';
   if (/^(?:undefined|null|n\/?a|none)$/i.test(normalized)) return '';
   return normalized;
-}
-
-function publicStaffAvatar(avatar = {}) {
-  if (avatar.kind === 'custom' && /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(String(avatar.value || ''))) return { kind: 'custom', value: avatar.value };
-  if (avatar.kind === 'initials') return { kind: 'initials', value: '' };
-  const preset = Object.hasOwn(staffAvatarPresetFiles, avatar.value) ? avatar.value : 'aurora';
-  const embedded = staffAvatarPresetData.get(preset);
-  return embedded ? { kind: 'custom', value: embedded } : { kind: 'preset', value: preset };
 }
 
 function publicServiceList(values = []) {

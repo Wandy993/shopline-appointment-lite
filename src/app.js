@@ -14,9 +14,11 @@ import { bookingPage } from './views/book.js';
 import { homePage, privacyPage, termsPage, faqPage, preferredLegalLocale } from './views/legal.js';
 import { shoplinePaidBookingWebhook } from './routes/shopline-webhooks.js';
 import { subscriptionRouter } from './routes/subscription.js';
+import { runWithDatabase } from './db/orm.js';
 
-export function createApp() {
+export function createApp({ database = null, assets = null } = {}) {
   const app = express();
+  if (database) app.use((req, res, next) => runWithDatabase(database, next));
   app.set('trust proxy', 1);
   app.disable('x-powered-by');
   app.use(helmet({ contentSecurityPolicy: {
@@ -28,14 +30,14 @@ export function createApp() {
   app.post('/webhooks/shopline', express.raw({ type: 'application/json', limit: '1mb' }), shoplinePaidBookingWebhook);
   app.use(express.json({ limit: '100kb' }));
   app.use(express.urlencoded({ extended: false, limit: '20kb' }));
-  app.use('/admin', express.static('public/admin', { maxAge: 0, etag: true, setHeaders(res) { res.setHeader('Cache-Control', 'no-store'); } }));
-  app.use('/customer-fonts/jost', express.static('node_modules/@fontsource/jost/files', { maxAge: '365d', immutable: true }));
-  app.use('/customer-fonts/poppins', express.static('node_modules/@fontsource/poppins/files', { maxAge: '365d', immutable: true }));
-  app.use('/assets/staff', express.static('public/staff-avatars', { maxAge: config.nodeEnv === 'production' ? '7d' : 0 }));
-  app.use('/manage/assets', express.static('public/manage', { maxAge: config.nodeEnv === 'production' ? '1h' : 0 }));
-  app.use('/book/assets', express.static('public/book', { maxAge: config.nodeEnv === 'production' ? '1h' : 0 }));
-  app.use('/integration-assets', express.static('public/integrations', { maxAge: config.nodeEnv === 'production' ? '1h' : 0 }));
-  app.use('/legal/assets', express.static('public/legal', { maxAge: config.nodeEnv === 'production' ? '1h' : 0 }));
+  if (!assets) app.use('/admin', express.static('public/admin', { maxAge: 0, etag: true, setHeaders(res) { res.setHeader('Cache-Control', 'no-store'); } }));
+  if (!assets) app.use('/customer-fonts/jost', express.static('node_modules/@fontsource/jost/files', { maxAge: '365d', immutable: true }));
+  if (!assets) app.use('/customer-fonts/poppins', express.static('node_modules/@fontsource/poppins/files', { maxAge: '365d', immutable: true }));
+  if (!assets) app.use('/assets/staff', express.static('public/staff-avatars', { maxAge: config.nodeEnv === 'production' ? '7d' : 0 }));
+  if (!assets) app.use('/manage/assets', express.static('public/manage', { maxAge: config.nodeEnv === 'production' ? '1h' : 0 }));
+  if (!assets) app.use('/book/assets', express.static('public/book', { maxAge: config.nodeEnv === 'production' ? '1h' : 0 }));
+  if (!assets) app.use('/integration-assets', express.static('public/integrations', { maxAge: config.nodeEnv === 'production' ? '1h' : 0 }));
+  if (!assets) app.use('/legal/assets', express.static('public/legal', { maxAge: config.nodeEnv === 'production' ? '1h' : 0 }));
 
   app.get('/health', (req, res) => res.set('Cache-Control', 'no-store').json({ ok: true, service: 'appointment-lite', version: '0.8.33.1', build: '0.8.33.1-store-subscription-popover', release: 'v0.8.33.1-store-subscription-popover' }));
   const legalHeaders = { 'Cache-Control': 'public, max-age=3600', 'Referrer-Policy': 'strict-origin-when-cross-origin' };
@@ -74,6 +76,24 @@ export function createApp() {
     },
     methods: ['GET', 'POST'], allowedHeaders: ['Content-Type']
   }), publicRouter);
+  if (assets) {
+    app.use(async (req, res, next) => {
+      if (!['GET', 'HEAD'].includes(req.method)) return next();
+      try {
+        const headers = new Headers();
+        for (const [key, value] of Object.entries(req.headers || {})) {
+          if (value != null) headers.set(key, Array.isArray(value) ? value.join(', ') : String(value));
+        }
+        const target = new URL(req.originalUrl || req.url, config.appUrl);
+        const response = await assets.fetch(new Request(target, { method: req.method, headers }));
+        if (response.status === 404) return next();
+        res.status(response.status);
+        response.headers.forEach((value, key) => res.setHeader(key, value));
+        if (req.method === 'HEAD') return res.end();
+        res.send(Buffer.from(await response.arrayBuffer()));
+      } catch (error) { next(error); }
+    });
+  }
   app.use(notFound);
   app.use(errorHandler);
   return app;

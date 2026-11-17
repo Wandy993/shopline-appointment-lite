@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from '../db/orm.js';
 
 const emailTemplateSchema = new mongoose.Schema({
   subject: { type: String, maxlength: 180 },
