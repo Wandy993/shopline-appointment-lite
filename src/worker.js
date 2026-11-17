@@ -1,5 +1,5 @@
 import { env } from 'cloudflare:workers';
-import { httpServerHandler } from 'cloudflare:node';
+import { handleAsNodeRequest } from 'cloudflare:node';
 import { createApp } from './app.js';
 import { assertProductionConfig } from './config.js';
 import { runWithDatabase } from './db/orm.js';
@@ -28,8 +28,6 @@ async function runScheduledJobs(database) {
   });
 }
 
-const handleHttp = httpServerHandler({ port: 3000 });
-
 export default {
   fetch(request, bindings, context) {
     try {
@@ -41,7 +39,7 @@ export default {
         headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }
       });
     }
-    return handleHttp(request, bindings, context);
+    return handleAsNodeRequest(3000, request);
   },
   scheduled(controller, bindings, context) {
     context.waitUntil(runScheduledJobs(bindings.DB).then(result => {
