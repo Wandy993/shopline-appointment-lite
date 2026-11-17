@@ -1,7 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 
 import { randomBytes } from 'node:crypto';
-import { getDatabase } from '../db.js';
 
 const OBJECT_ID_RE = /^[a-f0-9]{24}$/i;
 const ARRAY_PATHS = new Set([
