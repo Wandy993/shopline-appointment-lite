@@ -7,16 +7,16 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "wrangler dev",
-    "start": "wrangler dev",
+    "dev": "npx wrangler dev",
+    "start": "npx wrangler dev",
     "test": "node scripts/sync-theme-fonts.mjs --source-only && node --test",
     "check": "node --check src/worker.js && node --check src/db/orm.js && node --check src/app.js && node --check src/routes/admin.js && node --check src/routes/public.js && node --check src/services/bookings.js && node --check src/services/staffing.js",
     "release:zip": "bash scripts/build-release.sh",
     "release:preflight": "node scripts/release-preflight.mjs",
     "theme:fonts": "node scripts/sync-theme-fonts.mjs",
     "build:cloudflare": "node scripts/copy-worker-assets.mjs",
-    "deploy:cloudflare": "npm run build:cloudflare && wrangler deploy",
-    "db:migrate": "wrangler d1 migrations apply appointment-lite --remote"
+    "deploy:cloudflare": "npm run build:cloudflare && npx wrangler deploy",
+    "db:migrate": "npx wrangler d1 migrations apply appointment-lite --remote"
   },
   "dependencies": {
     "@alicloud/dm20151123": "^1.10.2",
@@ -31,7 +31,5 @@
     "helmet": "^8.1.0",
     "resend": "^4.2.0"
   },
-  "devDependencies": {
-    "wrangler": "^4.45.0"
-  }
+  "devDependencies": {}
 }
