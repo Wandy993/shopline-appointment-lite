@@ -1,9 +1,11 @@
 import { env } from 'cloudflare:workers';
 import { httpServerHandler } from 'cloudflare:node';
 import { createApp } from './app.js';
+import { assertProductionConfig } from './config.js';
 import { runWithDatabase } from './db/orm.js';
 import { processUpcomingEmailReminders } from './services/reminders.js';
-import { reconcilePendingCommercePayments, expirePendingPaidBookings } from './services/paid-bookings.js';
+import { reconcilePendingCommercePayments } from './services/paid-bookings.js';
+import { expirePendingPaidBookings } from './services/bookings.js';
 import { processPostPurchaseScheduleNotifications } from './services/post-purchase.js';
 import { queueDailyUsageSnapshots, flushOpsHubOutbox, requeueRecoverableOutboxEvents, opsHubConfigured } from './services/ops-hub.js';
 
@@ -26,8 +28,21 @@ async function runScheduledJobs(database) {
   });
 }
 
+const handleHttp = httpServerHandler({ port: 3000 });
+
 export default {
-  fetch: httpServerHandler({ port: 3000 }),
+  fetch(request, bindings, context) {
+    try {
+      assertProductionConfig();
+    } catch (error) {
+      console.error('Appointment Lite configuration is incomplete:', error.message);
+      return new Response(JSON.stringify({ ok: false, error: 'Service configuration is incomplete.' }), {
+        status: 503,
+        headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }
+      });
+    }
+    return handleHttp(request, bindings, context);
+  },
   scheduled(controller, bindings, context) {
     context.waitUntil(runScheduledJobs(bindings.DB).then(result => {
       console.info('Appointment Lite scheduled tasks completed', result);

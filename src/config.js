@@ -99,6 +99,7 @@ export function assertProductionConfig() {
     throw new Error('SESSION_SECRET must be at least 32 characters in production');
   }
   if (!config.appUrl.startsWith('https://')) throw new Error('APP_URL must use HTTPS in production');
+  if (!config.shopline.appKey || !config.shopline.appSecret) throw new Error('SHOPLINE_APP_KEY and SHOPLINE_APP_SECRET are required in production');
   if (config.subscription.enabled && !config.subscription.partnerToken) throw new Error('SHOPLINE_PARTNER_TOKEN is required when SHOPLINE_SUBSCRIPTION_ENABLED=true');
   if (config.subscription.enabled && !config.subscription.spuKey) throw new Error('SHOPLINE_SUBSCRIPTION_SPU_KEY is required when SHOPLINE_SUBSCRIPTION_ENABLED=true');
 }
