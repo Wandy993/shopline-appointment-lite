@@ -85,8 +85,16 @@ export default {
   fetch(request) {
     const issues = getProductionConfigIssues();
     if (issues.length) {
-      console.error('Appointment Lite configuration is incomplete:', issues);
-      return new Response(JSON.stringify({ ok: false, error: 'Service configuration is incomplete.', issues }), {
+      const bindingStatus = {
+        shoplineAppKey: Boolean(env.SHOPLINE_APP_KEY),
+        shoplineAppSecret: Boolean(env.SHOPLINE_APP_SECRET),
+        sessionSecret: Boolean(env.SESSION_SECRET),
+        processEnvAppKey: Boolean(process.env.SHOPLINE_APP_KEY),
+        processEnvAppSecret: Boolean(process.env.SHOPLINE_APP_SECRET),
+        processEnvSessionSecret: Boolean(process.env.SESSION_SECRET)
+      };
+      console.error('Appointment Lite configuration is incomplete:', { issues, bindingStatus });
+      return new Response(JSON.stringify({ ok: false, error: 'Service configuration is incomplete.', issues, bindingStatus }), {
         status: 503,
         headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }
       });
