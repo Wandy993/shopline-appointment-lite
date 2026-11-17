@@ -93,13 +93,22 @@ export const config = Object.freeze({
   }
 });
 
-export function assertProductionConfig() {
-  if (config.nodeEnv !== 'production') return;
+export function getProductionConfigIssues() {
+  if (config.nodeEnv !== 'production') return [];
+
+  const issues = [];
   if (config.sessionSecret === 'development-only-change-me' || config.sessionSecret.length < 32) {
-    throw new Error('SESSION_SECRET must be at least 32 characters in production');
+    issues.push(config.sessionSecret === 'development-only-change-me' ? 'SESSION_SECRET_MISSING' : 'SESSION_SECRET_TOO_SHORT');
   }
-  if (!config.appUrl.startsWith('https://')) throw new Error('APP_URL must use HTTPS in production');
-  if (!config.shopline.appKey || !config.shopline.appSecret) throw new Error('SHOPLINE_APP_KEY and SHOPLINE_APP_SECRET are required in production');
-  if (config.subscription.enabled && !config.subscription.partnerToken) throw new Error('SHOPLINE_PARTNER_TOKEN is required when SHOPLINE_SUBSCRIPTION_ENABLED=true');
-  if (config.subscription.enabled && !config.subscription.spuKey) throw new Error('SHOPLINE_SUBSCRIPTION_SPU_KEY is required when SHOPLINE_SUBSCRIPTION_ENABLED=true');
+  if (!config.appUrl.startsWith('https://')) issues.push('APP_URL_MUST_USE_HTTPS');
+  if (!config.shopline.appKey) issues.push('SHOPLINE_APP_KEY_MISSING');
+  if (!config.shopline.appSecret) issues.push('SHOPLINE_APP_SECRET_MISSING');
+  if (config.subscription.enabled && !config.subscription.partnerToken) issues.push('SHOPLINE_PARTNER_TOKEN_REQUIRED');
+  if (config.subscription.enabled && !config.subscription.spuKey) issues.push('SHOPLINE_SUBSCRIPTION_SPU_KEY_REQUIRED');
+  return issues;
+}
+
+export function assertProductionConfig() {
+  const issues = getProductionConfigIssues();
+  if (issues.length) throw new Error('Production configuration issues: ' + issues.join(', '));
 }

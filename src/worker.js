@@ -40,7 +40,7 @@ for (const key of CONFIG_ENV_KEYS) {
 // Dynamic imports are intentional: config.js reads process.env at module load.
 const [
   { createApp },
-  { assertProductionConfig },
+  { getProductionConfigIssues },
   { runWithDatabase },
   { processUpcomingEmailReminders },
   { reconcilePendingCommercePayments },
@@ -83,11 +83,10 @@ async function runScheduledJobs(database) {
 
 export default {
   fetch(request) {
-    try {
-      assertProductionConfig();
-    } catch (error) {
-      console.error('Appointment Lite configuration is incomplete:', error.message);
-      return new Response(JSON.stringify({ ok: false, error: 'Service configuration is incomplete.' }), {
+    const issues = getProductionConfigIssues();
+    if (issues.length) {
+      console.error('Appointment Lite configuration is incomplete:', issues);
+      return new Response(JSON.stringify({ ok: false, error: 'Service configuration is incomplete.', issues }), {
         status: 503,
         headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }
       });
