@@ -970,7 +970,7 @@ function createModel(name, schema) {
       Object.assign(this, applySchemaDefaults(schema, document));
     }
     validateSync() {
-      try { validateSchema(schema, this); return null; }
+      try { validateSchema(schema, this); return undefined; }
       catch (error) { return error; }
     }
     async validate() {
