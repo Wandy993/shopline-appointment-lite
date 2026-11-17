@@ -39,6 +39,20 @@ export class Schema {
     this._indexes.push({ fields, options });
     return this;
   }
+  indexes() {
+    return this._indexes.map(item => [cloneValue(item.fields), cloneValue(item.options)]);
+  }
+  path(path) {
+    const parts = String(path || '').split('.');
+    let definition = this.obj;
+    for (const part of parts) {
+      if (!definition || typeof definition !== 'object' || !Object.prototype.hasOwnProperty.call(definition, part)) return undefined;
+      const info = fieldInfo(definition[part]);
+      definition = info.schema ? info.schema.obj : info.nested;
+      if (part === parts[parts.length - 1]) return definition ? definition : fieldInfo(this.obj[part]).options;
+    }
+    return undefined;
+  }
   set() { return this; }
   pre() { return this; }
   post() { return this; }
