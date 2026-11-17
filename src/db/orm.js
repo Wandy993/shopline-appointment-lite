@@ -1,3 +1,5 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
+
 import { randomBytes } from 'node:crypto';
 import { getDatabase } from '../db.js';
 
@@ -626,32 +628,36 @@ function duplicateError(message) {
 }
 
 function uniqueKeys(collection, document) {
-  const key = (...parts) => parts.map(value => value == null ? '' : String(value)).join('|');
+  const key = (kind, ...parts) => collection + ':' + kind + ':' + JSON.stringify(parts.map(value => value == null ? null : String(value)));
   const result = [];
+  const add = (kind, ...parts) => result.push(key(kind, ...parts));
+
   if (collection === 'Shop') {
-    if (document.handle) result.push('handle:' + document.handle);
-    if (document.shoplineStoreId) result.push('store:' + document.shoplineStoreId);
+    add('handle', document.handle);
+    if (document.shoplineStoreId) add('store', document.shoplineStoreId);
   } else if (collection === 'BookingReservation') {
-    result.push('capacity:' + key(document.shopId, document.ruleId, document.slotKey, document.slotPosition));
+    add('capacity', document.shopId, document.ruleId, document.slotKey, document.slotPosition);
   } else if (collection === 'Booking' && document.status === 'confirmed') {
-    result.push('capacity:' + key(document.shopId, document.ruleId, document.slotKey, document.slotPosition));
+    add('capacity', document.shopId, document.ruleId, document.slotKey, document.slotPosition);
   } else if (collection === 'StaffReservation') {
-    result.push('occurrence:' + key(document.shopId, document.staffId, document.ruleId, document.slotKey));
-    for (const bucket of document.bucketKeys || []) result.push('bucket:' + key(document.shopId, document.staffId, bucket));
+    add('occurrence', document.shopId, document.staffId, document.ruleId, document.slotKey);
+    for (const bucket of document.bucketKeys || []) add('bucket', document.shopId, document.staffId, bucket);
   } else if (collection === 'CalendarConnection') {
-    result.push('calendar:' + key(document.shopId, document.staffId, document.provider));
+    add('staff-calendar', document.shopId, document.staffId, document.provider);
+    if (document.connectionType === 'business') add('business-calendar', document.shopId, document.provider);
   } else if (collection === 'EmailReminderDelivery') {
-    result.push('reminder:' + key(document.bookingId, document.occurrenceKey, document.audience));
+    add('reminder', document.bookingId, document.occurrenceKey, document.audience);
   } else if (collection === 'OpsUsageDaily') {
-    result.push('usage:' + key(document.date, document.shopId));
+    add('usage', document.date, document.shopId);
   } else if (collection === 'PostPurchaseEntitlement') {
-    result.push('entitlement:' + key(document.shopId, document.ruleId, document.orderId));
+    add('entitlement', document.shopId, document.ruleId, document.orderId);
   } else if (collection === 'SubscriptionCheckout') {
-    result.push('checkout:' + key(document.outTradeNo));
+    add('checkout', document.outTradeNo);
   } else if (collection === 'WebhookReceipt') {
-    result.push('webhook:' + key(document.webhookId));
+    add('webhook', document.webhookId);
   }
-  return result;
+
+  return [...new Set(result)];
 }
 
 function assertMemoryUnique(collection, document, excludeId = '') {
@@ -679,15 +685,14 @@ async function insertRow(Model, document) {
   const database = getDatabase();
   try {
     if (database) {
+      const now = new Date().toISOString();
       const statements = [
         database.prepare('INSERT INTO app_documents (collection, id, payload, created_at, updated_at) VALUES (?, ?, ?, ?, ?)')
-          .bind(collection, id, raw, document.createdAt instanceof Date ? document.createdAt.toISOString() : new Date().toISOString(), document.updatedAt instanceof Date ? document.updatedAt.toISOString() : new Date().toISOString())
+          .bind(collection, id, raw, document.createdAt instanceof Date ? document.createdAt.toISOString() : now, document.updatedAt instanceof Date ? document.updatedAt.toISOString() : now)
       ];
-      if (collection === 'StaffReservation') {
-        for (const bucketKey of document.bucketKeys || []) {
-          statements.push(database.prepare('INSERT INTO staff_reservation_buckets (reservation_id, shop_id, staff_id, bucket_key) VALUES (?, ?, ?, ?)')
-            .bind(id, String(document.shopId), String(document.staffId), String(bucketKey)));
-        }
+      for (const uniqueKey of uniqueKeys(collection, document)) {
+        statements.push(database.prepare('INSERT INTO app_unique_keys (unique_key, collection, document_id) VALUES (?, ?, ?)')
+          .bind(uniqueKey, collection, id));
       }
       await database.batch(statements);
     } else {
@@ -706,9 +711,20 @@ async function compareAndSwap(Model, row, document) {
   const database = getDatabase();
   try {
     if (database) {
-      const result = await database.prepare('UPDATE app_documents SET payload = ?, updated_at = ? WHERE collection = ? AND id = ? AND payload = ?')
-        .bind(raw, document.updatedAt instanceof Date ? document.updatedAt.toISOString() : new Date().toISOString(), collection, row.id, row.raw).run();
-      return Number(result.meta?.changes || 0) > 0;
+      const now = document.updatedAt instanceof Date ? document.updatedAt.toISOString() : new Date().toISOString();
+      const guarded = 'EXISTS (SELECT 1 FROM app_documents WHERE collection = ? AND id = ? AND payload = ?)';
+      const statements = [
+        database.prepare('UPDATE app_documents SET payload = ?, updated_at = ? WHERE collection = ? AND id = ? AND payload = ?')
+          .bind(raw, now, collection, row.id, row.raw),
+        database.prepare('DELETE FROM app_unique_keys WHERE collection = ? AND document_id = ? AND ' + guarded)
+          .bind(collection, row.id, collection, row.id, raw)
+      ];
+      for (const uniqueKey of uniqueKeys(collection, document)) {
+        statements.push(database.prepare('INSERT INTO app_unique_keys (unique_key, collection, document_id) SELECT ?, ?, ? WHERE ' + guarded)
+          .bind(uniqueKey, collection, row.id, collection, row.id, raw));
+      }
+      const results = await database.batch(statements);
+      return Number(results[0]?.meta?.changes || 0) > 0;
     }
     const store = memoryStore(collection);
     if (store.get(row.id) !== row.raw) return false;
@@ -734,14 +750,11 @@ async function deleteRows(Model, rows) {
     const chunk = rows.slice(offset, offset + 400);
     const ids = chunk.map(row => row.id);
     const placeholders = ids.map(() => '?').join(',');
-    const statements = [];
-    if (collection === 'StaffReservation') {
-      statements.push(database.prepare('DELETE FROM staff_reservation_buckets WHERE reservation_id IN (' + placeholders + ')').bind(...ids));
-    }
-    statements.push(database.prepare('DELETE FROM app_documents WHERE collection = ? AND id IN (' + placeholders + ')').bind(collection, ...ids));
-    const results = await database.batch(statements);
-    const last = results[results.length - 1];
-    deleted += Number(last?.meta?.changes || chunk.length);
+    const results = await database.batch([
+      database.prepare('DELETE FROM app_unique_keys WHERE collection = ? AND document_id IN (' + placeholders + ')').bind(collection, ...ids),
+      database.prepare('DELETE FROM app_documents WHERE collection = ? AND id IN (' + placeholders + ')').bind(collection, ...ids)
+    ]);
+    deleted += Number(results[1]?.meta?.changes || 0);
   }
   return deleted;
 }
@@ -883,13 +896,24 @@ async function executeUpdate(Model, filter, update, options = {}, many = false) 
     await insertRow(Model, next);
     return { acknowledged: true, matchedCount: 0, modifiedCount: 0, upsertedId: String(next._id) };
   }
+
   let modifiedCount = 0;
-  for (const row of targets) {
-    const next = applyUpdate(row.document, update, false);
-    next._id = row.id;
-    addTimestamps(Model, next, false);
-    if (options.runValidators) validateSchema(Model.schema, next);
-    if (await compareAndSwap(Model, row, next)) modifiedCount += 1;
+  for (const original of targets) {
+    let current = original;
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      const next = applyUpdate(current.document, update, false);
+      next._id = current.id;
+      addTimestamps(Model, next, false);
+      if (options.runValidators) validateSchema(Model.schema, next);
+      if (await compareAndSwap(Model, current, next)) {
+        modifiedCount += 1;
+        break;
+      }
+      const latest = await loadRows(Model.modelName, { _id: current.id });
+      const refreshed = latest.find(row => matchesFilter(row.document, filter));
+      if (!refreshed) break;
+      current = refreshed;
+    }
   }
   return { acknowledged: true, matchedCount: targets.length, modifiedCount, upsertedId: null };
 }
@@ -903,6 +927,7 @@ async function executeDelete(Model, filter, one = false) {
 class Query {
   constructor(executor) {
     this.executor = executor;
+    this.database = getDatabase();
     this.options = { projection: null, lean: false, sort: null, limit: null, skip: 0 };
     this.promise = null;
   }
@@ -914,7 +939,10 @@ class Query {
   populate() { return this; }
   setOptions() { return this; }
   exec() {
-    if (!this.promise) this.promise = Promise.resolve().then(() => this.executor(this.options));
+    if (!this.promise) {
+      const execute = () => Promise.resolve().then(() => this.executor(this.options));
+      this.promise = this.database ? databaseStorage.run(this.database, execute) : execute();
+    }
     return this.promise;
   }
   then(resolve, reject) { return this.exec().then(resolve, reject); }
@@ -1022,6 +1050,15 @@ const mongoose = {
 export default mongoose;
 
 
-let activeDatabase = null;
-export function setDatabase(database) { activeDatabase = database || null; }
-export function getDatabase() { return activeDatabase; }
+const databaseStorage = new AsyncLocalStorage();
+
+export function runWithDatabase(database, callback) {
+  if (!database || typeof database.prepare !== 'function') {
+    throw new Error('Cloudflare D1 binding "DB" is required for persistent storage.');
+  }
+  return databaseStorage.run(database, callback);
+}
+
+export function getDatabase() {
+  return databaseStorage.getStore() || null;
+}
