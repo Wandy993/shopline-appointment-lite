@@ -1,4 +1,4 @@
-name = "appointment-lite"
+name = "shopline-appointment-lite"
 main = "src/worker.js"
 compatibility_date = "2026-11-17"
 compatibility_flags = ["nodejs_compat", "nodejs_compat_populate_process_env"]
@@ -24,3 +24,11 @@ OPS_HUB_ENABLED = "false"
 
 [triggers]
 crons = ["* * * * *"]
+
+[[ratelimits]]
+name = "BOOKING_RATE_LIMITER"
+namespace_id = "2026111701"
+
+  [ratelimits.simple]
+  limit = 10
+  period = 60

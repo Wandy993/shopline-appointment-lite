@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import rateLimit from 'express-rate-limit';
+import { createBookingRateLimitMiddleware } from '../middleware/booking-rate-limit.js';
 import mongoose from '../db/orm.js';
 import { AppointmentRule } from '../models/AppointmentRule.js';
 import { Booking } from '../models/Booking.js';
@@ -22,7 +22,7 @@ export const publicRouter = Router();
 const publicContextCache = new TinyTtlCache({ ttlMs: 4000, maxEntries: 300 });
 const publicStaffCache = new TinyTtlCache({ ttlMs: 4000, maxEntries: 300 });
 const runAvailabilitySingleFlight = createSingleFlight();
-const bookingLimiter = rateLimit({ windowMs: 60_000, limit: 10, standardHeaders: true, legacyHeaders: false, message: { error: 'RATE_LIMITED', message: 'Too many attempts. Please wait a minute.' } });
+const bookingLimiter = createBookingRateLimitMiddleware({ windowMs: 60_000, limit: 10 });
 
 function validBookingId(value) { return /^[a-f\d]{24}$/i.test(String(value || '')); }
 function validRuleId(value) { return mongoose.isValidObjectId(String(value || '')); }

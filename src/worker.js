@@ -9,7 +9,7 @@ import { expirePendingPaidBookings } from './services/bookings.js';
 import { processPostPurchaseScheduleNotifications } from './services/post-purchase.js';
 import { queueDailyUsageSnapshots, flushOpsHubOutbox, requeueRecoverableOutboxEvents, opsHubConfigured } from './services/ops-hub.js';
 
-const app = createApp({ database: env.DB, assets: env.ASSETS });
+const app = createApp({ database: env.DB, assets: env.ASSETS, bookingRateLimiter: env.BOOKING_RATE_LIMITER });
 app.listen(3000);
 
 async function runScheduledJobs(database) {

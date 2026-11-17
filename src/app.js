@@ -16,8 +16,9 @@ import { shoplinePaidBookingWebhook } from './routes/shopline-webhooks.js';
 import { subscriptionRouter } from './routes/subscription.js';
 import { runWithDatabase } from './db/orm.js';
 
-export function createApp({ database = null, assets = null } = {}) {
+export function createApp({ database = null, assets = null, bookingRateLimiter = null } = {}) {
   const app = express();
+  app.locals.bookingRateLimiter = bookingRateLimiter;
   if (database) app.use((req, res, next) => runWithDatabase(database, next));
   app.set('trust proxy', 1);
   app.disable('x-powered-by');
