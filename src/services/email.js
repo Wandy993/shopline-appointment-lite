@@ -64,8 +64,17 @@ async function directMail() {
   return aliyunClient;
 }
 
+function normalizeAliyunAlias(value, fallback = 'Appointment') {
+  const text = String(value || '').trim();
+  const fallbackText = String(fallback || 'Appointment').trim();
+  const candidate = Array.from(text || fallbackText);
+  if (candidate.length <= 15) return candidate.join('');
+  return Array.from(fallbackText).slice(0, 15).join('');
+}
+
 async function deliverWithAliyun(message) {
   const { SingleSendMailRequest, RuntimeOptions } = await loadAliyunSdk();
+  const fromAlias = normalizeAliyunAlias(message.fromName || config.email.aliyun.fromAlias);
   const request = new SingleSendMailRequest({
     accountName: config.email.aliyun.accountName,
     addressType: 1,
@@ -73,8 +82,8 @@ async function deliverWithAliyun(message) {
     toAddress: message.to,
     subject: message.subject,
     htmlBody: message.html,
-    fromAlias: message.fromName || config.email.aliyun.fromAlias,
-    ...(message.replyTo ? { replyAddress: message.replyTo, replyAddressAlias: message.fromName || config.email.aliyun.fromAlias } : {}),
+    fromAlias,
+    ...(message.replyTo ? { replyAddress: message.replyTo, replyAddressAlias: fromAlias } : {}),
     ...(config.email.aliyun.tagName ? { tagName: config.email.aliyun.tagName } : {})
   });
   const client = await directMail();
