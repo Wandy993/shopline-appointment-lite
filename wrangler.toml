@@ -33,3 +33,7 @@ namespace_id = "2026111701"
   [ratelimits.simple]
   limit = 10
   period = 60
+
+[[routes]]
+pattern = "appointment.shoplineapp.vip"
+custom_domain = true
