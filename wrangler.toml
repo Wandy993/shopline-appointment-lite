@@ -23,6 +23,7 @@ SHOPLINE_API_VERSION = "v20260301"
 
 SHOPLINE_SCOPES = "read_products,read_store_information,read_content,read_orders,read_location"
 SHOPLINE_PARTNER_API_VERSION = "v20220901"
+SHOPLINE_SUBSCRIPTION_ENABLED = "true"
 SHOPLINE_SUBSCRIPTION_SPU_KEY = "appointment_lite_pro"
 SHOPLINE_SUBSCRIPTION_PACKAGE_ID = "c0ced1537654a66c337cd3af4b820b7eac9dd33c"
 SHOPLINE_SUBSCRIPTION_PLAN_NAME = "Appointment Lite Pro"
