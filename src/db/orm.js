@@ -823,6 +823,19 @@ function makeDocument(Model, fullDocument, queryOptions = {}) {
   return projected;
 }
 
+function setDocumentOriginal(document, value) {
+  if (Object.prototype.hasOwnProperty.call(document, '__original')) {
+    document.__original = cloneValue(value);
+  } else {
+    Object.defineProperty(document, '__original', {
+      value: cloneValue(value),
+      writable: true,
+      configurable: true,
+      enumerable: false
+    });
+  }
+}
+
 async function persistDocument(Model, document, original) {
   const id = String(document._id || new ObjectId());
   document._id = id;
@@ -831,7 +844,7 @@ async function persistDocument(Model, document, original) {
     addTimestamps(Model, next, true);
     validateSchema(Model.schema, next);
     await insertRow(Model, next);
-    document.__original = cloneValue(next);
+    setDocumentOriginal(document, next);
     return document;
   }
   const patch = diffPatch(original, mergeDeep(original, document));
@@ -844,7 +857,7 @@ async function persistDocument(Model, document, original) {
     addTimestamps(Model, next, false);
     validateSchema(Model.schema, next);
     if (await compareAndSwap(Model, row, next)) {
-      document.__original = cloneValue(next);
+      setDocumentOriginal(document, next);
       return document;
     }
   }
@@ -979,7 +992,7 @@ function createModel(name, schema) {
       return this;
     }
     async save() {
-      await persistDocument(Model, this, null);
+      await persistDocument(Model, this, this.__original || null);
       return this;
     }
     static find(filter = {}, projection = null) {
