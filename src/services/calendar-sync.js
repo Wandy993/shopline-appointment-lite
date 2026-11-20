@@ -336,7 +336,11 @@ export async function syncUpcomingGoogleCalendarBookingsForStaff({ shopId, staff
   const today = new Date().toISOString().slice(0, 10);
   const bookings = await Booking.find({ shopId, staffId, status: 'confirmed', date: { $gte: today } }).sort({ date: 1, time: 1 }).limit(Math.max(1, Math.min(500, Number(limit || 200)))).select('_id').lean();
   const summary = await syncBookingIds(bookings);
-  if (summary.errors === 0) await CalendarConnection.updateMany({ shopId, staffId, provider: PROVIDER }, { $set: { lastSyncAt: new Date(), lastSyncError: '' } }).catch(() => {});
+  const lastSyncError = summary.errors ? String(summary.errors) + ' appointment sync error(s)' : '';
+  await CalendarConnection.updateMany(
+    { shopId, staffId, provider: PROVIDER },
+    { $set: { lastSyncAt: new Date(), lastSyncError } }
+  ).catch(error => console.warn('Could not persist Google Calendar staff backfill status:', asString(error.message || error)));
   return summary;
 }
 
@@ -344,7 +348,11 @@ export async function syncUpcomingGoogleCalendarBookingsForBusiness({ shopId, li
   const today = new Date().toISOString().slice(0, 10);
   const bookings = await Booking.find({ shopId, status: 'confirmed', date: { $gte: today } }).sort({ date: 1, time: 1 }).limit(Math.max(1, Math.min(1000, Number(limit || 500)))).select('_id').lean();
   const summary = await syncBookingIds(bookings);
-  if (summary.errors === 0) await CalendarConnection.updateMany({ shopId, connectionType: 'business', provider: PROVIDER }, { $set: { lastSyncAt: new Date(), lastSyncError: '' } }).catch(() => {});
+  const lastSyncError = summary.errors ? String(summary.errors) + ' appointment sync error(s)' : '';
+  await CalendarConnection.updateMany(
+    { shopId, connectionType: 'business', provider: PROVIDER },
+    { $set: { lastSyncAt: new Date(), lastSyncError } }
+  ).catch(error => console.warn('Could not persist Google Calendar backfill status:', asString(error.message || error)));
   return summary;
 }
 

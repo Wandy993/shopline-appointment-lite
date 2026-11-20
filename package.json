@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "npx wrangler dev",
     "start": "npx wrangler dev",
-    "test": "node --test test/slots.test.js test/booking-modes.test.js test/bookings.test.js test/shops.test.js test/staff-management.test.js test/staff-availability-diagnostics.test.js test/service-timezone.test.js test/signature.test.js test/email.test.js test/validation.test.js test/cloudflare-rate-limit.test.js test/runtime-context.test.js",
+    "test": "node --test test/slots.test.js test/booking-modes.test.js test/bookings.test.js test/shops.test.js test/staff-management.test.js test/staff-availability-diagnostics.test.js test/service-timezone.test.js test/signature.test.js test/email.test.js test/validation.test.js test/cloudflare-rate-limit.test.js test/runtime-context.test.js test/calendar-popup-state.test.js",
     "check": "node --check src/worker.js && node --check src/db/orm.js && node --check src/middleware/booking-rate-limit.js && node --check src/app.js && node --check src/routes/admin.js && node --check src/routes/public.js && node --check src/services/bookings.js && node --check src/services/staffing.js && node --check src/runtime-context.js && node --check src/services/calendar-sync.js",
     "release:zip": "bash scripts/build-release.sh",
     "release:preflight": "node scripts/release-preflight.mjs",

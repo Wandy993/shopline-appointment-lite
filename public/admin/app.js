@@ -2,7 +2,7 @@ const state = {
   csrf: '', shop: null, email: null, emailSettings: null, rules: [], bookings: [], products: [], staff: [], staffOperations: { date: '', timezone: '', staff: [], unassigned: [] }, staffOperationsView: 'list', pendingDashboardBookingId: '',
   ruleStep: 0, activeTemplate: 'confirmation', emailEditorReady: false, bookingView: 'list', calendarMonth: '',
   locale: 'en', currentView: 'dashboard', themeLinkLoaded: false, bootstrap: null, onboarding: null, lastTestEmail: '', ruleModeTouched: false, editingRule: false,
-  calendarSync: null, calendarStaffId: '', calendarPopup: null, calendarDayItems: {}, paidVariants: [], orderAccess: null, locations: [], locationAccess: null, storefrontSettings: null,
+  calendarSync: null, calendarStaffId: '', calendarPopup: null, calendarPopupTimer: null, calendarOAuthRefreshInFlight: false, calendarInitialSyncing: false, calendarDayItems: {}, paidVariants: [], orderAccess: null, locations: [], locationAccess: null, storefrontSettings: null,
   subscription: null, subscriptionSyncError: '', restricted: false, archiveMode: false, accessMode: 'full',
   subscriptionRecoveryLastCheckAt: 0, subscriptionRecoveryInFlight: false,
   productPickerMode: 'checkout', ruleProductSelection: { trigger: [], placement: [] }, productPlacementScope: 'all', checkoutPlacementAuto: true,
@@ -733,7 +733,7 @@ Object.assign(zh, {
   'Loading Google calendars…': '正在加载 Google 日历…', 'Loading calendars…': '正在加载日历…', 'Choose calendar': '选择日历',
   'Save calendar': '保存日历', 'Primary': '主日历', 'Owned calendars': '个可用日历',
   'No owned calendars are available for this account.': '该 Google 账号没有可用日历。', 'Choose a Google Calendar.': '请选择一个 Google 日历。',
-  'Google Calendar connected.': 'Google 日历已连接。', 'Calendar selection saved.': '日历选择已保存。', 'Google Calendar disconnected.': 'Google 日历已断开。',
+  'Google Calendar connected.': 'Google 日历已连接。', 'Google Calendar connected and appointments synced.': 'Google 日历已连接，预约同步完成。', 'Google Calendar connected, but some appointments could not sync.': 'Google 日历已连接，但部分预约同步失败。', 'Google Calendar connected. Initial sync is still running; status will refresh automatically.': 'Google 日历已连接，首次同步仍在进行，状态会自动更新。', 'Some appointments could not sync. Use Sync now to retry.': '部分预约未能同步，可点击“立即同步”重试。', 'Syncing': '同步中', 'Syncing appointments…': '正在同步预约…', 'Calendar selection saved.': '日历选择已保存。', 'Google Calendar disconnected.': 'Google 日历已断开。',
   'Allow pop-ups to connect Google Calendar, then try again.': '请允许浏览器弹窗后重新连接 Google 日历。',
   'Could not load Google Calendar.': '无法加载 Google 日历，请稍后重试。', 'Could not connect Google Calendar.': '无法连接 Google 日历，请重试。',
   'Could not load calendars.': '无法加载日历，请重试。', 'Could not save calendar.': '无法保存日历，请重试。', 'Could not sync calendar.': '日历同步失败，请稍后重试。',
@@ -1815,14 +1815,16 @@ function calendarEndpoint(suffix = '') {
 function businessCalendarCard(connection, configured) {
   const connected = connection?.status === 'connected';
   const errored = connection?.status === 'error';
-  const statusLabel = connected ? 'Connected' : errored ? 'Connection error' : 'Not connected';
-  const statusClass = connected ? 'enabled' : errored ? 'no_show' : 'disabled';
-  const lastSync = connection?.lastSyncAt ? new Date(connection.lastSyncAt).toLocaleString(state.locale === 'zh-CN' ? 'zh-CN' : 'en') : t('Not synced yet');
+  const syncing = connected && state.calendarInitialSyncing;
+  const statusLabel = syncing ? 'Syncing' : connected ? 'Connected' : errored ? 'Connection error' : 'Not connected';
+  const statusClass = syncing ? 'syncing' : connected ? 'enabled' : errored ? 'no_show' : 'disabled';
+  const lastSync = syncing ? t('Syncing appointments…') : connection?.lastSyncAt ? new Date(connection.lastSyncAt).toLocaleString(state.locale === 'zh-CN' ? 'zh-CN' : 'en') : t('Not synced yet');
+  const syncFeedback = syncing ? t('Syncing appointments…') : connection?.lastSyncError ? t('Some appointments could not sync. Use Sync now to retry.') : '';
   const privacyHref = `https://appointment.shoplineapp.vip/${state.locale === 'zh-CN' ? 'zh-cn' : 'en'}/privacy#google-calendar-data`;
   const actions = connection
     ? `<button type="button" class="secondary small" data-calendar-manage>${t('Change calendar')}</button><button type="button" class="secondary small" data-calendar-connect ${!configured ? 'disabled' : ''}>${t('Reconnect')}</button><button type="button" class="secondary small" data-calendar-sync-now ${!connected ? 'disabled' : ''}>${t('Sync now')}</button><button type="button" class="text-button calendar-disconnect" data-calendar-disconnect>${t('Disconnect')}</button>`
     : `<button type="button" class="google-connect-button" data-calendar-connect ${!configured ? 'disabled' : ''}>${googleGMark('small')}<span>${t('Connect Google Calendar')}</span></button>`;
-  return `<article class="panel calendar-business-card"><div class="calendar-business-head"><div class="calendar-business-identity">${googleGMark()}<div><strong>${t('Business appointment calendar')}</strong><span>${t('One store calendar for all appointments')}</span></div></div><span class="status-badge ${statusClass}">${t(statusLabel)}</span></div><div class="calendar-business-details"><div><span>${t('Google account')}</span><strong>${escapeHtml(connection?.accountLabel || '—')}</strong></div><div><span>${t('Selected calendar')}</span><strong>${escapeHtml(connection?.calendarName || '—')}</strong>${connection?.calendarTimeZone ? `<small>${escapeHtml(connection.calendarTimeZone)}</small>` : ''}</div><div><span>${t('Last synced')}</span><strong>${escapeHtml(lastSync)}</strong></div></div><div class="calendar-business-actions">${actions}</div><div class="calendar-privacy-note"><strong>${t('Google Calendar data use')}</strong><p>${t('After you connect, Appointment Lite reads your owned calendar list and syncs appointment events to the calendar you select. Events may contain customer contact details, service, staff, location, meeting link, and appointment time. Your refresh token is encrypted. Disconnecting revokes access and removes the local connection; existing Google Calendar events remain until you delete them there.')}</p><a href="${privacyHref}" target="_blank" rel="noopener noreferrer">${t('Read Google Calendar data policy')}</a></div></article>`;
+  return `<article class="panel calendar-business-card"><div class="calendar-business-head"><div class="calendar-business-identity">${googleGMark()}<div><strong>${t('Business appointment calendar')}</strong><span>${t('One store calendar for all appointments')}</span></div></div><span class="status-badge ${statusClass}">${t(statusLabel)}</span></div><div class="calendar-business-details"><div><span>${t('Google account')}</span><strong>${escapeHtml(connection?.accountLabel || '—')}</strong></div><div><span>${t('Selected calendar')}</span><strong>${escapeHtml(connection?.calendarName || '—')}</strong>${connection?.calendarTimeZone ? `<small>${escapeHtml(connection.calendarTimeZone)}</small>` : ''}</div><div><span>${t('Last synced')}</span><strong>${escapeHtml(lastSync)}</strong></div></div><div class="calendar-business-actions">${actions}</div>${syncFeedback ? `<p class="calendar-sync-feedback ${connection?.lastSyncError && !syncing ? "error" : ""}" role="status" aria-live="polite">${escapeHtml(syncFeedback)}</p>` : ""}<div class="calendar-privacy-note"><strong>${t('Google Calendar data use')}</strong><p>${t('After you connect, Appointment Lite reads your owned calendar list and syncs appointment events to the calendar you select. Events may contain customer contact details, service, staff, location, meeting link, and appointment time. Your refresh token is encrypted. Disconnecting revokes access and removes the local connection; existing Google Calendar events remain until you delete them there.')}</p><a href="${privacyHref}" target="_blank" rel="noopener noreferrer">${t('Read Google Calendar data policy')}</a></div></article>`;
 }
 
 function renderCalendarSync() {
@@ -1857,16 +1859,93 @@ async function loadCalendarSync({ force = false } = {}) {
   }
 }
 
+function stopCalendarPopupMonitor() {
+  if (state.calendarPopupTimer) window.clearInterval(state.calendarPopupTimer);
+  state.calendarPopupTimer = null;
+}
+
+function monitorCalendarPopup(popup) {
+  stopCalendarPopupMonitor();
+  state.calendarPopupTimer = window.setInterval(() => {
+    if (popup && !popup.closed) return;
+    stopCalendarPopupMonitor();
+    if (state.calendarPopup === popup) state.calendarPopup = null;
+    void refreshCalendarAfterOAuth();
+  }, 400);
+}
+
+function calendarInitialSyncComplete(connection, verifiedAt) {
+  const lastSyncAt = Date.parse(connection?.lastSyncAt || '');
+  return Number.isFinite(verifiedAt) && Number.isFinite(lastSyncAt) && lastSyncAt >= verifiedAt;
+}
+
+async function refreshCalendarAfterOAuth() {
+  if (state.calendarOAuthRefreshInFlight) return;
+  state.calendarOAuthRefreshInFlight = true;
+  try {
+    let payload = await api('/calendar');
+    state.calendarSync = payload;
+    let connection = payload.businessConnection;
+    if (!connection || connection.status !== 'connected') {
+      state.calendarInitialSyncing = false;
+      renderCalendarSync();
+      return payload;
+    }
+
+    const verifiedAt = Date.parse(connection.lastVerifiedAt || connection.connectedAt || '');
+    if (calendarInitialSyncComplete(connection, verifiedAt)) {
+      state.calendarInitialSyncing = false;
+      renderCalendarSync();
+      toast(t(connection.lastSyncError ? 'Google Calendar connected, but some appointments could not sync.' : 'Google Calendar connected and appointments synced.'), connection.lastSyncError ? 'error' : 'success');
+      return payload;
+    }
+
+    state.calendarInitialSyncing = true;
+    renderCalendarSync();
+    for (let attempt = 0; attempt < 45; attempt += 1) {
+      await new Promise(resolve => window.setTimeout(resolve, 1000));
+      payload = await api('/calendar');
+      state.calendarSync = payload;
+      connection = payload.businessConnection;
+      if (!connection || connection.status !== 'connected') {
+        state.calendarInitialSyncing = false;
+        renderCalendarSync();
+        return payload;
+      }
+      if (calendarInitialSyncComplete(connection, verifiedAt)) {
+        state.calendarInitialSyncing = false;
+        renderCalendarSync();
+        toast(t(connection.lastSyncError ? 'Google Calendar connected, but some appointments could not sync.' : 'Google Calendar connected and appointments synced.'), connection.lastSyncError ? 'error' : 'success');
+        return payload;
+      }
+      renderCalendarSync();
+    }
+    state.calendarInitialSyncing = false;
+    renderCalendarSync();
+    toast(t('Google Calendar connected. Initial sync is still running; status will refresh automatically.'));
+    return payload;
+  } catch (error) {
+    state.calendarInitialSyncing = false;
+    console.warn('Calendar status refresh after OAuth failed:', error);
+    await loadCalendarSync({ force: true });
+    return null;
+  } finally {
+    state.calendarOAuthRefreshInFlight = false;
+  }
+}
+
 async function connectGoogleCalendar() {
   const popup = window.open('about:blank', 'appointmentLiteGoogleCalendar', 'popup=yes,width=620,height=760,resizable=yes,scrollbars=yes');
   if (!popup) return toast(t('Allow pop-ups to connect Google Calendar, then try again.'), 'error');
   state.calendarPopup = popup;
+  monitorCalendarPopup(popup);
   try {
     popup.document.title = 'Appointment Lite · Google Calendar';
     const payload = await api(calendarEndpoint('/connect'));
     popup.location.href = payload.authorizationUrl;
     popup.focus();
   } catch (error) {
+    stopCalendarPopupMonitor();
     try { popup.close(); } catch {}
     state.calendarPopup = null;
     console.warn('Calendar connect failed:', error);
@@ -4054,10 +4133,15 @@ function bind() {
   $$('[data-close-calendar-dialog]').forEach(button => button.addEventListener('click', () => $('#calendarDialog').close()));
   window.addEventListener('message', event => {
     if (event.origin !== window.location.origin || event.data?.type !== 'appointment-lite:google-calendar') return;
-    if (event.data.status === 'connected') toast(t('Google Calendar connected.'));
-    else toast(t(event.data.message || 'Could not connect Google Calendar.'), 'error');
+    stopCalendarPopupMonitor();
     state.calendarPopup = null;
-    loadCalendarSync({ force: true });
+    if (event.data.status === 'connected') {
+      void refreshCalendarAfterOAuth();
+    } else {
+      state.calendarInitialSyncing = false;
+      toast(t(event.data.message || 'Could not connect Google Calendar.'), 'error');
+      loadCalendarSync({ force: true });
+    }
   });
   $('#staffForm')?.addEventListener('submit', saveStaff);
   $$('[data-close-staff-dialog]').forEach(button => button.addEventListener('click', () => $('#staffDialog').close()));
