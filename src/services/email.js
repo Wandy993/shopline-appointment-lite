@@ -109,8 +109,14 @@ export async function deliverEmail(message) {
     const result = status.provider === 'aliyun' ? await deliverWithAliyun(message) : await deliverWithResend(message);
     return { skipped: false, attempted: 1, failed: 0, ...result };
   } catch (error) {
-    console.error(`${status.provider} email delivery failed`, error.message);
-    return { skipped: false, attempted: 1, failed: 1, provider: status.provider, reason: error.message };
+    console.error(`${status.provider} email delivery failed`, {
+      name: error?.name || 'Error',
+      code: error?.code || error?.Code || error?.data?.Code || '',
+      statusCode: error?.statusCode || error?.status || '',
+      requestId: error?.requestId || error?.RequestId || error?.data?.RequestId || '',
+      message: String(error?.message || error).slice(0, 500)
+    });
+    return { skipped: false, attempted: 1, failed: 1, provider: status.provider, reason: String(error?.message || error).slice(0, 500), errorCode: error?.code || error?.Code || error?.data?.Code || '' };
   }
 }
 

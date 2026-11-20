@@ -11,6 +11,26 @@ const rule = {
 const input = { date: '2026-08-24', time: '09:00', customer: { name: 'Jane', email: 'jane@example.com', phone: '' }, note: '', answers: [] };
 const beforeOpening = new Date('2026-08-23T16:00:00.000Z');
 
+test('confirmed booking awaits the notification attempt before returning', async () => {
+  const beforeOpening = new Date('2026-08-24T00:00:00.000Z');
+  let finished = false;
+  const BookingModel = {
+    async create(document) { return { ...document, _id: 'booking-email-await-test' }; }
+  };
+  const result = await createBookingAtomic({
+    shop, rule: { ...rule, capacity: 5 }, input,
+    BookingModel,
+    notify: async () => {
+      await new Promise(resolve => setTimeout(resolve, 10));
+      finished = true;
+      return { skipped: false, attempted: 1, failed: 0, provider: 'test' };
+    },
+    now: beforeOpening
+  });
+  assert.equal(result.booking._id, 'booking-email-await-test');
+  assert.equal(finished, true);
+});
+
 test('booking creation carries denormalized rule details', async () => {
   let document;
   const BookingModel = { async create(value) { document = { _id: 'b1', ...value }; return document; } };

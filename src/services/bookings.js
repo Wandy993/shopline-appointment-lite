@@ -290,8 +290,30 @@ export async function createBookingAtomic({
     throw error;
   }
   if (notifications && initialStatus === 'confirmed') {
-    Promise.resolve(notify(booking, shop.email, managementToken, shop.emailSettings || null)).catch(error => console.error('Email notification failed', error.message));
-    if (BookingModel === Booking && booking.staffId) Promise.resolve(sendStaffAssignedNotification(booking, shop.emailSettings || null)).catch(error => console.error('Staff assignment email failed', error.message));
+    // Await the email send before returning the booking response. Detached promises
+    // can be terminated when a Cloudflare Worker finishes the HTTP invocation.
+    try {
+      const emailResult = await notify(booking, shop.email, managementToken, shop.emailSettings || null);
+      if (emailResult?.failed) {
+        console.error('Appointment booking email delivery failed', {
+          provider: emailResult.provider || 'unknown',
+          attempted: emailResult.attempted || 0,
+          failed: emailResult.failed,
+          reasons: (emailResult.results || []).filter(item => item.failed).map(item => String(item.reason || 'EMAIL_DELIVERY_FAILED').slice(0, 240))
+        });
+      } else if (emailResult?.skipped) {
+        console.warn('Appointment booking email was skipped', { provider: emailResult.provider || 'none', reason: emailResult.reason || 'EMAIL_SKIPPED' });
+      }
+    } catch (error) {
+      console.error('Email notification failed', { name: error?.name || 'Error', code: error?.code || '', message: String(error?.message || error).slice(0, 300) });
+    }
+    if (BookingModel === Booking && booking.staffId) {
+      try {
+        await sendStaffAssignedNotification(booking, shop.emailSettings || null);
+      } catch (error) {
+        console.error('Staff assignment email failed', { name: error?.name || 'Error', code: error?.code || '', message: String(error?.message || error).slice(0, 300) });
+      }
+    }
     if (BookingModel === Booking) queueBookingGoogleCalendarSync(booking._id, 'created');
   }
   return { booking, managementToken };
@@ -466,8 +488,18 @@ export async function confirmPaidBooking({ bookingId, orderId = '', orderName = 
   if (BookingModel === Booking) {
     const shop = await findInstalledShop({ objectId: next.shopId });
     if (shop) {
-      Promise.resolve(sendBookingNotifications(next, shop.email, managementToken, shop.emailSettings || null)).catch(error => console.error('Paid booking confirmation email failed', error.message));
-      if (next.staffId) Promise.resolve(sendStaffAssignedNotification(next, shop.emailSettings || null)).catch(error => console.error('Paid booking staff email failed', error.message));
+      try {
+        await sendBookingNotifications(next, shop.email, managementToken, shop.emailSettings || null);
+      } catch (error) {
+        console.error('Paid booking confirmation email failed', { name: error?.name || 'Error', code: error?.code || '', message: String(error?.message || error).slice(0, 300) });
+      }
+      if (next.staffId) {
+        try {
+          await sendStaffAssignedNotification(next, shop.emailSettings || null);
+        } catch (error) {
+          console.error('Paid booking staff email failed', { name: error?.name || 'Error', code: error?.code || '', message: String(error?.message || error).slice(0, 300) });
+        }
+      }
     }
     queueBookingGoogleCalendarSync(next._id, 'payment_confirmed');
   }
