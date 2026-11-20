@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { scheduleBackgroundTask } from '../runtime-context.js';
 import { Booking } from '../models/Booking.js';
 import { ensureBookingOnlineMeetingSnapshot } from './online-meeting.js';
 import { CalendarConnection } from '../models/CalendarConnection.js';
@@ -301,9 +302,10 @@ export async function reconcileBookingGoogleCalendarWithRetry(bookingId, { reaso
 
 export function queueBookingGoogleCalendarSync(bookingId, reason = 'booking_changed') {
   if (!bookingId) return;
-  setImmediate(async () => {
-    const booking = await Booking.findById(bookingId).select('shopId').lean().catch(() => null);
+  scheduleBackgroundTask(async () => {
+    let booking = null;
     try {
+      booking = await Booking.findById(bookingId).select('shopId').lean().catch(() => null);
       await reconcileBookingGoogleCalendarWithRetry(bookingId, { reason });
       if (booking?.shopId) void incrementOpsUsage(booking.shopId, 'external_calendar_syncs', 1);
     } catch (error) {
@@ -315,7 +317,7 @@ export function queueBookingGoogleCalendarSync(bookingId, reason = 'booking_chan
       });
       console.error(`Google Calendar booking sync failed after retries (${reason})`, asString(error.message || error));
     }
-  });
+  }, 'google-calendar-booking-sync');
 }
 
 async function syncBookingIds(bookings) {
@@ -347,9 +349,15 @@ export async function syncUpcomingGoogleCalendarBookingsForBusiness({ shopId, li
 }
 
 export function queueUpcomingGoogleCalendarBookingsForStaff(values) {
-  setImmediate(() => syncUpcomingGoogleCalendarBookingsForStaff(values).catch(error => console.error('Google Calendar staff sync failed', asString(error.message || error))));
+  scheduleBackgroundTask(
+    () => syncUpcomingGoogleCalendarBookingsForStaff(values),
+    'google-calendar-staff-backfill'
+  ).catch(error => console.error('Google Calendar staff sync failed', asString(error.message || error)));
 }
 
 export function queueUpcomingGoogleCalendarBookingsForBusiness(values) {
-  setImmediate(() => syncUpcomingGoogleCalendarBookingsForBusiness(values).catch(error => console.error('Google Calendar business sync failed', asString(error.message || error))));
+  scheduleBackgroundTask(
+    () => syncUpcomingGoogleCalendarBookingsForBusiness(values),
+    'google-calendar-business-backfill'
+  ).catch(error => console.error('Google Calendar business sync failed', asString(error.message || error)));
 }

@@ -1,5 +1,6 @@
 import { env } from 'cloudflare:workers';
 import { handleAsNodeRequest } from 'cloudflare:node';
+import { runWithExecutionContext } from './runtime-context.js';
 
 // Load Cloudflare variables and secrets before importing modules that snapshot
 // process.env (config.js and the Express route/service graph).
@@ -82,7 +83,7 @@ async function runScheduledJobs(database) {
 }
 
 export default {
-  fetch(request) {
+  fetch(request, bindings, context) {
     const issues = getProductionConfigIssues();
     if (issues.length) {
       const bindingStatus = {
@@ -99,7 +100,7 @@ export default {
         headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }
       });
     }
-    return handleAsNodeRequest(3000, request);
+    return runWithExecutionContext(context, () => handleAsNodeRequest(3000, request));
   },
   scheduled(controller, bindings, context) {
     context.waitUntil(runScheduledJobs(bindings.DB).then(result => {
