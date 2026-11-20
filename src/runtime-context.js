@@ -11,7 +11,7 @@ export function scheduleBackgroundTask(task, label = 'background-task') {
   const context = executionContextStorage.getStore();
 
   const tracked = promise.catch(error => {
-    console.error(\`Appointment Lite background task failed (\${label})\`, {
+    console.error(`Appointment Lite background task failed (${label})`, {
       name: error?.name || 'Error',
       code: error?.code || '',
       message: String(error?.message || error).slice(0, 400)
